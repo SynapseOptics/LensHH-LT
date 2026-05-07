@@ -36,11 +36,14 @@ if errorlevel 1 (
 echo.
 echo === Generating PDF documentation ===
 rem Extract MyAppVersion from the .iss so the PDF cover page matches
-rem the installer version without duplicating the constant.
+rem the installer version without duplicating the constant. The .iss line is:
+rem   #define MyAppVersion "1.0.106"
+rem Split on default whitespace, take token 3 (the quoted version), then
+rem strip the quotes via string substitution.
 set "PDF_VERSION=dev"
-for /f "tokens=2 delims==" %%A in ('findstr /b "#define MyAppVersion" installer\LensHH-LT.iss') do (
-    for /f "tokens=* delims= " %%B in ("%%~A") do set "PDF_VERSION=%%~B"
-)
+for /f "tokens=3" %%A in ('findstr /b "#define MyAppVersion" installer\LensHH-LT.iss') do set "PDF_VERSION_RAW=%%A"
+if defined PDF_VERSION_RAW set "PDF_VERSION=%PDF_VERSION_RAW:"=%"
+echo PDF cover-page version: %PDF_VERSION%
 call docs\build\build-pdf.bat %PDF_VERSION%
 if errorlevel 1 (
     echo PDF build failed!
