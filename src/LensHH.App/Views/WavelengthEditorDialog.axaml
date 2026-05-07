@@ -1,0 +1,58 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:LensHH.App.ViewModels"
+        x:Class="LensHH.App.Views.WavelengthEditorDialog"
+        x:DataType="vm:WavelengthEditorViewModel"
+        Title="Wavelength Editor"
+        Icon="avares://LensHH.App/Assets/icon_256.png"
+        Width="640" Height="380"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False">
+
+  <Window.Styles>
+    <Style Selector="TextBlock.out-of-range">
+      <Setter Property="Foreground" Value="Red" />
+      <Setter Property="FontWeight" Value="Bold" />
+    </Style>
+  </Window.Styles>
+
+  <DockPanel Margin="8">
+    <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal"
+                HorizontalAlignment="Right" Spacing="8" Margin="0,8,0,0">
+      <Button Content="Add" Command="{Binding AddCommand}" Width="70" />
+      <Button Content="Insert" Command="{Binding InsertCommand}" Width="70" />
+      <Button Content="Remove" Command="{Binding RemoveCommand}" Width="70" />
+      <Button Content="OK" Click="OK_Click" Width="70" />
+      <Button Content="Cancel" Click="Cancel_Click" Width="70" IsCancel="True" />
+    </StackPanel>
+
+    <DataGrid ItemsSource="{Binding Wavelengths}"
+              SelectedItem="{Binding SelectedWavelength}"
+              AutoGenerateColumns="False"
+              CanUserSortColumns="False"
+              GridLinesVisibility="Horizontal"
+              IsReadOnly="False">
+      <DataGrid.Columns>
+        <DataGridTextColumn Header="WV No" Binding="{Binding Number}" IsReadOnly="True" Width="60" />
+        <DataGridTemplateColumn Header="Wavelength (um)" Width="140">
+          <DataGridTemplateColumn.CellTemplate>
+            <DataTemplate>
+              <TextBlock Text="{Binding ValueText}" Margin="4,0" VerticalAlignment="Center"
+                         Classes.out-of-range="{Binding IsOutOfRange}"
+                         ToolTip.Tip="{Binding RangeWarning}" />
+            </DataTemplate>
+          </DataGridTemplateColumn.CellTemplate>
+          <DataGridTemplateColumn.CellEditingTemplate>
+            <DataTemplate>
+              <TextBox Text="{Binding ValueText, Mode=TwoWay}" />
+            </DataTemplate>
+          </DataGridTemplateColumn.CellEditingTemplate>
+        </DataGridTemplateColumn>
+        <DataGridTextColumn Header="Weight" Binding="{Binding WeightText}" Width="80" />
+        <DataGridCheckBoxColumn Header="Primary" Binding="{Binding IsPrimary}" Width="70" />
+        <DataGridTextColumn Header="Material range" Binding="{Binding RangeWarning}"
+                            IsReadOnly="True" Width="*" />
+      </DataGrid.Columns>
+    </DataGrid>
+  </DockPanel>
+</Window>

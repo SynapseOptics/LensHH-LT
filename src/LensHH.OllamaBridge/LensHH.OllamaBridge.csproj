@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <RootNamespace>LensHH.OllamaBridge</RootNamespace>
+    <AssemblyName>LensHH.OllamaBridge</AssemblyName>
+    <!-- Use the shared SynapseOptics / LensHH-LT icon for the .exe so
+         File Explorer, the taskbar (when the console is open), and any
+         pinned shortcut all show the brand mark instead of the default
+         .NET console glyph. -->
+    <ApplicationIcon>..\LensHH.App\Assets\icon.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+  </ItemGroup>
+
+</Project>

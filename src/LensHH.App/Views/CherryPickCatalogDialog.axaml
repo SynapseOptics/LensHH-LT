@@ -1,0 +1,127 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:LensHH.App.ViewModels"
+        x:Class="LensHH.App.Views.CherryPickCatalogDialog"
+        x:DataType="vm:CherryPickCatalogViewModel"
+        Title="Create Filtered Catalogue (Cherry-Pick)"
+        Icon="avares://LensHH.App/Assets/icon_256.png"
+        Width="1100" Height="640"
+        WindowStartupLocation="CenterOwner"
+        CanResize="True"
+        MinWidth="900" MinHeight="500">
+
+  <DockPanel Margin="10">
+
+    <!-- Top: source / destination directories -->
+    <Border DockPanel.Dock="Top" BorderBrush="#CCC" BorderThickness="1"
+            CornerRadius="4" Padding="8,6" Margin="0,0,0,6">
+      <Grid ColumnDefinitions="Auto,6,*,8,Auto" RowDefinitions="Auto,4,Auto">
+        <TextBlock Grid.Row="0" Grid.Column="0" Text="Source folder:" VerticalAlignment="Center" />
+        <TextBox   Grid.Row="0" Grid.Column="2" Text="{Binding CatalogDirectory, UpdateSourceTrigger=LostFocus}" />
+        <Button    Grid.Row="0" Grid.Column="4" Content="Browse..." Command="{Binding BrowseSourceDirCommand}" Width="90" />
+
+        <TextBlock Grid.Row="2" Grid.Column="0" Text="Save to folder:" VerticalAlignment="Center" />
+        <TextBox   Grid.Row="2" Grid.Column="2" Text="{Binding FilteredCatalogDirectory, UpdateSourceTrigger=LostFocus}" />
+        <Button    Grid.Row="2" Grid.Column="4" Content="Browse..." Command="{Binding BrowseFilteredDirCommand}" Width="90" />
+      </Grid>
+    </Border>
+
+    <!-- Bottom: status + buttons -->
+    <Border DockPanel.Dock="Bottom" BorderBrush="#CCC" BorderThickness="1"
+            CornerRadius="3" Padding="8,4" Margin="0,6,0,0">
+      <Grid ColumnDefinitions="*,Auto,8,Auto,8,Auto">
+        <TextBlock Grid.Column="0" Text="{Binding StatusText}" FontSize="12" Foreground="#444" VerticalAlignment="Center" />
+        <Button Grid.Column="1" Content="Load Existing..." Command="{Binding LoadExistingCommand}" Width="130" />
+        <Button Grid.Column="3" Content="Close" Click="Close_Click" Width="80" IsCancel="True" />
+      </Grid>
+    </Border>
+
+    <!-- Three-pane main area: catalogs list / source glasses / chosen glasses -->
+    <Grid ColumnDefinitions="240,8,*,8,*">
+
+      <!-- ─── Source catalogs (multi-select) ─── -->
+      <Border Grid.Column="0" BorderBrush="#CCC" BorderThickness="1" CornerRadius="3">
+        <DockPanel Margin="6">
+          <TextBlock DockPanel.Dock="Top" Text="Source catalogs"
+                     FontWeight="SemiBold" Margin="0,0,0,6" />
+          <ScrollViewer>
+            <ItemsControl ItemsSource="{Binding AvailableCatalogs}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <CheckBox Content="{Binding Name}" IsChecked="{Binding IsChecked}" Margin="0,2" />
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </ScrollViewer>
+        </DockPanel>
+      </Border>
+
+      <!-- ─── Source glasses (filtered) ─── -->
+      <Border Grid.Column="2" BorderBrush="#CCC" BorderThickness="1" CornerRadius="3">
+        <DockPanel Margin="6">
+          <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,6,*,6,Auto" Margin="0,0,0,6">
+            <TextBlock Grid.Column="0" Text="Available glasses" FontWeight="SemiBold" VerticalAlignment="Center" />
+            <TextBox Grid.Column="2" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                     Watermark="search by name..." />
+            <TextBlock Grid.Column="4" Text="{Binding SourceCount}" FontSize="11" Foreground="#666" VerticalAlignment="Center" />
+          </Grid>
+          <Button DockPanel.Dock="Bottom" Content="Add Selected →" Command="{Binding AddSelectedCommand}"
+                  HorizontalAlignment="Stretch" Margin="0,6,0,0" />
+          <DataGrid ItemsSource="{Binding SourceGlasses}"
+                    SelectedItem="{Binding SelectedSourceGlass}"
+                    DoubleTapped="SourceGrid_DoubleTapped"
+                    Name="SourceGrid"
+                    AutoGenerateColumns="False" CanUserSortColumns="True"
+                    GridLinesVisibility="All" IsReadOnly="True"
+                    FontSize="12">
+            <DataGrid.Columns>
+              <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="130" />
+              <DataGridTextColumn Header="n_d" Binding="{Binding Nd, StringFormat='F4'}" Width="70" />
+              <DataGridTextColumn Header="V_d" Binding="{Binding Vd, StringFormat='F2'}" Width="70" />
+              <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="70" />
+              <DataGridTextColumn Header="Catalog" Binding="{Binding CatalogName}" Width="100" />
+            </DataGrid.Columns>
+          </DataGrid>
+        </DockPanel>
+      </Border>
+
+      <!-- ─── Chosen glasses (your new catalog) ─── -->
+      <Border Grid.Column="4" BorderBrush="#CCC" BorderThickness="1" CornerRadius="3">
+        <DockPanel Margin="6">
+          <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,*,Auto" Margin="0,0,0,6">
+            <TextBlock Grid.Column="0" Text="Chosen glasses" FontWeight="SemiBold" VerticalAlignment="Center" />
+            <TextBlock Grid.Column="2" Text="{Binding ChosenCount}" FontSize="11" Foreground="#666" VerticalAlignment="Center" />
+          </Grid>
+
+          <!-- Save row at bottom -->
+          <Grid DockPanel.Dock="Bottom" ColumnDefinitions="Auto,6,*,8,Auto" Margin="0,6,0,0">
+            <TextBlock Grid.Column="0" Text="Name:" VerticalAlignment="Center" />
+            <TextBox Grid.Column="2" Text="{Binding NewCatalogName, UpdateSourceTrigger=PropertyChanged}" />
+            <Button Grid.Column="4" Content="Save" Command="{Binding SaveCommand}" Width="80" FontWeight="SemiBold" />
+          </Grid>
+
+          <!-- Action buttons row -->
+          <Grid DockPanel.Dock="Bottom" ColumnDefinitions="*,8,Auto" Margin="0,6,0,0">
+            <Button Grid.Column="0" Content="← Remove Selected" Command="{Binding RemoveSelectedCommand}"
+                    HorizontalAlignment="Stretch" />
+            <Button Grid.Column="2" Content="Clear All" Command="{Binding ClearChosenCommand}" Width="90" />
+          </Grid>
+
+          <DataGrid ItemsSource="{Binding ChosenGlasses}"
+                    SelectedItem="{Binding SelectedChosenGlass}"
+                    AutoGenerateColumns="False" CanUserSortColumns="True"
+                    GridLinesVisibility="All" IsReadOnly="True"
+                    FontSize="12">
+            <DataGrid.Columns>
+              <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="130" />
+              <DataGridTextColumn Header="n_d" Binding="{Binding Nd, StringFormat='F4'}" Width="70" />
+              <DataGridTextColumn Header="V_d" Binding="{Binding Vd, StringFormat='F2'}" Width="70" />
+              <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="70" />
+              <DataGridTextColumn Header="From" Binding="{Binding CatalogName}" Width="100" />
+            </DataGrid.Columns>
+          </DataGrid>
+        </DockPanel>
+      </Border>
+    </Grid>
+  </DockPanel>
+</Window>

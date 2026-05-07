@@ -1,0 +1,255 @@
+{
+  "FormatVersion": 1,
+  "Title": "BK7_SINGLE_ELEMENT",
+  "Notes": "",
+  "Designer": "",
+  "Aperture": {
+    "Value": 12.5
+  },
+  "Surfaces": [
+    {
+      "Comment": "",
+      "Radius": "Infinity",
+      "Thickness": "Infinity",
+      "Material": "",
+      "SemiDiameter": 14.089168203203208,
+      "ClearAperturePercent": 100
+    },
+    {
+      "Index": 1,
+      "Comment": "",
+      "Radius": 63.64971163027875,
+      "Thickness": 20.367993418564215,
+      "Material": "N-BK7",
+      "SemiDiameter": 13.821370351297874,
+      "ClearAperturePercent": 100,
+      "CurvatureVariable": true,
+      "ThicknessVariable": true
+    },
+    {
+      "Index": 2,
+      "Comment": "",
+      "Radius": -40.87424210270414,
+      "Thickness": 10.597892194543263,
+      "Material": "",
+      "SemiDiameter": 10.462378203413891,
+      "ClearAperturePercent": 100,
+      "CurvatureVariable": true,
+      "ThicknessVariable": true
+    },
+    {
+      "Index": 3,
+      "Comment": "",
+      "Radius": -12.11617485997723,
+      "Thickness": 2.9963817118602525,
+      "Material": "N-SK2",
+      "SemiDiameter": 5.157453726472197,
+      "ClearAperturePercent": 100,
+      "CurvatureVariable": true,
+      "ThicknessVariable": true
+    },
+    {
+      "Index": 4,
+      "Comment": "",
+      "Radius": -6.355663582854395,
+      "Thickness": 5.44275822312488,
+      "Material": "SF1",
+      "SemiDiameter": 5.13000741452173,
+      "ClearAperturePercent": 100,
+      "CurvatureVariable": true,
+      "ThicknessVariable": true
+    },
+    {
+      "Index": 5,
+      "Comment": "",
+      "Radius": -12.247677925454223,
+      "Thickness": 0.28865043155623976,
+      "Material": "",
+      "SemiDiameter": 5.571412022986608,
+      "ClearAperturePercent": 100,
+      "CurvatureVariable": true,
+      "ThicknessVariable": true
+    },
+    {
+      "Index": 6,
+      "Comment": "",
+      "Radius": -11.302145062628002,
+      "Thickness": 1.0370546422121585,
+      "Material": "N-LAK10",
+      "SemiDiameter": 5.518581909501429,
+      "ClearAperturePercent": 100,
+      "CurvatureVariable": true,
+      "ThicknessVariable": true
+    },
+    {
+      "Index": 7,
+      "Comment": "",
+      "Radius": -12.01792217358435,
+      "Thickness": 1.0838476191818849,
+      "Material": "K7",
+      "SemiDiameter": 5.613656962403488,
+      "ClearAperturePercent": 100,
+      "CurvatureVariable": true,
+      "ThicknessVariable": true
+    },
+    {
+      "Index": 8,
+      "Comment": "",
+      "Radius": -11.418992735923384,
+      "Thickness": 0.1331731617750224,
+      "Material": "",
+      "SemiDiameter": 5.642053123029396,
+      "ClearAperturePercent": 100,
+      "CurvatureVariable": true,
+      "ThicknessVariable": true
+    },
+    {
+      "Index": 9,
+      "Comment": "",
+      "Radius": "Infinity",
+      "Thickness": 39.999771448947456,
+      "Material": "",
+      "SemiDiameter": 5.232085818542841,
+      "ClearAperturePercent": 100,
+      "IsStop": true,
+      "ThicknessVariable": true
+    },
+    {
+      "Index": 10,
+      "Comment": "",
+      "Radius": "Infinity",
+      "Material": "",
+      "SemiDiameter": 8.712957185138196,
+      "ClearAperturePercent": 100
+    }
+  ],
+  "Wavelengths": [
+    {
+      "Value": 0.5876,
+      "Weight": 1,
+      "IsPrimary": true
+    },
+    {
+      "Value": 0.65,
+      "Weight": 1
+    },
+    {
+      "Value": 0.48,
+      "Weight": 1
+    }
+  ],
+  "Fields": [
+    {
+      "Weight": 1
+    },
+    {
+      "Y": 7,
+      "Weight": 1
+    },
+    {
+      "Y": 10,
+      "Weight": 1
+    }
+  ],
+  "Pickups": [],
+  "GlassCatalogs": [],
+  "MeritFunction": {
+    "Operands": [
+      {
+        "Type": "EFL",
+        "Target": 50,
+        "Weight": 100,
+        "ConfigurationNo": -1,
+        "WaveIndex": -1,
+        "Rings": 3,
+        "Arms": 6,
+        "GridSize": 4
+      },
+      {
+        "Type": "WAVEX",
+        "Weight": 1,
+        "ConfigurationNo": -1,
+        "WaveIndex": -1,
+        "Rings": 6,
+        "Arms": 12,
+        "GridSize": 4
+      },
+      {
+        "Type": "EG",
+        "Weight": 10,
+        "Minimum": 1,
+        "ConfigurationNo": -1,
+        "WaveIndex": -1,
+        "Rings": 3,
+        "Arms": 6,
+        "GridSize": 4,
+        "Surface1": 1,
+        "Surface2": 9
+      },
+      {
+        "Type": "EA",
+        "Weight": 10,
+        "Minimum": 0.1,
+        "ConfigurationNo": -1,
+        "WaveIndex": -1,
+        "Rings": 3,
+        "Arms": 6,
+        "GridSize": 4,
+        "Surface1": 1,
+        "Surface2": 9
+      },
+      {
+        "Type": "CTG",
+        "Weight": 10,
+        "Minimum": 1,
+        "Maximum": 25,
+        "ConfigurationNo": -1,
+        "WaveIndex": -1,
+        "Rings": 3,
+        "Arms": 6,
+        "GridSize": 4,
+        "Surface1": 1,
+        "Surface2": 9
+      },
+      {
+        "Type": "CTA",
+        "Target": 0.1,
+        "Weight": 10,
+        "Minimum": 0.1,
+        "Maximum": 100,
+        "ConfigurationNo": -1,
+        "WaveIndex": -1,
+        "Rings": 3,
+        "Arms": 6,
+        "GridSize": 4,
+        "Surface1": 1,
+        "Surface2": 9
+      },
+      {
+        "Type": "DTRG",
+        "Weight": 0.3,
+        "Minimum": 2,
+        "Maximum": 10,
+        "ConfigurationNo": -1,
+        "WaveIndex": -1,
+        "Rings": 6,
+        "Arms": 12,
+        "GridSize": 8,
+        "Surface1": 1,
+        "Surface2": 9
+      },
+      {
+        "Type": "CTA",
+        "Weight": 10,
+        "Minimum": 40,
+        "ConfigurationNo": -1,
+        "WaveIndex": -1,
+        "Rings": 6,
+        "Arms": 12,
+        "GridSize": 8,
+        "Surface1": 9,
+        "Surface2": 9
+      }
+    ]
+  }
+}

@@ -1,0 +1,135 @@
+{
+  "FormatVersion": 1,
+  "Title": "PETZVAL LENS",
+  "Aperture": {
+    "Value": 50
+  },
+  "Surfaces": [
+    {
+      "Comment": "",
+      "Radius": "Infinity",
+      "Thickness": "Infinity",
+      "Material": "",
+      "SemiDiameter": 26.528611574796155,
+      "ClearAperturePercent": 100
+    },
+    {
+      "Index": 1,
+      "Comment": "",
+      "Radius": 91.66860362426125,
+      "Thickness": 21.6760007,
+      "Material": "BALKN3",
+      "SemiDiameter": 26.26268475042443,
+      "ClearAperturePercent": 100,
+      "FloatingApertureRadius": 28
+    },
+    {
+      "Index": 2,
+      "Comment": "",
+      "Radius": -60.18807811401379,
+      "Thickness": 3.48399646,
+      "Material": "F4",
+      "SemiDiameter": 24.36782223082965,
+      "ClearAperturePercent": 100,
+      "FloatingApertureRadius": 28
+    },
+    {
+      "Index": 3,
+      "Comment": "",
+      "Radius": 3972.618614963046,
+      "Thickness": 76.5093542,
+      "Material": "",
+      "SemiDiameter": 23.431133329992534,
+      "ClearAperturePercent": 100,
+      "IsStop": true,
+      "FloatingApertureRadius": 28
+    },
+    {
+      "Index": 4,
+      "Comment": "",
+      "Radius": 35.206739696593594,
+      "Thickness": 17.360596,
+      "Material": "BK7",
+      "SemiDiameter": 21.25196120940471,
+      "ClearAperturePercent": 100,
+      "FloatingApertureRadius": 24
+    },
+    {
+      "Index": 5,
+      "Comment": "",
+      "Radius": -58.825151255787866,
+      "Thickness": 3.48399646,
+      "Material": "F2",
+      "SemiDiameter": 19.404441845128947,
+      "ClearAperturePercent": 100,
+      "FloatingApertureRadius": 24
+    },
+    {
+      "Index": 6,
+      "Comment": "",
+      "Radius": -166.14088338204223,
+      "Thickness": 19.3995258,
+      "Material": "",
+      "SemiDiameter": 18.177589180113987,
+      "ClearAperturePercent": 100,
+      "FloatingApertureRadius": 24
+    },
+    {
+      "Index": 7,
+      "Comment": "",
+      "Radius": -27.78333066229023,
+      "Thickness": 1.96964573,
+      "Material": "F2",
+      "SemiDiameter": 9.730738356114706,
+      "ClearAperturePercent": 100,
+      "FloatingApertureRadius": 16
+    },
+    {
+      "Index": 8,
+      "Comment": "",
+      "Radius": 1111723.0516534068,
+      "Thickness": 15.237790595802041,
+      "Material": "",
+      "SemiDiameter": 9.383599232446642,
+      "ClearAperturePercent": 100,
+      "FloatingApertureRadius": 16
+    },
+    {
+      "Index": 9,
+      "Comment": "",
+      "Radius": "Infinity",
+      "Material": "",
+      "SemiDiameter": 7.053140698632313,
+      "ClearAperturePercent": 100
+    }
+  ],
+  "Wavelengths": [
+    {
+      "Value": 0.4861,
+      "Weight": 1
+    },
+    {
+      "Value": 0.5876,
+      "Weight": 1,
+      "IsPrimary": true
+    },
+    {
+      "Value": 0.6563,
+      "Weight": 1
+    }
+  ],
+  "Fields": [
+    {
+      "Weight": 1
+    },
+    {
+      "Y": 4,
+      "Weight": 1
+    }
+  ],
+  "Pickups": [],
+  "GlassCatalogs": [
+    "SCHOTT",
+    "MISC"
+  ]
+}

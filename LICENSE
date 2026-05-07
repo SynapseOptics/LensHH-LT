@@ -1,0 +1,132 @@
+LensHH-LT — Licensing
+=====================
+
+LensHH-LT is distributed under a hybrid license. The two components are
+licensed separately:
+
+  1. Source code        MIT License (Part 1 below)
+  2. Engine binaries    Proprietary, activation required (Part 2 below)
+
+For licensing questions, commercial inquiries, site licenses, or offline
+activation tokens, contact:
+
+  Synapse Optics
+  https://synapseoptics.com
+  support@synapseoptics.com
+
+
+================================================================================
+PART 1 — MIT LICENSE (source code)
+================================================================================
+
+Copyright (c) 2026 Synapse Optics
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the "Software"),
+to deal in the Software without restriction, including without limitation
+the rights to use, copy, modify, merge, publish, distribute, sublicense,
+and/or sell copies of the Software, and to permit persons to whom the
+Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included
+in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR
+OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
+ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+OTHER DEALINGS IN THE SOFTWARE.
+
+
+This MIT license applies to:
+
+  * src/         — application source: App (Avalonia GUI), CLI, MCP
+                   server, public C# API, IO (file readers/writers),
+                   Rendering, RenderApp, OllamaBridge, configurators.
+  * installer/   — installer scripts (Inno Setup, AppImage, macOS build).
+  * docs/        — user-guide source markdown and build scripts.
+  * samples/     — sample lens designs.
+  * catalogs/    — glass-catalog tooling. Third-party AGF data retains
+                   its original license; check individual file headers
+                   before redistribution.
+  * BUILDING.md, README.md, and other top-level documentation.
+
+The compiled outputs of building the above source — the LensHH-LT
+executable, CLI, MCP server, configurator binaries, etc. — are also
+covered by this MIT license.
+
+
+================================================================================
+PART 2 — ENGINE BINARIES (proprietary, activation required)
+================================================================================
+
+The optical engine binaries (collectively, the "Engine"):
+
+  * engine/LensHH.Core.dll       — managed optical-design engine
+  * engine/win-x64/*.dll         — native ray-trace library (Windows x64)
+  * engine/osx-arm64/*.dylib     — native ray-trace library (macOS arm64)
+  * engine/linux-x64/*.so        — native ray-trace library (Linux x64)
+
+are proprietary to Synapse Optics. They are NOT covered by the MIT
+license in Part 1.
+
+You may:
+
+  * Run the Engine on any machine for which you hold a valid activation
+    token — either an active free trial or a paid license.
+  * Redistribute the Engine binaries UNMODIFIED, together with a
+    LensHH-LT installer (the official one or a fork-built derivative),
+    provided the activation gate is left in place. End users of any
+    such installer must hold their own valid trial or license to run
+    the Engine.
+
+You may NOT:
+
+  * Reverse-engineer, decompile, disassemble, or otherwise attempt to
+    derive the source form of the Engine, except to the limited extent
+    expressly permitted by applicable law that cannot be contractually
+    waived.
+  * Remove, bypass, modify, or interfere with the activation gate or
+    any license-validation logic in the Engine.
+  * Redistribute the Engine outside of an installer that preserves the
+    activation gate.
+  * Sublicense, rent, lease, or resell the Engine separately from a
+    LensHH-LT installer.
+  * Use the Engine to provide a hosted service whose primary value is
+    Engine compute (i.e., a "lens design as a service" offering),
+    without first obtaining a separate commercial agreement from
+    Synapse Optics.
+
+Activation:
+
+  * A free 45-day trial is available — request a token at
+    https://synapseoptics.com or from your distributor, then activate
+    via Help → Start Free Trial in the LensHH-LT GUI.
+  * A paid license binds one seat to one machine. To move it to a
+    different machine, deactivate first via Help → Deactivate This
+    Machine, then activate on the new machine.
+  * Offline activation tokens are available for machines without
+    internet access — contact support@synapseoptics.com with the
+    machine ID shown under Help → License Status.
+
+
+Forking and the open-core boundary
+----------------------------------
+
+The source-code half of LensHH-LT is fully MIT-licensed: you may fork
+it, modify it, and redistribute the source and your derivative
+binaries freely without asking permission.
+
+A fork that redistributes the Synapse Optics Engine binaries
+(`engine/LensHH.Core.dll` and the native libraries) does so under
+Part 2 above — the activation gate must remain functional, and end
+users still need their own trial or license. Alternatively, a fork
+may strip the Engine and ship its own optical-engine implementation;
+the public C# API surface is documented and stable enough for that
+to be practical.
+
+This Part 2 governs only the binaries listed above. No part of this
+proprietary notice restricts the freedoms granted by the MIT license
+in Part 1.

@@ -1,0 +1,264 @@
+{
+  "FormatVersion": 1,
+  "Title": "Laikin 9-3",
+  "Notes": "",
+  "Designer": "",
+  "Aperture": {
+    "Type": "FNumber",
+    "Value": 2
+  },
+  "Surfaces": [
+    {
+      "Comment": "",
+      "Radius": "Infinity",
+      "Thickness": "Infinity",
+      "Material": "",
+      "SemiDiameter": 134.50826967257223,
+      "ClearAperturePercent": 100
+    },
+    {
+      "Index": 1,
+      "Comment": "",
+      "Radius": 437.5847383119231,
+      "Thickness": 10.89460835,
+      "Material": "BK7",
+      "SemiDiameter": 112.6051592,
+      "SemiDiameterMode": "Fixed",
+      "ClearAperturePercent": 100
+    },
+    {
+      "Index": 2,
+      "Comment": "",
+      "Radius": 72.71590233993993,
+      "Thickness": 41.14335995,
+      "Material": "",
+      "SemiDiameter": 65.60961286,
+      "SemiDiameterMode": "Fixed",
+      "ClearAperturePercent": 100,
+      "CurvatureVariable": true
+    },
+    {
+      "Index": 3,
+      "Comment": "",
+      "Radius": "Infinity",
+      "Thickness": 12.8402198,
+      "Material": "BK7",
+      "SemiDiameter": 65.82425767,
+      "SemiDiameterMode": "Fixed",
+      "ClearAperturePercent": 100,
+      "CurvatureVariable": true
+    },
+    {
+      "Index": 4,
+      "Comment": "",
+      "Radius": 109.77327428587634,
+      "Thickness": 39.3527448,
+      "Material": "",
+      "SemiDiameter": 52.36562144,
+      "SemiDiameterMode": "Fixed",
+      "ClearAperturePercent": 100,
+      "CurvatureVariable": true
+    },
+    {
+      "Index": 5,
+      "Comment": "",
+      "Radius": -109.77327428587634,
+      "Thickness": 12.8402198,
+      "Material": "BK7",
+      "SemiDiameter": 43.9090269,
+      "SemiDiameterMode": "Fixed",
+      "ClearAperturePercent": 100
+    },
+    {
+      "Index": 6,
+      "Comment": "",
+      "Radius": "Infinity",
+      "Thickness": 75.13649585,
+      "Material": "",
+      "SemiDiameter": 41.34289611,
+      "SemiDiameterMode": "Fixed",
+      "ClearAperturePercent": 100
+    },
+    {
+      "Index": 7,
+      "Comment": "",
+      "Radius": 103.68763007493952,
+      "Thickness": 10.7600063,
+      "Material": "SF4",
+      "SemiDiameter": 27.2033712,
+      "SemiDiameterMode": "Fixed",
+      "ClearAperturePercent": 100
+    },
+    {
+      "Index": 8,
+      "Comment": "",
+      "Radius": -336.4155942015907,
+      "Thickness": 0.571039,
+      "Material": "",
+      "SemiDiameter": 25.85565754,
+      "SemiDiameterMode": "Fixed",
+      "ClearAperturePercent": 100
+    },
+    {
+      "Index": 9,
+      "Comment": "",
+      "Radius": 46.998957009955795,
+      "Thickness": 14.58188875,
+      "Material": "SF4",
+      "SemiDiameter": 22.25458095,
+      "SemiDiameterMode": "Fixed",
+      "ClearAperturePercent": 100
+    },
+    {
+      "Index": 10,
+      "Comment": "",
+      "Radius": 45.34477938830271,
+      "Thickness": 3.181503,
+      "Material": "",
+      "SemiDiameter": 16.08027846,
+      "SemiDiameterMode": "Fixed",
+      "ClearAperturePercent": 100
+    },
+    {
+      "Index": 11,
+      "Comment": "",
+      "Radius": "Infinity",
+      "Thickness": 5.8653863,
+      "Material": "",
+      "SemiDiameter": 12.75662906,
+      "SemiDiameterMode": "Fixed",
+      "ClearAperturePercent": 100,
+      "IsStop": true
+    },
+    {
+      "Index": 12,
+      "Comment": "",
+      "Radius": -40.02595899581057,
+      "Thickness": 9.195767325,
+      "Material": "SF8",
+      "SemiDiameter": 14.50728893,
+      "SemiDiameterMode": "Fixed",
+      "ClearAperturePercent": 100
+    },
+    {
+      "Index": 13,
+      "Comment": "",
+      "Radius": 51.916214632834816,
+      "Thickness": 15.17128258,
+      "Material": "LAKN7",
+      "SemiDiameter": 19.95790242,
+      "SemiDiameterMode": "Fixed",
+      "ClearAperturePercent": 100
+    },
+    {
+      "Index": 14,
+      "Comment": "",
+      "Radius": -51.916214632834816,
+      "Thickness": 0.630182325,
+      "Material": "",
+      "SemiDiameter": 22.20964877,
+      "SemiDiameterMode": "Fixed",
+      "ClearAperturePercent": 100
+    },
+    {
+      "Index": 15,
+      "Comment": "",
+      "Radius": 238.3172123075163,
+      "Thickness": 14.01288918,
+      "Material": "LAKN7",
+      "SemiDiameter": 24.24064069,
+      "SemiDiameterMode": "Fixed",
+      "ClearAperturePercent": 100
+    },
+    {
+      "Index": 16,
+      "Comment": "",
+      "Radius": -31.304357982853958,
+      "Thickness": 4.786530475,
+      "Material": "SF4",
+      "SemiDiameter": 24.38553011,
+      "SemiDiameterMode": "Fixed",
+      "ClearAperturePercent": 100
+    },
+    {
+      "Index": 17,
+      "Comment": "",
+      "Radius": -103.48674672115425,
+      "Thickness": 0.589393825,
+      "Material": "",
+      "SemiDiameter": 26.78932457,
+      "SemiDiameterMode": "Fixed",
+      "ClearAperturePercent": 100
+    },
+    {
+      "Index": 18,
+      "Comment": "",
+      "Radius": 69.02393124233548,
+      "Thickness": 11.6328802,
+      "Material": "LAKN7",
+      "SemiDiameter": 28.05603469,
+      "SemiDiameterMode": "Fixed",
+      "ClearAperturePercent": 100
+    },
+    {
+      "Index": 19,
+      "Comment": "",
+      "Radius": 616.8043087378169,
+      "Thickness": 44.90476604,
+      "Material": "",
+      "SemiDiameter": 27.4292539,
+      "SemiDiameterMode": "Fixed",
+      "ClearAperturePercent": 100
+    },
+    {
+      "Index": 20,
+      "Comment": "",
+      "Radius": "Infinity",
+      "Material": "",
+      "SemiDiameter": 21.62492934,
+      "SemiDiameterMode": "Fixed",
+      "ClearAperturePercent": 100
+    }
+  ],
+  "Wavelengths": [
+    {
+      "Value": 0.546,
+      "Weight": 1,
+      "IsPrimary": true
+    },
+    {
+      "Value": 0.45,
+      "Weight": 1
+    },
+    {
+      "Value": 0.65,
+      "Weight": 1
+    }
+  ],
+  "Fields": [
+    {
+      "Weight": 1
+    },
+    {
+      "Y": 40,
+      "Weight": 1
+    },
+    {
+      "Y": 60,
+      "Weight": 1
+    },
+    {
+      "Y": 70,
+      "Weight": 1
+    },
+    {
+      "Y": 80,
+      "Weight": 1
+    }
+  ],
+  "Pickups": [],
+  "RayAiming": "Robust",
+  "GlassCatalogs": [
+    "SCHOTT"
+  ]
+}

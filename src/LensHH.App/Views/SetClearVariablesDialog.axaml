@@ -1,0 +1,41 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:LensHH.App.ViewModels"
+        x:Class="LensHH.App.Views.SetClearVariablesDialog"
+        x:DataType="vm:SetClearVariablesViewModel"
+        Title="{Binding Title}"
+        Icon="avares://LensHH.App/Assets/icon_256.png"
+        Width="320" Height="230"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False">
+
+  <StackPanel Margin="16" Spacing="12">
+
+    <!-- Surface Range -->
+    <Grid ColumnDefinitions="Auto,8,60,20,Auto,8,60" RowDefinitions="Auto">
+      <TextBlock Text="Surface 1:" VerticalAlignment="Center" />
+      <TextBox Grid.Column="2" Text="{Binding Surface1}" />
+      <TextBlock Grid.Column="4" Text="Surface 2:" VerticalAlignment="Center" />
+      <TextBox Grid.Column="6" Text="{Binding Surface2}" />
+    </Grid>
+
+    <!-- Set / Clear Radio Buttons -->
+    <StackPanel Orientation="Horizontal" Spacing="20">
+      <RadioButton Content="Set" IsChecked="{Binding IsSet}" GroupName="Action" />
+      <RadioButton Content="Clear" IsChecked="{Binding IsClear}" GroupName="Action" />
+    </StackPanel>
+
+    <!-- Ignore Inf Radius (curvature only) -->
+    <CheckBox Content="Ignore Infinite Radius Surfaces"
+              IsChecked="{Binding IgnoreInfRadius}"
+              IsVisible="{Binding ShowIgnoreInfRadius}"
+              IsEnabled="{Binding IsSet}" />
+
+    <!-- OK / Cancel -->
+    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,8,0,0">
+      <Button Content="OK" Click="OK_Click" Width="70" />
+      <Button Content="Cancel" Click="Cancel_Click" Width="70" IsCancel="True" />
+    </StackPanel>
+
+  </StackPanel>
+</Window>

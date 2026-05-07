@@ -1,0 +1,44 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:LensHH.App.ViewModels"
+        x:Class="LensHH.App.Views.SetClearApertureDialog"
+        x:DataType="vm:SetClearApertureViewModel"
+        Title="Set Clear Aperture %"
+        Icon="avares://LensHH.App/Assets/icon_256.png"
+        Width="400" Height="260"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False">
+
+  <StackPanel Margin="16" Spacing="12">
+
+    <!-- Surface Range -->
+    <Grid ColumnDefinitions="Auto,8,70,20,Auto,8,70" RowDefinitions="Auto">
+      <TextBlock Text="Start Surface:" VerticalAlignment="Center" />
+      <TextBox Grid.Column="2" Text="{Binding Surface1}" />
+      <TextBlock Grid.Column="4" Text="End Surface:" VerticalAlignment="Center" />
+      <TextBox Grid.Column="6" Text="{Binding Surface2}" />
+    </Grid>
+
+    <!-- CA % -->
+    <StackPanel Orientation="Horizontal" Spacing="8">
+      <TextBlock Text="CA %:" VerticalAlignment="Center" />
+      <TextBox Text="{Binding CaPercent}" Width="80" />
+    </StackPanel>
+
+    <!-- Mode toggles for the surface range. Mutually exclusive in the VM. -->
+    <StackPanel Orientation="Horizontal" Spacing="20">
+      <CheckBox Content="All Fixed" IsChecked="{Binding AllFixed}" />
+      <CheckBox Content="All Auto"  IsChecked="{Binding AllAuto}" />
+    </StackPanel>
+
+    <TextBlock Text="CA % applies to Auto surfaces only. Stop surface is excluded from mode changes and CA %."
+               Foreground="Gray" FontSize="11" TextWrapping="Wrap" />
+
+    <!-- Buttons -->
+    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,8,0,0">
+      <Button Content="OK" Click="OK_Click" Width="70" />
+      <Button Content="Cancel" Click="Cancel_Click" Width="70" IsCancel="True" />
+    </StackPanel>
+
+  </StackPanel>
+</Window>

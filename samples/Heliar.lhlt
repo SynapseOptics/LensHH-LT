@@ -1,0 +1,144 @@
+{
+  "FormatVersion": 1,
+  "Title": "Heliar, F/4.5 18degHFOV",
+  "Aperture": {
+    "Value": 11
+  },
+  "Surfaces": [
+    {
+      "Comment": "",
+      "Radius": "Infinity",
+      "Thickness": "Infinity",
+      "Material": "",
+      "SemiDiameter": 5.922576604370583,
+      "ClearAperturePercent": 100
+    },
+    {
+      "Index": 1,
+      "Comment": "",
+      "Radius": 13.252315332421482,
+      "Thickness": 3.166271747,
+      "Material": "SK1",
+      "SemiDiameter": 5.792928259,
+      "SemiDiameterMode": "Fixed",
+      "ClearAperturePercent": 100
+    },
+    {
+      "Index": 2,
+      "Comment": "",
+      "Radius": -16.148779461962928,
+      "Thickness": 0.5554862714,
+      "Material": "BAK1",
+      "SemiDiameter": 5.792928259,
+      "SemiDiameterMode": "Fixed",
+      "ClearAperturePercent": 100
+    },
+    {
+      "Index": 3,
+      "Comment": "",
+      "Radius": 110.19260521317658,
+      "Thickness": 1.515683969,
+      "Material": "",
+      "SemiDiameter": 5.792928259,
+      "SemiDiameterMode": "Fixed",
+      "ClearAperturePercent": 100
+    },
+    {
+      "Index": 4,
+      "Comment": "",
+      "Radius": -34.26556742838059,
+      "Thickness": 0.9681332159,
+      "Material": "F15",
+      "SemiDiameter": 4.999376443,
+      "SemiDiameterMode": "Fixed",
+      "ClearAperturePercent": 100
+    },
+    {
+      "Index": 5,
+      "Comment": "",
+      "Radius": 13.093604969158946,
+      "Thickness": 0.7935518163,
+      "Material": "",
+      "SemiDiameter": 4.999376443,
+      "SemiDiameterMode": "Fixed",
+      "ClearAperturePercent": 100
+    },
+    {
+      "Index": 6,
+      "Comment": "",
+      "Radius": "Infinity",
+      "Thickness": 2.436204076,
+      "Material": "",
+      "SemiDiameter": 4.486571438,
+      "SemiDiameterMode": "Fixed",
+      "ClearAperturePercent": 100,
+      "IsStop": true
+    },
+    {
+      "Index": 7,
+      "Comment": "",
+      "Radius": 343.179418482575,
+      "Thickness": 0.6665835257,
+      "Material": "F15",
+      "SemiDiameter": 5.792928259,
+      "SemiDiameterMode": "Fixed",
+      "ClearAperturePercent": 100
+    },
+    {
+      "Index": 8,
+      "Comment": "",
+      "Radius": 18.489757320085253,
+      "Thickness": 2.436204076,
+      "Material": "LAF2",
+      "SemiDiameter": 5.792928259,
+      "SemiDiameterMode": "Fixed",
+      "ClearAperturePercent": 100
+    },
+    {
+      "Index": 9,
+      "Comment": "",
+      "Radius": -30.154969019880976,
+      "Thickness": 42.01826517160174,
+      "Material": "",
+      "SemiDiameter": 5.792928259,
+      "SemiDiameterMode": "Fixed",
+      "ClearAperturePercent": 100
+    },
+    {
+      "Index": 10,
+      "Comment": "",
+      "Radius": "Infinity",
+      "Material": "",
+      "SemiDiameter": 16.26827696,
+      "SemiDiameterMode": "Fixed",
+      "ClearAperturePercent": 100
+    }
+  ],
+  "Wavelengths": [
+    {
+      "Value": 0.58756,
+      "Weight": 1,
+      "IsPrimary": true
+    },
+    {
+      "Value": 0.48613,
+      "Weight": 1
+    },
+    {
+      "Value": 0.65627,
+      "Weight": 1
+    }
+  ],
+  "Fields": [
+    {
+      "Weight": 1
+    },
+    {
+      "Y": 18,
+      "Weight": 1
+    }
+  ],
+  "Pickups": [],
+  "RayAiming": "Real",
+  "GlassCatalogs": []
+}

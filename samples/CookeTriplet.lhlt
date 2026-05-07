@@ -1,0 +1,104 @@
+{
+  "FormatVersion": 1,
+  "Title": "Cooke Triplet",
+  "Aperture": {
+    "Value": 10
+  },
+  "Surfaces": [
+    {
+      "Comment": "",
+      "Radius": "Infinity",
+      "Thickness": "Infinity",
+      "Material": "",
+      "SemiDiameter": 9.281982628008075
+    },
+    {
+      "Index": 1,
+      "Comment": "",
+      "Radius": 22.01359,
+      "Thickness": 3.25896,
+      "Material": "SK16",
+      "SemiDiameter": 8.645180390723562
+    },
+    {
+      "Index": 2,
+      "Comment": "",
+      "Radius": -435.76044,
+      "Thickness": 6.00755,
+      "Material": "",
+      "SemiDiameter": 8.078619744521019
+    },
+    {
+      "Index": 3,
+      "Comment": "",
+      "Radius": -22.21328,
+      "Thickness": 0.99997,
+      "Material": "F2",
+      "SemiDiameter": 4.020716077792371
+    },
+    {
+      "Index": 4,
+      "Comment": "",
+      "Radius": 20.29192,
+      "Thickness": 4.75041,
+      "Material": "",
+      "SemiDiameter": 3.8960915333432156,
+      "IsStop": true
+    },
+    {
+      "Index": 5,
+      "Comment": "",
+      "Radius": 79.6836,
+      "Thickness": 2.95208,
+      "Material": "SK16",
+      "SemiDiameter": 6.973309935589236
+    },
+    {
+      "Index": 6,
+      "Comment": "",
+      "Radius": -18.39533,
+      "Thickness": 42.20778,
+      "Material": "",
+      "SemiDiameter": 7.342643929442549
+    },
+    {
+      "Index": 7,
+      "Comment": "",
+      "Radius": "Infinity",
+      "Material": "",
+      "SemiDiameter": 18.34013707157534
+    }
+  ],
+  "Wavelengths": [
+    {
+      "Value": 0.48,
+      "Weight": 1
+    },
+    {
+      "Value": 0.55,
+      "Weight": 1,
+      "IsPrimary": true
+    },
+    {
+      "Value": 0.65,
+      "Weight": 1
+    }
+  ],
+  "Fields": [
+    {
+      "Weight": 1
+    },
+    {
+      "Y": 14,
+      "Weight": 1
+    },
+    {
+      "Y": 20,
+      "Weight": 1
+    }
+  ],
+  "Pickups": [],
+  "GlassCatalogs": [
+    "SCHOTT"
+  ]
+}

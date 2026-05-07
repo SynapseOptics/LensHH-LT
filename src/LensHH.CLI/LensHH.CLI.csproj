@@ -1,0 +1,53 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <RootNamespace>LensHH.CLI</RootNamespace>
+    <AssemblyName>LensHH.CLI</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="LensHH.Core">
+      <HintPath>..\..\engine\LensHH.Core.dll</HintPath>
+    </Reference>
+    <ProjectReference Include="..\LensHH.IO\LensHH.IO.csproj" />
+    <ProjectReference Include="..\LensHH.Rendering\LensHH.Rendering.csproj" />
+    <!--
+      RenderApp is launched as a separate Avalonia GUI process via a
+      named pipe, not linked. The build-but-don't-link reference makes
+      'dotnet build' on the CLI also build RenderApp so 'render-png'
+      etc. work out of a fresh clone, without dragging Avalonia into
+      the CLI's output.
+    -->
+    <ProjectReference Include="..\LensHH.RenderApp\LensHH.RenderApp.csproj">
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+      <Private>false</Private>
+    </ProjectReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Spectre.Console" Version="0.49.1" />
+  </ItemGroup>
+
+  <!-- Copy native library to output for activation gate and native ray tracing.
+       All three platform binaries are copied when present; .NET loads only the
+       one matching the current OS (runtime maps "lenshh_native" to .dll/.dylib/.so). -->
+  <ItemGroup>
+    <None Include="..\..\engine\win-x64\lenshh_native.dll"
+          CopyToOutputDirectory="PreserveNewest"
+          Link="lenshh_native.dll"
+          Condition="Exists('..\..\engine\win-x64\lenshh_native.dll')" />
+    <None Include="..\..\engine\osx-arm64\liblenshh_native.dylib"
+          CopyToOutputDirectory="PreserveNewest"
+          Link="liblenshh_native.dylib"
+          Condition="Exists('..\..\engine\osx-arm64\liblenshh_native.dylib')" />
+    <None Include="..\..\engine\linux-x64\liblenshh_native.so"
+          CopyToOutputDirectory="PreserveNewest"
+          Link="liblenshh_native.so"
+          Condition="Exists('..\..\engine\linux-x64\liblenshh_native.so')" />
+  </ItemGroup>
+
+</Project>

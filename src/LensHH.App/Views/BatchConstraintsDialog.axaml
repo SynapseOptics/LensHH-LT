@@ -1,0 +1,52 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:LensHH.App.ViewModels"
+        x:Class="LensHH.App.Views.BatchConstraintsDialog"
+        x:DataType="vm:BatchConstraintsViewModel"
+        Title="{Binding Title}"
+        Icon="avares://LensHH.App/Assets/icon_256.png"
+        Width="350" Height="300"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False">
+
+  <StackPanel Margin="16" Spacing="12">
+
+    <!-- Surface Range -->
+    <Grid ColumnDefinitions="Auto,8,60,20,Auto,8,60" RowDefinitions="Auto">
+      <TextBlock Text="Surface 1:" VerticalAlignment="Center" />
+      <TextBox Grid.Column="2" Text="{Binding Surface1}" />
+      <TextBlock Grid.Column="4" Text="Surface 2:" VerticalAlignment="Center" />
+      <TextBox Grid.Column="6" Text="{Binding Surface2}" />
+    </Grid>
+
+    <!-- Surface filter -->
+    <StackPanel Orientation="Horizontal" Spacing="20">
+      <RadioButton Content="All" IsChecked="{Binding FilterAll}" GroupName="Filter" />
+      <RadioButton Content="Glass" IsChecked="{Binding FilterGlass}" GroupName="Filter" />
+      <RadioButton Content="Air" IsChecked="{Binding FilterAir}" GroupName="Filter" />
+    </StackPanel>
+
+    <!-- Constraint Type -->
+    <StackPanel Orientation="Horizontal" Spacing="8">
+      <TextBlock Text="Constraint:" VerticalAlignment="Center" />
+      <ComboBox ItemsSource="{Binding ConstraintOptions}"
+                SelectedIndex="{Binding ConstraintTypeIndex}"
+                MinWidth="140" />
+    </StackPanel>
+
+    <!-- Min / Max -->
+    <Grid ColumnDefinitions="Auto,8,100,20,Auto,8,100" RowDefinitions="Auto">
+      <TextBlock Text="Min:" VerticalAlignment="Center" />
+      <TextBox Grid.Column="2" Text="{Binding MinText}" IsEnabled="{Binding IsMinEnabled}" />
+      <TextBlock Grid.Column="4" Text="Max:" VerticalAlignment="Center" />
+      <TextBox Grid.Column="6" Text="{Binding MaxText}" IsEnabled="{Binding IsMaxEnabled}" />
+    </Grid>
+
+    <!-- OK / Cancel -->
+    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,8,0,0">
+      <Button Content="OK" Click="OK_Click" Width="70" />
+      <Button Content="Cancel" Click="Cancel_Click" Width="70" IsCancel="True" />
+    </StackPanel>
+
+  </StackPanel>
+</Window>

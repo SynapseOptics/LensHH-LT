@@ -1,0 +1,271 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:LensHH.App.ViewModels"
+        x:Class="LensHH.App.Views.SpcSynthesisDialog"
+        x:DataType="vm:SpcSynthesisDialogViewModel"
+        Title="Synthesis by SPC — Saddle Point Construction"
+        Icon="avares://LensHH.App/Assets/icon_256.png"
+        Width="1380" Height="640"
+        WindowStartupLocation="CenterOwner"
+        CanResize="True"
+        MinWidth="1280" MinHeight="520">
+
+  <DockPanel Margin="12">
+
+    <!-- Bottom Buttons -->
+    <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal"
+                HorizontalAlignment="Right" Spacing="8" Margin="0,6,0,0">
+      <Button Content="OK — Accept Results" Click="OK_Click" Width="180"
+              IsEnabled="{Binding IsComplete}" FontWeight="SemiBold" />
+      <Button Content="Cancel — Revert" Click="Cancel_Click" Width="150" IsCancel="True" />
+    </StackPanel>
+
+    <!-- Help / description strip -->
+    <Border DockPanel.Dock="Bottom" Background="#F5F5F0" BorderBrush="#CCC"
+            BorderThickness="1" CornerRadius="3" Padding="8,4" Margin="0,6,0,0">
+      <TextBlock Text="{Binding HelpText}" FontSize="11" Foreground="#333"
+                 TextWrapping="Wrap" MinHeight="28" />
+    </Border>
+
+    <!-- Settings -->
+    <Border DockPanel.Dock="Top" BorderBrush="#CCC" BorderThickness="1"
+            CornerRadius="4" Padding="10,6" Margin="0,0,0,6">
+      <Grid ColumnDefinitions="Auto,6,70,16,Auto,6,70,16,Auto,6,70,*,Auto"
+            RowDefinitions="Auto,6,Auto,6,Auto,6,Auto,6,Auto,6,Auto,6,Auto">
+        <!-- Row 0 — Synthesis size -->
+        <TextBlock Grid.Row="0" Grid.Column="0" Text="Max Elements:" VerticalAlignment="Center" />
+        <TextBox Grid.Row="0" Grid.Column="2" Text="{Binding MaxElements, UpdateSourceTrigger=LostFocus}" IsEnabled="{Binding !IsRunning}"
+                 Tag="Total number of null-element insertions SPC will perform. Each insertion grows the design by one glass element. The final system has this many more elements than the starting design."
+                 PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"
+                 GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
+
+        <TextBlock Grid.Row="0" Grid.Column="4" Text="Top N:" VerticalAlignment="Center" />
+        <TextBox Grid.Row="0" Grid.Column="6" Text="{Binding TopN, UpdateSourceTrigger=LostFocus}" IsEnabled="{Binding !IsRunning}"
+                 Tag="Number of saddle-point candidates kept at each branching step. Higher values explore more paths; lower values run faster. Each surviving candidate becomes a branch in the search tree."
+                 PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"
+                 GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
+
+        <TextBlock Grid.Row="0" Grid.Column="8" Text="Threads:" VerticalAlignment="Center" />
+        <TextBox Grid.Row="0" Grid.Column="10" Text="{Binding MaxDop, UpdateSourceTrigger=LostFocus}" IsEnabled="{Binding !IsRunning}"
+                 Tag="Maximum degree of parallelism for branch evaluations and glass trials. Defaults to your CPU core count; reduce if the UI feels sluggish or you need cores for other work."
+                 PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"
+                 GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
+
+        <!-- Row 1 — Scan -->
+        <TextBlock Grid.Row="2" Grid.Column="0" Text="Scan c-min:" VerticalAlignment="Center" />
+        <TextBox Grid.Row="2" Grid.Column="2" Text="{Binding ScanMin, UpdateSourceTrigger=LostFocus}" IsEnabled="{Binding !IsRunning}"
+                 Tag="Lower bound of the curvature scan applied to the newly-inserted surface to locate saddle points. Wider ranges can find more candidates but dilute the scan resolution."
+                 PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"
+                 GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
+
+        <TextBlock Grid.Row="2" Grid.Column="4" Text="Scan c-max:" VerticalAlignment="Center" />
+        <TextBox Grid.Row="2" Grid.Column="6" Text="{Binding ScanMax, UpdateSourceTrigger=LostFocus}" IsEnabled="{Binding !IsRunning}"
+                 Tag="Upper bound of the curvature scan. Should bracket the physical range of curvatures you're willing to consider for the new element."
+                 PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"
+                 GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
+
+        <TextBlock Grid.Row="2" Grid.Column="8" Text="Steps:" VerticalAlignment="Center" />
+        <TextBox Grid.Row="2" Grid.Column="10" Text="{Binding ScanSteps, UpdateSourceTrigger=LostFocus}" IsEnabled="{Binding !IsRunning}"
+                 Tag="Number of uniform samples between Scan c-min and c-max. More steps = finer saddle detection at linear cost."
+                 PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"
+                 GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
+
+        <!-- Row 2 — Branching + glass -->
+        <TextBlock Grid.Row="4" Grid.Column="0" Text="Epsilon:" VerticalAlignment="Center" />
+        <TextBox Grid.Row="4" Grid.Column="2" Text="{Binding Epsilon, UpdateSourceTrigger=LostFocus}" IsEnabled="{Binding !IsRunning}"
+                 Tag="Saddle-point detection tolerance: the curvature perturbation used on either side of a candidate to verify a true saddle. Too small = false positives from noise; too large = missed saddles."
+                 PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"
+                 GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
+
+        <TextBlock Grid.Row="4" Grid.Column="4" Text="Glass Trials:" VerticalAlignment="Center" />
+        <TextBox Grid.Row="4" Grid.Column="6" Text="{Binding GlassTrials, UpdateSourceTrigger=LostFocus}" IsEnabled="{Binding !IsRunning}"
+                 Tag="Number of random glass assignments tried per branch after a new element is inserted. Each trial runs a short LM (see LM/Trial) and the best glass is kept."
+                 PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"
+                 GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
+
+        <TextBlock Grid.Row="4" Grid.Column="8" Text="LM/Trial:" VerticalAlignment="Center" />
+        <TextBox Grid.Row="4" Grid.Column="10" Text="{Binding LmPerTrial, UpdateSourceTrigger=LostFocus}" IsEnabled="{Binding !IsRunning}"
+                 Tag="Max Levenberg–Marquardt iterations used to evaluate each glass trial. Low values rank glasses quickly; the full LM happens later in Post LM."
+                 PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"
+                 GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
+
+        <!-- Row 3 — Boundary constraints (1) -->
+        <TextBlock Grid.Row="6" Grid.Column="0" Text="Min Glass:" VerticalAlignment="Center" />
+        <TextBox Grid.Row="6" Grid.Column="2" Text="{Binding MinGlassThickness, UpdateSourceTrigger=LostFocus}" IsEnabled="{Binding !IsRunning}"
+                 Tag="Lower bound (mm) for the center thickness of every newly inserted glass element. Used for ThicknessMin on new surfaces and for the CTG/EG penalty operands SPC adds."
+                 PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"
+                 GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
+
+        <TextBlock Grid.Row="6" Grid.Column="4" Text="Max Glass:" VerticalAlignment="Center" />
+        <TextBox Grid.Row="6" Grid.Column="6" Text="{Binding MaxGlassThickness, UpdateSourceTrigger=LostFocus}" IsEnabled="{Binding !IsRunning}"
+                 Tag="Upper bound (mm) for glass-element center thickness. Applied to ThicknessMax on new glass surfaces."
+                 PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"
+                 GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
+
+        <TextBlock Grid.Row="6" Grid.Column="8" Text="Min Edge:" VerticalAlignment="Center" />
+        <TextBox Grid.Row="6" Grid.Column="10" Text="{Binding MinEdgeThickness, UpdateSourceTrigger=LostFocus}" IsEnabled="{Binding !IsRunning}"
+                 Tag="Minimum edge thickness (mm) for glass edges and air gaps at the rim. Used as the target/minimum for EG/EA operands SPC adds (or extends an adjacent EG/EA span to cover the new surface)."
+                 PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"
+                 GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
+
+        <!-- Row 4 — Boundary constraints (2) + post LM -->
+        <TextBlock Grid.Row="8" Grid.Column="0" Text="Min Air:" VerticalAlignment="Center" />
+        <TextBox Grid.Row="8" Grid.Column="2" Text="{Binding MinAirGap, UpdateSourceTrigger=LostFocus}" IsEnabled="{Binding !IsRunning}"
+                 Tag="Minimum air-gap thickness (mm) between elements. Applied as ThicknessMin on the rear surface of each new null element."
+                 PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"
+                 GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
+
+        <TextBlock Grid.Row="8" Grid.Column="4" Text="Max Air:" VerticalAlignment="Center" />
+        <TextBox Grid.Row="8" Grid.Column="6" Text="{Binding MaxAirGap, UpdateSourceTrigger=LostFocus}" IsEnabled="{Binding !IsRunning}"
+                 Tag="Maximum air-gap thickness (mm). Keeps SPC from spreading elements arbitrarily far apart."
+                 PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"
+                 GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
+
+        <TextBlock Grid.Row="8" Grid.Column="8" Text="Post LM:" VerticalAlignment="Center" />
+        <TextBox Grid.Row="8" Grid.Column="10" Text="{Binding PostSplitLm, UpdateSourceTrigger=LostFocus}" IsEnabled="{Binding !IsRunning}"
+                 Tag="Max LM iterations for the full local optimization run on each surviving branch after glass trials. Set high enough for real convergence; this is where most of the quality comes from."
+                 PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"
+                 GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
+
+        <!-- Row 5 — Options -->
+        <StackPanel Grid.Row="10" Grid.Column="0" Grid.ColumnSpan="11" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+          <CheckBox Content="Initial LM" IsChecked="{Binding RunInitialLm}" IsEnabled="{Binding !IsRunning}"
+                    Tag="Run a local optimization on the starting design before any SPC insertions. Useful when your starting design is not already a local minimum."
+                    PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"
+                    GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
+          <CheckBox Content="Archive designs" IsChecked="{Binding ArchiveIntermediate}" IsEnabled="{Binding !IsRunning}"
+                    Tag="Write every surviving branch to disk as a .zmx after each insertion. Lets you inspect or revert to any intermediate design; increases disk use."
+                    PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"
+                    GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
+          <TextBlock Text="Null glass:" VerticalAlignment="Center" />
+          <TextBox Text="{Binding NullElementGlass, UpdateSourceTrigger=LostFocus}" Width="80" IsEnabled="{Binding !IsRunning}"
+                   Tag="Crown glass used to seed every newly inserted null element. For a single element this is the only glass; for a cemented doublet this is the front (crown) glass paired with the Flint glass below. The glass-trials phase replaces this with the best catalog match later."
+                   PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"
+                   GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
+          <TextBlock Text="Flint glass:" VerticalAlignment="Center" />
+          <TextBox Text="{Binding NullElementGlassFlint, UpdateSourceTrigger=LostFocus}" Width="80" IsEnabled="{Binding !IsRunning}"
+                   Tag="Flint partner used to seed the second element of a cemented doublet null insertion. Ignored for single-element insertions. Must differ optically from the crown — seeding both surfaces with the same glass collapses the doublet to a single thicker element during the saddle scan and erases the achromat structure the post-saddle LM is supposed to find. Default SF5 pairs naturally with N-BK7."
+                   PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"
+                   GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
+          <TextBlock Text="Insert side:" VerticalAlignment="Center" />
+          <ComboBox ItemsSource="{Binding InsertionSideOptions}"
+                    SelectedIndex="{Binding InsertionSideIndex}"
+                    IsEnabled="{Binding !IsRunning}" Width="140"
+                    Tag="Restrict null-element insertion to one side of the stop. 'Both sides' (default) considers every air gap; 'Pre-stop only' biases toward objective-style topologies (lenses before the stop); 'Post-stop only' biases toward eyepiece-style topologies (lenses after the stop). The merit ranking still picks the best within the chosen side."
+                    PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"
+                    GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
+          <TextBlock Text="Element:" VerticalAlignment="Center" />
+          <ComboBox ItemsSource="{Binding ElementTypeOptions}"
+                    SelectedIndex="{Binding ElementTypeIndex}"
+                    IsEnabled="{Binding !IsRunning}" Width="220"
+                    Tag="Topology of each newly inserted null element. 'Single' (default) inserts one glass element with two surfaces. 'Cemented Doublet' inserts a glued pair (front + cemented interface + back) — useful for seeding an achromat at a saddle. 'Single + Cemented Doublet' tries both topologies at every position and lets the Top-N ranking pick the best across topologies (~2× the per-position compute cost). Modes that include doublets auto-drop Top N from 5 to 3."
+                    PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"
+                    GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
+        </StackPanel>
+
+        <!-- Row 6 — Archive folder (used when Archive intermediate designs is on) -->
+        <TextBlock Grid.Row="12" Grid.Column="0" Text="Archive folder:" VerticalAlignment="Center" />
+        <DockPanel Grid.Row="12" Grid.Column="2" Grid.ColumnSpan="10">
+          <Button DockPanel.Dock="Right" Content="Browse..." Width="80" Margin="6,0,0,0"
+                  Click="BrowseArchiveFolder_Click" IsEnabled="{Binding !IsRunning}"
+                  Tag="Pick the root folder where archived .lhlt designs will be written."
+                  PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited" />
+          <TextBox Text="{Binding ArchiveDirectory, UpdateSourceTrigger=LostFocus}" IsEnabled="{Binding !IsRunning}"
+                   Watermark="(blank = %TEMP%\LensHH_SPC)"
+                   Tag="Root folder where archived .lhlt designs are written when 'Archive intermediate designs' is on. Leave blank to use %TEMP%\LensHH_SPC. Per-level subfolders (L1\, L2\, …) are created automatically."
+                   PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"
+                   GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
+        </DockPanel>
+
+        <!-- Start / Stop / Skip Phase -->
+        <StackPanel Grid.Row="0" Grid.RowSpan="13" Grid.Column="12" Orientation="Vertical" Spacing="6"
+                    VerticalAlignment="Center" HorizontalAlignment="Right">
+          <Button Content="Start" Command="{Binding StartCommand}" Width="90"
+                  IsEnabled="{Binding !IsRunning}" FontWeight="SemiBold"
+                  Tag="Begin the SPC synthesis run. Progress appears in the log; use Stop to cancel or Skip Phase to move on early from the current stage."
+                  PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited" />
+          <Button Content="Stop" Command="{Binding StopCommand}" Width="90"
+                  IsEnabled="{Binding IsRunning}"
+                  Tag="Cancel the entire SPC run. The design is restored to the best branch completed so far."
+                  PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited" />
+          <Button Content="Skip Phase" Command="{Binding SkipPhaseCommand}" Width="90"
+                  IsEnabled="{Binding IsRunning}"
+                  Tag="End the current phase early (e.g., stop scanning and move on with whatever candidates have been found). The overall run continues with the next element."
+                  PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited" />
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <!-- Glass Catalogs + Status -->
+    <Grid ColumnDefinitions="200,8,*" RowDefinitions="*">
+
+      <!-- Glass catalog selection -->
+      <Border Grid.Column="0" BorderBrush="#CCC" BorderThickness="1" CornerRadius="4" Padding="6">
+        <DockPanel>
+          <TextBlock DockPanel.Dock="Top" Text="Glass Source" FontWeight="SemiBold" Margin="0,0,0,4" />
+          <ComboBox DockPanel.Dock="Top" ItemsSource="{Binding GlassSourceOptions}"
+                    SelectedIndex="{Binding SelectedGlassSourceIndex}"
+                    IsEnabled="{Binding !IsRunning}" Margin="0,0,0,4"
+                    Tag="Source of glasses the glass-trial phase draws from. Pick a pre-filtered catalog (e.g. Crowns-only, Flints-only) or choose 'Loaded catalogs (select below)' to draw from the AGFs you tick."
+                    PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"
+                    GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
+          <CheckBox DockPanel.Dock="Top" Content="Only Preferred Glasses"
+                    IsChecked="{Binding OnlyPreferred}" IsEnabled="{Binding !IsRunning}"
+                    IsVisible="{Binding ShowLoadedCatalogs}" Margin="0,0,0,4"
+                    Tag="When using loaded (unfiltered) catalogs, keep only glasses the catalog marks as preferred (Status ≤ 1). Filtered catalogs are already curated and ignore this flag."
+                    PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"
+                    GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
+          <ScrollViewer IsVisible="{Binding ShowLoadedCatalogs}"
+                        Tag="Tick every loaded catalog the glass-trial pool should draw from."
+                        PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited">
+            <ItemsControl ItemsSource="{Binding Catalogs}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate DataType="vm:CatalogCheckItem">
+                  <CheckBox Content="{Binding Name}" IsChecked="{Binding IsChecked}" Margin="0,1" />
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </ScrollViewer>
+        </DockPanel>
+      </Border>
+
+      <!-- Status and log -->
+      <Border Grid.Column="2" BorderBrush="#CCC" BorderThickness="1" CornerRadius="4" Padding="6">
+        <DockPanel>
+          <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto,Auto" Margin="0,0,0,6">
+            <TextBlock Grid.Row="0" Grid.Column="0" Text="{Binding PhaseText}" FontWeight="SemiBold"
+                       TextTrimming="CharacterEllipsis" />
+            <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding ElapsedText}" HorizontalAlignment="Right" Margin="12,0,0,0" />
+            <TextBlock Grid.Row="1" Grid.Column="0" Text="{Binding StatusText}" Foreground="Gray"
+                       TextTrimming="CharacterEllipsis" />
+            <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding BranchText}" HorizontalAlignment="Right" Foreground="Gray" Margin="12,0,0,0" />
+            <TextBlock Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" TextTrimming="CharacterEllipsis">
+              <TextBlock.Text>
+                <MultiBinding StringFormat="Merit: {0} -> {1}">
+                  <Binding Path="InitialMeritText" />
+                  <Binding Path="CurrentMeritText" />
+                </MultiBinding>
+              </TextBlock.Text>
+            </TextBlock>
+            <ProgressBar Grid.Row="3" Grid.ColumnSpan="2" Minimum="0" Maximum="100"
+                         Value="{Binding ProgressPercent}" Height="6" Margin="0,4,0,0"
+                         IsVisible="{Binding IsRunning}"
+                         IsIndeterminate="{Binding ProgressIndeterminate}" />
+          </Grid>
+          <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="6" Margin="0,0,0,4"
+                      VerticalAlignment="Center">
+            <Button Content="Copy Log" Command="{Binding CopyLogCommand}" Padding="8,2" FontSize="11" />
+            <Button Content="Clear Log" Command="{Binding ClearLogCommand}" Padding="8,2" FontSize="11" />
+            <TextBlock Text="Best merit:" FontWeight="SemiBold" VerticalAlignment="Center" Margin="16,0,0,0" />
+            <TextBlock Text="{Binding BestMeritText}" Foreground="#2E7D32" FontWeight="SemiBold"
+                       FontFamily="Consolas,Courier New,monospace" VerticalAlignment="Center" />
+          </StackPanel>
+          <Separator DockPanel.Dock="Top" Margin="0,0,0,4" />
+          <TextBox Text="{Binding LogText}" IsReadOnly="True" AcceptsReturn="True"
+                   FontFamily="Consolas,Courier New,monospace" FontSize="11"
+                   TextWrapping="Wrap" />
+        </DockPanel>
+      </Border>
+    </Grid>
+  </DockPanel>
+</Window>

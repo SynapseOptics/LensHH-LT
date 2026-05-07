@@ -1,0 +1,67 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <RootNamespace>LensHH.App</RootNamespace>
+    <AssemblyName>LensHH.App</AssemblyName>
+    <!-- Keep in sync with installer\LensHH-LT.iss MyAppVersion. Surfaces in
+         the About dialog so users can confirm what build is installed. -->
+    <Version>1.0.102</Version>
+    <!-- Windows .exe icon (used by File Explorer, taskbar pin, Start menu). -->
+    <ApplicationIcon>Assets\icon.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <AvaloniaResource Include="Assets\icon_32.png" />
+    <AvaloniaResource Include="Assets\icon_256.png" />
+  </ItemGroup>
+
+  <!-- Cross-platform packaging metadata. These files are copied next to the
+       built exe so packaging scripts (e.g. .app bundling on macOS, .deb /
+       AppImage on Linux) can pick them up. They are not used by .NET at
+       runtime; only the Avalonia avares://Assets/icon_*.png references
+       inside the .axaml files drive the in-app window/title-bar icon. -->
+  <ItemGroup>
+    <None Include="Assets\icon.icns" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="Info.plist" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="LensHH-LT.desktop" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="11.2.3" />
+    <PackageReference Include="Avalonia.Desktop" Version="11.2.3" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.2.3" />
+    <PackageReference Include="Avalonia.Controls.DataGrid" Version="11.2.3" />
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+    <PackageReference Include="MessageBox.Avalonia" Version="3.3.1.1" />
+    <PackageReference Include="Avalonia.Svg.Skia" Version="11.2.0.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="LensHH.Core">
+      <HintPath>..\..\engine\LensHH.Core.dll</HintPath>
+    </Reference>
+    <ProjectReference Include="..\LensHH.IO\LensHH.IO.csproj" />
+    <ProjectReference Include="..\LensHH.Rendering\LensHH.Rendering.csproj" />
+  </ItemGroup>
+
+  <!-- Copy native library to output for activation gate and native ray tracing -->
+  <ItemGroup>
+    <None Include="..\..\engine\win-x64\lenshh_native.dll"
+          CopyToOutputDirectory="PreserveNewest"
+          Link="lenshh_native.dll"
+          Condition="Exists('..\..\engine\win-x64\lenshh_native.dll')" />
+    <None Include="..\..\engine\osx-arm64\liblenshh_native.dylib"
+          CopyToOutputDirectory="PreserveNewest"
+          Link="liblenshh_native.dylib"
+          Condition="Exists('..\..\engine\osx-arm64\liblenshh_native.dylib')" />
+    <None Include="..\..\engine\linux-x64\liblenshh_native.so"
+          CopyToOutputDirectory="PreserveNewest"
+          Link="liblenshh_native.so"
+          Condition="Exists('..\..\engine\linux-x64\liblenshh_native.so')" />
+  </ItemGroup>
+
+</Project>

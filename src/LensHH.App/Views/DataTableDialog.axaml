@@ -1,0 +1,26 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="LensHH.App.Views.DataTableDialog"
+        Title="Data Table"
+        Icon="avares://LensHH.App/Assets/icon_256.png"
+        Width="800" Height="500"
+        WindowStartupLocation="CenterOwner">
+  <DockPanel>
+    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="8" Spacing="8">
+      <Button Content="Select All" Click="SelectAll_Click" Width="80" FontSize="11" />
+      <Button Content="Copy" Click="Copy_Click" Width="60" FontSize="11" />
+      <Button Content="Close" Click="Close_Click" Width="60" FontSize="11" />
+      <TextBlock x:Name="TitleText" VerticalAlignment="Center" FontWeight="Bold" Margin="10,0,0,0" />
+    </StackPanel>
+    <DataGrid x:Name="TableGrid" IsReadOnly="True"
+              AutoGenerateColumns="False"
+              CanUserResizeColumns="True"
+              CanUserSortColumns="False"
+              GridLinesVisibility="All"
+              FontSize="11" FontFamily="Consolas"
+              Margin="8,0,8,8"
+              HeadersVisibility="Column"
+              SelectionMode="Extended"
+              ClipboardCopyMode="IncludeHeader" />
+  </DockPanel>
+</Window>

@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <RootNamespace>ConfigureOllamaBridge</RootNamespace>
+    <AssemblyName>ConfigureOllamaBridge</AssemblyName>
+    <UseWPF>true</UseWPF>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <EnableWindowsTargeting Condition="'$(OS)' != 'Windows_NT'">true</EnableWindowsTargeting>
+    <!-- Use the shared SynapseOptics / LensHH-LT icon for the .exe so
+         File Explorer, the taskbar, and the title bar all show the
+         brand mark instead of the default WPF cog. -->
+    <ApplicationIcon>..\LensHH.App\Assets\icon.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Same icon also embedded as a WPF Resource so the Window can
+         reference it via Icon="icon.ico" at runtime. -->
+    <Resource Include="..\LensHH.App\Assets\icon.ico" Link="icon.ico" />
+  </ItemGroup>
+
+</Project>

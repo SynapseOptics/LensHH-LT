@@ -1,0 +1,78 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:LensHH.App.ViewModels"
+        x:Class="LensHH.App.Views.GlassSubstitutionDialog"
+        x:DataType="vm:GlassSubstitutionViewModel"
+        Title="Glass Substitution Settings"
+        Icon="avares://LensHH.App/Assets/icon_256.png"
+        Width="760" Height="400"
+        WindowStartupLocation="CenterOwner"
+        CanResize="True"
+        MinWidth="660" MinHeight="300">
+
+  <DockPanel Margin="8">
+    <!-- Bottom buttons -->
+    <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal"
+                HorizontalAlignment="Right" Spacing="8" Margin="0,8,0,0">
+      <Button Content="OK" Click="OK_Click" Width="70" />
+      <Button Content="Cancel" Click="Cancel_Click" Width="70" IsCancel="True" />
+    </StackPanel>
+
+    <!-- No glasses message -->
+    <TextBlock Text="{Binding NoGlassesMessage}"
+               IsVisible="{Binding !HasGlasses}"
+               VerticalAlignment="Center" HorizontalAlignment="Center"
+               FontSize="14" Foreground="Gray" />
+
+    <!-- Glass substitution table -->
+    <DataGrid ItemsSource="{Binding Rows}"
+              IsVisible="{Binding HasGlasses}"
+              AutoGenerateColumns="False"
+              CanUserReorderColumns="False"
+              CanUserSortColumns="False"
+              GridLinesVisibility="All"
+              IsReadOnly="False"
+              FontSize="13">
+      <DataGrid.Styles>
+        <Style Selector="DataGridColumnHeader">
+          <Setter Property="FontWeight" Value="Bold" />
+          <Setter Property="FontSize" Value="12" />
+          <Setter Property="Padding" Value="4,4" />
+        </Style>
+        <Style Selector="CheckBox:checked /template/ Border#NormalRectangle">
+          <Setter Property="Background" Value="#0078D4" />
+          <Setter Property="BorderBrush" Value="#0078D4" />
+        </Style>
+      </DataGrid.Styles>
+      <DataGrid.Columns>
+        <DataGridTextColumn Header="Glass #" Binding="{Binding GlassNumber}" IsReadOnly="True" Width="85" />
+        <DataGridTextColumn Header="Surface" Binding="{Binding SurfaceIndex}" IsReadOnly="True" Width="90" />
+        <DataGridTextColumn Header="Material" Binding="{Binding Material}" IsReadOnly="True" Width="120" />
+
+        <!-- Substitute checkbox -->
+        <DataGridTemplateColumn Header="Substitute" Width="110">
+          <DataGridTemplateColumn.CellTemplate>
+            <DataTemplate>
+              <CheckBox IsChecked="{Binding Substitute}"
+                        HorizontalAlignment="Center" VerticalAlignment="Center"
+                        Foreground="Black" Background="White" BorderBrush="#333" />
+            </DataTemplate>
+          </DataGridTemplateColumn.CellTemplate>
+        </DataGridTemplateColumn>
+
+        <!-- Catalog ComboBox -->
+        <DataGridTemplateColumn Header="Substitute Catalog" Width="200">
+          <DataGridTemplateColumn.CellTemplate>
+            <DataTemplate>
+              <ComboBox ItemsSource="{Binding CatalogOptions}"
+                        SelectedIndex="{Binding CatalogIndex}"
+                        HorizontalAlignment="Stretch"
+                        VerticalAlignment="Center"
+                        Margin="2,0" />
+            </DataTemplate>
+          </DataGridTemplateColumn.CellTemplate>
+        </DataGridTemplateColumn>
+      </DataGrid.Columns>
+    </DataGrid>
+  </DockPanel>
+</Window>

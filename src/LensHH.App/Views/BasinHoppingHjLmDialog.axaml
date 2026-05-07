@@ -1,0 +1,192 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:LensHH.App.ViewModels"
+        x:Class="LensHH.App.Views.BasinHoppingHjLmDialog"
+        x:DataType="vm:BasinHoppingHjLmDialogViewModel"
+        Title="Basin-Hopping HJ+LM Optimization"
+        Icon="avares://LensHH.App/Assets/icon_256.png"
+        Width="820" Height="640"
+        WindowStartupLocation="CenterOwner"
+        CanResize="True"
+        MinWidth="700" MinHeight="500">
+
+  <DockPanel Margin="12">
+
+    <!-- Bottom Buttons -->
+    <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal"
+                HorizontalAlignment="Right" Spacing="8" Margin="0,6,0,0">
+      <Button Content="OK — Accept Results" Click="OK_Click" Width="180"
+              IsEnabled="{Binding IsComplete}" FontWeight="SemiBold" />
+      <Button Content="Cancel — Revert" Click="Cancel_Click" Width="150" IsCancel="True" />
+    </StackPanel>
+
+    <!-- Help / description strip -->
+    <Border DockPanel.Dock="Bottom" Background="#F5F5F0" BorderBrush="#CCC"
+            BorderThickness="1" CornerRadius="3" Padding="8,4" Margin="0,6,0,0">
+      <TextBlock Text="{Binding HelpText}" FontSize="11" Foreground="#333"
+                 TextWrapping="Wrap" MinHeight="28" />
+    </Border>
+
+    <!-- Settings -->
+    <Border DockPanel.Dock="Top" BorderBrush="#CCC" BorderThickness="1"
+            CornerRadius="4" Padding="10,6" Margin="0,0,0,6">
+      <Grid ColumnDefinitions="Auto,6,80,16,Auto,6,80,16,Auto,6,80,*,Auto"
+            RowDefinitions="Auto,6,Auto,6,Auto">
+        <!-- Row 0 -->
+        <TextBlock Grid.Row="0" Grid.Column="0" Text="Hops:" VerticalAlignment="Center" />
+        <TextBox Grid.Row="0" Grid.Column="2" Text="{Binding MaxHops, UpdateSourceTrigger=LostFocus}" IsEnabled="{Binding !IsRunning}"
+                 Tag="Number of outer basin-hopping iterations. Each hop perturbs the design, runs Hooke-Jeeves + LM, and keeps the result only if the best merit improves."
+                 PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"
+                 GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
+
+        <TextBlock Grid.Row="0" Grid.Column="4" Text="LM/Hop:" VerticalAlignment="Center" />
+        <TextBox Grid.Row="0" Grid.Column="6" Text="{Binding LmIterationsPerHop, UpdateSourceTrigger=LostFocus}" IsEnabled="{Binding !IsRunning}"
+                 Tag="Maximum Levenberg–Marquardt iterations inside each hop. Higher values give deeper local refinement at the cost of runtime."
+                 PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"
+                 GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
+
+        <TextBlock Grid.Row="0" Grid.Column="8" Text="HJ Steps:" VerticalAlignment="Center" />
+        <TextBox Grid.Row="0" Grid.Column="10" Text="{Binding HjStepsPerHop, UpdateSourceTrigger=LostFocus}" IsEnabled="{Binding !IsRunning}"
+                 Tag="Maximum Hooke-Jeeves pattern-search steps per hop. A derivative-free probe that runs before LM and helps escape flat regions."
+                 PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"
+                 GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
+
+        <!-- Row 1 -->
+        <TextBlock Grid.Row="2" Grid.Column="0" Text="Sigma:" VerticalAlignment="Center" />
+        <TextBox Grid.Row="2" Grid.Column="2" Text="{Binding InitialPerturbSigma, UpdateSourceTrigger=LostFocus}" IsEnabled="{Binding !IsRunning}"
+                 Tag="Standard deviation of the Gaussian perturbation applied between hops (in the optimizer's unbounded variable space). Grows on rejected hops, shrinks on accepted ones."
+                 PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"
+                 GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
+
+        <TextBlock Grid.Row="2" Grid.Column="4" Text="Seed:" VerticalAlignment="Center" />
+        <TextBox Grid.Row="2" Grid.Column="6" Text="{Binding Seed, UpdateSourceTrigger=LostFocus}" IsEnabled="{Binding !IsRunning}"
+                 Tag="Random-number generator seed. Use the same seed to reproduce a run exactly; change it to explore a different sequence of basin hops."
+                 PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"
+                 GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
+
+        <CheckBox Grid.Row="2" Grid.Column="8" Grid.ColumnSpan="3" Content="Broyden update"
+                  IsChecked="{Binding UseBroydenUpdate}" IsEnabled="{Binding !IsRunning}" VerticalAlignment="Center"
+                  Tag="Update the LM Jacobian using cheap Broyden rank-1 updates between full finite-difference refreshes. Usually faster; turn off for very ill-conditioned problems."
+                  PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"
+                  GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
+
+        <!-- Row 2 -->
+        <CheckBox Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="7" Content="Only randomize constrained variables"
+                  IsChecked="{Binding ConstrainedOnly}" IsEnabled="{Binding !IsRunning}" VerticalAlignment="Center"
+                  Tag="Restrict the between-hop perturbation to variables that have explicit min/max bounds. Free (unbounded) variables stay at their current value."
+                  PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"
+                  GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
+        <CheckBox Grid.Row="4" Grid.Column="8" Grid.ColumnSpan="3" Content="Glass substitution"
+                  IsChecked="{Binding GlassSubstitution}" IsEnabled="{Binding !IsRunning}" VerticalAlignment="Center"
+                  Tag="Swap glasses between hops on every surface whose material is a real glass (i.e., not empty, AIR, or MIRROR). Draws from the catalog selected at right. Note: this auto-detects eligible surfaces and does NOT read the per-surface toggles from Optimization → Glass Substitution Settings."
+                  PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"
+                  GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
+
+        <!-- Start/Stop -->
+        <StackPanel Grid.Row="0" Grid.RowSpan="5" Grid.Column="12" Orientation="Horizontal" Spacing="8"
+                    VerticalAlignment="Center" HorizontalAlignment="Right">
+          <Button Content="Start" Command="{Binding StartCommand}" Width="70"
+                  IsEnabled="{Binding !IsRunning}" FontWeight="SemiBold"
+                  Tag="Begin the basin-hopping HJ+LM run. Progress appears in the tabs below; use Stop to cancel cleanly."
+                  PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited" />
+          <Button Content="Stop" Command="{Binding StopCommand}" Width="70"
+                  IsEnabled="{Binding IsRunning}"
+                  Tag="Cancel the run. The design is restored to the best-ever values seen so far."
+                  PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited" />
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <!-- Glass Catalogs + Status/Tables -->
+    <Grid ColumnDefinitions="220,8,*" RowDefinitions="*">
+
+      <!-- Glass catalog selection (same shape as Split Element) -->
+      <Border Grid.Column="0" BorderBrush="#CCC" BorderThickness="1" CornerRadius="4" Padding="6"
+              IsEnabled="{Binding GlassSubstitution}">
+        <DockPanel>
+          <TextBlock DockPanel.Dock="Top" Text="Glass Source" FontWeight="SemiBold" Margin="0,0,0,4" />
+          <ComboBox DockPanel.Dock="Top" ItemsSource="{Binding GlassSourceOptions}"
+                    SelectedIndex="{Binding SelectedGlassSourceIndex}"
+                    IsEnabled="{Binding !IsRunning}" Margin="0,0,0,4"
+                    Tag="Source of substitute glasses. Choose a pre-filtered catalog (e.g. Crowns-only, Flints-only) or pick 'Loaded catalogs (select below)' to draw from the AGFs you tick."
+                    PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"
+                    GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
+          <CheckBox DockPanel.Dock="Top" Content="Only Preferred Glasses"
+                    IsChecked="{Binding OnlyPreferred}" IsEnabled="{Binding !IsRunning}"
+                    IsVisible="{Binding ShowLoadedCatalogs}" Margin="0,0,0,4"
+                    Tag="When using loaded (unfiltered) catalogs, keep only glasses the catalog marks as preferred (Status ≤ 1). Filtered catalogs are already curated and ignore this flag."
+                    PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"
+                    GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
+          <ScrollViewer IsVisible="{Binding ShowLoadedCatalogs}"
+                        Tag="Tick every loaded catalog the substitute pool should draw from."
+                        PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited">
+            <ItemsControl ItemsSource="{Binding Catalogs}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate DataType="vm:CatalogCheckItem">
+                  <CheckBox Content="{Binding Name}" IsChecked="{Binding IsChecked}" Margin="0,1" />
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </ScrollViewer>
+        </DockPanel>
+      </Border>
+
+      <!-- Status, log, tables -->
+      <Border Grid.Column="2" BorderBrush="#CCC" BorderThickness="1" CornerRadius="4" Padding="6">
+        <DockPanel>
+          <Grid DockPanel.Dock="Top" ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto,Auto" Margin="0,0,0,6">
+            <TextBlock Grid.Row="0" Grid.Column="0" Text="{Binding PhaseText}" FontWeight="SemiBold" />
+            <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding ElapsedText}" HorizontalAlignment="Right" />
+            <TextBlock Grid.Row="1" Grid.Column="0" Text="{Binding StatusText}" Foreground="Gray" />
+            <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding HopText}" HorizontalAlignment="Right" Foreground="Gray" />
+            <TextBlock Grid.Row="2" Grid.Column="0">
+              <TextBlock.Text>
+                <MultiBinding StringFormat="Merit: {0} -> {1}">
+                  <Binding Path="InitialMeritText" />
+                  <Binding Path="BestMeritText" />
+                </MultiBinding>
+              </TextBlock.Text>
+            </TextBlock>
+            <ProgressBar Grid.Row="3" Grid.ColumnSpan="2" Minimum="0" Maximum="100"
+                         Value="{Binding ProgressPercent}" Height="6" Margin="0,4,0,0"
+                         IsVisible="{Binding IsRunning}" />
+          </Grid>
+          <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="6" Margin="0,0,0,4">
+            <Button Content="Copy Log" Command="{Binding CopyLogCommand}" Padding="8,2" FontSize="11" />
+            <Button Content="Clear Log" Command="{Binding ClearLogCommand}" Padding="8,2" FontSize="11" />
+          </StackPanel>
+          <Separator DockPanel.Dock="Top" Margin="0,0,0,4" />
+
+          <TabControl>
+            <TabItem Header="Log">
+              <TextBox Text="{Binding LogText}" IsReadOnly="True" AcceptsReturn="True"
+                       FontFamily="Consolas,Courier New,monospace" FontSize="11"
+                       TextWrapping="Wrap" />
+            </TabItem>
+            <TabItem Header="Variables">
+              <DataGrid ItemsSource="{Binding VariableRows}" IsReadOnly="True"
+                        GridLinesVisibility="Horizontal" HeadersVisibility="Column">
+                <DataGrid.Columns>
+                  <DataGridTextColumn Header="Variable" Binding="{Binding Description}" Width="Auto" />
+                  <DataGridTextColumn Header="Start"    Binding="{Binding StartValue}"  Width="*" />
+                  <DataGridTextColumn Header="Current"  Binding="{Binding CurrentValue}" Width="*" />
+                  <DataGridTextColumn Header="Delta"    Binding="{Binding Delta}"       Width="Auto" />
+                </DataGrid.Columns>
+              </DataGrid>
+            </TabItem>
+            <TabItem Header="Glasses">
+              <DataGrid ItemsSource="{Binding GlassRows}" IsReadOnly="True"
+                        GridLinesVisibility="Horizontal" HeadersVisibility="Column">
+                <DataGrid.Columns>
+                  <DataGridTextColumn Header="Surface"     Binding="{Binding SurfaceIndex}" Width="Auto" />
+                  <DataGridTextColumn Header="Start Glass" Binding="{Binding StartGlass}"   Width="*" />
+                  <DataGridTextColumn Header="Current"     Binding="{Binding CurrentGlass}" Width="*" />
+                </DataGrid.Columns>
+              </DataGrid>
+            </TabItem>
+          </TabControl>
+        </DockPanel>
+      </Border>
+    </Grid>
+  </DockPanel>
+</Window>

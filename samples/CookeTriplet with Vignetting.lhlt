@@ -1,0 +1,116 @@
+{
+  "FormatVersion": 1,
+  "Title": "Cooke Triplet with Vignetting",
+  "Notes": "It is a minor variation on a lens designed by hand by R. Kingslake (see \\\u0022Lens\nDesign Fundamentals\\\u0022, pp286-295, Academic Press 1978, ISBN 0-12-408650-1), who\nused nothing more than a hand calculator! The Cooke triplet was invented by\nDennis Taylor in 1893, and is still very widely used as a low-cost objective.\nCOOKE TRIPLET",
+  "Designer": "OSLO",
+  "Aperture": {
+    "Value": 12.5
+  },
+  "Surfaces": [
+    {
+      "Comment": "",
+      "Radius": "Infinity",
+      "Thickness": "Infinity",
+      "Material": "",
+      "SemiDiameter": 3.6397023427E+19,
+      "SemiDiameterMode": "Fixed",
+      "ClearAperturePercent": 100
+    },
+    {
+      "Index": 1,
+      "Comment": "",
+      "Radius": 21.25,
+      "Thickness": 2,
+      "Material": "SK16",
+      "SemiDiameter": 6.5,
+      "SemiDiameterMode": "Fixed",
+      "ClearAperturePercent": 100
+    },
+    {
+      "Index": 2,
+      "Comment": "",
+      "Radius": -158.65,
+      "Thickness": 6,
+      "Material": "",
+      "SemiDiameter": 6.140656929704697,
+      "ClearAperturePercent": 100
+    },
+    {
+      "Index": 3,
+      "Comment": "",
+      "Radius": -20.25,
+      "Thickness": 1,
+      "Material": "F4",
+      "SemiDiameter": 5,
+      "SemiDiameterMode": "Fixed",
+      "ClearAperturePercent": 100
+    },
+    {
+      "Index": 4,
+      "Comment": "",
+      "Radius": 19.3,
+      "Thickness": 6,
+      "Material": "",
+      "SemiDiameter": 5,
+      "SemiDiameterMode": "Fixed",
+      "ClearAperturePercent": 100,
+      "IsStop": true
+    },
+    {
+      "Index": 5,
+      "Comment": "",
+      "Radius": 141.25,
+      "Thickness": 2,
+      "Material": "SK16",
+      "SemiDiameter": 6.5,
+      "SemiDiameterMode": "Fixed",
+      "ClearAperturePercent": 100
+    },
+    {
+      "Index": 6,
+      "Comment": "",
+      "Radius": -17.285,
+      "Thickness": 42.95,
+      "Material": "",
+      "SemiDiameter": 6.5,
+      "SemiDiameterMode": "Fixed",
+      "ClearAperturePercent": 100
+    },
+    {
+      "Index": 7,
+      "Comment": "",
+      "Radius": "Infinity",
+      "Material": "",
+      "SemiDiameter": 0.02043832313989391,
+      "ClearAperturePercent": 100
+    }
+  ],
+  "Wavelengths": [
+    {
+      "Value": 0.58756,
+      "Weight": 1,
+      "IsPrimary": true
+    },
+    {
+      "Value": 0.48613,
+      "Weight": 1
+    },
+    {
+      "Value": 0.65627,
+      "Weight": 1
+    }
+  ],
+  "Fields": [
+    {
+      "Weight": 1
+    },
+    {
+      "Y": 20,
+      "Weight": 1
+    }
+  ],
+  "Pickups": [],
+  "GlassCatalogs": [
+    "SCHOTT"
+  ]
+}

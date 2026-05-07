@@ -1,0 +1,171 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:LensHH.App.ViewModels"
+        x:Class="LensHH.App.Views.SurfacePropertiesDialog"
+        x:DataType="vm:SurfacePropertiesViewModel"
+        Title="{Binding Title}"
+        Icon="avares://LensHH.App/Assets/icon_256.png"
+        Width="620" Height="580"
+        WindowStartupLocation="CenterOwner"
+        CanResize="True"
+        MinWidth="550" MinHeight="500">
+
+  <DockPanel Margin="10">
+    <!-- Buttons -->
+    <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal"
+                HorizontalAlignment="Right" Spacing="8" Margin="0,10,0,0">
+      <Button Content="OK" Click="OK_Click" Width="80" />
+      <Button Content="Cancel" Click="Cancel_Click" Width="80" IsCancel="True" />
+    </StackPanel>
+
+    <TabControl>
+      <!-- ═══ Variable / Pickup Tab ═══ -->
+      <TabItem Header="Variable / Pickup">
+        <ScrollViewer>
+          <StackPanel Margin="12" Spacing="14">
+
+            <!-- Curvature -->
+            <Border BorderBrush="#CCC" BorderThickness="1" CornerRadius="4" Padding="12,8">
+              <StackPanel Spacing="6">
+                <TextBlock Text="Curvature (1/Radius)" FontWeight="SemiBold" FontSize="14" />
+                <DockPanel>
+                  <TextBlock Text="Value:" Width="70" VerticalAlignment="Center" />
+                  <TextBox Text="{Binding Curvature, UpdateSourceTrigger=LostFocus}" Width="180" />
+                </DockPanel>
+                <StackPanel Orientation="Horizontal" Spacing="20">
+                  <RadioButton Content="Fixed" IsChecked="{Binding CurvatureState.IsFixed}" GroupName="Curv" />
+                  <RadioButton Content="Variable" IsChecked="{Binding CurvatureState.IsVariable}" GroupName="Curv" />
+                  <RadioButton Content="Pickup" IsChecked="{Binding CurvatureState.IsPickupSelected}" GroupName="Curv" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Spacing="8"
+                            IsVisible="{Binding CurvatureState.IsPickup}">
+                  <TextBlock Text="Source Surf:" VerticalAlignment="Center" />
+                  <ComboBox ItemsSource="{Binding CurvatureState.AvailablePickupSurfaces}"
+                            SelectedItem="{Binding CurvatureState.PickupSourceSurface}" Width="70" />
+                  <TextBlock Text="Scale:" VerticalAlignment="Center" />
+                  <TextBox Text="{Binding CurvatureState.PickupScale, UpdateSourceTrigger=LostFocus}" Width="70" />
+                  <TextBlock Text="Offset:" VerticalAlignment="Center" />
+                  <TextBox Text="{Binding CurvatureState.PickupOffset, UpdateSourceTrigger=LostFocus}" Width="70" />
+                </StackPanel>
+              </StackPanel>
+            </Border>
+
+            <!-- Thickness -->
+            <Border BorderBrush="#CCC" BorderThickness="1" CornerRadius="4" Padding="12,8">
+              <StackPanel Spacing="6">
+                <TextBlock Text="Thickness" FontWeight="SemiBold" FontSize="14" />
+                <DockPanel>
+                  <TextBlock Text="Value:" Width="70" VerticalAlignment="Center" />
+                  <TextBox Text="{Binding Thickness, UpdateSourceTrigger=LostFocus}" Width="180" />
+                </DockPanel>
+                <StackPanel Orientation="Horizontal" Spacing="20">
+                  <RadioButton Content="Fixed" IsChecked="{Binding ThicknessState.IsFixed}" GroupName="Thick" />
+                  <RadioButton Content="Variable" IsChecked="{Binding ThicknessState.IsVariable}" GroupName="Thick" />
+                  <RadioButton Content="Pickup" IsChecked="{Binding ThicknessState.IsPickupSelected}" GroupName="Thick" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Spacing="8"
+                            IsVisible="{Binding ThicknessState.IsPickup}">
+                  <TextBlock Text="Source Surf:" VerticalAlignment="Center" />
+                  <ComboBox ItemsSource="{Binding ThicknessState.AvailablePickupSurfaces}"
+                            SelectedItem="{Binding ThicknessState.PickupSourceSurface}" Width="70" />
+                  <TextBlock Text="Scale:" VerticalAlignment="Center" />
+                  <TextBox Text="{Binding ThicknessState.PickupScale, UpdateSourceTrigger=LostFocus}" Width="70" />
+                  <TextBlock Text="Offset:" VerticalAlignment="Center" />
+                  <TextBox Text="{Binding ThicknessState.PickupOffset, UpdateSourceTrigger=LostFocus}" Width="70" />
+                </StackPanel>
+              </StackPanel>
+            </Border>
+
+            <!-- Conic -->
+            <Border BorderBrush="#CCC" BorderThickness="1" CornerRadius="4" Padding="12,8">
+              <StackPanel Spacing="6">
+                <TextBlock Text="Conic Constant" FontWeight="SemiBold" FontSize="14" />
+                <DockPanel>
+                  <TextBlock Text="Value:" Width="70" VerticalAlignment="Center" />
+                  <TextBox Text="{Binding Conic, UpdateSourceTrigger=LostFocus}" Width="180" />
+                </DockPanel>
+                <StackPanel Orientation="Horizontal" Spacing="20">
+                  <RadioButton Content="Fixed" IsChecked="{Binding ConicState.IsFixed}" GroupName="Conic" />
+                  <RadioButton Content="Variable" IsChecked="{Binding ConicState.IsVariable}" GroupName="Conic" />
+                  <RadioButton Content="Pickup" IsChecked="{Binding ConicState.IsPickupSelected}" GroupName="Conic" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Spacing="8"
+                            IsVisible="{Binding ConicState.IsPickup}">
+                  <TextBlock Text="Source Surf:" VerticalAlignment="Center" />
+                  <ComboBox ItemsSource="{Binding ConicState.AvailablePickupSurfaces}"
+                            SelectedItem="{Binding ConicState.PickupSourceSurface}" Width="70" />
+                  <TextBlock Text="Scale:" VerticalAlignment="Center" />
+                  <TextBox Text="{Binding ConicState.PickupScale, UpdateSourceTrigger=LostFocus}" Width="70" />
+                  <TextBlock Text="Offset:" VerticalAlignment="Center" />
+                  <TextBox Text="{Binding ConicState.PickupOffset, UpdateSourceTrigger=LostFocus}" Width="70" />
+                </StackPanel>
+              </StackPanel>
+            </Border>
+
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+
+      <!-- ═══ Aperture Tab ═══ -->
+      <TabItem Header="Aperture">
+        <StackPanel Margin="16" Spacing="14">
+          <TextBlock Text="Surface aperture settings" FontStyle="Italic" Foreground="Gray" />
+          <DockPanel>
+            <TextBlock Text="Inner Radius:" Width="130" VerticalAlignment="Center" />
+            <TextBox Text="{Binding InnerRadius}" Width="140" />
+          </DockPanel>
+          <DockPanel>
+            <TextBlock Text="Obscuration Radius:" Width="130" VerticalAlignment="Center" />
+            <TextBox Text="{Binding ObscurationRadius}" Width="140" />
+          </DockPanel>
+        </StackPanel>
+      </TabItem>
+
+      <!-- ═══ Even Asphere Tab ═══ -->
+      <TabItem Header="Even Asphere" IsVisible="{Binding IsEvenAsphere}">
+        <ScrollViewer>
+          <StackPanel Margin="12" Spacing="4">
+            <Grid ColumnDefinitions="90,200,70" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto"
+                  Margin="0,4">
+              <TextBlock Grid.Row="0" Grid.Column="0" Text="Order" FontWeight="SemiBold" Margin="0,4" />
+              <TextBlock Grid.Row="0" Grid.Column="1" Text="Coefficient" FontWeight="SemiBold" Margin="0,4" />
+              <TextBlock Grid.Row="0" Grid.Column="2" Text="Variable" FontWeight="SemiBold" Margin="0,4" />
+
+              <TextBlock Grid.Row="1" Grid.Column="0" Text="2nd" VerticalAlignment="Center" />
+              <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding A2, UpdateSourceTrigger=LostFocus}" Margin="0,2" />
+              <CheckBox Grid.Row="1" Grid.Column="2" IsChecked="{Binding A2Var}" HorizontalAlignment="Center" />
+
+              <TextBlock Grid.Row="2" Grid.Column="0" Text="4th" VerticalAlignment="Center" />
+              <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding A4, UpdateSourceTrigger=LostFocus}" Margin="0,2" />
+              <CheckBox Grid.Row="2" Grid.Column="2" IsChecked="{Binding A4Var}" HorizontalAlignment="Center" />
+
+              <TextBlock Grid.Row="3" Grid.Column="0" Text="6th" VerticalAlignment="Center" />
+              <TextBox Grid.Row="3" Grid.Column="1" Text="{Binding A6, UpdateSourceTrigger=LostFocus}" Margin="0,2" />
+              <CheckBox Grid.Row="3" Grid.Column="2" IsChecked="{Binding A6Var}" HorizontalAlignment="Center" />
+
+              <TextBlock Grid.Row="4" Grid.Column="0" Text="8th" VerticalAlignment="Center" />
+              <TextBox Grid.Row="4" Grid.Column="1" Text="{Binding A8, UpdateSourceTrigger=LostFocus}" Margin="0,2" />
+              <CheckBox Grid.Row="4" Grid.Column="2" IsChecked="{Binding A8Var}" HorizontalAlignment="Center" />
+
+              <TextBlock Grid.Row="5" Grid.Column="0" Text="10th" VerticalAlignment="Center" />
+              <TextBox Grid.Row="5" Grid.Column="1" Text="{Binding A10, UpdateSourceTrigger=LostFocus}" Margin="0,2" />
+              <CheckBox Grid.Row="5" Grid.Column="2" IsChecked="{Binding A10Var}" HorizontalAlignment="Center" />
+
+              <TextBlock Grid.Row="6" Grid.Column="0" Text="12th" VerticalAlignment="Center" />
+              <TextBox Grid.Row="6" Grid.Column="1" Text="{Binding A12, UpdateSourceTrigger=LostFocus}" Margin="0,2" />
+              <CheckBox Grid.Row="6" Grid.Column="2" IsChecked="{Binding A12Var}" HorizontalAlignment="Center" />
+
+              <TextBlock Grid.Row="7" Grid.Column="0" Text="14th" VerticalAlignment="Center" />
+              <TextBox Grid.Row="7" Grid.Column="1" Text="{Binding A14, UpdateSourceTrigger=LostFocus}" Margin="0,2" />
+              <CheckBox Grid.Row="7" Grid.Column="2" IsChecked="{Binding A14Var}" HorizontalAlignment="Center" />
+
+              <TextBlock Grid.Row="8" Grid.Column="0" Text="16th" VerticalAlignment="Center" />
+              <TextBox Grid.Row="8" Grid.Column="1" Text="{Binding A16, UpdateSourceTrigger=LostFocus}" Margin="0,2" />
+              <CheckBox Grid.Row="8" Grid.Column="2" IsChecked="{Binding A16Var}" HorizontalAlignment="Center" />
+            </Grid>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+    </TabControl>
+  </DockPanel>
+</Window>

@@ -1,0 +1,94 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:LensHH.App.ViewModels"
+        x:Class="LensHH.App.Views.VariableEditorDialog"
+        x:DataType="vm:VariableEditorViewModel"
+        Title="Variable Editor"
+        Icon="avares://LensHH.App/Assets/icon_256.png"
+        Width="700" Height="450"
+        WindowStartupLocation="CenterOwner"
+        CanResize="True">
+
+  <DockPanel Margin="8">
+    <!-- Bottom buttons -->
+    <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal"
+                HorizontalAlignment="Right" Spacing="8" Margin="0,8,0,0">
+      <Button Content="Thickness Constraints" Click="ThicknessConstraints_Click" />
+      <Button Content="Curvature Constraints" Click="CurvatureConstraints_Click" />
+      <Border Width="1" Background="#CCC" Margin="4,2" />
+      <Button Content="OK" Click="OK_Click" Width="70" />
+      <Button Content="Cancel" Click="Cancel_Click" Width="70" IsCancel="True" />
+    </StackPanel>
+
+    <!-- No variables message -->
+    <TextBlock Text="{Binding NoVariablesMessage}"
+               IsVisible="{Binding !HasVariables}"
+               VerticalAlignment="Center" HorizontalAlignment="Center"
+               FontSize="14" Foreground="Gray" />
+
+    <!-- Variable table -->
+    <DataGrid ItemsSource="{Binding Variables}"
+              IsVisible="{Binding HasVariables}"
+              AutoGenerateColumns="False"
+              CanUserReorderColumns="False"
+              CanUserSortColumns="False"
+              GridLinesVisibility="All"
+              IsReadOnly="False"
+              FontSize="13">
+      <DataGrid.Styles>
+        <Style Selector="DataGridColumnHeader">
+          <Setter Property="FontWeight" Value="Bold" />
+          <Setter Property="FontSize" Value="12" />
+          <Setter Property="Padding" Value="4,4" />
+        </Style>
+      </DataGrid.Styles>
+      <DataGrid.Columns>
+        <DataGridTextColumn Header="#" Binding="{Binding Number}" IsReadOnly="True" Width="40" />
+        <DataGridTextColumn Header="Description" Binding="{Binding Description}" IsReadOnly="True" Width="130" />
+        <DataGridTextColumn Header="Surface" Binding="{Binding SurfaceIndex}" IsReadOnly="True" Width="70" />
+
+        <!-- Constraint Type: ComboBox -->
+        <DataGridTemplateColumn Header="Constraint" Width="140">
+          <DataGridTemplateColumn.CellTemplate>
+            <DataTemplate>
+              <ComboBox ItemsSource="{Binding ConstraintOptions}"
+                        SelectedIndex="{Binding ConstraintTypeIndex}"
+                        HorizontalAlignment="Stretch"
+                        VerticalAlignment="Center"
+                        Margin="2,0" />
+            </DataTemplate>
+          </DataGridTemplateColumn.CellTemplate>
+        </DataGridTemplateColumn>
+
+        <!-- Minimum / Maximum: explicit TextBox cells so scientific-notation
+             input ("1e-6", "1.5E-12", etc.) is committed via the
+             VariableRowViewModel's MinText/MaxText setter, which uses
+             NumberStyles.Float | AllowExponent + InvariantCulture.
+             The default DataGridTextColumn editing flow had a quirk where
+             sci-notation strings could fail to commit. -->
+        <DataGridTemplateColumn Header="Minimum" Width="120">
+          <DataGridTemplateColumn.CellTemplate>
+            <DataTemplate>
+              <TextBox Text="{Binding MinText, UpdateSourceTrigger=LostFocus}"
+                       IsEnabled="{Binding IsMinEnabled}"
+                       VerticalAlignment="Center" Margin="2,0" Padding="2"
+                       BorderThickness="0"
+                       FontFamily="Consolas" />
+            </DataTemplate>
+          </DataGridTemplateColumn.CellTemplate>
+        </DataGridTemplateColumn>
+        <DataGridTemplateColumn Header="Maximum" Width="120">
+          <DataGridTemplateColumn.CellTemplate>
+            <DataTemplate>
+              <TextBox Text="{Binding MaxText, UpdateSourceTrigger=LostFocus}"
+                       IsEnabled="{Binding IsMaxEnabled}"
+                       VerticalAlignment="Center" Margin="2,0" Padding="2"
+                       BorderThickness="0"
+                       FontFamily="Consolas" />
+            </DataTemplate>
+          </DataGridTemplateColumn.CellTemplate>
+        </DataGridTemplateColumn>
+      </DataGrid.Columns>
+    </DataGrid>
+  </DockPanel>
+</Window>

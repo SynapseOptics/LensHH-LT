@@ -1,0 +1,50 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:LensHH.App.ViewModels"
+        x:Class="LensHH.App.Views.CatalogPreferenceDialog"
+        x:DataType="vm:CatalogPreferenceViewModel"
+        Title="Catalog Preference"
+        Icon="avares://LensHH.App/Assets/icon_256.png"
+        Width="500" Height="380"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False">
+
+    <DockPanel Margin="12">
+        <!-- Description -->
+        <TextBlock DockPanel.Dock="Top" TextWrapping="Wrap" Margin="0,0,0,8"
+                   Text="Set the order in which glass catalogs are searched. Catalogs listed first take priority when multiple catalogs contain the same glass name." />
+
+        <!-- Buttons -->
+        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0" Spacing="8">
+            <Button Content="OK" Click="OK_Click" Padding="20,6" />
+            <Button Content="Cancel" Click="Cancel_Click" Padding="20,6" />
+        </StackPanel>
+
+        <!-- Main content: Available | Buttons | Preferred -->
+        <Grid ColumnDefinitions="*,Auto,*">
+
+            <!-- Available Catalogs -->
+            <DockPanel Grid.Column="0">
+                <TextBlock DockPanel.Dock="Top" Text="Available Catalogs:" FontWeight="SemiBold" Margin="0,0,0,4" />
+                <ListBox ItemsSource="{Binding AvailableCatalogs}"
+                         SelectedItem="{Binding SelectedAvailable}" />
+            </DockPanel>
+
+            <!-- Add/Remove Buttons -->
+            <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="8,0" Spacing="4">
+                <Button Content="  Add >"  Command="{Binding AddCommand}" Padding="8,4" />
+                <Button Content="&lt; Remove" Command="{Binding RemoveCommand}" Padding="8,4" />
+                <Separator Margin="0,8" />
+                <Button Content="Move Up" Command="{Binding MoveUpCommand}" Padding="8,4" />
+                <Button Content="Move Down" Command="{Binding MoveDownCommand}" Padding="8,4" />
+            </StackPanel>
+
+            <!-- Preferred Catalogs (ordered) -->
+            <DockPanel Grid.Column="2">
+                <TextBlock DockPanel.Dock="Top" Text="Search Order (first = highest priority):" FontWeight="SemiBold" Margin="0,0,0,4" />
+                <ListBox ItemsSource="{Binding PreferredCatalogs}"
+                         SelectedItem="{Binding SelectedPreferred}" />
+            </DockPanel>
+        </Grid>
+    </DockPanel>
+</Window>

@@ -1,0 +1,250 @@
+{
+  "FormatVersion": 1,
+  "Title": "ISBN 0-8247-8403-0",
+  "Notes": "",
+  "Designer": "",
+  "Aperture": {
+    "Value": 1.4978909499773927
+  },
+  "Surfaces": [
+    {
+      "Comment": "",
+      "Radius": "Infinity",
+      "Thickness": "Infinity",
+      "Material": "",
+      "SemiDiameter": 11.75869363098041,
+      "ClearAperturePercent": 100
+    },
+    {
+      "Index": 1,
+      "Comment": "",
+      "Radius": 74.66849999139558,
+      "Thickness": 2.7,
+      "Material": "BK7",
+      "SemiDiameter": 32.38604835,
+      "SemiDiameterMode": "Fixed",
+      "ClearAperturePercent": 100,
+      "CurvatureVariable": true
+    },
+    {
+      "Index": 2,
+      "Comment": "",
+      "Radius": 17.880000000994126,
+      "Thickness": 16.2,
+      "Material": "",
+      "SemiDiameter": 17.45586074,
+      "SemiDiameterMode": "Fixed",
+      "ClearAperturePercent": 100,
+      "CurvatureVariable": true
+    },
+    {
+      "Index": 3,
+      "Comment": "",
+      "Radius": -161.03400000972937,
+      "Thickness": 2.91,
+      "Material": "SK5",
+      "SemiDiameter": 15.95061144,
+      "SemiDiameterMode": "Fixed",
+      "ClearAperturePercent": 100,
+      "CurvatureVariable": true
+    },
+    {
+      "Index": 4,
+      "Comment": "",
+      "Radius": 14.594999999830698,
+      "Thickness": 6.315,
+      "Material": "",
+      "SemiDiameter": 11.65092224,
+      "SemiDiameterMode": "Fixed",
+      "ClearAperturePercent": 100,
+      "CurvatureVariable": true
+    },
+    {
+      "Index": 5,
+      "Comment": "",
+      "Radius": 25.602000000385054,
+      "Thickness": 7.845,
+      "Material": "SF1",
+      "SemiDiameter": 11.46637021,
+      "SemiDiameterMode": "Fixed",
+      "ClearAperturePercent": 100,
+      "CurvatureVariable": true
+    },
+    {
+      "Index": 6,
+      "Comment": "",
+      "Radius": -20.7570000020483,
+      "Thickness": 3.6,
+      "Material": "LAK9",
+      "SemiDiameter": 10.99731362,
+      "SemiDiameterMode": "Fixed",
+      "ClearAperturePercent": 100,
+      "CurvatureVariable": true
+    },
+    {
+      "Index": 7,
+      "Comment": "",
+      "Radius": 17.01599999931255,
+      "Thickness": 36.45,
+      "Material": "",
+      "SemiDiameter": 8.667077976,
+      "SemiDiameterMode": "Fixed",
+      "ClearAperturePercent": 100,
+      "CurvatureVariable": true
+    },
+    {
+      "Index": 8,
+      "Comment": "",
+      "Radius": 20.629499999994636,
+      "Thickness": 4.485,
+      "Material": "LAK9",
+      "SemiDiameter": 7.282504898,
+      "SemiDiameterMode": "Fixed",
+      "ClearAperturePercent": 100,
+      "CurvatureVariable": true
+    },
+    {
+      "Index": 9,
+      "Comment": "",
+      "Radius": 7.684499997952465,
+      "Thickness": 9.735,
+      "Material": "PSK3",
+      "SemiDiameter": 6.184724382,
+      "SemiDiameterMode": "Fixed",
+      "ClearAperturePercent": 100,
+      "CurvatureVariable": true
+    },
+    {
+      "Index": 10,
+      "Comment": "",
+      "Radius": -11.875499999817356,
+      "Thickness": 0.315,
+      "Material": "",
+      "SemiDiameter": 5.756985444,
+      "SemiDiameterMode": "Fixed",
+      "ClearAperturePercent": 100,
+      "CurvatureVariable": true
+    },
+    {
+      "Index": 11,
+      "Comment": "",
+      "Radius": -11.644500000643767,
+      "Thickness": 1.2,
+      "Material": "SF1",
+      "SemiDiameter": 5.507435826,
+      "SemiDiameterMode": "Fixed",
+      "ClearAperturePercent": 100
+    },
+    {
+      "Index": 12,
+      "Comment": "",
+      "Radius": -28.62449999739574,
+      "Thickness": 1.8,
+      "Material": "",
+      "SemiDiameter": 5.449643327,
+      "SemiDiameterMode": "Fixed",
+      "ClearAperturePercent": 100,
+      "CurvatureVariable": true
+    },
+    {
+      "Index": 13,
+      "Comment": "",
+      "Radius": "Infinity",
+      "Thickness": 1.815,
+      "Material": "",
+      "SemiDiameter": 4.4,
+      "SemiDiameterMode": "Fixed",
+      "ClearAperturePercent": 100,
+      "IsStop": true,
+      "CurvatureVariable": true
+    },
+    {
+      "Index": 14,
+      "Comment": "",
+      "Radius": 14.45699999972734,
+      "Thickness": 4.995,
+      "Material": "PSK3",
+      "SemiDiameter": 5.502860437,
+      "SemiDiameterMode": "Fixed",
+      "ClearAperturePercent": 100,
+      "CurvatureVariable": true
+    },
+    {
+      "Index": 15,
+      "Comment": "",
+      "Radius": -13.390500000588446,
+      "Thickness": 1.185,
+      "Material": "",
+      "SemiDiameter": 5.387614138,
+      "SemiDiameterMode": "Fixed",
+      "ClearAperturePercent": 100,
+      "CurvatureVariable": true
+    },
+    {
+      "Index": 16,
+      "Comment": "",
+      "Radius": -11.047500000137818,
+      "Thickness": 1.62,
+      "Material": "SF1",
+      "SemiDiameter": 4.990858184,
+      "SemiDiameterMode": "Fixed",
+      "ClearAperturePercent": 100,
+      "CurvatureVariable": true
+    },
+    {
+      "Index": 17,
+      "Comment": "",
+      "Radius": -21.422999997928827,
+      "Thickness": 12.46714173,
+      "Material": "",
+      "SemiDiameter": 5.069995634,
+      "SemiDiameterMode": "Fixed",
+      "ClearAperturePercent": 100,
+      "CurvatureVariable": true
+    },
+    {
+      "Index": 18,
+      "Comment": "",
+      "Radius": "Infinity",
+      "Material": "",
+      "SemiDiameter": 3.704588321,
+      "SemiDiameterMode": "Fixed",
+      "ClearAperturePercent": 100
+    }
+  ],
+  "Wavelengths": [
+    {
+      "Value": 0.546,
+      "Weight": 100,
+      "IsPrimary": true
+    },
+    {
+      "Value": 0.486,
+      "Weight": 50
+    },
+    {
+      "Value": 0.656,
+      "Weight": 50
+    }
+  ],
+  "Fields": [
+    {
+      "Weight": 1
+    },
+    {
+      "Y": 30,
+      "Weight": 1
+    },
+    {
+      "Y": 60,
+      "Weight": 1
+    },
+    {
+      "Y": 80,
+      "Weight": 1
+    }
+  ],
+  "Pickups": [],
+  "RayAiming": "Robust",
+  "GlassCatalogs": []
+}

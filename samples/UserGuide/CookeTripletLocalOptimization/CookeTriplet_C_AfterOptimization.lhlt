@@ -1,0 +1,173 @@
+{
+  "FormatVersion": 1,
+  "Title": "Cooke Triplet",
+  "Notes": "",
+  "Designer": "",
+  "Aperture": {
+    "Value": 10
+  },
+  "Surfaces": [
+    {
+      "Comment": "",
+      "Radius": "Infinity",
+      "Thickness": "Infinity",
+      "Material": "",
+      "SemiDiameter": 9.205367459746833,
+      "ClearAperturePercent": 100
+    },
+    {
+      "Index": 1,
+      "Comment": "",
+      "Radius": 21.965452074228995,
+      "Thickness": 3.6476492874289543,
+      "Material": "SK16",
+      "SemiDiameter": 8.571528944101996,
+      "ClearAperturePercent": 100,
+      "CurvatureVariable": true,
+      "ThicknessVariable": true,
+      "ThicknessMin": 1,
+      "ThicknessMax": 25
+    },
+    {
+      "Index": 2,
+      "Comment": "",
+      "Radius": -425.5062847447139,
+      "Thickness": 5.781737155400217,
+      "Material": "",
+      "SemiDiameter": 7.862336420717003,
+      "ClearAperturePercent": 100,
+      "CurvatureVariable": true,
+      "ThicknessVariable": true,
+      "ThicknessMin": 0.1,
+      "ThicknessMax": 100
+    },
+    {
+      "Index": 3,
+      "Comment": "",
+      "Radius": -22.16682389008184,
+      "Thickness": 1,
+      "Material": "F2",
+      "SemiDiameter": 4.001547381063512,
+      "ClearAperturePercent": 100,
+      "CurvatureVariable": true,
+      "ThicknessVariable": true,
+      "ThicknessMin": 1,
+      "ThicknessMax": 25
+    },
+    {
+      "Index": 4,
+      "Comment": "",
+      "Radius": 20.235167246827615,
+      "Thickness": 4.746256495385137,
+      "Material": "",
+      "SemiDiameter": 3.862284304694823,
+      "ClearAperturePercent": 100,
+      "IsStop": true,
+      "CurvatureVariable": true,
+      "ThicknessVariable": true,
+      "ThicknessMin": 0.1,
+      "ThicknessMax": 100
+    },
+    {
+      "Index": 5,
+      "Comment": "",
+      "Radius": 79.48263130240377,
+      "Thickness": 2.817140905105974,
+      "Material": "SK16",
+      "SemiDiameter": 6.914297033644882,
+      "ClearAperturePercent": 100,
+      "CurvatureVariable": true,
+      "ThicknessVariable": true,
+      "ThicknessMin": 1,
+      "ThicknessMax": 25
+    },
+    {
+      "Index": 6,
+      "Comment": "",
+      "Radius": -18.37615481054481,
+      "Thickness": 42.18653865872187,
+      "Material": "",
+      "SemiDiameter": 7.240700645314647,
+      "ClearAperturePercent": 100,
+      "CurvatureVariable": true,
+      "ThicknessVariable": true,
+      "ThicknessMin": 40,
+      "ThicknessMax": 100
+    },
+    {
+      "Index": 7,
+      "Comment": "",
+      "Radius": "Infinity",
+      "Material": "",
+      "SemiDiameter": 18.19266717690006,
+      "ClearAperturePercent": 100
+    }
+  ],
+  "Wavelengths": [
+    {
+      "Value": 0.48,
+      "Weight": 1
+    },
+    {
+      "Value": 0.55,
+      "Weight": 1,
+      "IsPrimary": true
+    },
+    {
+      "Value": 0.65,
+      "Weight": 1
+    }
+  ],
+  "Fields": [
+    {
+      "Weight": 1
+    },
+    {
+      "Y": 14,
+      "Weight": 1
+    },
+    {
+      "Y": 20,
+      "Weight": 1
+    }
+  ],
+  "Pickups": [],
+  "GlassCatalogs": [
+    "SCHOTT"
+  ],
+  "MeritFunction": {
+    "Operands": [
+      {
+        "Type": "EFL",
+        "Target": 50,
+        "Weight": 100,
+        "ConfigurationNo": -1,
+        "WaveIndex": -1
+      },
+      {
+        "Type": "WAVEX",
+        "Weight": 1,
+        "ConfigurationNo": -1,
+        "WaveIndex": -1
+      },
+      {
+        "Type": "EG",
+        "Weight": 10,
+        "Minimum": 1,
+        "ConfigurationNo": -1,
+        "WaveIndex": -1,
+        "Surface1": 1,
+        "Surface2": 6
+      },
+      {
+        "Type": "EA",
+        "Weight": 10,
+        "Minimum": 0.1,
+        "ConfigurationNo": -1,
+        "WaveIndex": -1,
+        "Surface1": 1,
+        "Surface2": 6
+      }
+    ]
+  }
+}

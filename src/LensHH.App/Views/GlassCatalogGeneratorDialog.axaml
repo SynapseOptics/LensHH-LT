@@ -1,0 +1,293 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:LensHH.App.ViewModels"
+        xmlns:m="using:LensHH.App.GlassCatalog"
+        x:Class="LensHH.App.Views.GlassCatalogGeneratorDialog"
+        x:DataType="vm:GlassCatalogGeneratorViewModel"
+        Title="Create Glass Catalogue"
+        Icon="avares://LensHH.App/Assets/icon_256.png"
+        Width="1100" Height="800"
+        MinWidth="900" MinHeight="650"
+        WindowStartupLocation="CenterOwner"
+        CanResize="True">
+
+    <Window.Styles>
+        <Style Selector="TextBlock.filterLabel">
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Margin" Value="0,0,4,0"/>
+        </Style>
+        <Style Selector="TextBox.filterInput">
+            <Setter Property="Width" Value="70"/>
+            <Setter Property="Margin" Value="2"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="HorizontalContentAlignment" Value="Right"/>
+        </Style>
+        <Style Selector="TextBlock.sectionHeader">
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Margin" Value="0,0,0,4"/>
+        </Style>
+        <Style Selector="TextBlock.detailLabel">
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Foreground" Value="Gray"/>
+            <Setter Property="Margin" Value="0,4,0,0"/>
+        </Style>
+        <Style Selector="TextBlock.detailValue">
+            <Setter Property="Margin" Value="0,0,0,2"/>
+        </Style>
+    </Window.Styles>
+
+    <DockPanel>
+        <!-- Status Bar -->
+        <Border DockPanel.Dock="Bottom" Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}"
+                Padding="8,4">
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Text="{Binding StatusText}" VerticalAlignment="Center"/>
+                <TextBlock Grid.Column="1" Text="{Binding GlassCount}" VerticalAlignment="Center"/>
+            </Grid>
+        </Border>
+
+        <!-- Main Content -->
+        <Grid Margin="8" RowDefinitions="Auto,3*,4,2*,Auto">
+
+            <!-- Directory Paths -->
+            <Grid Grid.Row="0" Margin="0,0,0,8" RowDefinitions="Auto,Auto" ColumnDefinitions="Auto,*,Auto">
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="Catalogs:" VerticalAlignment="Center" Margin="0,0,8,4"/>
+                <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding CatalogDirectory}" Margin="0,0,4,4" Padding="4,3"/>
+                <Button Grid.Row="0" Grid.Column="2" Content="Browse..." Command="{Binding BrowseCatalogDirCommand}" Padding="12,3" Margin="0,0,0,4"/>
+
+                <TextBlock Grid.Row="1" Grid.Column="0" Text="Output:" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding FilteredCatalogDirectory}" Margin="0,0,4,0" Padding="4,3"/>
+                <Button Grid.Row="1" Grid.Column="2" Content="Browse..." Command="{Binding BrowseFilteredDirCommand}" Padding="12,3"/>
+            </Grid>
+
+            <!-- Top Row: Catalog Selection + Filters -->
+            <Grid Grid.Row="1" ColumnDefinitions="220,*">
+
+                <!-- Catalog Selection Panel -->
+                <Border Grid.Column="0" BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
+                        BorderThickness="1" CornerRadius="4" Padding="8" Margin="0,0,4,0">
+                    <Grid RowDefinitions="Auto,*,Auto,Auto,*">
+                        <TextBlock Grid.Row="0" Text="Available Catalogs:" Classes="sectionHeader"/>
+                        <ListBox Grid.Row="1" ItemsSource="{Binding AvailableCatalogs}"
+                                 SelectedItem="{Binding SelectedAvailableCatalog}"/>
+
+                        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,4">
+                            <Button Content="  Add >"  Command="{Binding AddCatalogCommand}" Margin="0,0,4,0" Padding="8,2"/>
+                            <Button Content="&lt; Remove" Command="{Binding RemoveCatalogCommand}" Padding="8,2"/>
+                        </StackPanel>
+
+                        <TextBlock Grid.Row="3" Text="Selected Catalogs:" Classes="sectionHeader"/>
+                        <ListBox Grid.Row="4" ItemsSource="{Binding SelectedCatalogs}"
+                                 SelectedItem="{Binding SelectedActiveCatalog}"/>
+                    </Grid>
+                </Border>
+
+                <!-- Filter Criteria Panel -->
+                <Border Grid.Column="1" BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
+                        BorderThickness="1" CornerRadius="4" Padding="8" Margin="4,0,0,0">
+                    <DockPanel>
+                        <TextBlock DockPanel.Dock="Top" Text="Filter Criteria" Classes="sectionHeader"/>
+
+                        <!-- Generate Button at bottom -->
+                        <Button DockPanel.Dock="Bottom" Content="Generate Catalog" Command="{Binding GenerateCommand}"
+                                HorizontalAlignment="Left" Padding="16,6" Margin="0,8,0,0"/>
+
+                        <ScrollViewer>
+                            <StackPanel Spacing="2">
+                                <!-- Filter 1: Preferred Only -->
+                                <CheckBox Content="Preferred Only" IsChecked="{Binding PreferredEnabled}" Margin="0,2"/>
+
+                                <!-- Filter 2: Distance Radius -->
+                                <CheckBox Content="Distance Radius" IsChecked="{Binding DistanceEnabled}" Margin="0,6,0,2"/>
+                                <WrapPanel Margin="20,0,0,0">
+                                    <TextBlock Text="d ≤" Classes="filterLabel"/>
+                                    <TextBox Text="{Binding DistanceThreshold, UpdateSourceTrigger=LostFocus}" Classes="filterInput"/>
+                                    <TextBlock Text="  Wn=" Classes="filterLabel"/>
+                                    <TextBox Text="{Binding Wn, UpdateSourceTrigger=LostFocus}" Classes="filterInput"/>
+                                    <TextBlock Text="  Wa=" Classes="filterLabel"/>
+                                    <TextBox Text="{Binding Wa, UpdateSourceTrigger=LostFocus}" Classes="filterInput"/>
+                                    <TextBlock Text="  Wp=" Classes="filterLabel"/>
+                                    <TextBox Text="{Binding Wp, UpdateSourceTrigger=LostFocus}" Classes="filterInput"/>
+                                </WrapPanel>
+                                <WrapPanel Margin="20,2,0,0">
+                                    <TextBlock Text="Nd_t=" Classes="filterLabel"/>
+                                    <TextBox Text="{Binding NdTarget, UpdateSourceTrigger=LostFocus}" Classes="filterInput"/>
+                                    <TextBlock Text="  Vd_t=" Classes="filterLabel"/>
+                                    <TextBox Text="{Binding VdTarget, UpdateSourceTrigger=LostFocus}" Classes="filterInput"/>
+                                    <TextBlock Text="  dPgF_t=" Classes="filterLabel"/>
+                                    <TextBox Text="{Binding DPgFTarget, UpdateSourceTrigger=LostFocus}" Classes="filterInput"/>
+                                </WrapPanel>
+
+                                <!-- Filter 3: BK7 Relative Cost -->
+                                <WrapPanel Margin="0,6,0,2">
+                                    <CheckBox Content="BK7 Rel. Cost ≤" IsChecked="{Binding CostEnabled}" VerticalAlignment="Center"/>
+                                    <TextBox Text="{Binding CostLimit, UpdateSourceTrigger=LostFocus}" Classes="filterInput" Margin="4,2"/>
+                                </WrapPanel>
+
+                                <!-- Filter 4: Nd Range -->
+                                <WrapPanel Margin="0,4,0,2">
+                                    <CheckBox Content="Nd" IsChecked="{Binding NdRangeEnabled}" VerticalAlignment="Center"/>
+                                    <TextBox Text="{Binding NdMin, UpdateSourceTrigger=LostFocus}" Classes="filterInput" Margin="8,2,2,2"/>
+                                    <TextBlock Text="to" Classes="filterLabel" Margin="4,0"/>
+                                    <TextBox Text="{Binding NdMax, UpdateSourceTrigger=LostFocus}" Classes="filterInput"/>
+                                </WrapPanel>
+
+                                <!-- Filter 5: Vd Range -->
+                                <WrapPanel Margin="0,2">
+                                    <CheckBox Content="Vd" IsChecked="{Binding VdRangeEnabled}" VerticalAlignment="Center"/>
+                                    <TextBox Text="{Binding VdMin, UpdateSourceTrigger=LostFocus}" Classes="filterInput" Margin="8,2,2,2"/>
+                                    <TextBlock Text="to" Classes="filterLabel" Margin="4,0"/>
+                                    <TextBox Text="{Binding VdMax, UpdateSourceTrigger=LostFocus}" Classes="filterInput"/>
+                                </WrapPanel>
+
+                                <!-- Filter 6: DPgF Range -->
+                                <WrapPanel Margin="0,2">
+                                    <CheckBox Content="DPgF" IsChecked="{Binding DPgFRangeEnabled}" VerticalAlignment="Center"/>
+                                    <TextBox Text="{Binding DPgFMin, UpdateSourceTrigger=LostFocus}" Classes="filterInput" Margin="8,2,2,2"/>
+                                    <TextBlock Text="to" Classes="filterLabel" Margin="4,0"/>
+                                    <TextBox Text="{Binding DPgFMax, UpdateSourceTrigger=LostFocus}" Classes="filterInput"/>
+                                </WrapPanel>
+
+                                <!-- Filter 7: TCE Range -->
+                                <WrapPanel Margin="0,2">
+                                    <CheckBox Content="TCE" IsChecked="{Binding TCERangeEnabled}" VerticalAlignment="Center"/>
+                                    <TextBox Text="{Binding TCEMin, UpdateSourceTrigger=LostFocus}" Classes="filterInput" Margin="8,2,2,2"/>
+                                    <TextBlock Text="to" Classes="filterLabel" Margin="4,0"/>
+                                    <TextBox Text="{Binding TCEMax, UpdateSourceTrigger=LostFocus}" Classes="filterInput"/>
+                                </WrapPanel>
+
+                                <!-- Filter 8: Min Wavelength -->
+                                <WrapPanel Margin="0,2">
+                                    <CheckBox Content="Min λ ≤" IsChecked="{Binding MinWavelengthEnabled}" VerticalAlignment="Center"/>
+                                    <TextBox Text="{Binding MinWavelengthValue, UpdateSourceTrigger=LostFocus}" Classes="filterInput" Margin="4,2"/>
+                                    <TextBlock Text="μm" Classes="filterLabel" Margin="4,0"/>
+                                </WrapPanel>
+
+                                <!-- Filter 9: Max Wavelength -->
+                                <WrapPanel Margin="0,2">
+                                    <CheckBox Content="Max λ ≥" IsChecked="{Binding MaxWavelengthEnabled}" VerticalAlignment="Center"/>
+                                    <TextBox Text="{Binding MaxWavelengthValue, UpdateSourceTrigger=LostFocus}" Classes="filterInput" Margin="4,2"/>
+                                    <TextBlock Text="μm" Classes="filterLabel" Margin="4,0"/>
+                                </WrapPanel>
+
+                                <!-- Filter 10: Melt Frequency -->
+                                <WrapPanel Margin="0,2">
+                                    <CheckBox Content="Melt Freq ≤" IsChecked="{Binding MeltFrequencyEnabled}" VerticalAlignment="Center"/>
+                                    <TextBox Text="{Binding MeltFrequencyLimit, UpdateSourceTrigger=LostFocus}" Classes="filterInput" Margin="4,2"/>
+                                    <TextBlock Text="(1-5)" Classes="filterLabel" Margin="4,0"/>
+                                </WrapPanel>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </DockPanel>
+                </Border>
+            </Grid>
+
+            <!-- Splitter -->
+            <GridSplitter Grid.Row="2" Height="4" HorizontalAlignment="Stretch"
+                          Background="Transparent" ResizeDirection="Rows"/>
+
+            <!-- Bottom Row: Generated Glass List + Details -->
+            <Grid Grid.Row="3" ColumnDefinitions="*,220">
+
+                <!-- Glass DataGrid -->
+                <Border Grid.Column="0" BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
+                        BorderThickness="1" CornerRadius="4" Padding="8" Margin="0,0,4,0">
+                    <DockPanel>
+                        <TextBlock DockPanel.Dock="Top" Text="Generated Glass List" Classes="sectionHeader"/>
+
+                        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,4,0,0">
+                            <Button Content="Remove Selected" Command="{Binding RemoveGlassCommand}" Padding="12,4"/>
+                            <TextBlock Text="  Sort By:" VerticalAlignment="Center" Margin="16,0,4,0"/>
+                            <ComboBox ItemsSource="{Binding SortOptions}"
+                                      SelectedItem="{Binding SelectedSort}"
+                                      Width="120"/>
+                        </StackPanel>
+
+                        <DataGrid ItemsSource="{Binding GeneratedGlasses}"
+                                  SelectedItem="{Binding SelectedGlass}"
+                                  AutoGenerateColumns="False"
+                                  IsReadOnly="True"
+                                  CanUserSortColumns="True"
+                                  SelectionMode="Single"
+                                  GridLinesVisibility="Horizontal"
+                                  HeadersVisibility="Column">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="120"/>
+                                <DataGridTextColumn Header="Catalog" Binding="{Binding CatalogName}" Width="80"/>
+                                <DataGridTextColumn Header="Status" Binding="{Binding StatusText}" Width="70"/>
+                                <DataGridTextColumn Header="Nd" Binding="{Binding Nd, StringFormat=\{0:F4\}}" Width="70"/>
+                                <DataGridTextColumn Header="Vd" Binding="{Binding Vd, StringFormat=\{0:F2\}}" Width="65"/>
+                                <DataGridTextColumn Header="DPgF" Binding="{Binding DPgF, StringFormat=\{0:F4\}}" Width="70"/>
+                                <DataGridTextColumn Header="TCE" Binding="{Binding TCE, StringFormat=\{0:F1\}}" Width="55"/>
+                                <DataGridTextColumn Header="Density" Binding="{Binding Density, StringFormat=\{0:F2\}}" Width="65"/>
+                                <DataGridTextColumn Header="Cost" Binding="{Binding RelativeCost, StringFormat=\{0:F1\}}" Width="50"/>
+                                <DataGridTextColumn Header="Melt" Binding="{Binding MeltFrequencyText}" Width="45"/>
+                                <DataGridTextColumn Header="λ Range" Binding="{Binding WavelengthRange}" Width="110"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </DockPanel>
+                </Border>
+
+                <!-- Details Panel -->
+                <Border Grid.Column="1" BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
+                        BorderThickness="1" CornerRadius="4" Padding="8" Margin="4,0,0,0">
+                    <DockPanel>
+                        <TextBlock DockPanel.Dock="Top" Text="Details" Classes="sectionHeader"/>
+                        <ScrollViewer>
+                            <StackPanel DataContext="{Binding SelectedGlass}" x:DataType="m:GlassEntry">
+                                <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="14" Margin="0,0,0,8"/>
+
+                                <TextBlock Text="Status" Classes="detailLabel"/>
+                                <TextBlock Text="{Binding StatusText}" Classes="detailValue" FontWeight="SemiBold"/>
+
+                                <TextBlock Text="Nd" Classes="detailLabel"/>
+                                <TextBlock Text="{Binding Nd, StringFormat=\{0:F6\}}" Classes="detailValue"/>
+
+                                <TextBlock Text="Vd" Classes="detailLabel"/>
+                                <TextBlock Text="{Binding Vd, StringFormat=\{0:F4\}}" Classes="detailValue"/>
+
+                                <TextBlock Text="DPgF" Classes="detailLabel"/>
+                                <TextBlock Text="{Binding DPgF, StringFormat=\{0:F5\}}" Classes="detailValue"/>
+
+                                <TextBlock Text="Relative Cost" Classes="detailLabel"/>
+                                <TextBlock Text="{Binding RelativeCost, StringFormat=\{0:F1\}}" Classes="detailValue"/>
+
+                                <TextBlock Text="TCE (x10^-6/C)" Classes="detailLabel"/>
+                                <TextBlock Text="{Binding TCE, StringFormat=\{0:F2\}}" Classes="detailValue"/>
+
+                                <TextBlock Text="Melt Frequency" Classes="detailLabel"/>
+                                <TextBlock Text="{Binding MeltFrequencyText}" Classes="detailValue"/>
+
+                                <TextBlock Text="Density (g/cm3)" Classes="detailLabel"/>
+                                <TextBlock Text="{Binding Density, StringFormat=\{0:F2\}}" Classes="detailValue"/>
+
+                                <TextBlock Text="λ Range (μm)" Classes="detailLabel"/>
+                                <TextBlock Text="{Binding WavelengthRange}" Classes="detailValue"/>
+
+                                <TextBlock Text="Resistance" Classes="detailLabel"/>
+                                <TextBlock Text="{Binding ResistanceRatings}" TextWrapping="Wrap" Classes="detailValue"/>
+
+                                <TextBlock Text="Catalog" Classes="detailLabel"/>
+                                <TextBlock Text="{Binding CatalogName}" Classes="detailValue"/>
+
+                                <TextBlock Text="Comment" Classes="detailLabel" Margin="0,8,0,0"/>
+                                <TextBlock Text="{Binding Comment}" TextWrapping="Wrap" Foreground="Gray"/>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </DockPanel>
+                </Border>
+            </Grid>
+
+            <!-- Export Bar -->
+            <Grid Grid.Row="4" Margin="0,8,0,0" ColumnDefinitions="Auto,200,Auto,*,Auto">
+                <TextBlock Grid.Column="0" Text="Catalog Name:" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                <TextBox Grid.Column="1" Text="{Binding CatalogName}" Padding="4,3"/>
+                <Button Grid.Column="2" Content="Save Catalog" Command="{Binding SaveCatalogCommand}"
+                        Padding="16,6" Margin="8,0,0,0"/>
+                <Button Grid.Column="4" Content="Close" Click="Close_Click"
+                        Padding="16,6" HorizontalAlignment="Right"/>
+            </Grid>
+        </Grid>
+    </DockPanel>
+</Window>

@@ -1,0 +1,21 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="LensHH.App.Views.ActivationDialog"
+        Title="Activate License"
+        Icon="avares://LensHH.App/Assets/icon_256.png"
+        Width="450" Height="200"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False">
+  <StackPanel Margin="20" Spacing="12">
+    <TextBlock Text="Enter your license key:" />
+    <TextBox x:Name="LicenseKeyBox"
+             Watermark="LHLT-XXXX-XXXX-XXXX-XXXX"
+             FontFamily="Consolas,Courier New,monospace"
+             FontSize="14" />
+    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
+      <Button Content="Cancel" Click="Cancel_Click" Width="80" />
+      <Button Content="Activate" Click="Activate_Click" Width="100"
+              Classes="accent" />
+    </StackPanel>
+  </StackPanel>
+</Window>

@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <RootNamespace>LensHH.Core.IO</RootNamespace>
+    <AssemblyName>LensHH.IO</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="LensHH.Core">
+      <HintPath>..\..\engine\LensHH.Core.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Text.Json" Version="8.0.5" />
+  </ItemGroup>
+
+</Project>

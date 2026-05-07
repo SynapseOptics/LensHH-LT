@@ -1,0 +1,31 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="LensHH.App.Views.FrequencyInputDialog"
+        Title="Spatial Frequencies"
+        Icon="avares://LensHH.App/Assets/icon_256.png"
+        Width="300" Height="220"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False">
+
+  <DockPanel Margin="12">
+    <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal"
+                HorizontalAlignment="Right" Spacing="8" Margin="0,12,0,0">
+      <Button Content="OK" Click="OK_Click" Width="70" />
+      <Button Content="Cancel" Click="Cancel_Click" Width="70" IsCancel="True" />
+    </StackPanel>
+
+    <Grid RowDefinitions="Auto,8,Auto,8,Auto,8,Auto" ColumnDefinitions="Auto,8,*">
+      <TextBlock Grid.Row="0" Grid.Column="0" x:Name="Freq1Label" Text="Frequency 1 (cy/mm):" VerticalAlignment="Center" />
+      <TextBox Grid.Row="0" Grid.Column="2" x:Name="Freq1Box" Text="50" />
+
+      <TextBlock Grid.Row="2" Grid.Column="0" x:Name="Freq2Label" Text="Frequency 2 (cy/mm):" VerticalAlignment="Center" />
+      <TextBox Grid.Row="2" Grid.Column="2" x:Name="Freq2Box" Text="100" />
+
+      <TextBlock Grid.Row="4" Grid.Column="0" x:Name="Freq3Label" Text="Frequency 3 (cy/mm):" VerticalAlignment="Center" />
+      <TextBox Grid.Row="4" Grid.Column="2" x:Name="Freq3Box" Text="" />
+
+      <TextBlock Grid.Row="6" Grid.ColumnSpan="3" Text="Leave blank to skip. At least one required."
+                 FontSize="11" Foreground="#888" />
+    </Grid>
+  </DockPanel>
+</Window>

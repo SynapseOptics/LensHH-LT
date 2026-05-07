@@ -1,0 +1,107 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:LensHH.App.ViewModels"
+        x:Class="LensHH.App.Views.OptimizationDialog"
+        x:DataType="vm:OptimizationDialogViewModel"
+        Title="Local Optimization"
+        Icon="avares://LensHH.App/Assets/icon_256.png"
+        Width="820" Height="620"
+        WindowStartupLocation="CenterOwner"
+        CanResize="True"
+        MinWidth="700" MinHeight="500">
+
+  <DockPanel Margin="12">
+
+    <!-- ═══ Bottom Buttons ═══ -->
+    <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal"
+                HorizontalAlignment="Right" Spacing="8" Margin="0,10,0,0">
+      <Button Content="OK — Accept Results" Click="OK_Click" Width="180"
+              IsEnabled="{Binding IsComplete}" FontWeight="SemiBold" />
+      <Button Content="Cancel — Revert" Click="Cancel_Click" Width="150" IsCancel="True" />
+    </StackPanel>
+
+    <!-- ═══ Top: Settings + Controls ═══ -->
+    <Border DockPanel.Dock="Top" BorderBrush="#CCC" BorderThickness="1"
+            CornerRadius="4" Padding="12,8" Margin="0,0,0,8">
+      <Grid ColumnDefinitions="Auto,12,Auto,40,Auto,40,Auto,12,Auto,*,Auto" RowDefinitions="Auto">
+        <!-- Max Iterations -->
+        <TextBlock Grid.Column="0" Text="Max Iterations:" VerticalAlignment="Center" />
+        <TextBox Grid.Column="2" Text="{Binding MaxIterations, UpdateSourceTrigger=LostFocus}" Width="70"
+                 IsEnabled="{Binding !IsRunning}" />
+
+        <!-- Broyden checkbox -->
+        <CheckBox Grid.Column="4" Content="Broyden Update"
+                  IsChecked="{Binding UseBroydenUpdate}"
+                  IsEnabled="{Binding !IsRunning}"
+                  VerticalAlignment="Center" />
+
+        <!-- Init Damp -->
+        <TextBlock Grid.Column="6" Text="Init Damp:" VerticalAlignment="Center" />
+        <TextBox Grid.Column="8" Text="{Binding InitialDamping, UpdateSourceTrigger=LostFocus}" Width="80"
+                 IsEnabled="{Binding !IsRunning}"
+                 ToolTip.Tip="Levenberg–Marquardt initial damping. 1e-3 (default) is the across-the-board default — robust on aspheric mixes and well-conditioned problems alike. Drop to 1e-6 for gauss-newton-like behavior on very smooth, well-scaled designs; raise to 1e-2 if the optimizer keeps rejecting steps early." />
+
+        <!-- Start / Stop -->
+        <StackPanel Grid.Column="10" Orientation="Horizontal" Spacing="8">
+          <Button Content="Start" Command="{Binding StartOptimizationCommand}"
+                  IsEnabled="{Binding !IsRunning}" Width="80" />
+          <Button Content="Stop" Command="{Binding StopOptimizationCommand}"
+                  IsEnabled="{Binding IsRunning}" Width="80" />
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <!-- ═══ Status Bar ═══ -->
+    <Border DockPanel.Dock="Top" Background="#F5F5F5" CornerRadius="4"
+            Padding="12,8" Margin="0,0,0,8">
+      <Grid ColumnDefinitions="*,Auto,20,Auto,20,Auto" RowDefinitions="Auto,4,Auto">
+        <!-- Row 0: status + elapsed -->
+        <TextBlock Grid.Row="0" Grid.Column="0" Text="{Binding StatusText}"
+                   FontWeight="SemiBold" FontSize="14" />
+        <TextBlock Grid.Row="0" Grid.Column="3" Text="{Binding ElapsedText}"
+                   FontSize="13" />
+        <TextBlock Grid.Row="0" Grid.Column="5"
+                   Text="{Binding IterationCount, StringFormat='Iter: {0}'}"
+                   FontSize="13" />
+
+        <!-- Row 2: merit values -->
+        <TextBlock Grid.Row="2" Grid.Column="0" Text="{Binding MeritText}"
+                   FontSize="13" FontFamily="Consolas" />
+        <StackPanel Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="5"
+                    Orientation="Horizontal" Spacing="16">
+          <TextBlock Text="{Binding InitialMeritText, StringFormat='Initial: {0}'}"
+                     FontSize="12" Foreground="Gray" />
+          <TextBlock Text="{Binding BestMeritText, StringFormat='Best: {0}'}"
+                     FontSize="12" Foreground="Green" FontWeight="SemiBold" />
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <!-- ═══ Variable Comparison Table ═══ -->
+    <DataGrid ItemsSource="{Binding VariableRows}"
+              AutoGenerateColumns="False"
+              CanUserReorderColumns="False"
+              CanUserSortColumns="False"
+              GridLinesVisibility="All"
+              IsReadOnly="True"
+              FontSize="13"
+              FontFamily="Consolas">
+      <DataGrid.Styles>
+        <Style Selector="DataGridColumnHeader">
+          <Setter Property="FontWeight" Value="Bold" />
+          <Setter Property="FontSize" Value="12" />
+          <Setter Property="Padding" Value="6,4" />
+          <Setter Property="MinHeight" Value="28" />
+          <Setter Property="FontFamily" Value="Segoe UI" />
+        </Style>
+      </DataGrid.Styles>
+      <DataGrid.Columns>
+        <DataGridTextColumn Header="Variable" Binding="{Binding Description}" Width="180" />
+        <DataGridTextColumn Header="Start Value" Binding="{Binding StartValue}" Width="160" />
+        <DataGridTextColumn Header="Current Value" Binding="{Binding CurrentValue}" Width="160" />
+        <DataGridTextColumn Header="Delta" Binding="{Binding Delta}" Width="140" />
+      </DataGrid.Columns>
+    </DataGrid>
+
+  </DockPanel>
+</Window>

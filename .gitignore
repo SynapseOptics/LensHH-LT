@@ -1,0 +1,45 @@
+bin/
+obj/
+*.user
+*.suo
+.vs/
+*.DotSettings.user
+TestResults/
+
+# Microsoft Office lock files (created when a document is open).
+~$*
+
+# Core PDB must never ship in the public tree (symbol tables are
+# source-equivalent). The release DLL ships without debug symbols.
+engine/*.pdb
+
+# Installer build outputs
+installer/Output/
+installer/AppImage/
+installer/appimagetool-*.AppImage
+
+# Documentation PDF build — all outputs (PDF + intermediate HTML +
+# node_modules) are regenerated from docs/*.md by
+# installer/build-installer.bat on each installer build.
+docs/build/node_modules/
+docs/build/package-lock.json
+docs/build/LensHH-LT-docs.html
+docs/LensHH-LT-UserGuide.pdf
+docs/LensHH-LT-UserGuide-*.pdf
+docs/html/
+
+# Pre-cropped originals of User Guide screenshots — the resized
+# versions in docs/images/ are what ship.
+docs/images/_originals/
+
+# Runtime logs (per-run noise; never ship).
+logs/
+
+# User-generated filter catalogs from local testing. The
+# manufacturer AGFs in catalogs/Glass/ are tracked; everything in
+# FilteredGlassCatalogues is regenerated locally via Optimization
+# → Create Glass Catalogue — except CoreSet28.AGF, which is the
+# default filtered catalog the SPC case study and shipped samples
+# refer to and is bundled into the installer.
+catalogs/FilteredGlassCatalogues/*
+!catalogs/FilteredGlassCatalogues/CoreSet28.AGF

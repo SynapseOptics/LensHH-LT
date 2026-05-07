@@ -1,0 +1,186 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:LensHH.App.ViewModels"
+        x:Class="LensHH.App.Views.MultistartDialog"
+        x:DataType="vm:MultistartDialogViewModel"
+        Title="Multi Start Optimization"
+        Icon="avares://LensHH.App/Assets/icon_256.png"
+        Width="950" Height="700"
+        WindowStartupLocation="CenterOwner"
+        CanResize="True"
+        MinWidth="800" MinHeight="550">
+
+  <DockPanel Margin="12">
+
+    <!-- ═══ Bottom Buttons ═══ -->
+    <Grid DockPanel.Dock="Bottom" ColumnDefinitions="Auto,Auto,*,Auto,Auto"
+          Margin="0,6,0,0">
+      <Button Grid.Column="0" Content="Start" Command="{Binding StartOptimizationCommand}"
+              IsEnabled="{Binding !IsRunning}" Width="90" Margin="0,0,8,0"
+              Tag="Begin the multistart run. Progress appears in the tables below; use Stop to cancel cleanly."
+              PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited" />
+      <Button Grid.Column="1" Content="Stop" Command="{Binding StopOptimizationCommand}"
+              IsEnabled="{Binding IsRunning}" Width="90"
+              Tag="Cancel the run. The design is restored to the best-ever values seen so far."
+              PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited" />
+
+      <Button Grid.Column="3" Content="OK — Accept Results" Click="OK_Click" Width="180"
+              IsEnabled="{Binding IsComplete}" FontWeight="SemiBold" Margin="0,0,8,0" />
+      <Button Grid.Column="4" Content="Cancel — Revert" Click="Cancel_Click" Width="150" IsCancel="True" />
+    </Grid>
+
+    <!-- ═══ Help / description strip ═══ -->
+    <Border DockPanel.Dock="Bottom" Background="#F5F5F0" BorderBrush="#CCC"
+            BorderThickness="1" CornerRadius="3" Padding="8,4" Margin="0,6,0,0">
+      <TextBlock Text="{Binding HelpText}" FontSize="11" Foreground="#333"
+                 TextWrapping="Wrap" MinHeight="28" />
+    </Border>
+
+    <!-- ═══ Settings ═══ -->
+    <Border DockPanel.Dock="Top" BorderBrush="#CCC" BorderThickness="1"
+            CornerRadius="4" Padding="10,6" Margin="0,0,0,6">
+      <Grid ColumnDefinitions="Auto,6,70,16,Auto,6,60,16,Auto,6,60,16,Auto,6,70,16,Auto,6,60,*"
+            RowDefinitions="Auto,6,Auto,6,Auto">
+        <!-- Row 0 -->
+        <TextBlock Grid.Row="0" Grid.Column="0" Text="Trials:" VerticalAlignment="Center" />
+        <TextBox Grid.Row="0" Grid.Column="2" Text="{Binding MaxTrials, UpdateSourceTrigger=LostFocus}" IsEnabled="{Binding !IsRunning}"
+                 Tag="Maximum number of randomization trials. Each trial perturbs the design, runs a short LM, and keeps the result only if the merit improves. More trials = better chance of escaping local minima."
+                 PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"
+                 GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
+
+        <TextBlock Grid.Row="0" Grid.Column="4" Text="LM/Trial:" VerticalAlignment="Center" />
+        <TextBox Grid.Row="0" Grid.Column="6" Text="{Binding LmIterationsPerTrial, UpdateSourceTrigger=LostFocus}" IsEnabled="{Binding !IsRunning}"
+                 Tag="Maximum Levenberg–Marquardt iterations run after each randomization. Deeper local refinement per trial, at the cost of slower overall throughput."
+                 PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"
+                 GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
+
+        <TextBlock Grid.Row="0" Grid.Column="8" Text="Init LM:" VerticalAlignment="Center" />
+        <TextBox Grid.Row="0" Grid.Column="10" Text="{Binding InitialLmIterations, UpdateSourceTrigger=LostFocus}" IsEnabled="{Binding !IsRunning}"
+                 Tag="Iterations for the one-time LM pass run on the starting design before any randomization. Establishes the baseline merit all trials are compared against."
+                 PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"
+                 GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
+
+        <TextBlock Grid.Row="0" Grid.Column="12" Text="Init Sigma:" VerticalAlignment="Center" />
+        <TextBox Grid.Row="0" Grid.Column="14" Text="{Binding InitialSigma, UpdateSourceTrigger=LostFocus}" IsEnabled="{Binding !IsRunning}"
+                 Tag="Initial perturbation magnitude. Sigma starts here at every batch and after every accepted improvement. Each rejected batch grows sigma by ×1.5; when sigma crosses the cap it snaps back to this value (sawtooth) — that snap-back is what lets LM mine each new basin instead of permanently flailing at large sigma. Default 0.001 (gentle), matching the BH+LM reference."
+                 PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"
+                 GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
+
+        <TextBlock Grid.Row="0" Grid.Column="16" Text="Sigma Cap:" VerticalAlignment="Center" />
+        <TextBox Grid.Row="0" Grid.Column="18" Text="{Binding SigmaCap, UpdateSourceTrigger=LostFocus}" IsEnabled="{Binding !IsRunning}"
+                 Tag="When sigma grows past this value it snaps back to Init Sigma. Default 2.0. Higher = wider exploration before reset; lower = more frequent reset cycles."
+                 PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"
+                 GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
+
+        <!-- Row 1 -->
+        <TextBlock Grid.Row="2" Grid.Column="0" Text="Glass Sub %:" VerticalAlignment="Center" />
+        <TextBox Grid.Row="2" Grid.Column="2" Text="{Binding GlassSubstitutionProbability, UpdateSourceTrigger=LostFocus}" IsEnabled="{Binding !IsRunning}"
+                 Tag="Per-trial probability (%) that an eligible surface's glass is swapped for a random one from its assigned catalog. Eligibility comes from Optimization → Glass Substitution Settings. 0 = disabled."
+                 PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"
+                 GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
+
+        <CheckBox Grid.Row="2" Grid.Column="4" Grid.ColumnSpan="3" Content="Constrained Only"
+                  IsChecked="{Binding ConstrainedOnly}" IsEnabled="{Binding !IsRunning}" VerticalAlignment="Center"
+                  Tag="Restrict randomization to variables that have at least one bound (min, max, or both). Variables with no bounds at all are frozen at their current value between trials."
+                  PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"
+                  GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
+
+        <CheckBox Grid.Row="2" Grid.Column="8" Grid.ColumnSpan="3" Content="Broyden Update"
+                  IsChecked="{Binding UseBroydenUpdate}" IsEnabled="{Binding !IsRunning}" VerticalAlignment="Center"
+                  Tag="Inside each trial's LM, update the Jacobian using cheap Broyden rank-1 updates between full finite-difference refreshes. Usually faster; turn off for very ill-conditioned problems."
+                  PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"
+                  GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
+
+        <CheckBox Grid.Row="2" Grid.Column="12" Grid.ColumnSpan="3" Content="Metropolis Acceptance"
+                  IsChecked="{Binding EnableMetropolis}" IsEnabled="{Binding !IsRunning}" VerticalAlignment="Center"
+                  Tag="When on, the optimizer keeps a 'currentCenter' state separate from 'best' and may occasionally accept a worse-than-best basin as the new center with probability exp(-dM/T), letting it walk out of basins it has already mined. Best is always updated by strict improvement only — the returned design is monotone. Temperature autotunes from the first 10 |dM| samples."
+                  PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"
+                  GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
+
+        <TextBlock Grid.Row="2" Grid.Column="16" Text="HJ Steps:" VerticalAlignment="Center" />
+        <TextBox Grid.Row="2" Grid.Column="18" Text="{Binding HjStepsPerTrial, UpdateSourceTrigger=LostFocus}" IsEnabled="{Binding !IsRunning}"
+                 Tag="Hooke-Jeeves probe steps run before the LM in each trial. HJ doesn't use Jacobians, so it can navigate merit-function discontinuities (vignetting, ray-trace failures, glass-boundary jumps) where LM gets trapped. After HJ has nudged the design across a ridge, LM finishes on the smooth side. Default 15. Set 0 to disable."
+                 PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"
+                 GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
+
+        <!-- Row 4: LM tunables -->
+        <TextBlock Grid.Row="4" Grid.Column="0" Text="Init Damp:" VerticalAlignment="Center" />
+        <TextBox Grid.Row="4" Grid.Column="2" Text="{Binding InitialDamping, UpdateSourceTrigger=LostFocus}" IsEnabled="{Binding !IsRunning}"
+                 Tag="Levenberg–Marquardt initial damping. 1e-3 (default) is the across-the-board default — robust on aspheric mixes and well-conditioned problems alike. Drop to 1e-6 for gauss-newton-like behavior on very smooth, well-scaled designs; raise to 1e-2 if the optimizer keeps rejecting steps early."
+                 PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"
+                 GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
+      </Grid>
+    </Border>
+
+    <!-- ═══ Status Bar ═══ -->
+    <Border DockPanel.Dock="Top" Background="#F5F5F5" CornerRadius="4"
+            Padding="12,6" Margin="0,0,0,6">
+      <Grid ColumnDefinitions="*,Auto,20,Auto,20,Auto" RowDefinitions="Auto,4,Auto">
+        <TextBlock Grid.Row="0" Grid.Column="0" Text="{Binding StatusText}"
+                   FontWeight="SemiBold" FontSize="14" />
+        <TextBlock Grid.Row="0" Grid.Column="3" Text="{Binding ElapsedText}" FontSize="13" />
+        <TextBlock Grid.Row="0" Grid.Column="5"
+                   Text="{Binding TrialsAccepted, StringFormat='Accepted: {0}'}" FontSize="13" />
+
+        <TextBlock Grid.Row="2" Grid.Column="0" Text="{Binding MeritText}"
+                   FontSize="13" FontFamily="Consolas" />
+        <StackPanel Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="5"
+                    Orientation="Horizontal" Spacing="16">
+          <TextBlock Text="{Binding InitialMeritText, StringFormat='Initial: {0}'}"
+                     FontSize="12" Foreground="Gray" />
+          <TextBlock Text="{Binding PostLmMeritText, StringFormat='Post-LM: {0}'}"
+                     FontSize="12" Foreground="Gray" />
+          <TextBlock Text="{Binding CurrentMeritText, StringFormat='Current: {0}'}"
+                     FontSize="12" Foreground="#888" />
+          <TextBlock Text="{Binding BestMeritText, StringFormat='Best: {0}'}"
+                     FontSize="12" Foreground="Green" FontWeight="SemiBold" />
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <!-- ═══ Tables: Variables + Glasses side by side ═══ -->
+    <Grid ColumnDefinitions="*,8,Auto">
+
+      <!-- Variable table -->
+      <DataGrid Grid.Column="0" ItemsSource="{Binding VariableRows}"
+                AutoGenerateColumns="False" CanUserSortColumns="False"
+                GridLinesVisibility="All" IsReadOnly="True"
+                FontSize="13" FontFamily="Consolas">
+        <DataGrid.Styles>
+          <Style Selector="DataGridColumnHeader">
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Padding" Value="6,4" />
+            <Setter Property="FontFamily" Value="Segoe UI" />
+          </Style>
+        </DataGrid.Styles>
+        <DataGrid.Columns>
+          <DataGridTextColumn Header="Variable" Binding="{Binding Description}" Width="160" />
+          <DataGridTextColumn Header="Start" Binding="{Binding StartValue}" Width="130" />
+          <DataGridTextColumn Header="Best" Binding="{Binding CurrentValue}" Width="130" />
+          <DataGridTextColumn Header="Delta" Binding="{Binding Delta}" Width="120" />
+        </DataGrid.Columns>
+      </DataGrid>
+
+      <!-- Glass table -->
+      <DataGrid Grid.Column="2" ItemsSource="{Binding GlassRows}"
+                AutoGenerateColumns="False" CanUserSortColumns="False"
+                GridLinesVisibility="All" IsReadOnly="True"
+                FontSize="13" MinWidth="240">
+        <DataGrid.Styles>
+          <Style Selector="DataGridColumnHeader">
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Padding" Value="6,4" />
+          </Style>
+        </DataGrid.Styles>
+        <DataGrid.Columns>
+          <DataGridTextColumn Header="Surface" Binding="{Binding SurfaceIndex}" Width="65" />
+          <DataGridTextColumn Header="Start Glass" Binding="{Binding StartGlass}" Width="100" />
+          <DataGridTextColumn Header="Best Glass" Binding="{Binding CurrentGlass}" Width="100" />
+        </DataGrid.Columns>
+      </DataGrid>
+    </Grid>
+
+  </DockPanel>
+</Window>

@@ -1,0 +1,60 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:LensHH.App.ViewModels"
+        x:Class="LensHH.App.Views.SystemEditorDialog"
+        x:DataType="vm:SystemEditorViewModel"
+        Title="System Editor"
+        Icon="avares://LensHH.App/Assets/icon_256.png"
+        Width="370" Height="410"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False">
+
+  <StackPanel Margin="16" Spacing="12">
+    <!-- Title -->
+    <DockPanel>
+      <TextBlock Text="Title:" Width="120" VerticalAlignment="Center" />
+      <TextBox Text="{Binding Title, UpdateSourceTrigger=LostFocus}" HorizontalAlignment="Stretch" />
+    </DockPanel>
+
+    <!-- Aperture Type -->
+    <DockPanel>
+      <TextBlock Text="Aperture Type:" Width="120" VerticalAlignment="Center" />
+      <ComboBox ItemsSource="{Binding ApertureTypes}"
+                SelectedItem="{Binding ApertureType}"
+                HorizontalAlignment="Stretch" />
+    </DockPanel>
+
+    <!-- Aperture Value -->
+    <DockPanel>
+      <TextBlock Text="Aperture Value:" Width="120" VerticalAlignment="Center" />
+      <TextBox Text="{Binding ApertureValue, UpdateSourceTrigger=LostFocus}" HorizontalAlignment="Stretch" />
+    </DockPanel>
+
+    <!-- Field Type -->
+    <DockPanel>
+      <TextBlock Text="Field Type:" Width="120" VerticalAlignment="Center" />
+      <ComboBox ItemsSource="{Binding FieldTypes}"
+                SelectedItem="{Binding FieldType}"
+                HorizontalAlignment="Stretch" />
+    </DockPanel>
+
+    <!-- Validation message (inline, no button needed) -->
+    <TextBlock Text="{Binding ValidationMessage}"
+               Foreground="Red" FontSize="12" TextWrapping="Wrap"
+               IsVisible="{Binding ValidationMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+
+    <!-- Afocal -->
+    <CheckBox Content="Afocal" IsChecked="{Binding IsAfocal}" />
+
+    <!-- Ray Aiming -->
+    <CheckBox Content="Real Ray Aiming" IsChecked="{Binding RayAiming}" />
+    <CheckBox Content="Robust Ray Aiming (wide angle)" IsChecked="{Binding RobustRayAiming}"
+              IsEnabled="{Binding RayAiming}" Margin="20,0,0,0" />
+
+    <!-- Buttons -->
+    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,8,0,0">
+      <Button Content="OK" Click="OK_Click" Width="80" />
+      <Button Content="Cancel" Click="Cancel_Click" Width="80" IsCancel="True" />
+    </StackPanel>
+  </StackPanel>
+</Window>

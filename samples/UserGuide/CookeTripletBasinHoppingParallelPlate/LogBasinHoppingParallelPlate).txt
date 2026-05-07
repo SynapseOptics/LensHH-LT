@@ -1,0 +1,478 @@
+Glass source: CoreSet28 (28 glasses)
+Substitution-eligible elements: 3 of 3 (every glass has ≥1 active variable)
+Hop   1 [ACC] merit=2.25475E+000  best=2.25475E+000
+Hop   2 [ACC] merit=6.70072E-001  best=6.70072E-001  glass-swaps=1
+Hop   3 [ACC] merit=2.70982E-001  best=2.70982E-001
+Hop   4 [ACC] merit=8.47023E-002  best=8.47023E-002  glass-swaps=1
+Hop   5 [rej] merit=9.35087E-002  best=8.47023E-002  glass-swaps=2
+Hop   6 [ACC] merit=7.45752E-002  best=7.45752E-002  glass-swaps=1
+Hop   7 [ACC] merit=4.88929E-002  best=4.88929E-002  glass-swaps=1
+Hop   8 [rej] merit=1.00755E-001  best=4.88929E-002  glass-swaps=1
+Hop   9 [ACC] merit=3.55876E-002  best=3.55876E-002
+Hop  10 [ACC] merit=3.55551E-002  best=3.55551E-002  glass-swaps=1
+Hop  11 [rej] merit=2.93763E+000  best=3.55551E-002  glass-swaps=2
+Hop  12 [rej] merit=6.40118E-001  best=3.55551E-002  glass-swaps=1
+Hop  13 [rej] merit=3.12402E+000  best=3.55551E-002  glass-swaps=1
+Hop  14 [rej] merit=1.25963E+000  best=3.55551E-002  glass-swaps=1
+Hop  15 [rej] merit=4.31286E-002  best=3.55551E-002
+Hop  16 [rej] merit=2.48954E+000  best=3.55551E-002
+Hop  17 [rej] merit=8.42191E+000  best=3.55551E-002  glass-swaps=1
+Hop  18 [rej] merit=3.88928E+002  best=3.55551E-002  glass-swaps=2
+Hop  19 [rej] merit=6.00436E-001  best=3.55551E-002  glass-swaps=2
+Hop  20 [rej] merit=1.70883E+004  best=3.55551E-002  glass-swaps=2
+Hop  21 [rej] merit=2.46908E+000  best=3.55551E-002
+Hop  22 [rej] merit=2.36933E+004  best=3.55551E-002
+Hop  23 [rej] merit=1.10993E+004  best=3.55551E-002
+Hop  24 [rej] merit=9.28595E+004  best=3.55551E-002  glass-swaps=2
+Hop  25 [rej] merit=1.13709E+005  best=3.55551E-002  glass-swaps=1
+Hop  26 [rej] merit=1.13709E+005  best=3.55551E-002  glass-swaps=1
+Hop  27 [rej] merit=2.36956E+004  best=3.55551E-002  glass-swaps=1
+Hop  28 [rej] merit=1.13709E+005  best=3.55551E-002
+Hop  29 [rej] merit=1.13709E+005  best=3.55551E-002  glass-swaps=1
+Hop  30 [rej] merit=3.91767E-002  best=3.55551E-002  glass-swaps=1
+Hop  31 [rej] merit=5.70961E-001  best=3.55551E-002  glass-swaps=2
+Hop  32 [rej] merit=1.17596E-001  best=3.55551E-002
+Hop  33 [rej] merit=3.83463E-002  best=3.55551E-002  glass-swaps=1
+Hop  34 [rej] merit=4.56204E+000  best=3.55551E-002  glass-swaps=1
+Hop  35 [rej] merit=5.09143E-001  best=3.55551E-002  glass-swaps=1
+Hop  36 [ACC] merit=2.45786E-002  best=2.45786E-002
+Hop  37 [ACC] merit=2.42922E-002  best=2.42922E-002  glass-swaps=1
+Hop  38 [ACC] merit=7.85103E-003  best=7.85103E-003
+Hop  39 [ACC] merit=7.20147E-003  best=7.20147E-003
+Hop  40 [ACC] merit=5.96980E-003  best=5.96980E-003  glass-swaps=1
+Hop  41 [rej] merit=6.87329E-002  best=5.96980E-003  glass-swaps=2
+Hop  42 [rej] merit=2.99174E-002  best=5.96980E-003  glass-swaps=1
+Hop  43 [rej] merit=5.84647E-002  best=5.96980E-003  glass-swaps=2
+Hop  44 [rej] merit=6.34912E-003  best=5.96980E-003
+Hop  45 [ACC] merit=4.76363E-003  best=4.76363E-003
+Hop  46 [ACC] merit=3.86497E-003  best=3.86497E-003
+Hop  47 [rej] merit=3.88378E-003  best=3.86497E-003
+Hop  48 [rej] merit=4.38028E-001  best=3.86497E-003  glass-swaps=1
+Hop  49 [rej] merit=2.95614E-002  best=3.86497E-003  glass-swaps=1
+Hop  50 [ACC] merit=3.84730E-003  best=3.84730E-003
+Hop  51 [rej] merit=2.32989E-001  best=3.84730E-003  glass-swaps=1
+Hop  52 [rej] merit=1.28266E-002  best=3.84730E-003  glass-swaps=1
+Hop  53 [rej] merit=1.94491E-001  best=3.84730E-003
+Hop  54 [rej] merit=3.88459E-003  best=3.84730E-003
+Hop  55 [rej] merit=1.34377E+000  best=3.84730E-003  glass-swaps=3
+Hop  56 [ACC] merit=3.58753E-003  best=3.58753E-003  glass-swaps=1
+Hop  57 [rej] merit=2.38919E-001  best=3.58753E-003  glass-swaps=3
+Hop  58 [rej] merit=2.54324E-001  best=3.58753E-003  glass-swaps=2
+Hop  59 [rej] merit=1.60479E-001  best=3.58753E-003  glass-swaps=2
+Hop  60 [rej] merit=3.69494E-003  best=3.58753E-003
+Hop  61 [rej] merit=4.95307E-002  best=3.58753E-003  glass-swaps=1
+Hop  62 [rej] merit=2.98516E-002  best=3.58753E-003  glass-swaps=3
+Hop  63 [ACC] merit=3.57528E-003  best=3.57528E-003  glass-swaps=1
+Hop  64 [ACC] merit=3.08489E-003  best=3.08489E-003
+Hop  65 [rej] merit=3.24515E-003  best=3.08489E-003  glass-swaps=1
+Hop  66 [rej] merit=1.35676E-002  best=3.08489E-003  glass-swaps=2
+Hop  67 [rej] merit=3.93880E-002  best=3.08489E-003  glass-swaps=1
+Hop  68 [rej] merit=4.22824E-003  best=3.08489E-003  glass-swaps=1
+Hop  69 [rej] merit=4.16119E-003  best=3.08489E-003  glass-swaps=1
+Hop  70 [rej] merit=3.75438E+002  best=3.08489E-003  glass-swaps=1
+Hop  71 [rej] merit=3.09575E-003  best=3.08489E-003  glass-swaps=1
+Hop  72 [rej] merit=3.66659E-003  best=3.08489E-003
+Hop  73 [rej] merit=9.63974E-001  best=3.08489E-003  glass-swaps=1
+Hop  74 [rej] merit=3.56392E+002  best=3.08489E-003
+Hop  75 [rej] merit=3.53077E+002  best=3.08489E-003  glass-swaps=1
+Hop  76 [rej] merit=3.61197E+002  best=3.08489E-003
+Hop  77 [rej] merit=9.37647E+004  best=3.08489E-003  glass-swaps=1
+Hop  78 [rej] merit=3.43837E+002  best=3.08489E-003  glass-swaps=1
+Hop  79 [rej] merit=9.07218E+004  best=3.08489E-003  glass-swaps=1
+Hop  80 [rej] merit=1.13709E+005  best=3.08489E-003
+Hop  81 [rej] merit=1.13709E+005  best=3.08489E-003  glass-swaps=1
+Hop  82 [rej] merit=1.13709E+005  best=3.08489E-003  glass-swaps=2
+Hop  83 [rej] merit=1.13709E+005  best=3.08489E-003  glass-swaps=2
+Hop  84 [ACC] merit=3.03961E-003  best=3.03961E-003
+Hop  85 [rej] merit=2.42195E+000  best=3.03961E-003  glass-swaps=1
+Hop  86 [rej] merit=2.36264E-002  best=3.03961E-003  glass-swaps=2
+Hop  87 [ACC] merit=3.02404E-003  best=3.02404E-003
+Hop  88 [rej] merit=7.92876E+000  best=3.02404E-003  glass-swaps=1
+Hop  89 [rej] merit=1.13133E-002  best=3.02404E-003  glass-swaps=2
+Hop  90 [rej] merit=5.36811E-003  best=3.02404E-003  glass-swaps=1
+Hop  91 [rej] merit=5.82682E-001  best=3.02404E-003
+Hop  92 [rej] merit=4.16953E-001  best=3.02404E-003  glass-swaps=2
+Hop  93 [rej] merit=6.91388E-002  best=3.02404E-003  glass-swaps=1
+Hop  94 [rej] merit=3.10119E-003  best=3.02404E-003
+Hop  95 [rej] merit=9.43995E-002  best=3.02404E-003
+Hop  96 [rej] merit=1.71128E-001  best=3.02404E-003
+Hop  97 [rej] merit=8.63250E-001  best=3.02404E-003  glass-swaps=3
+Hop  98 [rej] merit=1.26454E+000  best=3.02404E-003  glass-swaps=1
+Hop  99 [rej] merit=1.13709E+005  best=3.02404E-003  glass-swaps=1
+Hop 100 [rej] merit=2.14697E+004  best=3.02404E-003  glass-swaps=1
+Hop 101 [rej] merit=3.66004E+002  best=3.02404E-003
+Hop 102 [rej] merit=6.76480E+004  best=3.02404E-003  glass-swaps=1
+Hop 103 [rej] merit=1.13709E+005  best=3.02404E-003
+Hop 104 [rej] merit=9.07218E+004  best=3.02404E-003  glass-swaps=1
+Hop 105 [rej] merit=1.13709E+005  best=3.02404E-003  glass-swaps=1
+Hop 106 [rej] merit=1.13709E+005  best=3.02404E-003
+Hop 107 [rej] merit=1.99605E-001  best=3.02404E-003  glass-swaps=2
+Hop 108 [rej] merit=8.46959E-003  best=3.02404E-003  glass-swaps=2
+Hop 109 [rej] merit=3.07469E-003  best=3.02404E-003
+Hop 110 [rej] merit=9.63541E-001  best=3.02404E-003  glass-swaps=1
+Hop 111 [rej] merit=2.62610E-002  best=3.02404E-003  glass-swaps=1
+Hop 112 [rej] merit=5.63781E-001  best=3.02404E-003  glass-swaps=2
+Hop 113 [rej] merit=3.10870E+000  best=3.02404E-003  glass-swaps=2
+Hop 114 [rej] merit=3.44089E-003  best=3.02404E-003
+Hop 115 [rej] merit=8.68493E-001  best=3.02404E-003  glass-swaps=1
+Hop 116 [rej] merit=4.06574E-002  best=3.02404E-003  glass-swaps=1
+Hop 117 [rej] merit=5.68274E+000  best=3.02404E-003  glass-swaps=2
+Hop 118 [rej] merit=4.54622E-003  best=3.02404E-003  glass-swaps=1
+Hop 119 [rej] merit=6.83864E+004  best=3.02404E-003  glass-swaps=1
+Hop 120 [rej] merit=2.46017E+000  best=3.02404E-003
+Hop 121 [rej] merit=2.36955E+004  best=3.02404E-003  glass-swaps=2
+Hop 122 [rej] merit=2.01269E+004  best=3.02404E-003
+Hop 123 [rej] merit=1.13709E+005  best=3.02404E-003  glass-swaps=1
+Hop 124 [rej] merit=1.13709E+005  best=3.02404E-003  glass-swaps=1
+Hop 125 [rej] merit=9.07639E+004  best=3.02404E-003  glass-swaps=1
+Hop 126 [rej] merit=3.02968E-003  best=3.02404E-003
+Hop 127 [rej] merit=2.65814E-002  best=3.02404E-003  glass-swaps=2
+Hop 128 [rej] merit=4.11903E-003  best=3.02404E-003  glass-swaps=1
+Hop 129 [ACC] merit=3.02290E-003  best=3.02290E-003
+Hop 130 [rej] merit=4.96697E-003  best=3.02290E-003
+Hop 131 [rej] merit=3.68585E-003  best=3.02290E-003  glass-swaps=1
+Hop 132 [rej] merit=5.88535E+000  best=3.02290E-003
+Hop 133 [rej] merit=5.38381E-002  best=3.02290E-003  glass-swaps=2
+Hop 134 [rej] merit=2.07554E-002  best=3.02290E-003  glass-swaps=2
+Hop 135 [ACC] merit=3.02268E-003  best=3.02268E-003
+Hop 136 [rej] merit=2.25782E-001  best=3.02268E-003  glass-swaps=1
+Hop 137 [rej] merit=2.00184E-002  best=3.02268E-003  glass-swaps=2
+Hop 138 [rej] merit=1.72820E-002  best=3.02268E-003  glass-swaps=1
+Hop 139 [rej] merit=4.24428E-001  best=3.02268E-003  glass-swaps=2
+Hop 140 [ACC] merit=3.02201E-003  best=3.02201E-003
+Hop 141 [rej] merit=7.27795E-002  best=3.02201E-003  glass-swaps=1
+Hop 142 [rej] merit=1.90313E-002  best=3.02201E-003  glass-swaps=1
+Hop 143 [rej] merit=4.31096E-002  best=3.02201E-003
+Hop 144 [rej] merit=1.50250E-002  best=3.02201E-003  glass-swaps=1
+Hop 145 [rej] merit=4.21588E-003  best=3.02201E-003  glass-swaps=2
+Hop 146 [rej] merit=3.04702E-003  best=3.02201E-003
+Hop 147 [rej] merit=1.44881E-002  best=3.02201E-003  glass-swaps=1
+Hop 148 [rej] merit=3.03914E-002  best=3.02201E-003  glass-swaps=2
+Hop 149 [rej] merit=3.20593E-002  best=3.02201E-003
+Hop 150 [rej] merit=6.85122E-001  best=3.02201E-003
+Hop 151 [rej] merit=5.58708E-001  best=3.02201E-003  glass-swaps=1
+Hop 152 [rej] merit=2.14723E+004  best=3.02201E-003  glass-swaps=1
+Hop 153 [rej] merit=1.13709E+005  best=3.02201E-003
+Hop 154 [rej] merit=1.70919E+004  best=3.02201E-003
+Hop 155 [rej] merit=9.07218E+004  best=3.02201E-003
+Hop 156 [rej] merit=1.13709E+005  best=3.02201E-003
+Hop 157 [rej] merit=9.07218E+004  best=3.02201E-003  glass-swaps=1
+Hop 158 [rej] merit=9.37647E+004  best=3.02201E-003  glass-swaps=1
+Hop 159 [rej] merit=9.35856E+004  best=3.02201E-003  glass-swaps=2
+Hop 160 [rej] merit=3.04701E-003  best=3.02201E-003
+Hop 161 [rej] merit=5.53005E-002  best=3.02201E-003  glass-swaps=1
+Hop 162 [rej] merit=1.51645E-002  best=3.02201E-003  glass-swaps=1
+Hop 163 [rej] merit=2.40495E-001  best=3.02201E-003
+Hop 164 [rej] merit=4.27340E+000  best=3.02201E-003
+Hop 165 [rej] merit=3.03862E-003  best=3.02201E-003
+Hop 166 [rej] merit=4.43631E-002  best=3.02201E-003  glass-swaps=2
+Hop 167 [rej] merit=2.59357E-001  best=3.02201E-003
+Hop 168 [rej] merit=1.26379E+000  best=3.02201E-003
+Hop 169 [rej] merit=3.68134E+002  best=3.02201E-003  glass-swaps=1
+Hop 170 [rej] merit=3.42785E+000  best=3.02201E-003  glass-swaps=1
+Hop 171 [rej] merit=4.01761E+002  best=3.02201E-003  glass-swaps=1
+Hop 172 [rej] merit=1.11000E+004  best=3.02201E-003
+Hop 173 [rej] merit=2.36960E+004  best=3.02201E-003  glass-swaps=1
+Hop 174 [rej] merit=9.37647E+004  best=3.02201E-003  glass-swaps=1
+Hop 175 [rej] merit=1.13709E+005  best=3.02201E-003  glass-swaps=2
+Hop 176 [rej] merit=6.83864E+004  best=3.02201E-003  glass-swaps=2
+Hop 177 [rej] merit=1.13709E+005  best=3.02201E-003  glass-swaps=1
+Hop 178 [rej] merit=1.13709E+005  best=3.02201E-003
+Hop 179 [rej] merit=5.43338E-003  best=3.02201E-003  glass-swaps=1
+Hop 180 [rej] merit=3.05135E-003  best=3.02201E-003
+Hop 181 [rej] merit=3.78244E-001  best=3.02201E-003  glass-swaps=1
+Hop 182 [rej] merit=3.02266E-003  best=3.02201E-003
+Hop 183 [rej] merit=2.98158E-002  best=3.02201E-003  glass-swaps=1
+Hop 184 [rej] merit=3.07431E-003  best=3.02201E-003  glass-swaps=1
+Hop 185 [rej] merit=8.44685E-002  best=3.02201E-003  glass-swaps=1
+Hop 186 [rej] merit=4.31036E-002  best=3.02201E-003  glass-swaps=2
+Hop 187 [rej] merit=9.32175E-003  best=3.02201E-003  glass-swaps=1
+Hop 188 [rej] merit=7.13395E-002  best=3.02201E-003
+Hop 189 [rej] merit=2.36956E+004  best=3.02201E-003  glass-swaps=2
+Hop 190 [rej] merit=4.40395E+002  best=3.02201E-003  glass-swaps=2
+Hop 191 [rej] merit=3.41066E+002  best=3.02201E-003  glass-swaps=2
+Hop 192 [rej] merit=6.74784E+004  best=3.02201E-003  glass-swaps=1
+Hop 193 [rej] merit=9.37647E+004  best=3.02201E-003
+Hop 194 [rej] merit=1.13709E+005  best=3.02201E-003
+Hop 195 [rej] merit=1.13709E+005  best=3.02201E-003  glass-swaps=2
+Hop 196 [rej] merit=1.13709E+005  best=3.02201E-003  glass-swaps=2
+Hop 197 [rej] merit=9.32837E+004  best=3.02201E-003  glass-swaps=1
+Hop 198 [rej] merit=4.98021E-001  best=3.02201E-003  glass-swaps=2
+Hop 199 [ACC] merit=3.02198E-003  best=3.02198E-003
+Hop 200 [ACC] merit=3.02175E-003  best=3.02175E-003
+Hop 201 [rej] merit=3.09174E-003  best=3.02175E-003
+Hop 202 [rej] merit=6.62076E-003  best=3.02175E-003  glass-swaps=1
+Hop 203 [rej] merit=3.97803E-001  best=3.02175E-003
+Hop 204 [rej] merit=5.07365E-003  best=3.02175E-003
+Hop 205 [rej] merit=7.80072E-003  best=3.02175E-003
+Hop 206 [rej] merit=5.55344E-003  best=3.02175E-003
+Hop 207 [rej] merit=6.47899E-001  best=3.02175E-003  glass-swaps=2
+Hop 208 [rej] merit=6.22930E+000  best=3.02175E-003  glass-swaps=1
+Hop 209 [rej] merit=3.79125E+002  best=3.02175E-003
+Hop 210 [rej] merit=2.55965E-002  best=3.02175E-003
+Hop 211 [rej] merit=3.81753E-002  best=3.02175E-003  glass-swaps=1
+Hop 212 [rej] merit=2.35786E+002  best=3.02175E-003  glass-swaps=1
+Hop 213 [rej] merit=9.37653E+004  best=3.02175E-003  glass-swaps=1
+Hop 214 [rej] merit=9.32584E+004  best=3.02175E-003  glass-swaps=1
+Hop 215 [rej] merit=2.36956E+004  best=3.02175E-003  glass-swaps=1
+Hop 216 [rej] merit=2.36955E+004  best=3.02175E-003  glass-swaps=1
+Hop 217 [rej] merit=1.13709E+005  best=3.02175E-003
+Hop 218 [rej] merit=1.13709E+005  best=3.02175E-003
+Hop 219 [rej] merit=1.13709E+005  best=3.02175E-003
+Hop 220 [rej] merit=2.17081E-002  best=3.02175E-003  glass-swaps=1
+Hop 221 [rej] merit=2.23763E-002  best=3.02175E-003  glass-swaps=2
+Hop 222 [rej] merit=3.82299E-002  best=3.02175E-003  glass-swaps=1
+Hop 223 [rej] merit=4.15659E-001  best=3.02175E-003
+Hop 224 [rej] merit=1.36613E-002  best=3.02175E-003  glass-swaps=1
+Hop 225 [rej] merit=8.99651E-001  best=3.02175E-003
+Hop 226 [rej] merit=3.13509E-003  best=3.02175E-003
+Hop 227 [rej] merit=4.41527E+000  best=3.02175E-003  glass-swaps=1
+Hop 228 [rej] merit=9.70643E+000  best=3.02175E-003  glass-swaps=1
+Hop 229 [rej] merit=1.29961E-001  best=3.02175E-003  glass-swaps=1
+Hop 230 [rej] merit=3.72828E+002  best=3.02175E-003  glass-swaps=1
+Hop 231 [rej] merit=2.14725E+004  best=3.02175E-003  glass-swaps=1
+Hop 232 [rej] merit=3.79733E+002  best=3.02175E-003  glass-swaps=2
+Hop 233 [rej] merit=2.36933E+004  best=3.02175E-003  glass-swaps=1
+Hop 234 [rej] merit=9.28602E+004  best=3.02175E-003
+Hop 235 [rej] merit=1.13709E+005  best=3.02175E-003  glass-swaps=2
+Hop 236 [rej] merit=1.13709E+005  best=3.02175E-003  glass-swaps=1
+Hop 237 [rej] merit=1.13709E+005  best=3.02175E-003  glass-swaps=1
+Hop 238 [rej] merit=1.13709E+005  best=3.02175E-003  glass-swaps=1
+Hop 239 [ACC] merit=2.64585E-003  best=2.64585E-003  glass-swaps=1
+Hop 240 [rej] merit=6.80805E-003  best=2.64585E-003
+Hop 241 [rej] merit=6.99247E-003  best=2.64585E-003  glass-swaps=1
+Hop 242 [rej] merit=4.37788E-002  best=2.64585E-003  glass-swaps=2
+Hop 243 [rej] merit=2.78777E-003  best=2.64585E-003  glass-swaps=1
+Hop 244 [ACC] merit=2.61924E-003  best=2.61924E-003  glass-swaps=1
+Hop 245 [rej] merit=5.09283E-002  best=2.61924E-003  glass-swaps=2
+Hop 246 [rej] merit=2.62304E-003  best=2.61924E-003
+Hop 247 [rej] merit=3.23802E-002  best=2.61924E-003  glass-swaps=2
+Hop 248 [rej] merit=3.83934E-002  best=2.61924E-003  glass-swaps=2
+Hop 249 [rej] merit=3.14071E-003  best=2.61924E-003  glass-swaps=1
+Hop 250 [rej] merit=2.62211E-003  best=2.61924E-003  glass-swaps=1
+Hop 251 [ACC] merit=2.60207E-003  best=2.60207E-003
+Hop 252 [ACC] merit=2.59996E-003  best=2.59996E-003
+Hop 253 [rej] merit=2.67132E-003  best=2.59996E-003  glass-swaps=1
+Hop 254 [rej] merit=2.66211E-003  best=2.59996E-003
+Hop 255 [rej] merit=2.60155E-003  best=2.59996E-003
+Hop 256 [rej] merit=4.91208E-003  best=2.59996E-003  glass-swaps=1
+Hop 257 [rej] merit=2.03493E-002  best=2.59996E-003  glass-swaps=1
+Hop 258 [rej] merit=6.50148E-003  best=2.59996E-003  glass-swaps=2
+Hop 259 [rej] merit=3.66069E-003  best=2.59996E-003
+Hop 260 [rej] merit=2.09879E-001  best=2.59996E-003  glass-swaps=2
+Hop 261 [rej] merit=2.66518E-003  best=2.59996E-003
+Hop 262 [rej] merit=5.28501E-002  best=2.59996E-003  glass-swaps=1
+Hop 263 [rej] merit=7.80107E-003  best=2.59996E-003  glass-swaps=2
+Hop 264 [rej] merit=2.36933E+004  best=2.59996E-003  glass-swaps=2
+Hop 265 [rej] merit=1.98100E+004  best=2.59996E-003  glass-swaps=2
+Hop 266 [rej] merit=4.88667E+004  best=2.59996E-003
+Hop 267 [rej] merit=9.37647E+004  best=2.59996E-003
+Hop 268 [rej] merit=1.13709E+005  best=2.59996E-003  glass-swaps=1
+Hop 269 [rej] merit=6.76474E+004  best=2.59996E-003  glass-swaps=2
+Hop 270 [rej] merit=1.13709E+005  best=2.59996E-003
+Hop 271 [rej] merit=1.13709E+005  best=2.59996E-003  glass-swaps=3
+Hop 272 [rej] merit=2.52235E-002  best=2.59996E-003  glass-swaps=2
+Hop 273 [rej] merit=2.60260E-003  best=2.59996E-003
+Hop 274 [rej] merit=5.43370E-003  best=2.59996E-003
+Hop 275 [rej] merit=2.60043E-003  best=2.59996E-003
+Hop 276 [rej] merit=2.61454E-002  best=2.59996E-003  glass-swaps=2
+Hop 277 [rej] merit=4.01041E-002  best=2.59996E-003  glass-swaps=1
+Hop 278 [rej] merit=3.32110E-002  best=2.59996E-003  glass-swaps=2
+Hop 279 [rej] merit=6.19787E-003  best=2.59996E-003
+Hop 280 [rej] merit=4.72885E-003  best=2.59996E-003
+Hop 281 [rej] merit=3.55001E-001  best=2.59996E-003  glass-swaps=1
+Hop 282 [rej] merit=9.07218E+004  best=2.59996E-003  glass-swaps=1
+Hop 283 [rej] merit=2.27686E+000  best=2.59996E-003
+Hop 284 [rej] merit=9.35288E+004  best=2.59996E-003  glass-swaps=1
+Hop 285 [rej] merit=2.14715E+004  best=2.59996E-003
+Hop 286 [rej] merit=9.37654E+004  best=2.59996E-003  glass-swaps=1
+Hop 287 [rej] merit=1.13709E+005  best=2.59996E-003
+Hop 288 [rej] merit=1.13709E+005  best=2.59996E-003  glass-swaps=2
+Hop 289 [rej] merit=1.13709E+005  best=2.59996E-003  glass-swaps=1
+Hop 290 [rej] merit=1.13709E+005  best=2.59996E-003  glass-swaps=2
+Hop 291 [rej] merit=3.80743E-003  best=2.59996E-003  glass-swaps=1
+Hop 292 [ACC] merit=2.59843E-003  best=2.59843E-003
+Hop 293 [rej] merit=1.89882E-002  best=2.59843E-003  glass-swaps=1
+Hop 294 [rej] merit=4.27945E-002  best=2.59843E-003  glass-swaps=2
+Hop 295 [rej] merit=5.26669E-002  best=2.59843E-003  glass-swaps=2
+Hop 296 [rej] merit=5.35465E-003  best=2.59843E-003  glass-swaps=1
+Hop 297 [rej] merit=2.84111E-003  best=2.59843E-003  glass-swaps=1
+Hop 298 [rej] merit=2.60117E-003  best=2.59843E-003
+Hop 299 [rej] merit=3.04192E-003  best=2.59843E-003  glass-swaps=1
+Hop 300 [rej] merit=3.58713E+002  best=2.59843E-003  glass-swaps=1
+Hop 301 [rej] merit=2.87073E-002  best=2.59843E-003  glass-swaps=2
+Hop 302 [rej] merit=2.23707E-001  best=2.59843E-003  glass-swaps=1
+Hop 303 [rej] merit=1.10938E+004  best=2.59843E-003
+Hop 304 [rej] merit=9.07218E+004  best=2.59843E-003  glass-swaps=2
+Hop 305 [rej] merit=6.76474E+004  best=2.59843E-003
+Hop 306 [rej] merit=2.14719E+004  best=2.59843E-003  glass-swaps=1
+Hop 307 [rej] merit=2.14697E+004  best=2.59843E-003  glass-swaps=1
+Hop 308 [rej] merit=1.13709E+005  best=2.59843E-003  glass-swaps=2
+Hop 309 [rej] merit=1.13709E+005  best=2.59843E-003  glass-swaps=2
+Hop 310 [rej] merit=1.13709E+005  best=2.59843E-003  glass-swaps=2
+Hop 311 [rej] merit=1.13709E+005  best=2.59843E-003  glass-swaps=2
+Hop 312 [rej] merit=2.59988E-003  best=2.59843E-003
+Hop 313 [rej] merit=4.07054E-003  best=2.59843E-003  glass-swaps=1
+Hop 314 [rej] merit=4.16827E-002  best=2.59843E-003  glass-swaps=2
+Hop 315 [rej] merit=4.10273E-003  best=2.59843E-003  glass-swaps=1
+Hop 316 [rej] merit=6.41402E-001  best=2.59843E-003
+Hop 317 [ACC] merit=2.38341E-003  best=2.38341E-003  glass-swaps=1
+Hop 318 [ACC] merit=2.38118E-003  best=2.38118E-003
+Hop 319 [rej] merit=6.43827E-003  best=2.38118E-003  glass-swaps=1
+Hop 320 [ACC] merit=2.31659E-003  best=2.31659E-003
+Hop 321 [rej] merit=3.11120E-002  best=2.31659E-003  glass-swaps=2
+Hop 322 [rej] merit=3.08596E-003  best=2.31659E-003  glass-swaps=1
+Hop 323 [rej] merit=4.05494E-002  best=2.31659E-003  glass-swaps=2
+Hop 324 [rej] merit=7.92567E-003  best=2.31659E-003  glass-swaps=1
+Hop 325 [rej] merit=3.89560E-002  best=2.31659E-003  glass-swaps=2
+Hop 326 [rej] merit=2.72617E-002  best=2.31659E-003  glass-swaps=3
+Hop 327 [rej] merit=1.39183E-001  best=2.31659E-003
+Hop 328 [rej] merit=2.63280E-002  best=2.31659E-003  glass-swaps=1
+Hop 329 [rej] merit=2.38181E-003  best=2.31659E-003
+Hop 330 [rej] merit=1.06177E+000  best=2.31659E-003  glass-swaps=1
+Hop 331 [rej] merit=2.36956E+004  best=2.31659E-003  glass-swaps=2
+Hop 332 [rej] merit=6.41510E+004  best=2.31659E-003  glass-swaps=2
+Hop 333 [rej] merit=2.36956E+004  best=2.31659E-003  glass-swaps=1
+Hop 334 [rej] merit=9.07218E+004  best=2.31659E-003  glass-swaps=1
+Hop 335 [rej] merit=2.14720E+004  best=2.31659E-003  glass-swaps=1
+Hop 336 [rej] merit=9.07226E+004  best=2.31659E-003
+Hop 337 [rej] merit=1.13709E+005  best=2.31659E-003  glass-swaps=2
+Hop 338 [rej] merit=1.13709E+005  best=2.31659E-003  glass-swaps=1
+Hop 339 [rej] merit=1.13710E+005  best=2.31659E-003
+Hop 340 [rej] merit=2.31660E-003  best=2.31659E-003
+Hop 341 [rej] merit=2.79600E-003  best=2.31659E-003  glass-swaps=1
+Hop 342 [rej] merit=4.37157E-003  best=2.31659E-003  glass-swaps=1
+Hop 343 [rej] merit=5.16195E-001  best=2.31659E-003  glass-swaps=1
+Hop 344 [rej] merit=3.26376E-003  best=2.31659E-003  glass-swaps=1
+Hop 345 [rej] merit=8.41342E-003  best=2.31659E-003  glass-swaps=1
+Hop 346 [rej] merit=4.59532E-003  best=2.31659E-003  glass-swaps=1
+Hop 347 [rej] merit=3.77054E+002  best=2.31659E-003
+Hop 348 [rej] merit=3.99718E-001  best=2.31659E-003  glass-swaps=1
+Hop 349 [rej] merit=3.66729E+002  best=2.31659E-003  glass-swaps=1
+Hop 350 [rej] merit=3.55035E+002  best=2.31659E-003  glass-swaps=2
+Hop 351 [rej] merit=6.01613E-001  best=2.31659E-003
+Hop 352 [rej] merit=9.07218E+004  best=2.31659E-003
+Hop 353 [rej] merit=6.85520E+004  best=2.31659E-003  glass-swaps=1
+Hop 354 [rej] merit=1.13709E+005  best=2.31659E-003
+Hop 355 [rej] merit=2.36947E+004  best=2.31659E-003
+Hop 356 [rej] merit=1.13709E+005  best=2.31659E-003  glass-swaps=1
+Hop 357 [rej] merit=9.10392E+004  best=2.31659E-003  glass-swaps=1
+Hop 358 [rej] merit=1.13709E+005  best=2.31659E-003  glass-swaps=2
+Hop 359 [rej] merit=7.43059E-003  best=2.31659E-003  glass-swaps=1
+Hop 360 [rej] merit=2.31659E-003  best=2.31659E-003
+Hop 361 [rej] merit=2.34647E-003  best=2.31659E-003
+Hop 362 [rej] merit=2.41592E-003  best=2.31659E-003
+Hop 363 [rej] merit=2.36259E-003  best=2.31659E-003  glass-swaps=1
+Hop 364 [ACC] merit=2.16505E-003  best=2.16505E-003  glass-swaps=1
+Hop 365 [rej] merit=6.21618E-003  best=2.16505E-003  glass-swaps=2
+Hop 366 [rej] merit=3.26815E-002  best=2.16505E-003  glass-swaps=2
+Hop 367 [rej] merit=2.51114E-002  best=2.16505E-003  glass-swaps=2
+Hop 368 [rej] merit=1.13719E-002  best=2.16505E-003  glass-swaps=2
+Hop 369 [rej] merit=6.03337E-002  best=2.16505E-003  glass-swaps=2
+Hop 370 [rej] merit=2.26402E-002  best=2.16505E-003  glass-swaps=2
+Hop 371 [rej] merit=8.08986E-003  best=2.16505E-003  glass-swaps=2
+Hop 372 [rej] merit=3.37988E-003  best=2.16505E-003  glass-swaps=1
+Hop 373 [rej] merit=3.58014E+002  best=2.16505E-003  glass-swaps=2
+Hop 374 [rej] merit=2.55215E-003  best=2.16505E-003  glass-swaps=2
+Hop 375 [rej] merit=9.07218E+004  best=2.16505E-003  glass-swaps=2
+Hop 376 [rej] merit=9.07218E+004  best=2.16505E-003  glass-swaps=1
+Hop 377 [rej] merit=9.37653E+004  best=2.16505E-003  glass-swaps=2
+Hop 378 [rej] merit=6.51022E+004  best=2.16505E-003  glass-swaps=1
+Hop 379 [rej] merit=9.38860E+004  best=2.16505E-003
+Hop 380 [rej] merit=1.13709E+005  best=2.16505E-003  glass-swaps=1
+Hop 381 [rej] merit=1.13709E+005  best=2.16505E-003  glass-swaps=3
+Hop 382 [rej] merit=1.13709E+005  best=2.16505E-003
+Hop 383 [rej] merit=1.13709E+005  best=2.16505E-003  glass-swaps=1
+Hop 384 [ACC] merit=2.16504E-003  best=2.16504E-003
+Hop 385 [rej] merit=4.38159E-002  best=2.16504E-003  glass-swaps=2
+Hop 386 [rej] merit=2.16505E-003  best=2.16504E-003
+Hop 387 [rej] merit=2.16508E-003  best=2.16504E-003
+Hop 388 [rej] merit=3.11707E-002  best=2.16504E-003  glass-swaps=1
+Hop 389 [rej] merit=2.76689E-002  best=2.16504E-003  glass-swaps=2
+Hop 390 [rej] merit=2.54842E-003  best=2.16504E-003  glass-swaps=1
+Hop 391 [rej] merit=3.25183E-003  best=2.16504E-003  glass-swaps=1
+Hop 392 [rej] merit=1.21797E-002  best=2.16504E-003  glass-swaps=1
+Hop 393 [rej] merit=5.90572E-003  best=2.16504E-003  glass-swaps=1
+Hop 394 [rej] merit=9.07218E+004  best=2.16504E-003  glass-swaps=1
+Hop 395 [rej] merit=9.07226E+004  best=2.16504E-003
+Hop 396 [rej] merit=9.07218E+004  best=2.16504E-003  glass-swaps=2
+Hop 397 [rej] merit=9.07218E+004  best=2.16504E-003  glass-swaps=1
+Hop 398 [rej] merit=6.83863E+004  best=2.16504E-003  glass-swaps=1
+Hop 399 [rej] merit=1.13709E+005  best=2.16504E-003  glass-swaps=1
+Hop 400 [rej] merit=1.13709E+005  best=2.16504E-003  glass-swaps=1
+Hop 401 [rej] merit=1.13709E+005  best=2.16504E-003  glass-swaps=3
+Hop 402 [rej] merit=9.35856E+004  best=2.16504E-003  glass-swaps=1
+Hop 403 [rej] merit=1.13709E+005  best=2.16504E-003
+Hop 404 [rej] merit=1.14177E-001  best=2.16504E-003  glass-swaps=2
+Hop 405 [rej] merit=3.98227E-003  best=2.16504E-003  glass-swaps=1
+Hop 406 [rej] merit=7.76666E-003  best=2.16504E-003  glass-swaps=1
+Hop 407 [rej] merit=3.06044E-002  best=2.16504E-003  glass-swaps=1
+Hop 408 [rej] merit=4.77344E-002  best=2.16504E-003  glass-swaps=3
+Hop 409 [rej] merit=2.00770E-002  best=2.16504E-003  glass-swaps=1
+Hop 410 [rej] merit=2.16509E-003  best=2.16504E-003
+Hop 411 [rej] merit=3.78352E+002  best=2.16504E-003  glass-swaps=2
+Hop 412 [rej] merit=3.72941E+002  best=2.16504E-003
+Hop 413 [rej] merit=2.02009E-002  best=2.16504E-003  glass-swaps=3
+Hop 414 [rej] merit=6.41500E+004  best=2.16504E-003  glass-swaps=2
+Hop 415 [rej] merit=6.41500E+004  best=2.16504E-003
+Hop 416 [rej] merit=6.76476E+004  best=2.16504E-003
+Hop 417 [rej] merit=NaN  best=2.16504E-003  glass-swaps=1
+Hop 418 [rej] merit=9.37653E+004  best=2.16504E-003  glass-swaps=2
+Hop 419 [rej] merit=1.13709E+005  best=2.16504E-003  glass-swaps=1
+Hop 420 [rej] merit=1.13709E+005  best=2.16504E-003
+Hop 421 [rej] merit=1.13709E+005  best=2.16504E-003  glass-swaps=1
+Hop 422 [rej] merit=1.13709E+005  best=2.16504E-003  glass-swaps=3
+Hop 423 [rej] merit=5.46016E-003  best=2.16504E-003  glass-swaps=1
+Hop 424 [rej] merit=3.76406E-003  best=2.16504E-003  glass-swaps=1
+Hop 425 [rej] merit=2.56240E-003  best=2.16504E-003  glass-swaps=1
+Hop 426 [rej] merit=2.16504E-003  best=2.16504E-003
+Hop 427 [rej] merit=2.16505E-003  best=2.16504E-003
+Hop 428 [rej] merit=7.86725E-003  best=2.16504E-003  glass-swaps=1
+Hop 429 [rej] merit=2.60653E-003  best=2.16504E-003  glass-swaps=1
+Hop 430 [rej] merit=2.54003E-002  best=2.16504E-003  glass-swaps=2
+Hop 431 [rej] merit=1.06632E-002  best=2.16504E-003
+Hop 432 [rej] merit=2.14697E+004  best=2.16504E-003
+Hop 433 [rej] merit=2.36933E+004  best=2.16504E-003
+Hop 434 [rej] merit=2.36933E+004  best=2.16504E-003  glass-swaps=1
+Hop 435 [rej] merit=1.13709E+005  best=2.16504E-003  glass-swaps=1
+Hop 436 [rej] merit=NaN  best=2.16504E-003
+Hop 437 [rej] merit=2.36942E+004  best=2.16504E-003
+Hop 438 [rej] merit=1.13709E+005  best=2.16504E-003  glass-swaps=2
+Hop 439 [rej] merit=1.13709E+005  best=2.16504E-003
+Hop 440 [rej] merit=1.13709E+005  best=2.16504E-003
+Hop 441 [rej] merit=1.13709E+005  best=2.16504E-003  glass-swaps=1
+Hop 442 [rej] merit=2.16514E-003  best=2.16504E-003
+Hop 443 [ACC] merit=2.16504E-003  best=2.16504E-003
+Hop 444 [rej] merit=6.73458E-003  best=2.16504E-003  glass-swaps=1
+Hop 445 [rej] merit=2.16504E-003  best=2.16504E-003
+Hop 446 [rej] merit=2.16508E-003  best=2.16504E-003
+Hop 447 [rej] merit=2.16508E-003  best=2.16504E-003
+Hop 448 [rej] merit=2.42545E-002  best=2.16504E-003  glass-swaps=3
+Hop 449 [rej] merit=3.52572E-003  best=2.16504E-003  glass-swaps=1
+Hop 450 [rej] merit=3.15120E-002  best=2.16504E-003
+Hop 451 [rej] merit=5.67438E-002  best=2.16504E-003  glass-swaps=1
+Hop 452 [rej] merit=3.66159E+002  best=2.16504E-003  glass-swaps=2
+Hop 453 [rej] merit=3.53497E+002  best=2.16504E-003  glass-swaps=2
+Hop 454 [rej] merit=3.68940E+002  best=2.16504E-003
+Hop 455 [rej] merit=NaN  best=2.16504E-003  glass-swaps=1
+Hop 456 [rej] merit=2.36933E+004  best=2.16504E-003
+Hop 457 [rej] merit=1.13709E+005  best=2.16504E-003  glass-swaps=1
+Hop 458 [rej] merit=1.13709E+005  best=2.16504E-003
+Hop 459 [rej] merit=9.07225E+004  best=2.16504E-003  glass-swaps=2
+Hop 460 [rej] merit=9.38056E+004  best=2.16504E-003  glass-swaps=1
+Hop 461 [rej] merit=9.37653E+004  best=2.16504E-003  glass-swaps=2
+Hop 462 [rej] merit=1.13709E+005  best=2.16504E-003  glass-swaps=1
+Hop 463 [rej] merit=7.15155E-002  best=2.16504E-003  glass-swaps=2
+Hop 464 [rej] merit=1.74740E-001  best=2.16504E-003  glass-swaps=2
+Hop 465 [rej] merit=2.16509E-003  best=2.16504E-003
+Hop 466 [rej] merit=2.16504E-003  best=2.16504E-003
+Hop 467 [rej] merit=2.43527E-003  best=2.16504E-003
+Hop 468 [rej] merit=3.62087E-002  best=2.16504E-003  glass-swaps=3
+Hop 469 [rej] merit=2.34874E-003  best=2.16504E-003  glass-swaps=1
+Hop 470 [rej] merit=2.22617E-003  best=2.16504E-003
+Hop 471 [rej] merit=2.19997E-003  best=2.16504E-003
+Hop 472 [rej] merit=3.64596E+002  best=2.16504E-003
+Hop 473 [rej] merit=1.10938E+004  best=2.16504E-003
+Hop 474 [rej] merit=1.70883E+004  best=2.16504E-003  glass-swaps=2
+Hop 475 [rej] merit=1.27878E+001  best=2.16504E-003
+Merit: 6.415003E+015 -> 2.165036E-003 in 689.5s (37 accepted / 438 rejected, 13 glass swaps)

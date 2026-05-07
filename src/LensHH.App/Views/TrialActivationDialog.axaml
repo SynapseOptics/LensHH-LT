@@ -1,0 +1,47 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="LensHH.App.Views.TrialActivationDialog"
+        Title="Start Free Trial"
+        Icon="avares://LensHH.App/Assets/icon_256.png"
+        Width="480" Height="300"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False">
+  <DockPanel Margin="20">
+
+    <!-- Status message at bottom -->
+    <TextBlock x:Name="StatusText" DockPanel.Dock="Bottom" Margin="0,10,0,0"
+               TextWrapping="Wrap" FontSize="12" />
+
+    <!-- Step 1: Email entry -->
+    <StackPanel x:Name="Step1Panel" Spacing="10">
+      <TextBlock Text="Enter your email to start a free 45-day trial:"
+                 FontWeight="SemiBold" />
+      <TextBlock Text="A verification code will be sent to your email."
+                 Foreground="Gray" FontSize="12" />
+      <TextBox x:Name="EmailBox" Watermark="you@example.com" FontSize="14" />
+      <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
+        <Button Content="Cancel" Click="Cancel_Click" Width="80" />
+        <Button x:Name="SendCodeButton" Content="Send Code" Click="SendCode_Click"
+                Width="120" Classes="accent" />
+      </StackPanel>
+    </StackPanel>
+
+    <!-- Step 2: Code entry (hidden initially) -->
+    <StackPanel x:Name="Step2Panel" Spacing="10" IsVisible="False">
+      <TextBlock x:Name="CodePromptText"
+                 Text="Enter the 6-digit code sent to your email:"
+                 FontWeight="SemiBold" />
+      <TextBox x:Name="CodeBox" Watermark="000000" MaxLength="6"
+               FontFamily="Consolas,Courier New,monospace" FontSize="20"
+               HorizontalContentAlignment="Center" />
+      <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
+        <Button Content="Back" Click="Back_Click" Width="80" />
+        <Button x:Name="ResendButton" Content="Resend Code" Click="ResendCode_Click"
+                Width="110" />
+        <Button x:Name="ActivateButton" Content="Activate" Click="Activate_Click"
+                Width="100" Classes="accent" />
+      </StackPanel>
+    </StackPanel>
+
+  </DockPanel>
+</Window>

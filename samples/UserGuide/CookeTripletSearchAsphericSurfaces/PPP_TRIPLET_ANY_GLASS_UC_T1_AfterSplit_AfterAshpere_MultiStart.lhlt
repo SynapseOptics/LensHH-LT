@@ -1,0 +1,314 @@
+{
+  "FormatVersion": 1,
+  "Title": "",
+  "Notes": "",
+  "Designer": "",
+  "Aperture": {
+    "Value": 10
+  },
+  "Surfaces": [
+    {
+      "Comment": "",
+      "Radius": "Infinity",
+      "Thickness": 500,
+      "Material": "",
+      "SemiDiameter": 197.6879573019558,
+      "ClearAperturePercent": 100
+    },
+    {
+      "Index": 1,
+      "Type": "EvenAsphere",
+      "Comment": "",
+      "Radius": 33.554964270352556,
+      "Thickness": 24.840169177088736,
+      "Material": "N-SF57",
+      "SemiDiameter": 18.37649006266317,
+      "ClearAperturePercent": 100,
+      "AsphericCoefficients": [
+        0,
+        -3.549479699769506E-07,
+        1.7691315672459967E-10,
+        -5.955326435548727E-13,
+        0,
+        0,
+        0,
+        0
+      ],
+      "CurvatureVariable": true,
+      "ThicknessVariable": true,
+      "AsphericVariable": [
+        false,
+        true,
+        true,
+        true,
+        false,
+        false,
+        false,
+        false
+      ]
+    },
+    {
+      "Index": 2,
+      "Comment": "",
+      "Radius": 10.866226082567447,
+      "Thickness": 8.32355659276361,
+      "Material": "",
+      "SemiDiameter": 7.583188701310891,
+      "ClearAperturePercent": 100,
+      "CurvatureVariable": true,
+      "ThicknessVariable": true
+    },
+    {
+      "Index": 3,
+      "Type": "EvenAsphere",
+      "Comment": "",
+      "Radius": 76.10926663461413,
+      "Thickness": 12.612671733134446,
+      "Material": "SF5",
+      "SemiDiameter": 6.784519770009961,
+      "ClearAperturePercent": 100,
+      "AsphericCoefficients": [
+        0,
+        -2.430172205154791E-05,
+        -9.536944203794798E-08,
+        -2.013979410257559E-09,
+        0,
+        0,
+        0,
+        0
+      ],
+      "CurvatureVariable": true,
+      "ThicknessVariable": true,
+      "AsphericVariable": [
+        false,
+        true,
+        true,
+        true,
+        false,
+        false,
+        false,
+        false
+      ]
+    },
+    {
+      "Index": 4,
+      "Comment": "",
+      "Radius": 115.99697757322531,
+      "Thickness": 1.4918568934098773,
+      "Material": "",
+      "SemiDiameter": 5.492147557994604,
+      "ClearAperturePercent": 100,
+      "IsStop": true,
+      "CurvatureVariable": true,
+      "ThicknessVariable": true
+    },
+    {
+      "Index": 5,
+      "Comment": "",
+      "Radius": 105.82245320210869,
+      "Thickness": 2.536024295150138,
+      "Material": "N-FK58",
+      "SemiDiameter": 5.765735013728517,
+      "ClearAperturePercent": 100,
+      "CurvatureVariable": true,
+      "ThicknessVariable": true
+    },
+    {
+      "Index": 6,
+      "Comment": "",
+      "Radius": -14.23491655307338,
+      "Thickness": 13.279629547363541,
+      "Material": "",
+      "SemiDiameter": 6.075194319151884,
+      "ClearAperturePercent": 100,
+      "CurvatureVariable": true,
+      "ThicknessVariable": true
+    },
+    {
+      "Index": 7,
+      "Type": "EvenAsphere",
+      "Comment": "",
+      "Radius": -56.349136656084646,
+      "Thickness": 1.5246575960476043,
+      "Material": "N-LAK10",
+      "SemiDiameter": 9.284717483408853,
+      "ClearAperturePercent": 100,
+      "AsphericCoefficients": [
+        0,
+        -7.196500749922508E-06,
+        -2.0440828443606378E-10,
+        -8.076595099287988E-11,
+        0,
+        0,
+        0,
+        0
+      ],
+      "CurvatureVariable": true,
+      "ThicknessVariable": true,
+      "AsphericVariable": [
+        false,
+        true,
+        true,
+        true,
+        false,
+        false,
+        false,
+        false
+      ]
+    },
+    {
+      "Index": 8,
+      "Comment": "",
+      "Radius": -39.13703159167266,
+      "Thickness": 49.273354850565546,
+      "Material": "",
+      "SemiDiameter": 9.53864398120537,
+      "ClearAperturePercent": 100,
+      "CurvatureVariable": true,
+      "ThicknessVariable": true
+    },
+    {
+      "Index": 9,
+      "Comment": "",
+      "Radius": "Infinity",
+      "Material": "",
+      "SemiDiameter": 19.206070068968298,
+      "ClearAperturePercent": 100
+    }
+  ],
+  "Wavelengths": [
+    {
+      "Value": 0.48,
+      "Weight": 1
+    },
+    {
+      "Value": 0.55,
+      "Weight": 1,
+      "IsPrimary": true
+    },
+    {
+      "Value": 0.65,
+      "Weight": 1
+    }
+  ],
+  "Fields": [
+    {
+      "Weight": 1
+    },
+    {
+      "Y": 14,
+      "Weight": 1
+    },
+    {
+      "Y": 20,
+      "Weight": 1
+    }
+  ],
+  "Pickups": [],
+  "GlassCatalogs": [
+    "SCHOTT"
+  ],
+  "GlassSubstitutions": [
+    {
+      "SurfaceIndex": 1,
+      "Substitute": true,
+      "CatalogName": "S1_GLASS"
+    },
+    {
+      "SurfaceIndex": 3,
+      "Substitute": true,
+      "CatalogName": "S1_GLASS"
+    },
+    {
+      "SurfaceIndex": 5,
+      "Substitute": true,
+      "CatalogName": "S1_GLASS"
+    }
+  ],
+  "MeritFunction": {
+    "Operands": [
+      {
+        "Type": "EFL",
+        "Target": 50,
+        "Weight": 100,
+        "ConfigurationNo": -1,
+        "WaveIndex": -1,
+        "Rings": 3,
+        "Arms": 6,
+        "GridSize": 4
+      },
+      {
+        "Type": "WAVEX",
+        "Weight": 1,
+        "ConfigurationNo": -1,
+        "WaveIndex": -1,
+        "Rings": 6,
+        "Arms": 12,
+        "GridSize": 4
+      },
+      {
+        "Type": "EG",
+        "Weight": 10,
+        "Minimum": 1,
+        "ConfigurationNo": -1,
+        "WaveIndex": -1,
+        "Rings": 3,
+        "Arms": 6,
+        "GridSize": 4,
+        "Surface1": 1,
+        "Surface2": 8
+      },
+      {
+        "Type": "EA",
+        "Weight": 10,
+        "Minimum": 0.1,
+        "ConfigurationNo": -1,
+        "WaveIndex": -1,
+        "Rings": 3,
+        "Arms": 6,
+        "GridSize": 4,
+        "Surface1": 1,
+        "Surface2": 8
+      },
+      {
+        "Type": "CT",
+        "Weight": 10,
+        "Minimum": 40,
+        "Maximum": 100,
+        "ConfigurationNo": -1,
+        "WaveIndex": -1,
+        "Rings": 3,
+        "Arms": 6,
+        "GridSize": 4,
+        "Surface1": 8,
+        "Surface2": 8
+      },
+      {
+        "Type": "CTG",
+        "Weight": 10,
+        "Minimum": 1,
+        "Maximum": 25,
+        "ConfigurationNo": -1,
+        "WaveIndex": -1,
+        "Rings": 3,
+        "Arms": 6,
+        "GridSize": 4,
+        "Surface1": 1,
+        "Surface2": 8
+      },
+      {
+        "Type": "CTA",
+        "Weight": 10,
+        "Minimum": 0.1,
+        "Maximum": 100,
+        "ConfigurationNo": -1,
+        "WaveIndex": -1,
+        "Rings": 3,
+        "Arms": 6,
+        "GridSize": 4,
+        "Surface1": 1,
+        "Surface2": 8
+      }
+    ]
+  }
+}

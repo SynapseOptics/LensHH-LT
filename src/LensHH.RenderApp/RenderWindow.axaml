@@ -1,0 +1,25 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="LensHH.RenderApp.RenderWindow"
+        Title="LensHH-LT Render"
+        Width="900" Height="700"
+        WindowStartupLocation="CenterScreen"
+        Background="White"
+        Icon="avares://LensHH.RenderApp/Assets/icon_256.png">
+    <Window.Styles>
+        <Style Selector="TabItem">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Padding" Value="10,4" />
+        </Style>
+    </Window.Styles>
+    <Grid RowDefinitions="*">
+        <TabControl x:Name="TabControl">
+            <!-- Tabs are added dynamically -->
+        </TabControl>
+        <TextBlock x:Name="PlaceholderText"
+                   Text="Waiting for render request..."
+                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                   FontSize="14" Foreground="#999999"
+                   IsVisible="True" />
+    </Grid>
+</Window>

@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=LensHH-LT
+GenericName=Optical Design
+Comment=Optical lens design and analysis tool
+Exec=LensHH.App
+Icon=lenshh-lt
+Terminal=false
+Categories=Science;Education;Engineering;
+StartupNotify=true
+StartupWMClass=LensHH.App

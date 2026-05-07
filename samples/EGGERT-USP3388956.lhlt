@@ -1,0 +1,158 @@
+{
+  "FormatVersion": 1,
+  "Title": "Telephoto, USP 3388956, F/4 15 DEG.",
+  "Notes": "",
+  "Designer": "",
+  "Aperture": {
+    "Value": 12.5
+  },
+  "Surfaces": [
+    {
+      "Comment": "",
+      "Radius": "Infinity",
+      "Thickness": "Infinity",
+      "Material": "",
+      "SemiDiameter": 9.010245208935487,
+      "ClearAperturePercent": 100
+    },
+    {
+      "Index": 1,
+      "Comment": "",
+      "Radius": 21.07800000000011,
+      "Thickness": 3.338,
+      "Material": "LAKN6",
+      "SemiDiameter": 9.2,
+      "SemiDiameterMode": "Fixed",
+      "ClearAperturePercent": 100
+    },
+    {
+      "Index": 2,
+      "Comment": "",
+      "Radius": -44.106999999999076,
+      "Thickness": 0.9725,
+      "Material": "SF10",
+      "SemiDiameter": 9.1,
+      "SemiDiameterMode": "Fixed",
+      "ClearAperturePercent": 100
+    },
+    {
+      "Index": 3,
+      "Comment": "",
+      "Radius": -900.0365000000368,
+      "Thickness": 0.5915,
+      "Material": "",
+      "SemiDiameter": 8.7,
+      "SemiDiameterMode": "Fixed",
+      "ClearAperturePercent": 100
+    },
+    {
+      "Index": 4,
+      "Comment": "",
+      "Radius": -68.64399999999866,
+      "Thickness": 0.9725,
+      "Material": "SF9",
+      "SemiDiameter": 8.65,
+      "SemiDiameterMode": "Fixed",
+      "ClearAperturePercent": 100
+    },
+    {
+      "Index": 5,
+      "Comment": "",
+      "Radius": -265.3244999999974,
+      "Thickness": 20.145,
+      "Material": "",
+      "SemiDiameter": 8.4,
+      "SemiDiameterMode": "Fixed",
+      "ClearAperturePercent": 100
+    },
+    {
+      "Index": 6,
+      "Comment": "",
+      "Radius": "Infinity",
+      "Thickness": 5.9565,
+      "Material": "",
+      "SemiDiameter": 2.683508636,
+      "SemiDiameterMode": "Fixed",
+      "ClearAperturePercent": 100,
+      "IsStop": true
+    },
+    {
+      "Index": 7,
+      "Comment": "",
+      "Radius": 17.101000000000134,
+      "Thickness": 1.117,
+      "Material": "LAF11A",
+      "SemiDiameter": 3.65,
+      "SemiDiameterMode": "Fixed",
+      "ClearAperturePercent": 100
+    },
+    {
+      "Index": 8,
+      "Comment": "",
+      "Radius": 58.748000000000445,
+      "Thickness": 1.9295,
+      "Material": "",
+      "SemiDiameter": 3.65,
+      "SemiDiameterMode": "Fixed",
+      "ClearAperturePercent": 100
+    },
+    {
+      "Index": 9,
+      "Comment": "",
+      "Radius": -15.534499999999907,
+      "Thickness": 0.263,
+      "Material": "BASF10",
+      "SemiDiameter": 3.65,
+      "SemiDiameterMode": "Fixed",
+      "ClearAperturePercent": 100
+    },
+    {
+      "Index": 10,
+      "Comment": "",
+      "Radius": 34.89100000000014,
+      "Thickness": 10.06601527534848,
+      "Material": "",
+      "SemiDiameter": 3.75,
+      "SemiDiameterMode": "Fixed",
+      "ClearAperturePercent": 100
+    },
+    {
+      "Index": 11,
+      "Comment": "",
+      "Radius": "Infinity",
+      "Material": "",
+      "SemiDiameter": 6.275789954,
+      "SemiDiameterMode": "Fixed",
+      "ClearAperturePercent": 100
+    }
+  ],
+  "Wavelengths": [
+    {
+      "Value": 0.58756,
+      "Weight": 1,
+      "IsPrimary": true
+    },
+    {
+      "Value": 0.48613,
+      "Weight": 1
+    },
+    {
+      "Value": 0.65627,
+      "Weight": 1
+    }
+  ],
+  "Fields": [
+    {
+      "Weight": 1
+    },
+    {
+      "Y": 7,
+      "Weight": 1
+    }
+  ],
+  "Pickups": [],
+  "RayAiming": "Robust",
+  "GlassCatalogs": [
+    "SCHOTT"
+  ]
+}

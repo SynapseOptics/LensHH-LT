@@ -1,0 +1,1359 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:LensHH.App.ViewModels"
+        xmlns:conv="using:LensHH.App.Converters"
+        x:Class="LensHH.App.Views.MainWindow"
+        x:DataType="vm:MainViewModel"
+        Title="{Binding WindowTitle}"
+        Width="1300" Height="650"
+        WindowState="Maximized"
+        WindowStartupLocation="CenterScreen"
+        Icon="avares://LensHH.App/Assets/icon_256.png">
+
+  <Window.Resources>
+    <conv:InfinityConverter x:Key="InfConv" />
+  </Window.Resources>
+
+  <Window.Styles>
+    <Style Selector="TabItem">
+      <Setter Property="FontSize" Value="13" />
+      <Setter Property="FontWeight" Value="Bold" />
+    </Style>
+    <!-- Red text for surfaces whose glass cannot be resolved from loaded catalogs.
+         When the class is absent, Foreground inherits from the theme — so resolved
+         glasses render with the normal Light/Dark theme foreground, not a null brush. -->
+    <Style Selector="TextBlock.unresolved-glass">
+      <Setter Property="Foreground" Value="Red" />
+    </Style>
+  </Window.Styles>
+
+  <DockPanel>
+    <!-- Menu Bar -->
+    <Menu DockPanel.Dock="Top" IsEnabled="{Binding !IsBusy}">
+      <MenuItem Header="_File">
+        <MenuItem Header="_New" Click="NewSystem_Click" />
+        <MenuItem Header="_Open..." Click="OpenLhlt_Click" />
+        <MenuItem Header="_Save" Click="SaveLhlt_Click" />
+        <MenuItem Header="Save _As..." Click="SaveAsLhlt_Click" />
+        <Separator />
+        <MenuItem Header="Import">
+          <MenuItem Header="Zemax (.zmx)..." Click="ImportZmx_Click" />
+          <MenuItem Header="Code V (.seq)..." Click="ImportCodeV_Click" />
+          <MenuItem Header="OSLO (.len)..." Click="ImportOslo_Click" />
+          <MenuItem Header="Optalix (.otx)..." Click="ImportOptalix_Click" />
+          <MenuItem Header="Optiland (.json)..." Click="ImportOptiland_Click" />
+        </MenuItem>
+        <MenuItem Header="Export">
+          <MenuItem Header="Zemax (.zmx)..." Click="ExportZmx_Click" />
+          <MenuItem Header="Code V (.seq)..." Click="ExportCodeV_Click" />
+          <MenuItem Header="OSLO (.len)..." Click="ExportOslo_Click" />
+          <MenuItem Header="Optalix (.otx)..." Click="ExportOptalix_Click" />
+          <MenuItem Header="Optiland (.json)..." Click="ExportOptiland_Click" />
+        </MenuItem>
+        <Separator />
+        <MenuItem Header="Sample _Lenses..." Click="OpenSamples_Click" />
+        <Separator />
+        <MenuItem Header="E_xit" Click="Exit_Click" />
+      </MenuItem>
+      <MenuItem Header="_Editors">
+        <MenuItem Header="_Wavelengths..." Click="WavelengthEditor_Click" />
+        <MenuItem Header="_Fields..." Click="FieldEditor_Click" />
+        <MenuItem Header="_System..." Click="SystemEditor_Click" />
+        <MenuItem Header="_Catalog Preference..." Click="CatalogPreference_Click" />
+      </MenuItem>
+      <MenuItem Header="_Analysis">
+        <MenuItem Header="_Update All Analyses" Command="{Binding UpdateAllAnalysesCommand}" InputGesture="F5" />
+        <Separator />
+        <MenuItem Header="S_ystem Data" Click="SystemData_Click" />
+        <MenuItem Header="Si_ngle Ray Trace" Click="SingleRayTrace_Click" />
+        <Separator />
+        <MenuItem Header="_Seidel Aberrations" Click="Seidel_Click" />
+        <MenuItem Header="_Spot Diagram" Click="SpotDiagram_Click" />
+        <MenuItem Header="_Ray Fans">
+          <MenuItem Header="_Transverse" Click="TransverseRayFan_Click" />
+          <MenuItem Header="_OPD" Click="OpdFan_Click" />
+          <MenuItem Header="_Pupil Aberrations" Click="PupilAberrationFan_Click" />
+        </MenuItem>
+        <Separator />
+        <MenuItem Header="_Field Curvature" Click="FieldCurvature_Click" />
+        <MenuItem Header="_Distortion" Click="Distortion_Click" />
+        <MenuItem Header="Relative _Illumination" Click="RelativeIllumination_Click" />
+        <MenuItem Header="_Lateral Color" Click="LateralColor_Click" />
+        <MenuItem Header="_Chromatic Focal Shift" Click="ChromaticFocalShift_Click" />
+        <Separator />
+        <MenuItem Header="_Geometric MTF">
+          <MenuItem Header="vs Spatial _Frequency" Click="GeoMtfVsFreq_Click" />
+          <MenuItem Header="vs F_ield" Click="GeoMtfVsField_Click" />
+          <MenuItem Header="vs Foc_us" Click="GeoMtfVsFocus_Click" />
+        </MenuItem>
+        <MenuItem Header="FFT _MTF">
+          <MenuItem Header="vs Spatial _Frequency" Click="FftMtf_Click" />
+          <MenuItem Header="vs F_ield" Click="FftMtfVsField_Click" />
+          <MenuItem Header="vs Foc_us" Click="FftMtfVsFocus_Click" />
+        </MenuItem>
+        <MenuItem Header="FFT _PSF" Click="FftPsf_Click" />
+        <MenuItem Header="_Wavefront Map" Click="WavefrontMap_Click" />
+      </MenuItem>
+      <MenuItem Header="_Optimization">
+        <MenuItem Header="_Merit Function" Click="MeritFunctionTab_Click" />
+        <MenuItem Header="_Variable Editor" Click="VariableEditor_Click" />
+        <Separator />
+        <MenuItem Header="_Create Glass Catalogue..." Click="CreateGlassCatalogue_Click" />
+        <MenuItem Header="Create Filtered Catalogue (Cherry-_Pick)..." Click="CherryPickCatalogue_Click" />
+        <MenuItem Header="_Glass Substitution Settings" Click="GlassSubstitution_Click" />
+        <Separator />
+        <MenuItem Header="_Local Optimization" Click="LocalOptimization_Click" />
+        <MenuItem Header="M_ulti Start Optimization" Click="MultistartOptimization_Click" />
+        <MenuItem Header="Basin-Hopping _HJ+LM..." Click="BasinHoppingHjLm_Click" />
+        <Separator />
+        <MenuItem Header="S_plit Element" Click="SplitElement_Click" />
+        <MenuItem Header="Synthesis by _SPC" Click="SynthesisBySpc_Click" />
+        <MenuItem Header="Search _Best Asphere Surface..." Click="AsphereSearch_Click" />
+      </MenuItem>
+      <MenuItem Header="_Help">
+        <MenuItem Header="_User Guide (PDF)" Click="UserGuide_Click" />
+        <MenuItem Header="Help _Index (Searchable)" Click="HelpIndex_Click" />
+        <Separator />
+        <MenuItem Header="Start Free _Trial..." Click="StartTrial_Click"
+                  IsVisible="{Binding StartTrialVisible}" />
+        <Separator IsVisible="{Binding StartTrialVisible}" />
+        <MenuItem Header="_Activate License..." Click="ActivateLicense_Click" />
+        <MenuItem Header="_Deactivate This Machine..." Click="DeactivateLicense_Click"
+                  IsEnabled="{Binding DeactivateLicenseEnabled}" />
+        <Separator />
+        <MenuItem Header="License _Status..." Click="LicenseStatus_Click" />
+        <MenuItem Header="_About LensHH-LT" Click="About_Click" />
+      </MenuItem>
+    </Menu>
+
+    <!-- Status Bar -->
+    <Border DockPanel.Dock="Bottom" Background="#F0F0F0" Padding="8,4">
+      <DockPanel>
+        <ProgressBar DockPanel.Dock="Right"
+                     IsIndeterminate="True"
+                     IsVisible="{Binding IsBusy}"
+                     Width="120" Height="14"
+                     Margin="8,0,0,0" />
+        <TextBlock Text="{Binding StatusText}" FontSize="12" VerticalAlignment="Center" />
+      </DockPanel>
+    </Border>
+
+    <!-- Main content in TabControl -->
+    <TabControl Margin="4" IsEnabled="{Binding !IsBusy}" SelectedIndex="{Binding SelectedTabIndex}"
+                SelectionChanged="TabControl_SelectionChanged">
+      <TabItem Header="Lens Editor">
+        <DockPanel>
+          <!-- Toolbar -->
+          <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="4" Spacing="4">
+            <Button Content="Insert Surface" Command="{Binding SurfaceEditor.InsertSurfaceCommand}" />
+            <Button Content="Delete Surface" Command="{Binding SurfaceEditor.DeleteSurfaceCommand}" />
+            <Border Width="1" Background="#CCC" Margin="4,2" />
+            <Button Content="Set/Clear Thickness Variables" Click="SetClearThickness_Click" />
+            <Button Content="Set/Clear Curvature Variables" Click="SetClearCurvature_Click" />
+            <Button Content="Clear All Variables" Click="ClearAllVariables_Click" />
+            <Border Width="1" Background="#CCC" Margin="4,2" />
+            <Button Content="Set CA %" Click="SetClearAperture_Click" />
+            <Button Content="Scale Lens" Click="ScaleLens_Click" />
+            <Border Width="1" Background="#CCC" Margin="4,2" />
+            <Button Content="Copy Table" Command="{Binding SurfaceEditor.CopyTableToClipboardCommand}"
+                    ToolTip.Tip="Copy lens table to clipboard as tab-delimited text. Aspheric coefficients appended to Even Asphere rows." />
+          </StackPanel>
+
+          <!-- Surface Editor DataGrid -->
+          <DataGrid ItemsSource="{Binding SurfaceEditor.Surfaces}"
+                    SelectedItem="{Binding SurfaceEditor.SelectedSurface}"
+                    AutoGenerateColumns="False"
+                    CanUserReorderColumns="False"
+                    CanUserSortColumns="False"
+                    GridLinesVisibility="All"
+                    IsReadOnly="False"
+                    Margin="4"
+                    FontSize="13">
+            <!-- Scoped to this DataGrid only: center every column header. Other
+                 grids on the window (Merit Function table etc.) keep their own
+                 header alignment because these styles are inside DataGrid.Styles. -->
+            <DataGrid.Styles>
+              <Style Selector="DataGridColumnHeader">
+                <Setter Property="HorizontalContentAlignment" Value="Center" />
+              </Style>
+            </DataGrid.Styles>
+            <DataGrid.Columns>
+              <!-- Surface number -->
+              <DataGridTemplateColumn Header="Surf" Width="100" IsReadOnly="True">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate>
+                    <TextBlock Text="{Binding SurfaceLabel}" TextAlignment="Center"
+                               VerticalAlignment="Center" Margin="4,0" />
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+
+              <!-- Surface type: always-visible ComboBox in cell template -->
+              <DataGridTemplateColumn Header="Surface Type" Width="145">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate>
+                    <ComboBox ItemsSource="{Binding TypeOptions}"
+                              SelectedIndex="{Binding TypeIndex}"
+                              HorizontalAlignment="Stretch"
+                              VerticalAlignment="Center"
+                              Margin="2,0" />
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+
+              <!-- Stop -->
+              <DataGridCheckBoxColumn Header="Stop" Binding="{Binding IsStop}" Width="75" />
+
+              <!-- Radius — shows V/P indicator, editable -->
+              <DataGridTemplateColumn Header="Radius (mm)" Width="150">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate>
+                    <Grid>
+                      <TextBlock Text="{Binding RadiusDisplay}"
+                                 HorizontalAlignment="Center"
+                                 VerticalAlignment="Center" />
+                    </Grid>
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+                <DataGridTemplateColumn.CellEditingTemplate>
+                  <DataTemplate>
+                    <TextBox Text="{Binding Radius, Converter={StaticResource InfConv}, UpdateSourceTrigger=LostFocus}" TextAlignment="Center" />
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellEditingTemplate>
+              </DataGridTemplateColumn>
+
+              <!-- Thickness — shows V/P indicator, editable -->
+              <DataGridTemplateColumn Header="Thickness (mm)" Width="150">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate>
+                    <Grid>
+                      <TextBlock Text="{Binding ThicknessDisplay}"
+                                 HorizontalAlignment="Center"
+                                 VerticalAlignment="Center" />
+                    </Grid>
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+                <DataGridTemplateColumn.CellEditingTemplate>
+                  <DataTemplate>
+                    <TextBox Text="{Binding Thickness, Converter={StaticResource InfConv}, UpdateSourceTrigger=LostFocus}" TextAlignment="Center" />
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellEditingTemplate>
+              </DataGridTemplateColumn>
+
+              <!-- Conic — shows V/P indicator, editable -->
+              <DataGridTemplateColumn Header="Conic Constant" Width="120">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate>
+                    <!-- Grid wrapper because DataGridCell's content
+                         presenter doesn't honor HorizontalAlignment=Stretch
+                         on a child TextBlock — TextBlock sizes to content
+                         and left-aligns. Putting the TextBlock inside a
+                         Grid (which stretches by default) and centering
+                         the TextBlock inside the Grid reliably puts short
+                         strings like "0 V" in the middle of the cell. -->
+                    <Grid>
+                      <TextBlock Text="{Binding ConicDisplay}"
+                                 HorizontalAlignment="Center"
+                                 VerticalAlignment="Center" />
+                    </Grid>
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+                <DataGridTemplateColumn.CellEditingTemplate>
+                  <DataTemplate>
+                    <TextBox Text="{Binding Conic, Converter={StaticResource InfConv}, UpdateSourceTrigger=LostFocus}" TextAlignment="Center" />
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellEditingTemplate>
+              </DataGridTemplateColumn>
+
+              <!-- Glass (red text if unresolved) -->
+              <DataGridTemplateColumn Header="Glass" Width="100">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate>
+                    <TextBlock Text="{Binding Material}"
+                               Classes.unresolved-glass="{Binding IsGlassUnresolved}"
+                               VerticalAlignment="Center" TextAlignment="Center" Margin="4,0" />
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+                <DataGridTemplateColumn.CellEditingTemplate>
+                  <DataTemplate>
+                    <TextBox Text="{Binding Material, UpdateSourceTrigger=LostFocus}" TextAlignment="Center" />
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellEditingTemplate>
+              </DataGridTemplateColumn>
+
+              <!-- Semi-diameter (editable in Fixed mode except stop, auto-computed otherwise) -->
+              <DataGridTemplateColumn Header="Semi-Diameter" Width="130">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate>
+                    <TextBox Text="{Binding SemiDiameterDisplay, UpdateSourceTrigger=LostFocus}"
+                             IsReadOnly="{Binding !IsSemiDiameterEditable}"
+                             TextAlignment="Center"
+                             Margin="1,0" Padding="2" BorderThickness="0" />
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+
+              <!-- Clear Aperture % (not editable on stop surface) -->
+              <DataGridTemplateColumn Header="CA %" Width="80">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate>
+                    <TextBox Text="{Binding ClearAperturePercentText, UpdateSourceTrigger=LostFocus}"
+                             IsEnabled="{Binding IsCaEditable}"
+                             TextAlignment="Center"
+                             Margin="1,0" Padding="2" BorderThickness="0" />
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+
+              <!-- Fixed SD checkbox (disabled on stop surface, hidden on OBJ) -->
+              <DataGridTemplateColumn Header="Fixed SD" Width="95">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate>
+                    <CheckBox IsChecked="{Binding IsFixedSemiDiameter}"
+                              IsEnabled="{Binding CanSetFixed}"
+                              IsVisible="{Binding ShowFixedSd}"
+                              HorizontalAlignment="Center" VerticalAlignment="Center" />
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+
+              <!-- Properties button -->
+              <DataGridTemplateColumn Header="Properties" Width="100">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate>
+                    <Button Content="..." Click="SurfaceProperties_Click"
+                            HorizontalAlignment="Center" Padding="14,2" />
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+            </DataGrid.Columns>
+          </DataGrid>
+        </DockPanel>
+      </TabItem>
+
+      <!-- 2D Layout Tab (always visible — the image is blank when the
+           system has unresolved glass / out-of-range wavelengths / etc.
+           and re-renders the moment the user fixes the problem in the
+           Lens Editor). -->
+      <TabItem Header="2D Layout">
+        <DockPanel>
+          <!-- Layout toolbar -->
+          <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="4" Spacing="8">
+            <TextBlock Text="Rays:" VerticalAlignment="Center" />
+            <TextBox Text="{Binding Layout.NumRays}" Width="45" />
+            <TextBlock Text="Wavelength:" VerticalAlignment="Center" Margin="8,0,0,0" />
+            <ComboBox ItemsSource="{Binding Layout.WavelengthOptions}"
+                      SelectedIndex="{Binding Layout.SelectedWavelengthOption}"
+                      Width="180"
+                      VerticalAlignment="Center" />
+            <CheckBox Content="Start from Surface 1" IsChecked="{Binding Layout.StartFromSurface1}"
+                      VerticalAlignment="Center" />
+            <Button Content="Redraw" Command="{Binding Layout.RenderCommand}" Width="70" />
+            <Button Content="Export Image" Click="ExportImage_Click" Tag="Layout" Width="90" FontSize="11" />
+          </StackPanel>
+
+          <Border Background="White" Margin="4">
+            <Image Source="{Binding Layout.LayoutImage}"
+                   Stretch="Uniform"
+                   HorizontalAlignment="Center"
+                   VerticalAlignment="Center" />
+          </Border>
+        </DockPanel>
+      </TabItem>
+
+      <!-- Merit Function Tab -->
+      <TabItem Header="Merit Function">
+        <DockPanel>
+          <!-- Toolbar -->
+          <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="4" Spacing="4">
+            <Button Content="Insert" Command="{Binding MeritFunctionEditor.InsertOperandCommand}" />
+            <Button Content="Remove" Command="{Binding MeritFunctionEditor.RemoveOperandCommand}" />
+            <Button Content="Clear All" Command="{Binding MeritFunctionEditor.ClearAllCommand}" />
+            <Button Content="Evaluate" Command="{Binding MeritFunctionEditor.EvaluateCommand}" />
+            <Button Content="Open MFT" Command="{Binding MeritFunctionEditor.OpenMftCommand}" />
+            <Button Content="Save MFT" Command="{Binding MeritFunctionEditor.SaveMftCommand}" />
+            <Button Content="Copy Table" Command="{Binding MeritFunctionEditor.CopyTableToClipboardCommand}" />
+            <TextBlock Text="{Binding MeritFunctionEditor.MeritValueText}"
+                       VerticalAlignment="Center" Margin="12,0,0,0"
+                       FontWeight="Bold" FontSize="13" />
+          </StackPanel>
+
+          <!-- Help bar for selected operand -->
+          <Border DockPanel.Dock="Bottom" Background="#F0F4F8" BorderBrush="#D0D8E0"
+                  BorderThickness="0,1,0,0" Padding="8,5" MinHeight="28">
+            <TextBlock Text="{Binding MeritFunctionEditor.HelpText}"
+                       FontSize="13" FontWeight="SemiBold" Foreground="#333" TextWrapping="Wrap" />
+          </Border>
+
+          <!-- Merit Function DataGrid -->
+          <DataGrid ItemsSource="{Binding MeritFunctionEditor.Operands}"
+                    SelectedItem="{Binding MeritFunctionEditor.SelectedOperand}"
+                    AutoGenerateColumns="False"
+                    CanUserReorderColumns="False"
+                    CanUserSortColumns="False"
+                    GridLinesVisibility="All"
+                    IsReadOnly="False"
+                    Margin="4"
+                    FontSize="13">
+            <DataGrid.Styles>
+              <Style Selector="DataGridColumnHeader">
+                <Setter Property="FontWeight" Value="Bold" />
+                <Setter Property="FontSize" Value="12" />
+                <Setter Property="Padding" Value="4,4" />
+                <Setter Property="MinHeight" Value="28" />
+                <Setter Property="HorizontalContentAlignment" Value="Center" />
+              </Style>
+              <!-- TextAlignment is set inline on each TextBox below. A
+                   `DataGridCell TextBox` style selector here does not
+                   reliably reach cells populated when the DataGrid first
+                   binds (e.g., operands loaded from .lhlt) — those rows
+                   render left-aligned while later-added rows render
+                   centered. Matching the pattern used in the Surfaces
+                   table fixes it. -->
+            </DataGrid.Styles>
+            <DataGrid.Columns>
+              <DataGridTemplateColumn Header="#" Width="35" IsReadOnly="True">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate>
+                    <TextBlock Text="{Binding Number}"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                               TextAlignment="Center" />
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+
+              <!-- Type: ComboBox -->
+              <DataGridTemplateColumn Header="Type" Width="140">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate>
+                    <ComboBox ItemsSource="{Binding TypeOptions}"
+                              SelectedIndex="{Binding TypeIndex}"
+                              HorizontalAlignment="Stretch"
+                              VerticalAlignment="Center"
+                              Margin="2,0" />
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+
+              <!-- Operation Code: ComboBox -->
+              <DataGridTemplateColumn Header="OpCode" Width="110">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate>
+                    <ComboBox ItemsSource="{Binding OpCodeOptions}"
+                              SelectedIndex="{Binding OpCodeIndex}"
+                              HorizontalAlignment="Stretch"
+                              VerticalAlignment="Center"
+                              Margin="2,0" />
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+
+              <DataGridTemplateColumn Header="Surf" Width="65">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate>
+                    <TextBox Text="{Binding SurfaceText}" TextAlignment="Center" HorizontalContentAlignment="Center" Margin="1,0" Padding="2" BorderThickness="0" />
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+              <DataGridTemplateColumn Header="Surf2" Width="70">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate>
+                    <TextBox Text="{Binding Surface2Text}" TextAlignment="Center" HorizontalContentAlignment="Center" Margin="1,0" Padding="2" BorderThickness="0" />
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+              <DataGridTemplateColumn Header="Wave" Width="85">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate>
+                    <TextBox Text="{Binding WaveText}" TextAlignment="Center" HorizontalContentAlignment="Center" Margin="1,0" Padding="2" BorderThickness="0" />
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+              <DataGridTemplateColumn Header="Weight" Width="90">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate>
+                    <TextBox Text="{Binding WeightText}" TextAlignment="Center" HorizontalContentAlignment="Center" Margin="1,0" Padding="2" BorderThickness="0" />
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+
+              <!-- Constraint mode selector -->
+              <DataGridTemplateColumn Header="Mode" Width="115">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate>
+                    <ComboBox ItemsSource="{Binding ModeOptions}"
+                              SelectedIndex="{Binding ModeIndex}"
+                              HorizontalAlignment="Stretch"
+                              VerticalAlignment="Center"
+                              Margin="2,0" />
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+
+              <!-- Bound1: Target in Target mode, Min in Min/Min+Max, Max in Max-only -->
+              <DataGridTemplateColumn Header="Bound 1" Width="105">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate>
+                    <TextBox Text="{Binding Bound1Text}" TextAlignment="Center" HorizontalContentAlignment="Center" Margin="1,0" Padding="2" BorderThickness="0" />
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+
+              <!-- Bound2: Max in Min/Max mode only -->
+              <DataGridTemplateColumn Header="Bound 2" Width="105">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate>
+                    <TextBox Text="{Binding Bound2Text}"
+                             IsEnabled="{Binding IsBound2Visible}"
+                             TextAlignment="Center"
+                             HorizontalContentAlignment="Center"
+                             Margin="1,0" Padding="2" BorderThickness="0" />
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+              <DataGridTemplateColumn Header="Hy" Width="55">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate>
+                    <TextBox Text="{Binding HyText}" TextAlignment="Center" HorizontalContentAlignment="Center" Margin="1,0" Padding="2" BorderThickness="0" />
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+              <DataGridTemplateColumn Header="Px" Width="55">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate>
+                    <TextBox Text="{Binding PxText}" TextAlignment="Center" HorizontalContentAlignment="Center" Margin="1,0" Padding="2" BorderThickness="0" />
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+              <DataGridTemplateColumn Header="Py" Width="55">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate>
+                    <TextBox Text="{Binding PyText}" TextAlignment="Center" HorizontalContentAlignment="Center" Margin="1,0" Padding="2" BorderThickness="0" />
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+              <DataGridTemplateColumn Header="Rings" Width="85">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate>
+                    <TextBox Text="{Binding RingsText}" TextAlignment="Center" HorizontalContentAlignment="Center" Margin="1,0" Padding="2" BorderThickness="0" />
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+              <DataGridTemplateColumn Header="Arms" Width="65">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate>
+                    <TextBox Text="{Binding ArmsText}" TextAlignment="Center" HorizontalContentAlignment="Center" Margin="1,0" Padding="2" BorderThickness="0" />
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+              <DataGridTemplateColumn Header="Grid" Width="75">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate>
+                    <TextBox Text="{Binding GridText}" TextAlignment="Center" HorizontalContentAlignment="Center" Margin="1,0" Padding="2" BorderThickness="0" />
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+              <DataGridTemplateColumn Header="Op1" Width="70">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate>
+                    <TextBox Text="{Binding Op1Text}" TextAlignment="Center" HorizontalContentAlignment="Center" Margin="1,0" Padding="2" BorderThickness="0" />
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+              <DataGridTemplateColumn Header="Op2" Width="70">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate>
+                    <TextBox Text="{Binding Op2Text}" TextAlignment="Center" HorizontalContentAlignment="Center" Margin="1,0" Padding="2" BorderThickness="0" />
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+              <DataGridTemplateColumn Header="Factor" Width="80">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate>
+                    <TextBox Text="{Binding FactorText}" TextAlignment="Center" HorizontalContentAlignment="Center" Margin="1,0" Padding="2" BorderThickness="0" />
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+              <DataGridTemplateColumn Header="Value" Width="110" IsReadOnly="True">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate>
+                    <TextBlock Text="{Binding ValueText}"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                               TextAlignment="Center" />
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+              <DataGridTemplateColumn Header="Contribution" Width="140" IsReadOnly="True">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate>
+                    <TextBlock Text="{Binding ContributionText}"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                               TextAlignment="Center" />
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+            </DataGrid.Columns>
+          </DataGrid>
+
+        </DockPanel>
+      </TabItem>
+
+      <!-- FFT MTF Tab (visible on demand via Analysis menu) -->
+      <TabItem Header="FFT MTF" IsVisible="{Binding FftMtf.IsVisible}">
+        <Grid>
+          <DockPanel>
+            <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="4" Spacing="8">
+              <TextBlock Text="Grid:" VerticalAlignment="Center" />
+              <ComboBox SelectedIndex="2" SelectionChanged="MtfGridChanged" Width="80">
+                <ComboBoxItem Content="64" />
+                <ComboBoxItem Content="128" />
+                <ComboBoxItem Content="256" />
+                <ComboBoxItem Content="512" />
+                <ComboBoxItem Content="1024" />
+              </ComboBox>
+              <TextBlock Text="Wavelength:" VerticalAlignment="Center" />
+              <ComboBox ItemsSource="{Binding FftMtf.WavelengthOptions}"
+                        SelectedIndex="{Binding FftMtf.SelectedWavelengthIndex}"
+                        Width="160" />
+              <TextBlock Text="Max Freq (0=auto):" VerticalAlignment="Center" />
+              <TextBox Text="{Binding FftMtf.MaxFrequency, UpdateSourceTrigger=LostFocus}" Width="60" />
+              <Button Content="Compute" Command="{Binding FftMtf.ComputeCommand}" Width="80" />
+              <Button Content="Export Text..." Command="{Binding FftMtf.ExportTextCommand}" Width="100" />
+              <Button Content="Export Image" Click="ExportImage_Click" Tag="FftMtf" Width="90" FontSize="11" />
+              <Button Content="Show Table" Click="FftMtfShowTable_Click" Width="80" FontSize="11" />
+              <Button Content="Close Tab" Click="CloseFftMtfTab_Click" Width="70" FontSize="11" />
+            </StackPanel>
+            <Border Background="White" Margin="4">
+              <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                <Image Source="{Binding FftMtf.MtfImage}"
+                       Stretch="None"
+                       HorizontalAlignment="Left"
+                       VerticalAlignment="Top" />
+              </ScrollViewer>
+            </Border>
+          </DockPanel>
+          <Border Background="#80FFFFFF" IsVisible="{Binding FftMtf.IsBusy}"
+                  HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+            <TextBlock Text="Computing..." FontSize="18" FontWeight="Bold" Foreground="#555"
+                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+          </Border>
+        </Grid>
+      </TabItem>
+
+      <!-- FFT MTF vs Field Tab (visible on demand via Analysis menu) -->
+      <TabItem Header="MTF vs Field" IsVisible="{Binding FftMtfVsField.IsVisible}">
+        <Grid>
+          <DockPanel>
+            <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="4" Spacing="8">
+              <TextBlock Text="Grid:" VerticalAlignment="Center" />
+              <ComboBox SelectedIndex="0" SelectionChanged="MtfVsFieldGridChanged" Width="80">
+                <ComboBoxItem Content="64" />
+                <ComboBoxItem Content="128" />
+                <ComboBoxItem Content="256" />
+                <ComboBoxItem Content="512" />
+              </ComboBox>
+              <TextBlock Text="Wavelength:" VerticalAlignment="Center" />
+              <ComboBox ItemsSource="{Binding FftMtfVsField.WavelengthOptions}"
+                        SelectedIndex="{Binding FftMtfVsField.SelectedWavelengthIndex}"
+                        Width="160" />
+              <TextBlock Text="Field Pts:" VerticalAlignment="Center" />
+              <TextBox Text="{Binding FftMtfVsField.NumFieldPoints, UpdateSourceTrigger=LostFocus}" Width="40" />
+              <Button Content="Frequencies..." Click="MtfVsFieldFrequencies_Click" Width="110" />
+              <TextBlock Text="{Binding FftMtfVsField.FrequencyLabel}" VerticalAlignment="Center" Foreground="#666" />
+              <Button Content="Compute" Command="{Binding FftMtfVsField.ComputeCommand}" Width="80" />
+              <Button Content="Export Text..." Command="{Binding FftMtfVsField.ExportTextCommand}" Width="100" />
+              <Button Content="Export Image" Click="ExportImage_Click" Tag="FftMtfVsField" Width="90" FontSize="11" />
+              <Button Content="Show Table" Click="FftMtfVsFieldShowTable_Click" Width="80" FontSize="11" />
+              <Button Content="Close Tab" Click="CloseFftMtfVsFieldTab_Click" Width="70" FontSize="11" />
+            </StackPanel>
+            <Border Background="White" Margin="4">
+              <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                <Image Source="{Binding FftMtfVsField.MtfImage}"
+                       Stretch="None"
+                       HorizontalAlignment="Left"
+                       VerticalAlignment="Top" />
+              </ScrollViewer>
+            </Border>
+          </DockPanel>
+          <Border Background="#80FFFFFF" IsVisible="{Binding FftMtfVsField.IsBusy}"
+                  HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+            <TextBlock Text="Computing..." FontSize="18" FontWeight="Bold" Foreground="#555"
+                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+          </Border>
+        </Grid>
+      </TabItem>
+
+      <!-- FFT MTF vs Focus Tab -->
+      <TabItem Header="FFT MTF vs Focus" IsVisible="{Binding FftMtfVsFocus.IsVisible}">
+        <Grid>
+          <DockPanel>
+            <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="4" Spacing="8">
+              <TextBlock Text="Grid:" VerticalAlignment="Center" />
+              <ComboBox SelectedIndex="0" SelectionChanged="FftMtfVsFocusGridChanged" Width="80">
+                <ComboBoxItem Content="64" />
+                <ComboBoxItem Content="128" />
+                <ComboBoxItem Content="256" />
+              </ComboBox>
+              <TextBlock Text="Wavelength:" VerticalAlignment="Center" />
+              <ComboBox ItemsSource="{Binding FftMtfVsFocus.WavelengthOptions}"
+                        SelectedIndex="{Binding FftMtfVsFocus.SelectedWavelengthIndex}" Width="160" />
+              <TextBlock Text="Field:" VerticalAlignment="Center" />
+              <ComboBox ItemsSource="{Binding FftMtfVsFocus.FieldOptions}"
+                        SelectedIndex="{Binding FftMtfVsFocus.SelectedFieldIndex}" Width="120" />
+              <TextBlock Text="{Binding FftMtfVsFocus.FrequencyUnitLabel}" VerticalAlignment="Center" />
+              <TextBox Text="{Binding FftMtfVsFocus.SpatialFrequency, UpdateSourceTrigger=LostFocus}" Width="60" />
+              <TextBlock Text="{Binding FftMtfVsFocus.FocusRangeUnitLabel}" VerticalAlignment="Center" />
+              <TextBox Text="{Binding FftMtfVsFocus.FocusRange, UpdateSourceTrigger=LostFocus}" Width="60" />
+              <TextBlock Text="Steps:" VerticalAlignment="Center" />
+              <TextBox Text="{Binding FftMtfVsFocus.NumFocusSteps, UpdateSourceTrigger=LostFocus}" Width="40" />
+              <Button Content="Compute" Command="{Binding FftMtfVsFocus.ComputeCommand}" Width="80" />
+              <Button Content="Export Text..." Command="{Binding FftMtfVsFocus.ExportTextCommand}" Width="100" />
+              <Button Content="Export Image" Click="ExportImage_Click" Tag="FftMtfVsFocus" Width="90" FontSize="11" />
+              <Button Content="Show Table" Click="FftMtfVsFocusShowTable_Click" Width="80" FontSize="11" />
+              <Button Content="Close Tab" Click="CloseFftMtfVsFocusTab_Click" Width="70" FontSize="11" />
+            </StackPanel>
+            <Border Background="White" Margin="4">
+              <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                <Image Source="{Binding FftMtfVsFocus.PlotImage}" Stretch="None"
+                       HorizontalAlignment="Left" VerticalAlignment="Top" />
+              </ScrollViewer>
+            </Border>
+          </DockPanel>
+          <Border Background="#80FFFFFF" IsVisible="{Binding FftMtfVsFocus.IsBusy}"
+                  HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+            <TextBlock Text="Computing..." FontSize="18" FontWeight="Bold" Foreground="#555"
+                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+          </Border>
+          <Border Background="#F0F0F0" IsVisible="{Binding FftMtfVsFocus.IsAfocal}"
+                  HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+            <TextBlock Text="Disabled for afocal systems.&#x0a;Focus shift in diopters is not yet supported for this analysis."
+                       FontSize="16" Foreground="#888"
+                       HorizontalAlignment="Center" VerticalAlignment="Center" TextAlignment="Center" />
+          </Border>
+        </Grid>
+      </TabItem>
+
+      <!-- Spot Diagram Tab (visible on demand via Analysis menu) -->
+      <TabItem Header="Spot Diagram" IsVisible="{Binding SpotDiagram.IsVisible}">
+        <Grid>
+          <DockPanel>
+            <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="4" Spacing="8">
+              <CheckBox Content="Grid pattern" IsChecked="{Binding SpotDiagram.UseGrid}" VerticalAlignment="Center" />
+              <TextBlock Text="Rings:" VerticalAlignment="Center" IsVisible="{Binding !SpotDiagram.UseGrid}" />
+              <TextBox Text="{Binding SpotDiagram.NumRings, UpdateSourceTrigger=LostFocus}" Width="40"
+                       IsVisible="{Binding !SpotDiagram.UseGrid}" />
+              <TextBlock Text="Arms:" VerticalAlignment="Center" IsVisible="{Binding !SpotDiagram.UseGrid}" />
+              <TextBox Text="{Binding SpotDiagram.NumArms, UpdateSourceTrigger=LostFocus}" Width="40"
+                       IsVisible="{Binding !SpotDiagram.UseGrid}" />
+              <TextBlock Text="Grid size:" VerticalAlignment="Center" IsVisible="{Binding SpotDiagram.UseGrid}" />
+              <TextBox Text="{Binding SpotDiagram.GridSize, UpdateSourceTrigger=LostFocus}" Width="40"
+                       IsVisible="{Binding SpotDiagram.UseGrid}" />
+              <TextBlock Text="Wavelength:" VerticalAlignment="Center" Margin="8,0,0,0" />
+              <ComboBox ItemsSource="{Binding SpotDiagram.WavelengthOptions}"
+                        SelectedIndex="{Binding SpotDiagram.SelectedWavelengthOption}"
+                        Width="180"
+                        VerticalAlignment="Center" />
+              <Button Content="Compute" Command="{Binding SpotDiagram.ComputeCommand}" Width="80" />
+              <Button Content="Export Text..." Command="{Binding SpotDiagram.ExportTextCommand}" Width="100" />
+              <Button Content="Export Image" Click="ExportImage_Click" Tag="SpotDiagram" Width="90" FontSize="11" />
+              <Button Content="Show Table" Click="SpotDiagramShowTable_Click" Width="80" FontSize="11" />
+              <Button Content="Close Tab" Click="CloseSpotDiagramTab_Click" Width="70" FontSize="11" />
+            </StackPanel>
+            <Border Background="White" Margin="4">
+              <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                <Image Source="{Binding SpotDiagram.SpotImage}"
+                       Stretch="None"
+                       HorizontalAlignment="Left"
+                       VerticalAlignment="Top" />
+              </ScrollViewer>
+            </Border>
+          </DockPanel>
+          <Border Background="#80FFFFFF" IsVisible="{Binding SpotDiagram.IsBusy}"
+                  HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+            <TextBlock Text="Computing..." FontSize="18" FontWeight="Bold" Foreground="#555"
+                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+          </Border>
+        </Grid>
+      </TabItem>
+
+      <!-- Distortion Tab (visible on demand via Analysis menu) -->
+      <TabItem Header="Distortion" IsVisible="{Binding Distortion.IsVisible}">
+        <Grid>
+          <DockPanel>
+            <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="4" Spacing="8">
+              <TextBlock Text="Type:" VerticalAlignment="Center" />
+              <ComboBox SelectedIndex="{Binding Distortion.SelectedTypeIndex}" Width="130">
+                <ComboBoxItem Content="F-Tan(θ)" />
+                <ComboBoxItem Content="F-θ" />
+              </ComboBox>
+              <Button Content="Compute" Command="{Binding Distortion.ComputeCommand}" Width="80" />
+              <Button Content="Export Text..." Command="{Binding Distortion.ExportTextCommand}" Width="100"
+                      IsEnabled="{Binding !Distortion.IsOnAxisOnly}" />
+              <Button Content="Copy Table" Command="{Binding Distortion.CopyTableToClipboardCommand}" Width="85" FontSize="11"
+                      IsEnabled="{Binding !Distortion.IsOnAxisOnly}" />
+              <Button Content="Export Image" Click="ExportImage_Click" Tag="Distortion" Width="90" FontSize="11" />
+              <Button Content="Show Table" Click="DistortionShowTable_Click" Width="80" FontSize="11" />
+              <Button Content="Close Tab" Click="CloseDistortionTab_Click" Width="70" FontSize="11" />
+            </StackPanel>
+            <Border Background="White" Margin="4">
+              <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                <Image Source="{Binding Distortion.PlotImage}"
+                       Stretch="None"
+                       HorizontalAlignment="Left"
+                       VerticalAlignment="Top" />
+              </ScrollViewer>
+            </Border>
+          </DockPanel>
+          <Border Background="#80FFFFFF" IsVisible="{Binding Distortion.IsBusy}"
+                  HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+            <TextBlock Text="Computing..." FontSize="18" FontWeight="Bold" Foreground="#555"
+                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+          </Border>
+          <Border Background="#F0F0F0" IsVisible="{Binding Distortion.IsOnAxisOnly}"
+                  HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+            <TextBlock Text="Disabled for single on-axis field point.&#x0a;Add off-axis fields to use this analysis."
+                       FontSize="16" Foreground="#888"
+                       HorizontalAlignment="Center" VerticalAlignment="Center" TextAlignment="Center" />
+          </Border>
+        </Grid>
+      </TabItem>
+
+      <!-- Field Curvature Tab (visible on demand via Analysis menu) -->
+      <TabItem Header="Field Curvature" IsVisible="{Binding FieldCurvature.IsVisible}">
+        <Grid>
+          <DockPanel>
+            <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="4" Spacing="8">
+              <Button Content="Compute" Command="{Binding FieldCurvature.ComputeCommand}" Width="80" />
+              <Button Content="Export Text..." Command="{Binding FieldCurvature.ExportTextCommand}" Width="100"
+                      IsEnabled="{Binding !FieldCurvature.IsOnAxisOnly}" />
+              <Button Content="Copy Table" Command="{Binding FieldCurvature.CopyTableToClipboardCommand}" Width="85" FontSize="11"
+                      IsEnabled="{Binding !FieldCurvature.IsOnAxisOnly}" />
+              <Button Content="Export Image" Click="ExportImage_Click" Tag="FieldCurvature" Width="90" FontSize="11" />
+              <Button Content="Show Table" Click="FieldCurvatureShowTable_Click" Width="80" FontSize="11" />
+              <Button Content="Close Tab" Click="CloseFieldCurvatureTab_Click" Width="70" FontSize="11" />
+            </StackPanel>
+            <Border Background="White" Margin="4">
+              <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                <Image Source="{Binding FieldCurvature.PlotImage}"
+                       Stretch="None"
+                       HorizontalAlignment="Left"
+                       VerticalAlignment="Top" />
+              </ScrollViewer>
+            </Border>
+          </DockPanel>
+          <Border Background="#80FFFFFF" IsVisible="{Binding FieldCurvature.IsBusy}"
+                  HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+            <TextBlock Text="Computing..." FontSize="18" FontWeight="Bold" Foreground="#555"
+                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+          </Border>
+          <Border Background="#F0F0F0" IsVisible="{Binding FieldCurvature.IsOnAxisOnly}"
+                  HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+            <TextBlock Text="Disabled for single on-axis field point.&#x0a;Add off-axis fields to use this analysis."
+                       FontSize="16" Foreground="#888"
+                       HorizontalAlignment="Center" VerticalAlignment="Center" TextAlignment="Center" />
+          </Border>
+        </Grid>
+      </TabItem>
+
+      <!-- Relative Illumination Tab (visible on demand via Analysis menu) -->
+      <TabItem Header="Rel. Illumination" IsVisible="{Binding RelativeIllumination.IsVisible}">
+        <Grid>
+          <DockPanel>
+            <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="4" Spacing="8">
+              <Button Content="Compute" Command="{Binding RelativeIllumination.ComputeCommand}" Width="80" />
+              <TextBlock Text="Field pts:" VerticalAlignment="Center" />
+              <TextBox Text="{Binding RelativeIllumination.NumFieldPoints}" Width="50"
+                       ToolTip.Tip="Number of field points sampled. More = smoother curve, slower." />
+              <TextBlock Text="Pupil samples:" VerticalAlignment="Center" />
+              <TextBox Text="{Binding RelativeIllumination.NumPupilRays}" Width="50"
+                       ToolTip.Tip="Pupil-boundary directions sampled per field point. More = smoother / better vignetting fidelity, slower." />
+              <Button Content="Export Text..." Command="{Binding RelativeIllumination.ExportTextCommand}" Width="100"
+                      IsEnabled="{Binding !RelativeIllumination.IsOnAxisOnly}" />
+              <Button Content="Export Image" Click="ExportImage_Click" Tag="RelativeIllumination" Width="90" FontSize="11" />
+              <Button Content="Show Table" Click="RelIllumShowTable_Click" Width="80" FontSize="11" />
+              <Button Content="Close Tab" Click="CloseRelativeIlluminationTab_Click" Width="70" FontSize="11" />
+            </StackPanel>
+            <Border Background="White" Margin="4">
+              <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                <Image Source="{Binding RelativeIllumination.PlotImage}"
+                       Stretch="None"
+                       HorizontalAlignment="Left"
+                       VerticalAlignment="Top" />
+              </ScrollViewer>
+            </Border>
+          </DockPanel>
+          <Border Background="#80FFFFFF" IsVisible="{Binding RelativeIllumination.IsBusy}"
+                  HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+            <TextBlock Text="Computing..." FontSize="18" FontWeight="Bold" Foreground="#555"
+                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+          </Border>
+          <Border Background="#F0F0F0" IsVisible="{Binding RelativeIllumination.IsOnAxisOnly}"
+                  HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+            <TextBlock Text="Disabled for single on-axis field point.&#x0a;Add off-axis fields to use this analysis."
+                       FontSize="16" Foreground="#888"
+                       HorizontalAlignment="Center" VerticalAlignment="Center" TextAlignment="Center" />
+          </Border>
+        </Grid>
+      </TabItem>
+
+      <!-- Seidel Aberrations Tab (visible on demand via Analysis menu) -->
+      <TabItem Header="Seidel" IsVisible="{Binding Seidel.IsVisible}">
+        <Grid>
+          <DockPanel>
+            <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="4" Spacing="8">
+              <Button Content="Compute" Command="{Binding Seidel.ComputeCommand}" Width="80" />
+              <Button Content="Export Text..." Command="{Binding Seidel.ExportTextCommand}" Width="100" />
+              <Button Content="Copy Table" Command="{Binding Seidel.CopyTableToClipboardCommand}" Width="85" FontSize="11" />
+              <Button Content="Export Image" Click="ExportImage_Click" Tag="Seidel" Width="90" FontSize="11" />
+              <Button Content="Show Table" Click="SeidelShowTable_Click" Width="80" FontSize="11" />
+              <Button Content="Close Tab" Click="CloseSeidelTab_Click" Width="70" FontSize="11" />
+            </StackPanel>
+            <Border Background="White" Margin="4">
+              <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                <Image Source="{Binding Seidel.PlotImage}"
+                       Stretch="None"
+                       HorizontalAlignment="Left"
+                       VerticalAlignment="Top" />
+              </ScrollViewer>
+            </Border>
+          </DockPanel>
+          <Border Background="#80FFFFFF" IsVisible="{Binding Seidel.IsBusy}"
+                  HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+            <TextBlock Text="Computing..." FontSize="18" FontWeight="Bold" Foreground="#555"
+                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+          </Border>
+        </Grid>
+      </TabItem>
+
+      <!-- Geometric MTF vs Frequency Tab -->
+      <TabItem Header="Geo MTF" IsVisible="{Binding GeoMtfVsFreq.IsVisible}">
+        <Grid>
+          <DockPanel>
+            <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="4" Spacing="8">
+              <TextBlock Text="Wavelength:" VerticalAlignment="Center" />
+              <ComboBox ItemsSource="{Binding GeoMtfVsFreq.WavelengthOptions}"
+                        SelectedIndex="{Binding GeoMtfVsFreq.SelectedWavelengthIndex}" Width="140" />
+              <TextBlock Text="Rings:" VerticalAlignment="Center" />
+              <TextBox Text="{Binding GeoMtfVsFreq.NumRings, UpdateSourceTrigger=LostFocus}" Width="40" />
+              <TextBlock Text="Freq Pts:" VerticalAlignment="Center" />
+              <TextBox Text="{Binding GeoMtfVsFreq.NumFreqPoints, UpdateSourceTrigger=LostFocus}" Width="45" />
+              <TextBlock Text="Max Freq (0=auto):" VerticalAlignment="Center" />
+              <TextBox Text="{Binding GeoMtfVsFreq.MaxFrequency, UpdateSourceTrigger=LostFocus}" Width="60" />
+              <Button Content="Compute" Command="{Binding GeoMtfVsFreq.ComputeCommand}" Width="80" />
+              <Button Content="Export Text..." Command="{Binding GeoMtfVsFreq.ExportTextCommand}" Width="100" />
+              <Button Content="Export Image" Click="ExportImage_Click" Tag="GeoMtfVsFreq" Width="90" FontSize="11" />
+              <Button Content="Show Table" Click="GeoMtfVsFreqShowTable_Click" Width="80" FontSize="11" />
+              <Button Content="Close Tab" Click="CloseGeoMtfVsFreqTab_Click" Width="70" FontSize="11" />
+            </StackPanel>
+            <Border Background="White" Margin="4">
+              <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                <Image Source="{Binding GeoMtfVsFreq.PlotImage}" Stretch="None"
+                       HorizontalAlignment="Left" VerticalAlignment="Top" />
+              </ScrollViewer>
+            </Border>
+          </DockPanel>
+          <Border Background="#80FFFFFF" IsVisible="{Binding GeoMtfVsFreq.IsBusy}"
+                  HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+            <TextBlock Text="Computing..." FontSize="18" FontWeight="Bold" Foreground="#555"
+                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+          </Border>
+        </Grid>
+      </TabItem>
+
+      <!-- Geometric MTF vs Field Tab -->
+      <TabItem Header="Geo MTF vs Field" IsVisible="{Binding GeoMtfVsField.IsVisible}">
+        <Grid>
+          <DockPanel>
+            <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="4" Spacing="8">
+              <TextBlock Text="Wavelength:" VerticalAlignment="Center" />
+              <ComboBox ItemsSource="{Binding GeoMtfVsField.WavelengthOptions}"
+                        SelectedIndex="{Binding GeoMtfVsField.SelectedWavelengthIndex}" Width="140" />
+              <TextBlock Text="Rings:" VerticalAlignment="Center" />
+              <TextBox Text="{Binding GeoMtfVsField.NumRings, UpdateSourceTrigger=LostFocus}" Width="40" />
+              <TextBlock Text="Field Pts:" VerticalAlignment="Center" />
+              <TextBox Text="{Binding GeoMtfVsField.NumFieldPoints, UpdateSourceTrigger=LostFocus}" Width="40" />
+              <Button Content="Frequencies..." Click="GeoMtfFrequencies_Click" Width="100" />
+              <TextBlock Text="{Binding GeoMtfVsField.FrequencyLabel}" VerticalAlignment="Center" Foreground="#666" />
+              <Button Content="Compute" Command="{Binding GeoMtfVsField.ComputeCommand}" Width="80" />
+              <Button Content="Export Text..." Command="{Binding GeoMtfVsField.ExportTextCommand}" Width="100" />
+              <Button Content="Export Image" Click="ExportImage_Click" Tag="GeoMtfVsField" Width="90" FontSize="11" />
+              <Button Content="Show Table" Click="GeoMtfVsFieldShowTable_Click" Width="80" FontSize="11" />
+              <Button Content="Close Tab" Click="CloseGeoMtfVsFieldTab_Click" Width="70" FontSize="11" />
+            </StackPanel>
+            <Border Background="White" Margin="4">
+              <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                <Image Source="{Binding GeoMtfVsField.PlotImage}" Stretch="None"
+                       HorizontalAlignment="Left" VerticalAlignment="Top" />
+              </ScrollViewer>
+            </Border>
+          </DockPanel>
+          <Border Background="#80FFFFFF" IsVisible="{Binding GeoMtfVsField.IsBusy}"
+                  HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+            <TextBlock Text="Computing..." FontSize="18" FontWeight="Bold" Foreground="#555"
+                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+          </Border>
+        </Grid>
+      </TabItem>
+
+      <!-- Geometric MTF vs Focus Tab -->
+      <TabItem Header="Geo MTF vs Focus" IsVisible="{Binding GeoMtfVsFocus.IsVisible}">
+        <Grid>
+          <DockPanel>
+            <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="4" Spacing="8">
+              <TextBlock Text="Wavelength:" VerticalAlignment="Center" />
+              <ComboBox ItemsSource="{Binding GeoMtfVsFocus.WavelengthOptions}"
+                        SelectedIndex="{Binding GeoMtfVsFocus.SelectedWavelengthIndex}" Width="140" />
+              <TextBlock Text="Field:" VerticalAlignment="Center" />
+              <ComboBox ItemsSource="{Binding GeoMtfVsFocus.FieldOptions}"
+                        SelectedIndex="{Binding GeoMtfVsFocus.SelectedFieldIndex}" Width="120" />
+              <TextBlock Text="Rings:" VerticalAlignment="Center" />
+              <TextBox Text="{Binding GeoMtfVsFocus.NumRings, UpdateSourceTrigger=LostFocus}" Width="40" />
+              <TextBlock Text="Freq (cy/mm):" VerticalAlignment="Center" />
+              <TextBox Text="{Binding GeoMtfVsFocus.SpatialFrequency, UpdateSourceTrigger=LostFocus}" Width="50" />
+              <TextBlock Text="Focus Range (mm):" VerticalAlignment="Center" />
+              <TextBox Text="{Binding GeoMtfVsFocus.FocusRange, UpdateSourceTrigger=LostFocus}" Width="50" />
+              <TextBlock Text="Steps:" VerticalAlignment="Center" />
+              <TextBox Text="{Binding GeoMtfVsFocus.NumFocusSteps, UpdateSourceTrigger=LostFocus}" Width="40" />
+              <Button Content="Compute" Command="{Binding GeoMtfVsFocus.ComputeCommand}" Width="80" />
+              <Button Content="Export Text..." Command="{Binding GeoMtfVsFocus.ExportTextCommand}" Width="100" />
+              <Button Content="Export Image" Click="ExportImage_Click" Tag="GeoMtfVsFocus" Width="90" FontSize="11" />
+              <Button Content="Show Table" Click="GeoMtfVsFocusShowTable_Click" Width="80" FontSize="11" />
+              <Button Content="Close Tab" Click="CloseGeoMtfVsFocusTab_Click" Width="70" FontSize="11" />
+            </StackPanel>
+            <Border Background="White" Margin="4">
+              <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                <Image Source="{Binding GeoMtfVsFocus.PlotImage}" Stretch="None"
+                       HorizontalAlignment="Left" VerticalAlignment="Top" />
+              </ScrollViewer>
+            </Border>
+          </DockPanel>
+          <Border Background="#80FFFFFF" IsVisible="{Binding GeoMtfVsFocus.IsBusy}"
+                  HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+            <TextBlock Text="Computing..." FontSize="18" FontWeight="Bold" Foreground="#555"
+                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+          </Border>
+          <Border Background="#F0F0F0" IsVisible="{Binding GeoMtfVsFocus.IsAfocal}"
+                  HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+            <TextBlock Text="Disabled for afocal systems.&#x0a;Focus shift is not defined for an afocal output."
+                       FontSize="16" Foreground="#888"
+                       HorizontalAlignment="Center" VerticalAlignment="Center" TextAlignment="Center" />
+          </Border>
+        </Grid>
+      </TabItem>
+
+      <TabItem Header="Ray Fan" IsVisible="{Binding TransverseRayFan.IsVisible}">
+        <Grid>
+          <DockPanel>
+            <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="4" Spacing="8">
+              <TextBlock Text="Points:" VerticalAlignment="Center" />
+              <TextBox Text="{Binding TransverseRayFan.NumPoints, UpdateSourceTrigger=LostFocus}" Width="50" />
+              <Button Content="Compute" Command="{Binding TransverseRayFan.ComputeCommand}" Width="80" />
+              <Button Content="Export Text..." Command="{Binding TransverseRayFan.ExportTextCommand}" Width="100" />
+              <Button Content="Export Image" Click="ExportImage_Click" Tag="TransverseRayFan" Width="90" FontSize="11" />
+              <Button Content="Close Tab" Click="CloseTransverseRayFanTab_Click" Width="70" FontSize="11" />
+            </StackPanel>
+            <Border Background="White" Margin="4">
+              <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                <Image Source="{Binding TransverseRayFan.RayFanImage}"
+                       Stretch="None"
+                       HorizontalAlignment="Left"
+                       VerticalAlignment="Top" />
+              </ScrollViewer>
+            </Border>
+          </DockPanel>
+          <Border Background="#80FFFFFF" IsVisible="{Binding TransverseRayFan.IsBusy}"
+                  HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+            <TextBlock Text="Computing..." FontSize="18" FontWeight="Bold" Foreground="#555"
+                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+          </Border>
+        </Grid>
+      </TabItem>
+
+      <TabItem Header="OPD Fan" IsVisible="{Binding OpdFan.IsVisible}">
+        <Grid>
+          <DockPanel>
+            <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="4" Spacing="8">
+              <TextBlock Text="Points:" VerticalAlignment="Center" />
+              <TextBox Text="{Binding OpdFan.NumPoints, UpdateSourceTrigger=LostFocus}" Width="50" />
+              <Button Content="Compute" Command="{Binding OpdFan.ComputeCommand}" Width="80" />
+              <Button Content="Export Text..." Command="{Binding OpdFan.ExportTextCommand}" Width="100" />
+              <Button Content="Export Image" Click="ExportImage_Click" Tag="OpdFan" Width="90" FontSize="11" />
+              <Button Content="Close Tab" Click="CloseOpdFanTab_Click" Width="70" FontSize="11" />
+            </StackPanel>
+            <Border Background="White" Margin="4">
+              <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                <Image Source="{Binding OpdFan.OpdFanImage}"
+                       Stretch="None"
+                       HorizontalAlignment="Left"
+                       VerticalAlignment="Top" />
+              </ScrollViewer>
+            </Border>
+          </DockPanel>
+          <Border Background="#80FFFFFF" IsVisible="{Binding OpdFan.IsBusy}"
+                  HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+            <TextBlock Text="Computing..." FontSize="18" FontWeight="Bold" Foreground="#555"
+                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+          </Border>
+        </Grid>
+      </TabItem>
+
+      <TabItem Header="Wavefront Map" IsVisible="{Binding WavefrontMap.IsVisible}">
+        <Grid>
+          <DockPanel>
+            <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="4" Spacing="8">
+              <TextBlock Text="Grid:" VerticalAlignment="Center" />
+              <ComboBox SelectedIndex="1" SelectionChanged="WavefrontGridChanged" Width="70">
+                <ComboBoxItem Content="32" />
+                <ComboBoxItem Content="64" />
+                <ComboBoxItem Content="128" />
+                <ComboBoxItem Content="256" />
+                <ComboBoxItem Content="512" />
+              </ComboBox>
+              <Button Content="Compute" Command="{Binding WavefrontMap.ComputeCommand}" Width="80" />
+              <Button Content="Export Text..." Command="{Binding WavefrontMap.ExportTextCommand}" Width="100" />
+              <Button Content="Export Image" Click="ExportImage_Click" Tag="WavefrontMap" Width="90" FontSize="11" />
+              <Button Content="Close Tab" Click="CloseWavefrontMapTab_Click" Width="70" FontSize="11" />
+            </StackPanel>
+            <Border Background="White" Margin="4">
+              <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                <Image Source="{Binding WavefrontMap.WavefrontImage}"
+                       Stretch="None"
+                       HorizontalAlignment="Left"
+                       VerticalAlignment="Top" />
+              </ScrollViewer>
+            </Border>
+          </DockPanel>
+          <Border Background="#80FFFFFF" IsVisible="{Binding WavefrontMap.IsBusy}"
+                  HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+            <TextBlock Text="Computing..." FontSize="18" FontWeight="Bold" Foreground="#555"
+                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+          </Border>
+        </Grid>
+      </TabItem>
+
+      <TabItem Header="Pupil Aberration" IsVisible="{Binding PupilAberrationFan.IsVisible}">
+        <Grid>
+          <DockPanel>
+            <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="4" Spacing="8">
+              <TextBlock Text="Points:" VerticalAlignment="Center" />
+              <TextBox Text="{Binding PupilAberrationFan.NumPoints, UpdateSourceTrigger=LostFocus}" Width="50" />
+              <Button Content="Compute" Command="{Binding PupilAberrationFan.ComputeCommand}" Width="80" />
+              <Button Content="Export Text..." Command="{Binding PupilAberrationFan.ExportTextCommand}" Width="100" />
+              <Button Content="Export Image" Click="ExportImage_Click" Tag="PupilAberrationFan" Width="90" FontSize="11" />
+              <Button Content="Close Tab" Click="ClosePupilAberrationFanTab_Click" Width="70" FontSize="11" />
+            </StackPanel>
+            <Border Background="White" Margin="4">
+              <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                <Image Source="{Binding PupilAberrationFan.PlotImage}"
+                       Stretch="None"
+                       HorizontalAlignment="Left"
+                       VerticalAlignment="Top" />
+              </ScrollViewer>
+            </Border>
+          </DockPanel>
+          <Border Background="#80FFFFFF" IsVisible="{Binding PupilAberrationFan.IsBusy}"
+                  HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+            <TextBlock Text="Computing..." FontSize="18" FontWeight="Bold" Foreground="#555"
+                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+          </Border>
+        </Grid>
+      </TabItem>
+
+      <TabItem Header="Lateral Color" IsVisible="{Binding LateralColor.IsVisible}">
+        <Grid>
+          <DockPanel>
+            <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="4" Spacing="8">
+              <Button Content="Compute" Command="{Binding LateralColor.ComputeCommand}" Width="80" />
+              <Button Content="Export Text..." Command="{Binding LateralColor.ExportTextCommand}" Width="100"
+                      IsEnabled="{Binding !LateralColor.IsDisabled}" />
+              <Button Content="Copy Table" Command="{Binding LateralColor.CopyTableToClipboardCommand}" Width="85" FontSize="11"
+                      IsEnabled="{Binding !LateralColor.IsDisabled}" />
+              <Button Content="Export Image" Click="ExportImage_Click" Tag="LateralColor" Width="90" FontSize="11" />
+              <Button Content="Show Table" Click="LateralColorShowTable_Click" Width="80" FontSize="11" />
+              <Button Content="Close Tab" Click="CloseLateralColorTab_Click" Width="70" FontSize="11" />
+            </StackPanel>
+            <Border Background="White" Margin="4">
+              <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                <Image Source="{Binding LateralColor.PlotImage}"
+                       Stretch="None"
+                       HorizontalAlignment="Left"
+                       VerticalAlignment="Top" />
+              </ScrollViewer>
+            </Border>
+          </DockPanel>
+          <Border Background="#80FFFFFF" IsVisible="{Binding LateralColor.IsBusy}"
+                  HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+            <TextBlock Text="Computing..." FontSize="18" FontWeight="Bold" Foreground="#555"
+                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+          </Border>
+          <Border Background="#F0F0F0" IsVisible="{Binding LateralColor.IsDisabled}"
+                  HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+            <TextBlock Text="Requires multiple wavelengths and off-axis fields."
+                       FontSize="16" Foreground="#888"
+                       HorizontalAlignment="Center" VerticalAlignment="Center" TextAlignment="Center" />
+          </Border>
+        </Grid>
+      </TabItem>
+
+      <TabItem Header="Chromatic Focal Shift" IsVisible="{Binding ChromaticFocalShift.IsVisible}">
+        <Grid>
+          <DockPanel>
+            <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="4" Spacing="8">
+              <Button Content="Compute" Command="{Binding ChromaticFocalShift.ComputeCommand}" Width="80" />
+              <Button Content="Export Text..." Command="{Binding ChromaticFocalShift.ExportTextCommand}" Width="100" />
+              <Button Content="Export Image" Click="ExportImage_Click" Tag="ChromaticFocalShift" Width="90" FontSize="11" />
+              <Button Content="Show Table" Click="ChromaticFocalShiftShowTable_Click" Width="80" FontSize="11" />
+              <Button Content="Close Tab" Click="CloseChromFocalShiftTab_Click" Width="70" FontSize="11" />
+            </StackPanel>
+            <Border Background="White" Margin="4">
+              <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                <Image Source="{Binding ChromaticFocalShift.PlotImage}"
+                       Stretch="None"
+                       HorizontalAlignment="Left"
+                       VerticalAlignment="Top" />
+              </ScrollViewer>
+            </Border>
+          </DockPanel>
+          <Border Background="#80FFFFFF" IsVisible="{Binding ChromaticFocalShift.IsBusy}"
+                  HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+            <TextBlock Text="Computing..." FontSize="18" FontWeight="Bold" Foreground="#555"
+                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+          </Border>
+          <Border Background="#F0F0F0" IsVisible="{Binding ChromaticFocalShift.IsDisabled}"
+                  HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+            <TextBlock Text="Requires multiple wavelengths."
+                       FontSize="16" Foreground="#888"
+                       HorizontalAlignment="Center" VerticalAlignment="Center" TextAlignment="Center" />
+          </Border>
+        </Grid>
+      </TabItem>
+
+      <TabItem Header="Single Ray Trace" IsVisible="{Binding SingleRayTrace.IsVisible}">
+        <Grid>
+          <DockPanel>
+            <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="4" Spacing="6">
+              <RadioButton Content="Field:" IsChecked="{Binding SingleRayTrace.UseFieldIndex}" GroupName="RayMode" VerticalAlignment="Center" />
+              <ComboBox ItemsSource="{Binding SingleRayTrace.FieldOptions}"
+                        SelectedIndex="{Binding SingleRayTrace.SelectedFieldIndex}"
+                        IsEnabled="{Binding SingleRayTrace.UseFieldIndex}" Width="140" />
+              <RadioButton Content="Hy:" GroupName="RayMode" VerticalAlignment="Center" />
+              <TextBox Text="{Binding SingleRayTrace.Hy}" Width="50" IsEnabled="{Binding !SingleRayTrace.UseFieldIndex}" />
+              <TextBlock Text="Px:" VerticalAlignment="Center" />
+              <TextBox Text="{Binding SingleRayTrace.Px, UpdateSourceTrigger=LostFocus}" Width="50" />
+              <TextBlock Text="Py:" VerticalAlignment="Center" />
+              <TextBox Text="{Binding SingleRayTrace.Py, UpdateSourceTrigger=LostFocus}" Width="50" />
+              <TextBlock Text="Wave:" VerticalAlignment="Center" />
+              <ComboBox ItemsSource="{Binding SingleRayTrace.WaveOptions}"
+                        SelectedIndex="{Binding SingleRayTrace.SelectedWaveIndex}" Width="160" />
+              <Button Content="Trace" Command="{Binding SingleRayTrace.ComputeCommand}" Width="70" />
+              <Button Content="Select All" Click="RayTraceSelectAll_Click" Width="70" FontSize="11" />
+              <Button Content="Copy" Click="RayTraceCopy_Click" Width="50" FontSize="11" />
+              <Button Content="Copy Table" Command="{Binding SingleRayTrace.CopyTableToClipboardCommand}" Width="85" FontSize="11" />
+              <Button Content="Close Tab" Click="CloseSingleRayTraceTab_Click" Width="70" FontSize="11" />
+            </StackPanel>
+            <StackPanel DockPanel.Dock="Top" Margin="4,0,4,2">
+              <TextBlock Text="{Binding SingleRayTrace.StatusText}" FontSize="11" Foreground="#555" />
+            </StackPanel>
+            <DataGrid x:Name="RayTraceGrid" ItemsSource="{Binding SingleRayTrace.Rows}" IsReadOnly="True"
+                      AutoGenerateColumns="False" CanUserResizeColumns="True"
+                      CanUserSortColumns="False"
+                      GridLinesVisibility="All" FontSize="11" FontFamily="Consolas"
+                      Margin="4" HeadersVisibility="Column"
+                      SelectionMode="Extended" ClipboardCopyMode="IncludeHeader">
+              <DataGrid.Columns>
+                <DataGridTextColumn Header="Surf" Binding="{Binding Surf}" Width="50" />
+                <DataGridTextColumn Header="X" Binding="{Binding X}" Width="140" />
+                <DataGridTextColumn Header="Y" Binding="{Binding Y}" Width="140" />
+                <DataGridTextColumn Header="Z" Binding="{Binding Z}" Width="140" />
+                <DataGridTextColumn Header="L" Binding="{Binding L}" Width="140" />
+                <DataGridTextColumn Header="M" Binding="{Binding M}" Width="140" />
+                <DataGridTextColumn Header="N" Binding="{Binding N}" Width="140" />
+                <DataGridTextColumn Header="Ln" Binding="{Binding Ln}" Width="140" />
+                <DataGridTextColumn Header="Mn" Binding="{Binding Mn}" Width="140" />
+                <DataGridTextColumn Header="Nn" Binding="{Binding Nn}" Width="140" />
+                <DataGridTextColumn Header="AOI" Binding="{Binding AOI}" Width="100" />
+                <DataGridTextColumn Header="Path" Binding="{Binding Path}" Width="120" />
+                <DataGridTextColumn Header="OPL" Binding="{Binding OPL}" Width="120" />
+                <DataGridTextColumn Header="Cumul OPL" Binding="{Binding CumulOPL}" Width="140" />
+                <DataGridTextColumn Header="Comment" Binding="{Binding Comment}" Width="80" />
+              </DataGrid.Columns>
+            </DataGrid>
+          </DockPanel>
+          <Border Background="#80FFFFFF" IsVisible="{Binding SingleRayTrace.IsBusy}"
+                  HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+            <TextBlock Text="Tracing..." FontSize="18" FontWeight="Bold" Foreground="#555"
+                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+          </Border>
+        </Grid>
+      </TabItem>
+
+      <!-- FFT PSF Tab (visible on demand via Analysis menu) -->
+      <TabItem Header="FFT PSF" IsVisible="{Binding FftPsf.IsVisible}">
+        <Grid>
+          <DockPanel>
+            <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="4" Spacing="8">
+              <TextBlock Text="Grid:" VerticalAlignment="Center" />
+              <ComboBox SelectedIndex="1" SelectionChanged="PsfGridChanged" Width="80">
+                <ComboBoxItem Content="32" />
+                <ComboBoxItem Content="64" />
+                <ComboBoxItem Content="128" />
+                <ComboBoxItem Content="256" />
+                <ComboBoxItem Content="512" />
+              </ComboBox>
+              <TextBlock Text="Wavelength:" VerticalAlignment="Center" />
+              <ComboBox ItemsSource="{Binding FftPsf.WavelengthOptions}"
+                        SelectedIndex="{Binding FftPsf.SelectedWavelengthIndex}"
+                        Width="160" />
+              <Button Content="Compute" Command="{Binding FftPsf.ComputeCommand}" Width="80" />
+              <Button Content="Export Text..." Command="{Binding FftPsf.ExportTextCommand}" Width="100" />
+              <Button Content="Export Image" Click="ExportImage_Click" Tag="FftPsf" Width="90" FontSize="11" />
+              <Button Content="Close Tab" Click="CloseFftPsfTab_Click" Width="70" FontSize="11" />
+            </StackPanel>
+            <Border Background="White" Margin="4">
+              <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                <Image Source="{Binding FftPsf.PsfImage}"
+                       Stretch="None"
+                       HorizontalAlignment="Left"
+                       VerticalAlignment="Top" />
+              </ScrollViewer>
+            </Border>
+          </DockPanel>
+          <Border Background="#80FFFFFF" IsVisible="{Binding FftPsf.IsBusy}"
+                  HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+            <TextBlock Text="Computing..." FontSize="18" FontWeight="Bold" Foreground="#555"
+                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+          </Border>
+        </Grid>
+      </TabItem>
+
+      <!-- System Data Tab (visible on demand via Analysis menu) -->
+      <TabItem Header="System Data" IsVisible="{Binding SystemData.IsVisible}">
+        <Grid>
+          <DockPanel>
+            <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="4" Spacing="8">
+              <Button Content="Compute" Command="{Binding SystemData.ComputeCommand}" Width="80" />
+              <Button Content="Export Text..." Command="{Binding SystemData.ExportTextCommand}" Width="100" />
+              <Button Content="Copy Table" Command="{Binding SystemData.CopyTableToClipboardCommand}" Width="85" FontSize="11" />
+              <Button Content="Export Image" Click="ExportImage_Click" Tag="SystemData" Width="90" FontSize="11" />
+              <Button Content="Close Tab" Click="CloseSystemDataTab_Click" Width="70" FontSize="11" />
+            </StackPanel>
+            <Border Background="White" Margin="4">
+              <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                <Image Source="{Binding SystemData.PlotImage}"
+                       Stretch="None"
+                       HorizontalAlignment="Left"
+                       VerticalAlignment="Top" />
+              </ScrollViewer>
+            </Border>
+          </DockPanel>
+          <Border Background="#80FFFFFF" IsVisible="{Binding SystemData.IsBusy}"
+                  HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+            <TextBlock Text="Computing..." FontSize="18" FontWeight="Bold" Foreground="#555"
+                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+          </Border>
+        </Grid>
+      </TabItem>
+
+    </TabControl>
+  </DockPanel>
+</Window>
