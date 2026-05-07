@@ -2,7 +2,7 @@
 ; Requires Inno Setup 6.x
 
 #define MyAppName "LensHH-LT"
-#define MyAppVersion "1.0.105"
+#define MyAppVersion "1.0.106"
 #define MyAppPublisher "Synapse Optics"
 #define MyAppExeName "LensHH.App.exe"
 #define MyAppURL "https://github.com/SynapseOptics/LensHH-LT"
@@ -139,6 +139,14 @@ Source: "{#Engine}\win-x64\lenshh_native.dll"; DestDir: "{app}"; Flags: ignoreve
 ; Icon
 Source: "{#Assets}\icon.ico"; DestDir: "{app}"; Flags: ignoreversion
 
+; Bundled VC++ 2015-2022 Redistributable (x64). Chain-installed during
+; setup via the [Run] section below, gated by VCRedistNeedsInstall in
+; [Code]. Without this, lenshh_native.dll fails to load on machines that
+; don't already have the MSVC runtime — common on clean Windows installs.
+; Downloaded from https://aka.ms/vs/17/release/vc_redist.x64.exe by the
+; build-installer pipeline (gitignored).
+Source: "redist\vc_redist.x64.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall; Check: VCRedistNeedsInstall
+
 [Registry]
 ; File association for .lhlt files
 Root: HKA; Subkey: "Software\Classes\.lhlt"; ValueType: string; ValueName: ""; ValueData: "LensHH.LensFile"; Flags: uninsdeletevalue; Tasks: fileassoc
@@ -166,9 +174,30 @@ Name: "{group}\{cm:UninstallProgram,{#MyAppName}}"; Filename: "{uninstallexe}"
 Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\icon.ico"; Tasks: desktopicon
 
 [Run]
+; Install VC++ Redistributable first (only if not already present). Silent,
+; no reboot prompt. Required for lenshh_native.dll to load.
+Filename: "{tmp}\vc_redist.x64.exe"; Parameters: "/install /quiet /norestart"; \
+  StatusMsg: "Installing Microsoft Visual C++ Redistributable..."; \
+  Check: VCRedistNeedsInstall
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#MyAppName}}"; Flags: nowait postinstall skipifsilent
 
 [Code]
+function VCRedistNeedsInstall: Boolean;
+var
+  Installed: Cardinal;
+begin
+  // Microsoft VC++ 2015-2022 Redistributable writes
+  //   HKLM\SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\X64\Installed = 1
+  // when present (works for both per-machine and per-user installs because
+  // the registry value is in HKLM either way). Returning False here suppresses
+  // both the [Files] copy and the [Run] launch, so end users who already have
+  // the runtime see no extra step or progress UI.
+  Result := True;
+  if RegQueryDWordValue(HKLM, 'SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\X64', 'Installed', Installed) then
+    if Installed = 1 then
+      Result := False;
+end;
+
 function IsDotNet8Installed: Boolean;
 var
   ResultCode: Integer;

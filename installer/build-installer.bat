@@ -2,6 +2,21 @@
 setlocal
 cd /d "%~dp0\.."
 
+echo === Ensure VC++ Redistributable is downloaded ===
+REM The .iss bundles installer\redist\vc_redist.x64.exe and chain-installs
+REM it during setup so end users on clean Windows machines don't hit
+REM "specified module could not be found" when lenshh_native.dll loads.
+REM The file is gitignored (~25 MB), so download it on demand.
+if not exist "installer\redist\vc_redist.x64.exe" (
+    echo Downloading vc_redist.x64.exe from aka.ms ...
+    if not exist "installer\redist" mkdir "installer\redist"
+    curl -sL -o "installer\redist\vc_redist.x64.exe" "https://aka.ms/vs/17/release/vc_redist.x64.exe"
+    if errorlevel 1 (
+        echo Failed to download vc_redist.x64.exe. Aborting.
+        exit /b 1
+    )
+)
+
 echo === Building LensHH-LT Release ===
 REM dotnet's incremental build can leave LensHH.App/bin's transitive copies
 REM (LensHH.IO.dll, LensHH.Rendering.dll) stale even after their source

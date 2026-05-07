@@ -18,6 +18,11 @@ installer/Output/
 installer/AppImage/
 installer/appimagetool-*.AppImage
 
+# Bundled Microsoft VC++ Redistributable (downloaded by build-installer.bat
+# from https://aka.ms/vs/17/release/vc_redist.x64.exe — ~25 MB; chain-installed
+# during setup if not already present).
+installer/redist/
+
 # Documentation PDF build — all outputs (PDF + intermediate HTML +
 # node_modules) are regenerated from docs/*.md by
 # installer/build-installer.bat on each installer build.
