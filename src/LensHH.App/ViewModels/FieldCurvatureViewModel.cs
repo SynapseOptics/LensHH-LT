@@ -104,10 +104,12 @@ public partial class FieldCurvatureViewModel : ObservableObject
         var system = _session.System;
         string fieldUnit = system.FieldType == Core.Enums.FieldType.ObjectHeight ? "mm" : "deg";
 
+        int wlDigits = LensHH.Rendering.LabelFormat.WavelengthDigits(_lastMwResult.Wavelengths);
+        string wlFmt = "F" + wlDigits;
         var sb = new System.Text.StringBuilder();
         for (int w = 0; w < _lastMwResult.PerWavelength.Count; w++)
         {
-            string wlLabel = $"Wavelength {w + 1}: {_lastMwResult.Wavelengths[w]:F4} \u00b5m";
+            string wlLabel = $"Wavelength {w + 1}: {_lastMwResult.Wavelengths[w].ToString(wlFmt, System.Globalization.CultureInfo.InvariantCulture)} \u00b5m";
             sb.AppendLine(FieldCurvatureTextExport.Export(_lastMwResult.PerWavelength[w], wlLabel, fieldUnit));
             sb.AppendLine();
         }
@@ -148,10 +150,12 @@ public partial class FieldCurvatureViewModel : ObservableObject
         if (path == null) return;
 
         // Export each wavelength's data
+        int wlDigits = LensHH.Rendering.LabelFormat.WavelengthDigits(_lastMwResult.Wavelengths);
+        string wlFmt = "F" + wlDigits;
         var sb = new System.Text.StringBuilder();
         for (int w = 0; w < _lastMwResult.PerWavelength.Count; w++)
         {
-            string wlLabel = $"Wavelength {w + 1}: {_lastMwResult.Wavelengths[w]:F4} \u00b5m";
+            string wlLabel = $"Wavelength {w + 1}: {_lastMwResult.Wavelengths[w].ToString(wlFmt, System.Globalization.CultureInfo.InvariantCulture)} \u00b5m";
             sb.AppendLine(FieldCurvatureTextExport.Export(_lastMwResult.PerWavelength[w], wlLabel, fieldUnit));
             sb.AppendLine();
         }
