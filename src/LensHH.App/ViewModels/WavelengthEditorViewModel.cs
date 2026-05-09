@@ -30,7 +30,10 @@ public partial class WavelengthRowViewModel : ObservableObject
 
     public string ValueText
     {
-        get => _wl.Value.ToString("F4", CultureInfo.InvariantCulture);
+        // G10: up to 10 significant figures, no trailing zeros, no scientific
+        // notation in the typical UV–LWIR wavelength range. F4 was lossy —
+        // it silently round-tripped 0.265985 / 0.266000 / 0.266015 to "0.2660".
+        get => _wl.Value.ToString("G10", CultureInfo.InvariantCulture);
         set
         {
             if (double.TryParse(value, NumberStyles.Float | NumberStyles.AllowExponent, CultureInfo.InvariantCulture, out double v))
