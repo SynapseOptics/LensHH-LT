@@ -67,7 +67,7 @@ public partial class SystemDataViewModel : ObservableObject
     public async Task CopyTableToClipboard()
     {
         if (_lastResult == null) return;
-        string text = SystemDataTextExport.Export(_lastResult, "System Data");
+        string text = SystemDataTextExport.Export(_lastResult, _session.System, _session.GlassCatalog, "System Data");
 
         var topLevel = Avalonia.Application.Current?.ApplicationLifetime is
             Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
@@ -101,7 +101,7 @@ public partial class SystemDataViewModel : ObservableObject
         var path = file.TryGetLocalPath();
         if (path == null) return;
 
-        string text = SystemDataTextExport.Export(_lastResult, "System Data");
+        string text = SystemDataTextExport.Export(_lastResult, _session.System, _session.GlassCatalog, "System Data");
         File.WriteAllText(path, text);
     }
 

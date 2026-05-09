@@ -377,7 +377,7 @@ namespace LensHH.Mcp.Tools
         {
             var sys = _session.System;
             var result = SystemDataCalculator.Calculate(sys, _session.GlassCatalog);
-            var text = SystemDataTextExport.Export(result, "System Data");
+            var text = SystemDataTextExport.Export(result, sys, _session.GlassCatalog, "System Data");
             return WriteTextExport(text, outputPath);
         }
 

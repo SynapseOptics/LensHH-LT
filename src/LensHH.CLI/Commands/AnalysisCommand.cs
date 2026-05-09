@@ -2015,7 +2015,7 @@ namespace LensHH.CLI.Commands
                 case "paraxial":
                 {
                     var result = SystemDataCalculator.Calculate(system, glassMgr);
-                    text = SystemDataTextExport.Export(result, "System Data");
+                    text = SystemDataTextExport.Export(result, system, glassMgr, "System Data");
                     break;
                 }
                 case "lateralcolor":
