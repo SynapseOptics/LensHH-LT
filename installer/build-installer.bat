@@ -65,4 +65,3 @@ if exist "%ProgramFiles(x86)%\Inno Setup 6\ISCC.exe" (
 echo.
 echo === Done! ===
 echo Installer output: installer\Output\
-pause
