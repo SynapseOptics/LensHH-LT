@@ -35,7 +35,9 @@ namespace LensHH.Rendering
             {
                 maxShift = Math.Max(maxShift, Math.Max(Math.Abs(pt.TangentialFocus), Math.Abs(pt.SagittalFocus)));
             }
-            if (maxShift < 0.001) maxShift = 0.1;
+            // Auto-scale: use actual data range with 20% padding. Only fall
+            // back to a default when there's literally no data to plot.
+            if (maxShift <= 0) maxShift = 1.0;
             maxShift *= 1.2;
 
             double maxField = 0;

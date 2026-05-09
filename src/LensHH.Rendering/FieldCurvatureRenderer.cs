@@ -20,7 +20,12 @@ namespace LensHH.Rendering
             double maxShift = 0;
             foreach (var pt in result.Points)
                 maxShift = Math.Max(maxShift, Math.Max(Math.Abs(pt.TangentialFocus), Math.Abs(pt.SagittalFocus)));
-            if (maxShift < 0.001) maxShift = 0.1;
+            // Auto-scale: use actual data range with 20% padding. Only fall
+            // back to a default when there's literally no data to plot.
+            // (Earlier code had a hardcoded "if maxShift < 0.001 use 0.1mm"
+            // floor that crushed UV-objective focus shifts in the 10^-4 mm
+            // range to a single vertical line at center.)
+            if (maxShift <= 0) maxShift = 1.0;
             maxShift *= 1.2;
 
             double maxField = result.Points.Count > 0 ? result.Points[result.Points.Count - 1].FieldY : 20;
@@ -134,7 +139,12 @@ namespace LensHH.Rendering
                     if (pt.FieldY > maxField) maxField = pt.FieldY;
                 }
             }
-            if (maxShift < 0.001) maxShift = 0.1;
+            // Auto-scale: use actual data range with 20% padding. Only fall
+            // back to a default when there's literally no data to plot.
+            // (Earlier code had a hardcoded "if maxShift < 0.001 use 0.1mm"
+            // floor that crushed UV-objective focus shifts in the 10^-4 mm
+            // range to a single vertical line at center.)
+            if (maxShift <= 0) maxShift = 1.0;
             maxShift *= 1.2;
             if (maxField <= 0) maxField = 20;
 
