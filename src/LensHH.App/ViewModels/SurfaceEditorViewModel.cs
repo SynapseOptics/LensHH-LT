@@ -71,6 +71,10 @@ public partial class SurfaceRowViewModel : ObservableObject
             }
             if (_surface.IsStop) return; // already the stop, nothing to do
 
+            // [DIAG] Snapshot before stop change.
+            SurfaceDiagnostics.Log("IsStop.set BEFORE", _session.System,
+                $"target row Index={_surface.Index}");
+
             // Move the stop: clear it on every other surface, then set it
             // here. Notify SystemChanged afterward — the editor's
             // OnSystemChanged handler will call RefreshDisplayProperties on
@@ -78,6 +82,11 @@ public partial class SurfaceRowViewModel : ObservableObject
             // stop row repaints unchecked.
             foreach (var s in _session.System.Surfaces) s.IsStop = false;
             _surface.IsStop = true;
+
+            // [DIAG] After the loop+set; before notification fires.
+            SurfaceDiagnostics.Log("IsStop.set AFTER", _session.System,
+                $"target row Index={_surface.Index}");
+
             OnPropertyChanged();
             _session.NotifySystemChanged("surface");
         }
@@ -342,17 +351,24 @@ public partial class SurfaceEditorViewModel : ObservableObject
 
     private void OnSystemChanged(string sender)
     {
+        SurfaceDiagnostics.Log("SurfaceEditor.OnSystemChanged ENTER", _session.System,
+            $"sender={sender}  rowCount={Surfaces.Count}");
+
         // For cell edits from this editor: don't rebuild the collection (avoids crash),
         // but DO refresh display properties so semi-diameters etc. update immediately.
         if (sender == "surface" || sender == "properties")
         {
             foreach (var s in Surfaces)
                 s.RefreshDisplayProperties();
+            SurfaceDiagnostics.Log("SurfaceEditor.OnSystemChanged EXIT (props-only)", _session.System,
+                $"sender={sender}  rowCount={Surfaces.Count}");
             return;
         }
 
         // Structural changes (insert/delete/open/new): full rebuild.
         Refresh();
+        SurfaceDiagnostics.Log("SurfaceEditor.OnSystemChanged EXIT (refreshed)", _session.System,
+            $"sender={sender}  rowCount={Surfaces.Count}");
     }
 
     public void Refresh()
@@ -361,10 +377,14 @@ public partial class SurfaceEditorViewModel : ObservableObject
         _isRefreshing = true;
         try
         {
+            SurfaceDiagnostics.Log("SurfaceEditor.Refresh ENTER", _session.System,
+                $"rowCountBefore={Surfaces.Count}");
             Surfaces.Clear();
             if (_session.System == null) return;
             foreach (var s in _session.System.Surfaces)
                 Surfaces.Add(new SurfaceRowViewModel(s, _session));
+            SurfaceDiagnostics.Log("SurfaceEditor.Refresh EXIT", _session.System,
+                $"rowCountAfter={Surfaces.Count}");
         }
         finally { _isRefreshing = false; }
     }
@@ -372,6 +392,8 @@ public partial class SurfaceEditorViewModel : ObservableObject
     [RelayCommand]
     public void InsertSurface()
     {
+        SurfaceDiagnostics.Log("InsertSurface ENTER", _session.System,
+            $"selectedIndex={SelectedSurface?.Index.ToString() ?? "null"}");
         int idx = SelectedSurface != null ? SelectedSurface.Index + 1 : _session.System.Surfaces.Count - 1;
         if (idx < 1) idx = 1;
         if (idx >= _session.System.Surfaces.Count) idx = _session.System.Surfaces.Count - 1;
@@ -405,11 +427,14 @@ public partial class SurfaceEditorViewModel : ObservableObject
 
         Refresh(); // structural change — rebuild directly
         _session.NotifySystemChanged("structure");
+        SurfaceDiagnostics.Log("InsertSurface EXIT", _session.System);
     }
 
     [RelayCommand]
     public void DeleteSurface()
     {
+        SurfaceDiagnostics.Log("DeleteSurface ENTER", _session.System,
+            $"selectedIndex={SelectedSurface?.Index.ToString() ?? "null"}");
         if (SelectedSurface == null) return;
         int idx = SelectedSurface.Index;
         // Don't delete object (0) or image (last) surfaces
@@ -427,6 +452,7 @@ public partial class SurfaceEditorViewModel : ObservableObject
 
         Refresh(); // structural change — rebuild directly
         _session.NotifySystemChanged("structure");
+        SurfaceDiagnostics.Log("DeleteSurface EXIT", _session.System);
     }
 
     /// <summary>

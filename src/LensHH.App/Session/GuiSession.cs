@@ -205,6 +205,8 @@ public class GuiSession
 
     public void OpenFile(string path, string format = "lhlt")
     {
+        SurfaceDiagnostics.Log("OpenFile ENTER", _system,
+            $"format={format}  path={Path.GetFileName(path)}");
         // Reset import-state carried across opens.
         LastImportSubstitutions = Array.Empty<LensHH.App.GlassCatalog.GlassNumericResolver.Substitution>();
 
@@ -264,8 +266,10 @@ public class GuiSession
         // path) but still seed CurrentFileName from the imported file.
         CurrentFileName = Path.GetFileNameWithoutExtension(path);
         IsDirty = false;
+        SurfaceDiagnostics.Log("OpenFile post-replace, pre-notify", _system, $"format={format}");
         NotifySystemChanged("session", markDirty: false);
         FileStateChanged?.Invoke();
+        SurfaceDiagnostics.Log("OpenFile EXIT", _system);
     }
 
     /// <summary>
@@ -345,13 +349,17 @@ public class GuiSession
     /// </summary>
     public void NotifySystemChanged(string sender, bool markDirty = true)
     {
+        SurfaceDiagnostics.Log("NotifySystemChanged ENTER", _system, $"sender={sender}");
+
         // Apply pickup solves first (target = source * scale + offset)
         try { LensHH.Core.Analysis.PickupSolver.Solve(_system); }
         catch { /* ignore if system is incomplete */ }
+        SurfaceDiagnostics.Log("NotifySystemChanged after PickupSolver", _system, $"sender={sender}");
 
         // Recompute AUTO semi-diameters on every system change
         try { LensHH.Core.Analysis.SemiDiameterSolver.Solve(_system, _glassCatalog); }
         catch { /* ignore if system is incomplete */ }
+        SurfaceDiagnostics.Log("NotifySystemChanged after SemiDiameterSolver", _system, $"sender={sender}");
 
         // Run the unified engine validator and route each error code
         // back to the matching banner property. Order in the validator
@@ -361,7 +369,9 @@ public class GuiSession
 
         if (markDirty) IsDirty = true;
 
+        SurfaceDiagnostics.Log("NotifySystemChanged before invoke", _system, $"sender={sender}");
         SystemChanged?.Invoke(sender);
+        SurfaceDiagnostics.Log("NotifySystemChanged EXIT", _system, $"sender={sender}");
     }
 
     private void RunSystemValidator()
