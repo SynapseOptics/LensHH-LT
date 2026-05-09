@@ -76,10 +76,13 @@ public partial class SurfaceRowViewModel : ObservableObject
                 $"target row Index={_surface.Index}");
 
             // Move the stop: clear it on every other surface, then set it
-            // here. Notify SystemChanged afterward — the editor's
-            // OnSystemChanged handler will call RefreshDisplayProperties on
-            // every row, which now broadcasts IsStop, so the previously-
-            // stop row repaints unchecked.
+            // here. Notify with sender="stop" so the editor's
+            // OnSystemChanged handler runs the full Refresh() path (Clear +
+            // re-Add). Props-only refresh ("surface" sender) is not enough —
+            // Avalonia's DataGrid leaves a stale visual row at the bottom
+            // (the previously-stop surface) when only PropertyChanged events
+            // fire. A Reset on the ObservableCollection forces the DataGrid
+            // to drop its recycled visuals.
             foreach (var s in _session.System.Surfaces) s.IsStop = false;
             _surface.IsStop = true;
 
@@ -88,7 +91,7 @@ public partial class SurfaceRowViewModel : ObservableObject
                 $"target row Index={_surface.Index}");
 
             OnPropertyChanged();
-            _session.NotifySystemChanged("surface");
+            _session.NotifySystemChanged("stop");
         }
     }
 
