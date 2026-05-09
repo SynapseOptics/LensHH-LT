@@ -97,20 +97,13 @@ public partial class LayoutViewModel : ObservableObject
     /// </summary>
     public void RenderIfDirty()
     {
-        LensHH.App.Session.SurfaceDiagnostics.Log("Layout.RenderIfDirty ENTER",
-            _session.HasSystem ? _session.System : null,
-            $"dirty={_dirty}");
         if (_dirty)
             Render();
-        LensHH.App.Session.SurfaceDiagnostics.Log("Layout.RenderIfDirty EXIT",
-            _session.HasSystem ? _session.System : null);
     }
 
     [RelayCommand]
     public void Render()
     {
-        LensHH.App.Session.SurfaceDiagnostics.Log("Layout.Render ENTER",
-            _session.HasSystem ? _session.System : null);
         if (_session.CannotCompute)
         {
             LayoutImage = null;
@@ -168,7 +161,5 @@ public partial class LayoutViewModel : ObservableObject
         {
             LayoutImage = null;
         }
-        LensHH.App.Session.SurfaceDiagnostics.Log("Layout.Render EXIT",
-            _session.HasSystem ? _session.System : null);
     }
 }
