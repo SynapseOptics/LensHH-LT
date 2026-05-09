@@ -97,7 +97,7 @@ public partial class FftMtfVsFocusViewModel : ObservableObject
         WavelengthOptions.Clear();
         WavelengthOptions.Add("All (Polychromatic)");
         for (int w = 0; w < system.Wavelengths.Count; w++)
-            WavelengthOptions.Add($"W{w + 1}: {system.Wavelengths[w].Value:F4} \u00b5m");
+            WavelengthOptions.Add($"W{w + 1}: {system.Wavelengths[w].Value:F6} \u00b5m");
         SelectedWavelengthIndex = prevW >= 0 && prevW < WavelengthOptions.Count ? prevW : 0;
 
         string fieldUnit = system.FieldType == Core.Enums.FieldType.ObjectHeight ? "mm" : "deg";
@@ -125,7 +125,7 @@ public partial class FftMtfVsFocusViewModel : ObservableObject
             bool allFields = SelectedFieldIndex == 0;
             int fieldIdx = SelectedFieldIndex - 1;
             string fieldUnit = system.FieldType == Core.Enums.FieldType.ObjectHeight ? "mm" : "deg";
-            string wlLabel = polychromatic ? "Polychromatic" : $"{system.Wavelengths[waveIdx].Value:F4} \u00b5m";
+            string wlLabel = polychromatic ? "Polychromatic" : $"{system.Wavelengths[waveIdx].Value:F6} \u00b5m";
             double freq = SpatialFrequency;
             double range = FocusRange;
             int steps = NumFocusSteps;

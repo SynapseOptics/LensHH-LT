@@ -48,7 +48,7 @@ public partial class FftMtfViewModel : ObservableObject
         WavelengthOptions.Clear();
         WavelengthOptions.Add("All (Polychromatic)");
         for (int w = 0; w < system.Wavelengths.Count; w++)
-            WavelengthOptions.Add($"W{w + 1}: {system.Wavelengths[w].Value:F4} \u00b5m");
+            WavelengthOptions.Add($"W{w + 1}: {system.Wavelengths[w].Value:F6} \u00b5m");
 
         // Restore previous selection if still valid
         if (prevIndex >= 0 && prevIndex < WavelengthOptions.Count)
@@ -134,7 +134,7 @@ public partial class FftMtfViewModel : ObservableObject
 
             string title = polychromatic
                 ? "FFT MTF \u2014 Polychromatic"
-                : $"FFT MTF \u2014 {system.Wavelengths[waveIdx].Value:F4} \u00b5m";
+                : $"FFT MTF \u2014 {system.Wavelengths[waveIdx].Value:F6} \u00b5m";
 
             string svg = FftMtfRenderer.RenderAllFields(
                 fieldResults, fieldLabels, title,
@@ -190,7 +190,7 @@ public partial class FftMtfViewModel : ObservableObject
         if (polychromatic)
             sb.AppendLine("Wavelength: Polychromatic");
         else
-            sb.AppendLine($"Wavelength: {system.Wavelengths[waveIdx].Value:F4} um");
+            sb.AppendLine($"Wavelength: {system.Wavelengths[waveIdx].Value:F6} um");
         sb.AppendLine();
 
         for (int f = 0; f < _lastFieldResults.Length; f++)
@@ -202,7 +202,7 @@ public partial class FftMtfViewModel : ObservableObject
 
             string label = polychromatic
                 ? $"Field {f + 1}: {fieldY:F1} {fieldUnit}, Polychromatic"
-                : $"Field {f + 1}: {fieldY:F1} {fieldUnit}, Wave {waveIdx + 1}: {system.Wavelengths[waveIdx].Value:F4} um";
+                : $"Field {f + 1}: {fieldY:F1} {fieldUnit}, Wave {waveIdx + 1}: {system.Wavelengths[waveIdx].Value:F6} um";
 
             sb.AppendLine(FftMtfTextExport.Export(result,
                 label, cutT, cutS, fieldY,

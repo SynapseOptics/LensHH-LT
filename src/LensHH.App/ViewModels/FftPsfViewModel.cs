@@ -42,7 +42,7 @@ public partial class FftPsfViewModel : ObservableObject
         int prevIndex = SelectedWavelengthIndex;
         WavelengthOptions.Clear();
         for (int w = 0; w < system.Wavelengths.Count; w++)
-            WavelengthOptions.Add($"W{w + 1}: {system.Wavelengths[w].Value:F4} \u00b5m");
+            WavelengthOptions.Add($"W{w + 1}: {system.Wavelengths[w].Value:F6} \u00b5m");
 
         if (prevIndex >= 0 && prevIndex < WavelengthOptions.Count)
             SelectedWavelengthIndex = prevIndex;
@@ -69,7 +69,7 @@ public partial class FftPsfViewModel : ObservableObject
 
             var titles = new string[numFields];
             for (int f = 0; f < numFields; f++)
-                titles[f] = $"F{f + 1}: {system.Fields[f].Y:F1} {fieldUnit}, {system.Wavelengths[waveIdx].Value:F4} \u00b5m";
+                titles[f] = $"F{f + 1}: {system.Fields[f].Y:F1} {fieldUnit}, {system.Wavelengths[waveIdx].Value:F6} \u00b5m";
 
             var bitmap = await Task.Run(() =>
             {

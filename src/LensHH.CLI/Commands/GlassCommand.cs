@@ -195,7 +195,7 @@ namespace LensHH.CLI.Commands
             table.AddColumn("Material");
             table.AddColumn("Catalog");
             foreach (var wl in sys.Wavelengths)
-                table.AddColumn($"n@{wl.Value:F4}");
+                table.AddColumn($"n@{wl.Value:F6}");
 
             for (int i = 0; i < sys.Surfaces.Count; i++)
             {

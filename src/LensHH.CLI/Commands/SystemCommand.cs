@@ -91,7 +91,7 @@ namespace LensHH.CLI.Commands
             for (int i = 0; i < sys.Wavelengths.Count; i++)
             {
                 var wl = sys.Wavelengths[i];
-                wlTable.AddRow((i + 1).ToString(), wl.Value.ToString("F4"), wl.Weight.ToString("F2"), wl.IsPrimary ? "*" : "");
+                wlTable.AddRow((i + 1).ToString(), wl.Value.ToString("F6"), wl.Weight.ToString("F2"), wl.IsPrimary ? "*" : "");
             }
             AnsiConsole.Write(wlTable);
 
@@ -264,7 +264,7 @@ namespace LensHH.CLI.Commands
                 }
             }
 
-            AnsiConsole.MarkupLine($"[green]Wavelength {idx + 1}: {wl.Value:F4} um, weight={wl.Weight:F2}[/]");
+            AnsiConsole.MarkupLine($"[green]Wavelength {idx + 1}: {wl.Value:F6} um, weight={wl.Weight:F2}[/]");
         }
 
         private void EditField(Session session, string[] args)

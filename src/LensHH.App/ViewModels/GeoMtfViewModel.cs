@@ -41,7 +41,7 @@ public partial class GeoMtfVsFreqViewModel : ObservableObject
         WavelengthOptions.Clear();
         WavelengthOptions.Add("All (Polychromatic)");
         for (int w = 0; w < system.Wavelengths.Count; w++)
-            WavelengthOptions.Add($"W{w + 1}: {system.Wavelengths[w].Value:F4} \u00b5m");
+            WavelengthOptions.Add($"W{w + 1}: {system.Wavelengths[w].Value:F6} \u00b5m");
         if (prev >= 0 && prev < WavelengthOptions.Count)
             SelectedWavelengthIndex = prev;
         else
@@ -97,7 +97,7 @@ public partial class GeoMtfVsFreqViewModel : ObservableObject
 
             string title = polychromatic
                 ? "Geometric MTF \u2014 Polychromatic"
-                : $"Geometric MTF \u2014 {system.Wavelengths[waveIdx].Value:F4} \u00b5m";
+                : $"Geometric MTF \u2014 {system.Wavelengths[waveIdx].Value:F6} \u00b5m";
             string svg = FftMtfRenderer.RenderAllFields(results, fieldLabels, title,
                 maxFrequency: maxFreq, onAxisCutoff: onAxisCutoff);
             RenderSvg(svg);
@@ -122,7 +122,7 @@ public partial class GeoMtfVsFreqViewModel : ObservableObject
             int wIdx = SelectedWavelengthIndex - 1;
             string label = poly
                 ? $"Field {f + 1}: {system.Fields[f].Y:F1} {fieldUnit}, Polychromatic"
-                : $"Field {f + 1}: {system.Fields[f].Y:F1} {fieldUnit}, {system.Wavelengths[wIdx].Value:F4} um";
+                : $"Field {f + 1}: {system.Fields[f].Y:F1} {fieldUnit}, {system.Wavelengths[wIdx].Value:F6} um";
             sb.AppendLine(FftMtfTextExport.Export(_lastResults[f], label,
                 _lastResults[f].CutoffT, _lastResults[f].CutoffS,
                 system.Fields[f].Y,
@@ -169,7 +169,7 @@ public partial class GeoMtfVsFieldViewModel : ObservableObject
         WavelengthOptions.Clear();
         WavelengthOptions.Add("All (Polychromatic)");
         for (int w = 0; w < system.Wavelengths.Count; w++)
-            WavelengthOptions.Add($"W{w + 1}: {system.Wavelengths[w].Value:F4} \u00b5m");
+            WavelengthOptions.Add($"W{w + 1}: {system.Wavelengths[w].Value:F6} \u00b5m");
         if (prev >= 0 && prev < WavelengthOptions.Count)
             SelectedWavelengthIndex = prev;
         else
@@ -199,7 +199,7 @@ public partial class GeoMtfVsFieldViewModel : ObservableObject
             string fieldUnit = system.FieldType == Core.Enums.FieldType.ObjectHeight ? "mm" : "deg";
             string title = polychromatic
                 ? "Geometric MTF vs Field \u2014 Polychromatic"
-                : $"Geometric MTF vs Field \u2014 {system.Wavelengths[waveIdx].Value:F4} \u00b5m";
+                : $"Geometric MTF vs Field \u2014 {system.Wavelengths[waveIdx].Value:F6} \u00b5m";
             string svg = MtfVsFieldRenderer.Render(result, title, fieldUnit: fieldUnit);
             PlotImage = SvgHelper.ToBitmap(svg);
         }
@@ -259,7 +259,7 @@ public partial class GeoMtfVsFocusViewModel : ObservableObject
         WavelengthOptions.Clear();
         WavelengthOptions.Add("All (Polychromatic)");
         for (int w = 0; w < system.Wavelengths.Count; w++)
-            WavelengthOptions.Add($"W{w + 1}: {system.Wavelengths[w].Value:F4} \u00b5m");
+            WavelengthOptions.Add($"W{w + 1}: {system.Wavelengths[w].Value:F6} \u00b5m");
         if (prevW >= 0 && prevW < WavelengthOptions.Count)
             SelectedWavelengthIndex = prevW;
         else
@@ -294,7 +294,7 @@ public partial class GeoMtfVsFocusViewModel : ObservableObject
             bool allFields = SelectedFieldIndex == 0;
             int fieldIdx = SelectedFieldIndex - 1;
             string fieldUnit = system.FieldType == Core.Enums.FieldType.ObjectHeight ? "mm" : "deg";
-            string wlLabel = polychromatic ? "Polychromatic" : $"{system.Wavelengths[waveIdx].Value:F4} \u00b5m";
+            string wlLabel = polychromatic ? "Polychromatic" : $"{system.Wavelengths[waveIdx].Value:F6} \u00b5m";
 
             if (allFields)
             {

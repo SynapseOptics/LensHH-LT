@@ -203,8 +203,12 @@ public class AnalysisDispatcher
 
             case "FieldCurvature":
             {
+                int fcWlDigits = LensHH.Rendering.LabelFormat.WavelengthDigits(
+                    system.Wavelengths.Select(w => w.Value));
+                string fcWlFmt = "F" + fcWlDigits;
                 var waveLabels = system.Wavelengths
-                    .Select(w => $"{w.Value:F4} \u00b5m").ToArray();
+                    .Select(w => w.Value.ToString(fcWlFmt, System.Globalization.CultureInfo.InvariantCulture) + " \u00b5m")
+                    .ToArray();
                 var mw = FieldCurvatureCalculator.ComputeAllWavelengths(system, _glass, numPoints: 100);
                 string html = FieldCurvatureRenderer.RenderMultiWavelengthPage(mw, sysTitle, waveLabels, fieldUnit: fieldUnit);
                 return ($"{sysTitle} \u2014 Field Curvature", SvgBitmapHelper.HtmlPageToBitmap(html, 1));
@@ -235,7 +239,12 @@ public class AnalysisDispatcher
             {
                 var result = LateralColorCalculator.Compute(system, _glass);
                 double maxField = system.Fields.Max(f => Math.Abs(f.Y));
-                var wlLabels = system.Wavelengths.Select(w => $"{w.Value:F4}um").ToArray();
+                int wlDigits = LensHH.Rendering.LabelFormat.WavelengthDigits(
+                    system.Wavelengths.Select(w => w.Value));
+                string wlFmt = "F" + wlDigits;
+                var wlLabels = system.Wavelengths
+                    .Select(w => w.Value.ToString(wlFmt, System.Globalization.CultureInfo.InvariantCulture) + "um")
+                    .ToArray();
                 string html = LateralColorRenderer.RenderPage(result, sysTitle,
                     maxField, system.Wavelengths.Count, wlLabels, fieldUnit: fieldUnit);
                 return ($"{sysTitle} \u2014 Lateral Color", SvgBitmapHelper.HtmlPageToBitmap(html, 1));
@@ -292,9 +301,13 @@ public class AnalysisDispatcher
         for (int f = 0; f < numFields; f++)
             titles[f] = $"{system.Fields[f].Y:F1} {fieldUnit}";
 
+        int spotWlDigits = LensHH.Rendering.LabelFormat.WavelengthDigits(
+            system.Wavelengths.Select(w => w.Value));
+        string spotWlFmt = "F" + spotWlDigits;
         var waveLabels = new string[system.Wavelengths.Count];
         for (int w = 0; w < system.Wavelengths.Count; w++)
-            waveLabels[w] = $"{system.Wavelengths[w].Value:F4} \u00b5m";
+            waveLabels[w] = system.Wavelengths[w].Value
+                .ToString(spotWlFmt, System.Globalization.CultureInfo.InvariantCulture) + " \u00b5m";
 
         var results = new SpotDiagramResult[numFields];
         for (int f = 0; f < numFields; f++)

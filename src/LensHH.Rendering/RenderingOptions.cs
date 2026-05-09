@@ -104,16 +104,18 @@ namespace LensHH.Rendering
         /// <summary>
         /// Compute the minimum number of decimal digits needed so that every
         /// value in <paramref name="wavelengthsUm"/> renders to a distinct
-        /// string. Floor 4 (standard visible-spectrum precision); cap 10
-        /// (beyond which IEEE-754 doubles run out of significant digits).
-        /// Returns 4 for empty / single-value inputs.
+        /// string. Floor 6 (typical optical input precision: F6 covers
+        /// 0.265985 / 0.266000 / 0.266015 µm without rounding; F4 would
+        /// collapse all three to "0.2660"). Cap 10 (beyond which IEEE-754
+        /// doubles run out of significant digits).
+        /// Returns 6 for empty / single-value inputs.
         /// </summary>
         public static int WavelengthDigits(IEnumerable<double> wavelengthsUm)
         {
-            if (wavelengthsUm == null) return 4;
+            if (wavelengthsUm == null) return 6;
             var values = wavelengthsUm.ToList();
-            if (values.Count <= 1) return 4;
-            for (int d = 4; d <= 10; d++)
+            if (values.Count <= 1) return 6;
+            for (int d = 6; d <= 10; d++)
             {
                 var formatted = values.Select(w => w.ToString("F" + d, CultureInfo.InvariantCulture));
                 if (formatted.Distinct().Count() == values.Count)

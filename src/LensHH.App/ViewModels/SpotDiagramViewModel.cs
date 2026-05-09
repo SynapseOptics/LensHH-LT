@@ -104,7 +104,7 @@ public partial class SpotDiagramViewModel : ObservableObject
 
             var waveLabels = new string[system.Wavelengths.Count];
             for (int w = 0; w < system.Wavelengths.Count; w++)
-                waveLabels[w] = $"{system.Wavelengths[w].Value:F4} \u00b5m";
+                waveLabels[w] = $"{system.Wavelengths[w].Value:F6} \u00b5m";
 
             var bitmap = await Task.Run(() =>
             {

@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using LensHH.Core.Activation;
@@ -1047,7 +1048,12 @@ namespace LensHH.API
             EnsureSystem();
             double maxField = _system!.Fields.Max(f => Math.Abs(f.Y));
             string fieldUnit = _system.FieldType == FieldType.ObjectHeight ? "mm" : "deg";
-            var wlLabels = _system.Wavelengths.Select(w => $"{w.Value:F4}um").ToArray();
+            int wlDigits = LensHH.Rendering.LabelFormat.WavelengthDigits(
+                _system.Wavelengths.Select(w => w.Value));
+            string wlFmt = "F" + wlDigits;
+            var wlLabels = _system.Wavelengths
+                .Select(w => w.Value.ToString(wlFmt, CultureInfo.InvariantCulture) + "um")
+                .ToArray();
             return Rendering.LateralColorRenderer.RenderPage(result, title,
                 maxField, _system.Wavelengths.Count, wlLabels, fieldUnit: fieldUnit);
         }

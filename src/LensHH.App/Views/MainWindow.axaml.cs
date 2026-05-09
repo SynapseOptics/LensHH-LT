@@ -1039,7 +1039,7 @@ public partial class MainWindow : Window
         var colList = new System.Collections.Generic.List<string> { "Field (" + fieldUnit + ")" };
         for (int w = 0; w < mwResult.Wavelengths.Count; w++)
         {
-            string wl = $"{mwResult.Wavelengths[w]:F4}";
+            string wl = $"{mwResult.Wavelengths[w]:F6}";
             colList.Add($"T {wl} \u00b5m");
             colList.Add($"S {wl} \u00b5m");
         }
@@ -1456,7 +1456,7 @@ public partial class MainWindow : Window
         foreach (var wi in wavelengthIndices)
         {
             string wlLabel = wi < system.Wavelengths.Count
-                ? $"{system.Wavelengths[wi].Value:F4} \u00b5m"
+                ? $"{system.Wavelengths[wi].Value:F6} \u00b5m"
                 : $"W{wi + 1}";
             colList.Add(wlLabel + " (" + shiftUnit + ")");
         }
@@ -1519,7 +1519,7 @@ public partial class MainWindow : Window
         {
             rows.Add(new[]
             {
-                $"{pt.Wavelength:F4}",
+                $"{pt.Wavelength:F6}",
                 LensHH.Rendering.LabelFormat.Auto(pt.FocalShift),
                 LensHH.Rendering.LabelFormat.Auto(pt.Efl)
             });

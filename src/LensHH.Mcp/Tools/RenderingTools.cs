@@ -704,7 +704,12 @@ namespace LensHH.Mcp.Tools
             var sys = _session.System;
             var result = LateralColorCalculator.Compute(sys, _session.GlassCatalog);
             double maxField = sys.Fields.Max(f => Math.Abs(f.Y));
-            var wlLabels = sys.Wavelengths.Select(w => $"{w.Value:F4}um").ToArray();
+            int wlDigits = LensHH.Rendering.LabelFormat.WavelengthDigits(
+                sys.Wavelengths.Select(w => w.Value));
+            string wlFmt = "F" + wlDigits;
+            var wlLabels = sys.Wavelengths
+                .Select(w => w.Value.ToString(wlFmt, System.Globalization.CultureInfo.InvariantCulture) + "um")
+                .ToArray();
             string fieldUnit = sys.FieldType == Core.Enums.FieldType.ObjectHeight ? "mm" : "deg";
             return LateralColorRenderer.RenderPage(result, sys.Title ?? "Lateral Color",
                 maxField, sys.Wavelengths.Count, wlLabels, fieldUnit: fieldUnit);
@@ -714,7 +719,12 @@ namespace LensHH.Mcp.Tools
         {
             var sys = _session.System;
             string fieldUnit = sys.FieldType == Core.Enums.FieldType.ObjectHeight ? "mm" : "deg";
-            var waveLabels = sys.Wavelengths.Select(w => $"{w.Value:F4} µm").ToArray();
+            int fcWlDigits = LensHH.Rendering.LabelFormat.WavelengthDigits(
+                sys.Wavelengths.Select(w => w.Value));
+            string fcWlFmt = "F" + fcWlDigits;
+            var waveLabels = sys.Wavelengths
+                .Select(w => w.Value.ToString(fcWlFmt, System.Globalization.CultureInfo.InvariantCulture) + " µm")
+                .ToArray();
             var mw = FieldCurvatureCalculator.ComputeAllWavelengths(sys, _session.GlassCatalog, numPoints: 100);
             return FieldCurvatureRenderer.RenderMultiWavelengthPage(mw, sys.Title ?? "Field Curvature", waveLabels, fieldUnit: fieldUnit);
         }

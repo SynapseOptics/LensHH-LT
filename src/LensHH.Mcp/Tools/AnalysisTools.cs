@@ -29,7 +29,7 @@ namespace LensHH.Mcp.Tools
 
             var sb = new StringBuilder();
             string fieldUnit = sys.FieldType == Core.Enums.FieldType.ObjectAngle ? "deg" : "mm";
-            sb.AppendLine($"Field {fieldIndex + 1}: {result.FieldY} {fieldUnit}, Px={px}, Py={py}, Wave: {result.Wavelength:F4} um");
+            sb.AppendLine($"Field {fieldIndex + 1}: {result.FieldY} {fieldUnit}, Px={px}, Py={py}, Wave: {result.Wavelength:F6} um");
             sb.AppendLine();
             sb.AppendLine(string.Format("{0,5} {1,16} {2,16} {3,16} {4,14} {5,14} {6,14} {7,14} {8,14} {9,14} {10,10} {11,14} {12,14} {13,14} {14}",
                 "Surf", "X", "Y", "Z", "L", "M", "N", "Ln", "Mn", "Nn", "AOI", "Path", "OPL", "Cumul OPL", "Comment"));
@@ -165,7 +165,7 @@ namespace LensHH.Mcp.Tools
             for (int i = 0; i < result.Points.Count; i += step)
             {
                 var pt = result.Points[i];
-                sb.AppendLine($"{pt.Wavelength,12:F4} {pt.FocalShift,12:E4} {pt.Efl,12:F4}");
+                sb.AppendLine($"{pt.Wavelength, 12:F6} {pt.FocalShift,12:E4} {pt.Efl,12:F4}");
             }
             return sb.ToString();
         }
@@ -222,7 +222,7 @@ namespace LensHH.Mcp.Tools
             sb.AppendLine($"  Peak-to-Valley: {result.PeakToValley:F4} waves");
             sb.AppendLine($"  RMS Wavefront:  {result.RmsWavefront:F4} waves");
             sb.AppendLine($"  Grid Size:      {result.GridSize}");
-            sb.AppendLine($"  Wavelength:     {result.Wavelength:F4} um");
+            sb.AppendLine($"  Wavelength:     {result.Wavelength:F6} um");
             return sb.ToString();
         }
 
@@ -304,7 +304,7 @@ namespace LensHH.Mcp.Tools
                 int wl = sys.PrimaryWavelengthIndex;
                 result = FftMtfCalculator.ComputeThroughFocus(
                     sys, _session.GlassCatalog, fieldIndex, spatialFrequency, wl, focusRange, numSteps, gridSize);
-                modeLabel = $"{sys.Wavelengths[wl].Value:F4} um";
+                modeLabel = $"{sys.Wavelengths[wl].Value:F6} um";
             }
 
             var sb = new StringBuilder();
@@ -339,7 +339,7 @@ namespace LensHH.Mcp.Tools
                 result = GeometricMtfKidger.Compute(
                     sys, _session.GlassCatalog, fieldIndex, wl,
                     multiplyByDiffractionLimit: multiplyByDiffractionLimit);
-                modeLabel = $"{sys.Wavelengths[wl].Value:F4} um";
+                modeLabel = $"{sys.Wavelengths[wl].Value:F6} um";
             }
 
             var sb = new StringBuilder();

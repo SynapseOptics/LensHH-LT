@@ -80,7 +80,7 @@ public partial class SingleRayTraceViewModel : ObservableObject
         for (int i = 0; i < system.Wavelengths.Count; i++)
         {
             string primary = i == system.PrimaryWavelengthIndex ? " *" : "";
-            WaveOptions.Add($"{i + 1}: {system.Wavelengths[i].Value:F4} \u00b5m{primary}");
+            WaveOptions.Add($"{i + 1}: {system.Wavelengths[i].Value:F6} \u00b5m{primary}");
         }
         if (SelectedWaveIndex >= WaveOptions.Count)
             SelectedWaveIndex = system.PrimaryWavelengthIndex;
@@ -130,7 +130,7 @@ public partial class SingleRayTraceViewModel : ObservableObject
             }
 
             StatusText = $"Field: {Fmt(fieldY)} {fieldUnit}, Px={Fmt(Px)}, Py={Fmt(Py)}, " +
-                         $"Wave {waveIdx + 1}: {result.Wavelength.ToString("F4", CultureInfo.InvariantCulture)} \u00b5m";
+                         $"Wave {waveIdx + 1}: {result.Wavelength.ToString("F6", CultureInfo.InvariantCulture)} \u00b5m";
 
             foreach (var s in result.Surfaces)
             {

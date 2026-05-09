@@ -169,7 +169,7 @@ namespace LensHH.Mcp.Tools
             {
                 var w = sys.Wavelengths[i];
                 string primary = i == sys.PrimaryWavelengthIndex ? " (primary)" : "";
-                sb.AppendLine($"  [{i}] {w.Value:F4} um, weight={w.Weight}{primary}");
+                sb.AppendLine($"  [{i}] {w.Value:F6} um, weight={w.Weight}{primary}");
             }
             sb.AppendLine();
 
@@ -406,7 +406,7 @@ namespace LensHH.Mcp.Tools
             var sb = new StringBuilder();
             sb.Append($"{"Surf",5} {"Material",-14} {"Catalog",-10}");
             foreach (var wl in sys.Wavelengths)
-                sb.Append($" {"n@" + wl.Value.ToString("F4"),12}");
+                sb.Append($" {"n@" + wl.Value.ToString("F6"),12}");
             sb.AppendLine();
 
             for (int i = 0; i < sys.Surfaces.Count; i++)

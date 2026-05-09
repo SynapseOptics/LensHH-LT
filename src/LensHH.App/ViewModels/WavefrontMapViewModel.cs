@@ -50,7 +50,7 @@ public partial class WavefrontMapViewModel : ObservableObject
             for (int f = 0; f < numFields; f++)
                 for (int w = 0; w < numWaves; w++)
                     titles[f * numWaves + w] =
-                        $"F{f + 1}: {system.Fields[f].Y:F1} {fieldUnit}, {system.Wavelengths[w].Value:F4} \u00b5m";
+                        $"F{f + 1}: {system.Fields[f].Y:F1} {fieldUnit}, {system.Wavelengths[w].Value:F6} \u00b5m";
 
             var bitmap = await Task.Run(() =>
             {

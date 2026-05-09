@@ -98,7 +98,7 @@ public partial class LateralColorViewModel : ObservableObject
             string fieldUnit = system.FieldType == Core.Enums.FieldType.ObjectHeight ? "mm" : "deg";
             var waveLabels = new string[system.Wavelengths.Count];
             for (int w = 0; w < system.Wavelengths.Count; w++)
-                waveLabels[w] = $"{system.Wavelengths[w].Value:F4} \u00b5m";
+                waveLabels[w] = $"{system.Wavelengths[w].Value:F6} \u00b5m";
 
             var result = await Task.Run(() =>
                 LateralColorCalculator.Compute(system, glassMgr, numFieldPoints: 50));
@@ -109,7 +109,7 @@ public partial class LateralColorViewModel : ObservableObject
             double titleScale = result.IsAfocal ? 1.0 : 1000.0;
             string titleUnit = result.IsAfocal ? "arcmin" : "\u00b5m";
             string title = $"Lateral Color \u2014 Max = {result.MaxLateralColor * titleScale:F3} {titleUnit}";
-            string refLabel = $"{system.Wavelengths[system.PrimaryWavelengthIndex].Value:F4} \u00b5m";
+            string refLabel = $"{system.Wavelengths[system.PrimaryWavelengthIndex].Value:F6} \u00b5m";
             string svg = LateralColorRenderer.Render(result, title, maxFieldY,
                 system.Wavelengths.Count, waveLabels, fieldUnit: fieldUnit,
                 referenceWavelengthLabel: refLabel);

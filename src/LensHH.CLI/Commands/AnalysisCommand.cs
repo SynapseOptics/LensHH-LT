@@ -303,7 +303,7 @@ namespace LensHH.CLI.Commands
             var tangTable = new Table().Title("Tangential (PY → Aberration %)");
             tangTable.AddColumn("PY");
             for (int wi = 0; wi < system.Wavelengths.Count; wi++)
-                tangTable.AddColumn($"{system.Wavelengths[wi].Value:F4} um");
+                tangTable.AddColumn($"{system.Wavelengths[wi].Value:F6} um");
 
             var tangByPy = result.TangentialFan.GroupBy(p => p.PupilCoordinate).OrderBy(g => g.Key);
             foreach (var group in tangByPy)
@@ -321,7 +321,7 @@ namespace LensHH.CLI.Commands
             var sagTable = new Table().Title("Sagittal (PX → Aberration %)");
             sagTable.AddColumn("PX");
             for (int wi = 0; wi < system.Wavelengths.Count; wi++)
-                sagTable.AddColumn($"{system.Wavelengths[wi].Value:F4} um");
+                sagTable.AddColumn($"{system.Wavelengths[wi].Value:F6} um");
 
             var sagByPx = result.SagittalFan.GroupBy(p => p.PupilCoordinate).OrderBy(g => g.Key);
             foreach (var group in sagByPx)
@@ -408,7 +408,12 @@ namespace LensHH.CLI.Commands
             // File export: complete data at every computed pupil position
             if (outFile != null)
             {
-                var wlHeaders = system.Wavelengths.Select(w => $"{w.Value:F4}um").ToArray();
+                int wlHdrDigits = LensHH.Rendering.LabelFormat.WavelengthDigits(
+                    system.Wavelengths.Select(w => w.Value));
+                string wlHdrFmt = "F" + wlHdrDigits;
+                var wlHeaders = system.Wavelengths
+                    .Select(w => w.Value.ToString(wlHdrFmt, System.Globalization.CultureInfo.InvariantCulture) + "um")
+                    .ToArray();
 
                 // Get all pupil positions from the computed data
                 var allTanPositions = result.TangentialFan
@@ -533,7 +538,7 @@ namespace LensHH.CLI.Commands
             {
                 var pt = result.Points[i];
                 table.AddRow(
-                    pt.Wavelength.ToString("F4"),
+                    pt.Wavelength.ToString("F6"),
                     pt.FocalShift.ToString("E4"),
                     pt.Efl.ToString("F4")
                 );
@@ -609,7 +614,7 @@ namespace LensHH.CLI.Commands
             table.AddRow("Peak-to-Valley", result.PeakToValley.ToString("F4") + " waves");
             table.AddRow("RMS Wavefront", result.RmsWavefront.ToString("F4") + " waves");
             table.AddRow("Grid Size", result.GridSize.ToString());
-            table.AddRow("Wavelength", result.Wavelength.ToString("F4") + " um");
+            table.AddRow("Wavelength", result.Wavelength.ToString("F6") + " um");
 
             AnsiConsole.Write(table);
 
@@ -620,7 +625,7 @@ namespace LensHH.CLI.Commands
                     int n = result.GridSize;
                     using var writer = new StreamWriter(outFile, false, System.Text.Encoding.UTF8);
                     writer.WriteLine($"Wavefront Map - Field {fieldIdx + 1} ({system.Fields[fieldIdx].Y} {FieldUnit(system)})");
-                    writer.WriteLine($"Wavelength: {result.Wavelength:F4} um");
+                    writer.WriteLine($"Wavelength: {result.Wavelength:F6} um");
                     writer.WriteLine($"Peak to valley: {result.PeakToValley:F4} waves, RMS: {result.RmsWavefront:F4} waves");
                     writer.WriteLine($"Grid: {n}x{n}");
                     writer.WriteLine();
@@ -685,7 +690,7 @@ namespace LensHH.CLI.Commands
 
             var result = FftMtfCalculator.ComputeVsFrequency(system, glassMgr, fieldIdx, wlIdx, gridSize);
 
-            AnsiConsole.MarkupLine($"[bold]FFT MTF - Field {fieldIdx + 1}, {system.Wavelengths[wlIdx].Value:F4} um[/]");
+            AnsiConsole.MarkupLine($"[bold]FFT MTF - Field {fieldIdx + 1}, {system.Wavelengths[wlIdx].Value:F6} um[/]");
             AnsiConsole.MarkupLine($"Cutoff Frequency: {result.MaxFrequency:F1} cycles/mm");
 
             var table = new Table();
@@ -723,7 +728,7 @@ namespace LensHH.CLI.Commands
                     });
                 }
                 WriteDataFile(outFile,
-                    $"Diffraction MTF - Field {fieldIdx + 1} ({system.Fields[fieldIdx].Y} {FieldUnit(system)}), {system.Wavelengths[wlIdx].Value:F4} um",
+                    $"Diffraction MTF - Field {fieldIdx + 1} ({system.Fields[fieldIdx].Y} {FieldUnit(system)}), {system.Wavelengths[wlIdx].Value:F6} um",
                     new[] { $"Cutoff: {result.MaxFrequency:F1} cy/mm", $"Grid: {gridSize}x{gridSize}" },
                     new[] { "Spatial_Frequency", "Diff_Limit", "Tangential", "Sagittal" },
                     rows);
@@ -773,7 +778,13 @@ namespace LensHH.CLI.Commands
 
             if (outFile != null)
             {
-                var wlNames = system.Wavelengths.Select(w => $"{w.Value:F4}um(w={w.Weight})").ToArray();
+                int wlNDigits = LensHH.Rendering.LabelFormat.WavelengthDigits(
+                    system.Wavelengths.Select(w => w.Value));
+                string wlNFmt = "F" + wlNDigits;
+                var wlNames = system.Wavelengths
+                    .Select(w => w.Value.ToString(wlNFmt, System.Globalization.CultureInfo.InvariantCulture)
+                                 + "um(w=" + w.Weight.ToString(System.Globalization.CultureInfo.InvariantCulture) + ")")
+                    .ToArray();
                 var rows = new List<string[]>();
                 for (int i = 0; i < result.Points.Count; i++)
                 {
@@ -839,8 +850,8 @@ namespace LensHH.CLI.Commands
                 numSteps = ns;
 
             string modeLabel = polychromatic
-                ? $"Polychromatic ({system.Wavelengths.First().Value:F4}-{system.Wavelengths.Last().Value:F4} um)"
-                : $"{system.Wavelengths[wlIdx].Value:F4} um";
+                ? $"Polychromatic ({system.Wavelengths.First().Value:F6}-{system.Wavelengths.Last().Value:F6} um)"
+                : $"{system.Wavelengths[wlIdx].Value:F6} um";
 
             AnsiConsole.MarkupLine($"[bold]FFT Through Focus MTF[/] - {Markup.Escape(modeLabel)}");
             AnsiConsole.MarkupLine($"Spatial Frequency: {spatialFrequency:F1} cycles/mm");
@@ -898,9 +909,9 @@ namespace LensHH.CLI.Commands
                     writer.WriteLine($"Title: {session.CurrentFilePath ?? ""}");
                     writer.WriteLine();
                     if (polychromatic)
-                        writer.WriteLine($"Data for {system.Wavelengths.First().Value:F4} to {system.Wavelengths.Last().Value:F4} um.");
+                        writer.WriteLine($"Data for {system.Wavelengths.First().Value:F6} to {system.Wavelengths.Last().Value:F6} um.");
                     else
-                        writer.WriteLine($"Data for {system.Wavelengths[wlIdx].Value:F4} um.");
+                        writer.WriteLine($"Data for {system.Wavelengths[wlIdx].Value:F6} um.");
                     writer.WriteLine($"Spatial frequency: {spatialFrequency:F4} cycles per mm.");
                     writer.WriteLine($"Defocus Units: Millimeters.");
                     writer.WriteLine($"Grid: {gridSize}x{gridSize}");
@@ -955,7 +966,7 @@ namespace LensHH.CLI.Commands
             double[] frequencies = { 5, 10, 15, 20, 25, 30 };
             int numFieldPoints = 200;
 
-            string label = poly ? "Polychromatic" : $"{system.Wavelengths[wlIdx].Value:F4} um";
+            string label = poly ? "Polychromatic" : $"{system.Wavelengths[wlIdx].Value:F6} um";
             AnsiConsole.MarkupLine($"[bold]FFT MTF vs Field - {label}[/]");
             AnsiConsole.MarkupLine($"Grid: {gridSize}x{gridSize}, Field points: {numFieldPoints + 1}");
             AnsiConsole.MarkupLine($"Frequencies: {string.Join(", ", frequencies.Select(f => $"{f:F0}"))} cy/mm");
@@ -1053,7 +1064,7 @@ namespace LensHH.CLI.Commands
             else
             {
                 result = GeometricMtfKidger.Compute(system, glassMgr, fieldIdx, wlIdx);
-                modeLabel = $"{system.Wavelengths[wlIdx].Value:F4} um";
+                modeLabel = $"{system.Wavelengths[wlIdx].Value:F6} um";
             }
 
             AnsiConsole.MarkupLine($"[bold]Geometric MTF - Field {fieldIdx + 1}, {Markup.Escape(modeLabel)}[/]");
@@ -1097,7 +1108,7 @@ namespace LensHH.CLI.Commands
 
                 string title = polychromatic
                     ? $"Polychromatic Geometric MTF - Field {fieldIdx + 1} ({system.Fields[fieldIdx].Y} {FieldUnit(system)})"
-                    : $"Geometric MTF - Field {fieldIdx + 1} ({system.Fields[fieldIdx].Y} {FieldUnit(system)}), {system.Wavelengths[wlIdx].Value:F4} um";
+                    : $"Geometric MTF - Field {fieldIdx + 1} ({system.Fields[fieldIdx].Y} {FieldUnit(system)}), {system.Wavelengths[wlIdx].Value:F6} um";
 
                 WriteDataFile(outFile, title,
                     new[] { $"Multiply by Diffraction Limit: Yes",
@@ -1133,7 +1144,7 @@ namespace LensHH.CLI.Commands
             // Standard frequencies for geometric MTF vs field
             double[] frequencies = { 10, 20, 30, 40, 50, 60 };
 
-            string label = poly ? "Polychromatic" : $"{system.Wavelengths[wlIdx].Value:F4} um";
+            string label = poly ? "Polychromatic" : $"{system.Wavelengths[wlIdx].Value:F6} um";
             AnsiConsole.MarkupLine($"[bold]Geometric MTF vs Field - {Markup.Escape(label)}[/]");
             AnsiConsole.MarkupLine($"Rings: 30, Field points: {numFieldPoints + 1}, Max: 100");
             AnsiConsole.MarkupLine($"Frequencies: {string.Join(", ", frequencies.Select(f => $"{f:F0}"))} cy/mm");
@@ -1238,7 +1249,7 @@ namespace LensHH.CLI.Commands
 
             int wlIdx = system.PrimaryWavelengthIndex;
 
-            AnsiConsole.MarkupLine($"[bold]Geometric MTF Through Focus[/] - {system.Wavelengths[wlIdx].Value:F4} um");
+            AnsiConsole.MarkupLine($"[bold]Geometric MTF Through Focus[/] - {system.Wavelengths[wlIdx].Value:F6} um");
             AnsiConsole.MarkupLine($"Spatial Frequency: {spatialFrequency:F1} cycles/mm");
             AnsiConsole.MarkupLine($"Focus Range: +/-{focusRange:F3} mm, {numSteps} steps");
             AnsiConsole.WriteLine();
@@ -1285,7 +1296,7 @@ namespace LensHH.CLI.Commands
                     writer.WriteLine();
                     writer.WriteLine($"Title: {session.CurrentFilePath ?? ""}");
                     writer.WriteLine();
-                    writer.WriteLine($"Data for {system.Wavelengths[wlIdx].Value:F4} um.");
+                    writer.WriteLine($"Data for {system.Wavelengths[wlIdx].Value:F6} um.");
                     writer.WriteLine($"Spatial frequency: {spatialFrequency:F4} cycles per mm.");
                     writer.WriteLine($"Defocus Units: Millimeters.");
                     writer.WriteLine();
@@ -1408,7 +1419,7 @@ namespace LensHH.CLI.Commands
             var sb = new System.Text.StringBuilder();
             sb.AppendLine("Real Ray Trace Listing");
             sb.AppendLine($"Field {fieldNum}: {fieldY} {fieldUnit}, Px={px}, Py={py}");
-            sb.AppendLine($"Wavelength: {result.Wavelength:F4} um (primary)");
+            sb.AppendLine($"Wavelength: {result.Wavelength:F6} um (primary)");
             sb.AppendLine($"Success: {result.Success}");
             sb.AppendLine();
 
@@ -1668,7 +1679,7 @@ namespace LensHH.CLI.Commands
                     var result = Core.Analysis.LateralColorCalculator.Compute(system, glassMgr);
                     var wlLabels = new string[system.Wavelengths.Count];
                     for (int i = 0; i < system.Wavelengths.Count; i++)
-                        wlLabels[i] = $"{system.Wavelengths[i].Value:F4} \u00b5m";
+                        wlLabels[i] = $"{system.Wavelengths[i].Value:F6} \u00b5m";
                     double maxField = 0;
                     foreach (var f in system.Fields)
                         if (System.Math.Abs(f.Y) > maxField) maxField = System.Math.Abs(f.Y);
