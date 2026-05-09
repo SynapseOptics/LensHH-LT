@@ -764,6 +764,13 @@ namespace LensHH.API
             return LensHH.Core.Analysis.ChromaticFocalShift.Compute(_system!, GlassCatalog, numPoints);
         }
 
+        /// <summary>Compute longitudinal spherical / axial chromatic aberration plot data.</summary>
+        public LongitudinalAberrationResult LongitudinalAberration(int numZones = 32)
+        {
+            ValidateGlass();
+            return LensHH.Core.Analysis.LongitudinalAberration.Compute(_system!, GlassCatalog, numZones);
+        }
+
         /// <summary>Compute Seidel (3rd order) aberration coefficients.</summary>
         public SeidelResult Seidel()
         {
@@ -1076,6 +1083,12 @@ namespace LensHH.API
             return Rendering.ChromaticFocalShiftRenderer.RenderPage(result, title);
         }
 
+        /// <summary>Render longitudinal aberration as HTML page.</summary>
+        public string RenderLongitudinalAberration(LongitudinalAberrationResult result, string title = "")
+        {
+            return Rendering.LongitudinalAberrationRenderer.RenderPage(result, title);
+        }
+
         /// <summary>Render relative illumination as HTML page.</summary>
         public string RenderRelativeIllumination(RelativeIlluminationResult result, string title = "")
         {
@@ -1187,6 +1200,12 @@ namespace LensHH.API
         public string ExportChromaticFocalShiftText(ChromaticFocalShiftResult result, string title = "")
         {
             return Rendering.TextExport.ChromaticFocalShiftTextExport.Export(result, title);
+        }
+
+        /// <summary>Export longitudinal aberration as tab-delimited text.</summary>
+        public string ExportLongitudinalAberrationText(LongitudinalAberrationResult result, string title = "")
+        {
+            return Rendering.TextExport.LongitudinalAberrationTextExport.Export(result, title);
         }
 
         /// <summary>Export FFT PSF as tab-delimited text.</summary>

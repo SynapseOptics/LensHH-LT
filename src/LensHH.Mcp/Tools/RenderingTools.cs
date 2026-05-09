@@ -124,6 +124,10 @@ namespace LensHH.Mcp.Tools
         public async Task<string> RenderChromaticFocalShift()
             => await RenderAndTrack("ChromaticFocalShift", null, "Chromatic focal shift displayed in render window.");
 
+        [McpServerTool, Description("Render longitudinal spherical / axial chromatic aberration plot natively (pupil radius vs focus shift, per wavelength).")]
+        public async Task<string> RenderLongitudinalAberration()
+            => await RenderAndTrack("LongitudinalAberration", null, "Longitudinal aberration displayed in render window.");
+
         [McpServerTool, Description("Render relative illumination natively. numFieldPoints (default 50) sets the field-axis resolution. numPupilRays (default 36) is the number of pupil-boundary directions sampled per field point — increase for smoother curves on vignetted systems.")]
         public async Task<string> RenderRelativeIllumination(int numFieldPoints = 50, int numPupilRays = 36)
             => await RenderAndTrack("RelativeIllumination", new Dictionary<string, object>
@@ -212,11 +216,12 @@ namespace LensHH.Mcp.Tools
                 "distortion" => "Distortion",
                 "wavefront" => "WavefrontMap",
                 "chromaticfocalshift" => "ChromaticFocalShift",
+                "longitudinalaberration" => "LongitudinalAberration",
                 _ => ""
             };
 
             if (string.IsNullOrEmpty(renderAnalysis))
-                return $"Unknown analysis: {analysisName}. Valid: spot, rayfan, pupilaberration, opdfan, fftmtf, fftmtf-field, fftmtf-focus, fftpsf, geomtf, geomtf-field, geomtf-focus, layout, seidel, relillum, lateralcolor, fieldcurvature, distortion, wavefront, chromaticfocalshift";
+                return $"Unknown analysis: {analysisName}. Valid: spot, rayfan, pupilaberration, opdfan, fftmtf, fftmtf-field, fftmtf-focus, fftpsf, geomtf, geomtf-field, geomtf-focus, layout, seidel, relillum, lateralcolor, fieldcurvature, distortion, wavefront, chromaticfocalshift, longitudinalaberration";
 
             var parms = new Dictionary<string, object> { ["SavePngPath"] = outputPath };
             if (wavelengthIndex >= 0) parms["WavelengthIndex"] = wavelengthIndex;
@@ -226,7 +231,7 @@ namespace LensHH.Mcp.Tools
 
         // ─── HTML fallback (save to file) ─────────────────────────────────
 
-        [McpServerTool, Description("Save any rendered HTML analysis to a file. analysisName: systemdata, spot, rayfan, opdfan, fftmtf, layout, seidel, relillum, lateralcolor, fieldcurvature, distortion, wavefront, fftpsf, chromaticfocalshift. Returns the file path.")]
+        [McpServerTool, Description("Save any rendered HTML analysis to a file. analysisName: systemdata, spot, rayfan, opdfan, fftmtf, layout, seidel, relillum, lateralcolor, fieldcurvature, distortion, wavefront, fftpsf, chromaticfocalshift, longitudinalaberration. Returns the file path.")]
         public string SaveRender(string analysisName, string outputPath = "")
         {
             if (string.IsNullOrEmpty(outputPath))
@@ -247,6 +252,7 @@ namespace LensHH.Mcp.Tools
                 "fieldcurvature" => RenderFieldCurvatureHtml(),
                 "distortion" => RenderDistortionHtml(),
                 "chromaticfocalshift" => RenderChromaticFocalShiftHtml(),
+                "longitudinalaberration" => RenderLongitudinalAberrationHtml(),
                 _ => $"<html><body>Unknown analysis: {analysisName}</body></html>"
             };
 
@@ -487,6 +493,17 @@ namespace LensHH.Mcp.Tools
             var sys = _session.System;
             var result = ChromaticFocalShift.Compute(sys, _session.GlassCatalog);
             var text = ChromaticFocalShiftTextExport.Export(result, "Chromatic Focal Shift");
+            return WriteTextExport(text, outputPath);
+        }
+
+        [McpServerTool, Description("Export longitudinal aberration as tab-delimited text. If outputPath is provided, writes to file.")]
+        public string ExportLongitudinalAberrationText(
+            [Description("Optional file path to write the text export to.")] string outputPath = "",
+            int numZones = 32)
+        {
+            var sys = _session.System;
+            var result = LensHH.Core.Analysis.LongitudinalAberration.Compute(sys, _session.GlassCatalog, numZones);
+            var text = LongitudinalAberrationTextExport.Export(result, "Longitudinal Aberration");
             return WriteTextExport(text, outputPath);
         }
 
@@ -741,6 +758,18 @@ namespace LensHH.Mcp.Tools
             var sys = _session.System;
             var result = ChromaticFocalShift.Compute(sys, _session.GlassCatalog);
             return ChromaticFocalShiftRenderer.RenderPage(result, sys.Title ?? "Chromatic Focal Shift");
+        }
+
+        private string RenderLongitudinalAberrationHtml()
+        {
+            var sys = _session.System;
+            var result = LensHH.Core.Analysis.LongitudinalAberration.Compute(sys, _session.GlassCatalog);
+            int wlDigits = LensHH.Rendering.LabelFormat.WavelengthDigits(sys.Wavelengths.Select(w => w.Value));
+            string wlFmt = "F" + wlDigits;
+            var waveLabels = sys.Wavelengths
+                .Select(w => w.Value.ToString(wlFmt, System.Globalization.CultureInfo.InvariantCulture) + " µm")
+                .ToArray();
+            return LongitudinalAberrationRenderer.RenderPage(result, sys.Title ?? "Longitudinal Aberration", null, waveLabels);
         }
 
         private string RenderGeoMtfKidgerHtml()

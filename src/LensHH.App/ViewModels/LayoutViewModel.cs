@@ -78,11 +78,12 @@ public partial class LayoutViewModel : ObservableObject
         WavelengthOptions.Add("Primary");
         if (_session.System != null)
         {
-            for (int i = 0; i < _session.System.Wavelengths.Count; i++)
+            var sys = _session.System;
+            for (int i = 0; i < sys.Wavelengths.Count; i++)
             {
-                double wl = _session.System.Wavelengths[i].Value;
-                bool isPrimary = i == _session.System.PrimaryWavelengthIndex;
-                string label = $"W{i + 1}: {wl.ToString("0.###", CultureInfo.InvariantCulture)} µm"
+                double wl = sys.Wavelengths[i].Value;
+                bool isPrimary = i == sys.PrimaryWavelengthIndex;
+                string label = $"W{i + 1}: {LabelFormat.Wavelength(wl, sys.Wavelengths)}"
                                + (isPrimary ? " (primary)" : "");
                 WavelengthOptions.Add(label);
             }

@@ -74,7 +74,7 @@ public partial class FieldCurvatureViewModel : ObservableObject
             string fieldUnit = system.FieldType == Core.Enums.FieldType.ObjectHeight ? "mm" : "deg";
             var waveLabels = new string[system.Wavelengths.Count];
             for (int w = 0; w < system.Wavelengths.Count; w++)
-                waveLabels[w] = $"{system.Wavelengths[w].Value:F6} \u00b5m";
+                waveLabels[w] = $"{LabelFormat.Wavelength(system.Wavelengths[w].Value, system.Wavelengths)}";
 
             var mwResult = await Task.Run(() =>
                 FieldCurvatureCalculator.ComputeAllWavelengths(system, glassMgr, numPoints: 100));

@@ -279,6 +279,19 @@ public class AnalysisDispatcher
                 return ($"{sysTitle} \u2014 Chromatic Focal Shift", SvgBitmapHelper.HtmlPageToBitmap(html, 1));
             }
 
+            case "LongitudinalAberration":
+            {
+                var result = LensHH.Core.Analysis.LongitudinalAberration.Compute(system, _glass);
+                var waveLabels = new string[system.Wavelengths.Count];
+                int wlDigits = LensHH.Rendering.LabelFormat.WavelengthDigits(result.WavelengthsUm);
+                string wlFmt = "F" + wlDigits;
+                for (int wi = 0; wi < system.Wavelengths.Count; wi++)
+                    waveLabels[wi] = system.Wavelengths[wi].Value.ToString(
+                        wlFmt, System.Globalization.CultureInfo.InvariantCulture) + " \u00b5m";
+                string html = LongitudinalAberrationRenderer.RenderPage(result, sysTitle, null, waveLabels);
+                return ($"{sysTitle} \u2014 Longitudinal Aberration", SvgBitmapHelper.HtmlPageToBitmap(html, 1));
+            }
+
             default:
                 throw new ArgumentException($"Unknown analysis: {analysis}");
         }

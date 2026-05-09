@@ -6,6 +6,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using LensHH.App.Session;
 using LensHH.Core.Analysis;
+using LensHH.Rendering;
 
 namespace LensHH.App.ViewModels;
 
@@ -80,7 +81,7 @@ public partial class SingleRayTraceViewModel : ObservableObject
         for (int i = 0; i < system.Wavelengths.Count; i++)
         {
             string primary = i == system.PrimaryWavelengthIndex ? " *" : "";
-            WaveOptions.Add($"{i + 1}: {system.Wavelengths[i].Value:F6} \u00b5m{primary}");
+            WaveOptions.Add($"{i + 1}: {LabelFormat.Wavelength(system.Wavelengths[i].Value, system.Wavelengths)}{primary}");
         }
         if (SelectedWaveIndex >= WaveOptions.Count)
             SelectedWaveIndex = system.PrimaryWavelengthIndex;
@@ -129,8 +130,9 @@ public partial class SingleRayTraceViewModel : ObservableObject
                 return;
             }
 
+            string wlFmt = "F" + LabelFormat.WavelengthDigits(system.Wavelengths);
             StatusText = $"Field: {Fmt(fieldY)} {fieldUnit}, Px={Fmt(Px)}, Py={Fmt(Py)}, " +
-                         $"Wave {waveIdx + 1}: {result.Wavelength.ToString("F6", CultureInfo.InvariantCulture)} \u00b5m";
+                         $"Wave {waveIdx + 1}: {result.Wavelength.ToString(wlFmt, CultureInfo.InvariantCulture)} \u00b5m";
 
             foreach (var s in result.Surfaces)
             {

@@ -84,7 +84,7 @@ public partial class FftMtfVsFieldViewModel : ObservableObject
         WavelengthOptions.Clear();
         WavelengthOptions.Add("All (Polychromatic)");
         for (int w = 0; w < system.Wavelengths.Count; w++)
-            WavelengthOptions.Add($"W{w + 1}: {system.Wavelengths[w].Value:F6} \u00b5m");
+            WavelengthOptions.Add($"W{w + 1}: {LabelFormat.Wavelength(system.Wavelengths[w].Value, system.Wavelengths)}");
 
         if (prevIndex >= 0 && prevIndex < WavelengthOptions.Count)
             SelectedWavelengthIndex = prevIndex;
@@ -123,7 +123,7 @@ public partial class FftMtfVsFieldViewModel : ObservableObject
             string fieldUnit = system.FieldType == Core.Enums.FieldType.ObjectHeight ? "mm" : "deg";
             string title = polychromatic
                 ? "FFT MTF vs Field \u2014 Polychromatic"
-                : $"FFT MTF vs Field \u2014 {system.Wavelengths[waveIdx].Value:F6} \u00b5m";
+                : $"FFT MTF vs Field \u2014 {LabelFormat.Wavelength(system.Wavelengths[waveIdx].Value, system.Wavelengths)}";
 
             string svg = MtfVsFieldRenderer.Render(result, title, fieldUnit: fieldUnit);
             RenderSvgToBitmap(svg);
@@ -170,9 +170,10 @@ public partial class FftMtfVsFieldViewModel : ObservableObject
         bool polychromatic = SelectedWavelengthIndex == 0;
         int waveIdx = SelectedWavelengthIndex - 1;
 
+        string wlFmt = "F" + LabelFormat.WavelengthDigits(system.Wavelengths);
         string title = polychromatic
             ? "FFT MTF vs Field - Polychromatic"
-            : $"FFT MTF vs Field - {system.Wavelengths[waveIdx].Value:F6} um";
+            : $"FFT MTF vs Field - {system.Wavelengths[waveIdx].Value.ToString(wlFmt, System.Globalization.CultureInfo.InvariantCulture)} um";
 
         string text = MtfVsFieldTextExport.Export(_lastResult, title, fieldUnit, system.IsAfocal);
         File.WriteAllText(path, text);

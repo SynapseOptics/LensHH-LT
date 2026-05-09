@@ -102,24 +102,68 @@ namespace LensHH.Rendering
         }
 
         /// <summary>
-        /// Compute the minimum number of decimal digits needed so that every
-        /// value in <paramref name="wavelengthsUm"/> renders to a distinct
-        /// string. Floor 6 (typical optical input precision: F6 covers
-        /// 0.265985 / 0.266000 / 0.266015 µm without rounding; F4 would
-        /// collapse all three to "0.2660"). Cap 10 (beyond which IEEE-754
-        /// doubles run out of significant digits).
-        /// Returns 6 for empty / single-value inputs.
+        /// Format a single wavelength value, auto-picking decimal digits to
+        /// match the precision of the surrounding set (so labels in a list
+        /// are uniform and use only as many digits as needed).
+        /// </summary>
+        public static string Wavelength(double wavelengthUm, IEnumerable<double> allWavelengthsUm)
+        {
+            int digits = WavelengthDigits(allWavelengthsUm);
+            return wavelengthUm.ToString("F" + digits, CultureInfo.InvariantCulture) + " \u00b5m";
+        }
+
+        /// <summary>
+        /// Format a single wavelength against the OpticalSystem's full
+        /// wavelength list. Convenience overload that callers in App
+        /// ViewModels can use without pulling in System.Linq.
+        /// </summary>
+        public static string Wavelength(double wavelengthUm,
+            IEnumerable<LensHH.Core.Models.Wavelength> wavelengths)
+        {
+            return Wavelength(wavelengthUm, wavelengths.Select(w => w.Value));
+        }
+
+        /// <summary>
+        /// Compute auto digits for a wavelength collection without unwrapping
+        /// the .Value property at the call site.
+        /// </summary>
+        public static int WavelengthDigits(IEnumerable<LensHH.Core.Models.Wavelength> wavelengths)
+        {
+            return WavelengthDigits(wavelengths.Select(w => w.Value));
+        }
+
+        /// <summary>
+        /// Compute the minimum number of decimal digits needed to render each
+        /// wavelength faithfully. Picks the smallest d in [3, 10] such that
+        /// every value's "F{d}" string round-trips back to the same double
+        /// (no information lost), and — for multi-value sets — every string
+        /// is distinct.
+        ///
+        /// Visible F-d-C lines (0.4861 / 0.5876 / 0.6563) need 4 digits;
+        /// closely-spaced UV (0.265985 / 0.266 / 0.266015) needs 6. Cap 10
+        /// (beyond which IEEE-754 doubles run out of significant digits).
+        /// Returns 3 for empty inputs.
         /// </summary>
         public static int WavelengthDigits(IEnumerable<double> wavelengthsUm)
         {
-            if (wavelengthsUm == null) return 6;
+            const double tolerance = 1e-9;
+            if (wavelengthsUm == null) return 3;
             var values = wavelengthsUm.ToList();
-            if (values.Count <= 1) return 6;
-            for (int d = 6; d <= 10; d++)
+            if (values.Count == 0) return 3;
+            for (int d = 3; d <= 10; d++)
             {
-                var formatted = values.Select(w => w.ToString("F" + d, CultureInfo.InvariantCulture));
-                if (formatted.Distinct().Count() == values.Count)
-                    return d;
+                var formatted = values
+                    .Select(w => w.ToString("F" + d, CultureInfo.InvariantCulture))
+                    .ToList();
+                if (values.Count > 1 && formatted.Distinct().Count() != values.Count)
+                    continue;
+                bool allCaptured = true;
+                for (int i = 0; i < values.Count; i++)
+                {
+                    double parsed = double.Parse(formatted[i], CultureInfo.InvariantCulture);
+                    if (Math.Abs(parsed - values[i]) > tolerance) { allCaptured = false; break; }
+                }
+                if (allCaptured) return d;
             }
             return 10;
         }

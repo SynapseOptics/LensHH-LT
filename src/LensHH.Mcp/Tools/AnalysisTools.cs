@@ -29,7 +29,8 @@ namespace LensHH.Mcp.Tools
 
             var sb = new StringBuilder();
             string fieldUnit = sys.FieldType == Core.Enums.FieldType.ObjectAngle ? "deg" : "mm";
-            sb.AppendLine($"Field {fieldIndex + 1}: {result.FieldY} {fieldUnit}, Px={px}, Py={py}, Wave: {result.Wavelength:F6} um");
+            string wlFmt = "F" + LensHH.Rendering.LabelFormat.WavelengthDigits(sys.Wavelengths);
+            sb.AppendLine($"Field {fieldIndex + 1}: {result.FieldY} {fieldUnit}, Px={px}, Py={py}, Wave: {result.Wavelength.ToString(wlFmt, System.Globalization.CultureInfo.InvariantCulture)} um");
             sb.AppendLine();
             sb.AppendLine(string.Format("{0,5} {1,16} {2,16} {3,16} {4,14} {5,14} {6,14} {7,14} {8,14} {9,14} {10,10} {11,14} {12,14} {13,14} {14}",
                 "Surf", "X", "Y", "Z", "L", "M", "N", "Ln", "Mn", "Nn", "AOI", "Path", "OPL", "Cumul OPL", "Comment"));
@@ -161,11 +162,57 @@ namespace LensHH.Mcp.Tools
             sb.AppendLine($"Chromatic Focal Shift (max: {result.MaxShift:E4} mm)");
             sb.AppendLine($"{"Wavelength",12} {"Shift (mm)",12} {"EFL (mm)",12}");
 
+            int cfsWlDigits = LensHH.Rendering.LabelFormat.WavelengthDigits(
+                result.Points.Select(p => p.Wavelength));
+            string cfsWlFmt = "F" + cfsWlDigits;
             int step = Math.Max(1, result.Points.Count / 10);
             for (int i = 0; i < result.Points.Count; i += step)
             {
                 var pt = result.Points[i];
-                sb.AppendLine($"{pt.Wavelength, 12:F6} {pt.FocalShift,12:E4} {pt.Efl,12:F4}");
+                sb.AppendLine($"{pt.Wavelength.ToString(cfsWlFmt, System.Globalization.CultureInfo.InvariantCulture),12} {pt.FocalShift,12:E4} {pt.Efl,12:F4}");
+            }
+            return sb.ToString();
+        }
+
+        [McpServerTool, Description("Compute longitudinal spherical / axial chromatic aberration: pupil radius vs longitudinal focus shift, per wavelength.")]
+        public string LongitudinalAberration(int numZones = 32)
+        {
+            { var ge = CheckGlass(); if (ge != null) return ge; }
+            var sys = _session.System;
+            var result = Core.Analysis.LongitudinalAberration.Compute(sys, _session.GlassCatalog, numZones);
+            if (result.IsAfocal) return "Not applicable for afocal systems.";
+
+            var sb = new StringBuilder();
+            sb.AppendLine($"Longitudinal Aberration (pupil radius max: {result.PupilRadiusMax:F4} mm)");
+
+            int numWl = result.WavelengthsUm.Length;
+            var perWl = new System.Collections.Generic.List<System.Collections.Generic.List<Core.Analysis.LongitudinalAberrationPoint>>(numWl);
+            for (int i = 0; i < numWl; i++) perWl.Add(new System.Collections.Generic.List<Core.Analysis.LongitudinalAberrationPoint>());
+            foreach (var p in result.Points)
+                if (p.WavelengthIndex >= 0 && p.WavelengthIndex < numWl)
+                    perWl[p.WavelengthIndex].Add(p);
+            for (int i = 0; i < numWl; i++)
+                perWl[i].Sort((a, b) => a.PupilRadius.CompareTo(b.PupilRadius));
+
+            sb.Append($"{"PupilR (mm)",12}");
+            for (int i = 0; i < numWl; i++)
+                sb.Append($"  {"Shift " + result.WavelengthsUm[i].ToString("F4") + "um",16}");
+            sb.AppendLine();
+
+            int nRows = 0;
+            for (int i = 0; i < numWl; i++) if (perWl[i].Count > nRows) nRows = perWl[i].Count;
+            int step = Math.Max(1, nRows / 10);
+            for (int row = 0; row < nRows; row += step)
+            {
+                double radius = 0;
+                for (int i = 0; i < numWl; i++)
+                    if (row < perWl[i].Count) { radius = perWl[i][row].PupilRadius; break; }
+                sb.Append($"{radius,12:F4}");
+                for (int i = 0; i < numWl; i++)
+                    sb.Append(row < perWl[i].Count
+                        ? $"  {perWl[i][row].LongitudinalShift,16:E4}"
+                        : $"  {"-",16}");
+                sb.AppendLine();
             }
             return sb.ToString();
         }
@@ -222,7 +269,8 @@ namespace LensHH.Mcp.Tools
             sb.AppendLine($"  Peak-to-Valley: {result.PeakToValley:F4} waves");
             sb.AppendLine($"  RMS Wavefront:  {result.RmsWavefront:F4} waves");
             sb.AppendLine($"  Grid Size:      {result.GridSize}");
-            sb.AppendLine($"  Wavelength:     {result.Wavelength:F6} um");
+            string wfmt = "F" + LensHH.Rendering.LabelFormat.WavelengthDigits(sys.Wavelengths);
+            sb.AppendLine($"  Wavelength:     {result.Wavelength.ToString(wfmt, System.Globalization.CultureInfo.InvariantCulture)} um");
             return sb.ToString();
         }
 
@@ -304,7 +352,7 @@ namespace LensHH.Mcp.Tools
                 int wl = sys.PrimaryWavelengthIndex;
                 result = FftMtfCalculator.ComputeThroughFocus(
                     sys, _session.GlassCatalog, fieldIndex, spatialFrequency, wl, focusRange, numSteps, gridSize);
-                modeLabel = $"{sys.Wavelengths[wl].Value:F6} um";
+                modeLabel = $"{sys.Wavelengths[wl].Value.ToString("F" + LensHH.Rendering.LabelFormat.WavelengthDigits(sys.Wavelengths), System.Globalization.CultureInfo.InvariantCulture)} um";
             }
 
             var sb = new StringBuilder();
@@ -339,7 +387,7 @@ namespace LensHH.Mcp.Tools
                 result = GeometricMtfKidger.Compute(
                     sys, _session.GlassCatalog, fieldIndex, wl,
                     multiplyByDiffractionLimit: multiplyByDiffractionLimit);
-                modeLabel = $"{sys.Wavelengths[wl].Value:F6} um";
+                modeLabel = $"{sys.Wavelengths[wl].Value.ToString("F" + LensHH.Rendering.LabelFormat.WavelengthDigits(sys.Wavelengths), System.Globalization.CultureInfo.InvariantCulture)} um";
             }
 
             var sb = new StringBuilder();

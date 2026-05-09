@@ -42,7 +42,7 @@ public partial class FftPsfViewModel : ObservableObject
         int prevIndex = SelectedWavelengthIndex;
         WavelengthOptions.Clear();
         for (int w = 0; w < system.Wavelengths.Count; w++)
-            WavelengthOptions.Add($"W{w + 1}: {system.Wavelengths[w].Value:F6} \u00b5m");
+            WavelengthOptions.Add($"W{w + 1}: {LabelFormat.Wavelength(system.Wavelengths[w].Value, system.Wavelengths)}");
 
         if (prevIndex >= 0 && prevIndex < WavelengthOptions.Count)
             SelectedWavelengthIndex = prevIndex;
@@ -69,7 +69,7 @@ public partial class FftPsfViewModel : ObservableObject
 
             var titles = new string[numFields];
             for (int f = 0; f < numFields; f++)
-                titles[f] = $"F{f + 1}: {system.Fields[f].Y:F1} {fieldUnit}, {system.Wavelengths[waveIdx].Value:F6} \u00b5m";
+                titles[f] = $"F{f + 1}: {system.Fields[f].Y:F1} {fieldUnit}, {LabelFormat.Wavelength(system.Wavelengths[waveIdx].Value, system.Wavelengths)}";
 
             var bitmap = await Task.Run(() =>
             {
@@ -178,6 +178,7 @@ public partial class FftPsfViewModel : ObservableObject
         var path = file.TryGetLocalPath();
         if (path == null) return;
 
+        string wlFmt = "F" + LabelFormat.WavelengthDigits(system.Wavelengths);
         var sb = new StringBuilder();
         foreach (var r in _lastResults)
         {
@@ -185,8 +186,9 @@ public partial class FftPsfViewModel : ObservableObject
             double wlUm = r.WavelengthIndex < system.Wavelengths.Count
                 ? system.Wavelengths[r.WavelengthIndex].Value : double.NaN;
 
+            string wlStr = double.IsNaN(wlUm) ? "?" : wlUm.ToString(wlFmt, System.Globalization.CultureInfo.InvariantCulture);
             sb.AppendLine(FftPsfTextExport.Export(r,
-                $"FFT PSF \u2014 Field {r.FieldIndex + 1}: {fieldY:F1} {fieldUnit}, W{r.WavelengthIndex + 1}: {wlUm:F4} \u00b5m",
+                $"FFT PSF \u2014 Field {r.FieldIndex + 1}: {fieldY:F1} {fieldUnit}, W{r.WavelengthIndex + 1}: {wlStr} \u00b5m",
                 fieldY, wlUm, fieldUnit));
             sb.AppendLine();
         }

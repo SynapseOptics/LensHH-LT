@@ -80,6 +80,7 @@
         <MenuItem Header="Relative _Illumination" Click="RelativeIllumination_Click" />
         <MenuItem Header="_Lateral Color" Click="LateralColor_Click" />
         <MenuItem Header="_Chromatic Focal Shift" Click="ChromaticFocalShift_Click" />
+        <MenuItem Header="L_ongitudinal Aberration" Click="LongitudinalAberration_Click" />
         <Separator />
         <MenuItem Header="_Geometric MTF">
           <MenuItem Header="vs Spatial _Frequency" Click="GeoMtfVsFreq_Click" />
@@ -1222,6 +1223,41 @@
           <Border Background="#F0F0F0" IsVisible="{Binding ChromaticFocalShift.IsDisabled}"
                   HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
             <TextBlock Text="Requires multiple wavelengths."
+                       FontSize="16" Foreground="#888"
+                       HorizontalAlignment="Center" VerticalAlignment="Center" TextAlignment="Center" />
+          </Border>
+        </Grid>
+      </TabItem>
+
+      <TabItem Header="Longitudinal Aberration" IsVisible="{Binding LongitudinalAberration.IsVisible}">
+        <Grid>
+          <DockPanel>
+            <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="4" Spacing="8">
+              <TextBlock Text="Pupil zones:" VerticalAlignment="Center" />
+              <TextBox Text="{Binding LongitudinalAberration.NumZones, UpdateSourceTrigger=LostFocus}" Width="50" />
+              <Button Content="Compute" Command="{Binding LongitudinalAberration.ComputeCommand}" Width="80" />
+              <Button Content="Export Text..." Command="{Binding LongitudinalAberration.ExportTextCommand}" Width="100" />
+              <Button Content="Export Image" Click="ExportImage_Click" Tag="LongitudinalAberration" Width="90" FontSize="11" />
+              <Button Content="Show Table" Click="LongitudinalAberrationShowTable_Click" Width="80" FontSize="11" />
+              <Button Content="Close Tab" Click="CloseLongitudinalAberrationTab_Click" Width="70" FontSize="11" />
+            </StackPanel>
+            <Border Background="White" Margin="4">
+              <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                <Image Source="{Binding LongitudinalAberration.PlotImage}"
+                       Stretch="None"
+                       HorizontalAlignment="Left"
+                       VerticalAlignment="Top" />
+              </ScrollViewer>
+            </Border>
+          </DockPanel>
+          <Border Background="#80FFFFFF" IsVisible="{Binding LongitudinalAberration.IsBusy}"
+                  HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+            <TextBlock Text="Computing..." FontSize="18" FontWeight="Bold" Foreground="#555"
+                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+          </Border>
+          <Border Background="#F0F0F0" IsVisible="{Binding LongitudinalAberration.IsDisabled}"
+                  HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+            <TextBlock Text="Not applicable for afocal systems."
                        FontSize="16" Foreground="#888"
                        HorizontalAlignment="Center" VerticalAlignment="Center" TextAlignment="Center" />
           </Border>

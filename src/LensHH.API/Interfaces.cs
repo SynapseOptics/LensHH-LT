@@ -129,6 +129,7 @@ namespace LensHH.API
         PsfResult FftPsf(int fieldIndex, int wavelengthIndex = -1, int gridSize = 64);
         WavefrontResult WavefrontMap(int fieldIndex, int wavelengthIndex, int gridSize = 64);
         ChromaticFocalShiftResult ChromaticFocalShift(int numPoints = 50);
+        LongitudinalAberrationResult LongitudinalAberration(int numZones = 32);
         SeidelResult Seidel();
         LateralColorResult LateralColor(int numFieldPoints = 20);
         FieldCurvatureResult FieldCurvature(int numFieldPoints = 20);
@@ -192,6 +193,7 @@ namespace LensHH.API
         string RenderFieldCurvature(FieldCurvatureResult result, string title = "");
         string RenderDistortion(DistortionResult result, string title = "");
         string RenderChromaticFocalShift(ChromaticFocalShiftResult result, string title = "");
+        string RenderLongitudinalAberration(LongitudinalAberrationResult result, string title = "");
         string RenderRelativeIllumination(RelativeIlluminationResult result, string title = "");
         string RenderSeidel(SeidelResult result, string title = "");
     }
@@ -212,6 +214,7 @@ namespace LensHH.API
         string ExportFieldCurvatureText(FieldCurvatureResult result, string title = "");
         string ExportDistortionText(DistortionResult result, string title = "");
         string ExportChromaticFocalShiftText(ChromaticFocalShiftResult result, string title = "");
+        string ExportLongitudinalAberrationText(LongitudinalAberrationResult result, string title = "");
         string ExportRelativeIlluminationText(RelativeIlluminationResult result, string title = "");
         string ExportSeidelText(SeidelResult result, string title = "");
     }

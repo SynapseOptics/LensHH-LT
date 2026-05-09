@@ -48,7 +48,7 @@ public partial class FftMtfViewModel : ObservableObject
         WavelengthOptions.Clear();
         WavelengthOptions.Add("All (Polychromatic)");
         for (int w = 0; w < system.Wavelengths.Count; w++)
-            WavelengthOptions.Add($"W{w + 1}: {system.Wavelengths[w].Value:F6} \u00b5m");
+            WavelengthOptions.Add($"W{w + 1}: {LabelFormat.Wavelength(system.Wavelengths[w].Value, system.Wavelengths)}");
 
         // Restore previous selection if still valid
         if (prevIndex >= 0 && prevIndex < WavelengthOptions.Count)
@@ -134,7 +134,7 @@ public partial class FftMtfViewModel : ObservableObject
 
             string title = polychromatic
                 ? "FFT MTF \u2014 Polychromatic"
-                : $"FFT MTF \u2014 {system.Wavelengths[waveIdx].Value:F6} \u00b5m";
+                : $"FFT MTF \u2014 {LabelFormat.Wavelength(system.Wavelengths[waveIdx].Value, system.Wavelengths)}";
 
             string svg = FftMtfRenderer.RenderAllFields(
                 fieldResults, fieldLabels, title,
@@ -184,13 +184,16 @@ public partial class FftMtfViewModel : ObservableObject
         bool polychromatic = SelectedWavelengthIndex == 0;
         int waveIdx = SelectedWavelengthIndex - 1;
 
+        string wlFmt = "F" + LabelFormat.WavelengthDigits(system.Wavelengths);
+        string wlAt(int idx) => system.Wavelengths[idx].Value.ToString(wlFmt, System.Globalization.CultureInfo.InvariantCulture);
+
         var sb = new System.Text.StringBuilder();
         sb.AppendLine("FFT MTF vs Spatial Frequency");
         sb.AppendLine($"Grid Size: {GridSize}");
         if (polychromatic)
             sb.AppendLine("Wavelength: Polychromatic");
         else
-            sb.AppendLine($"Wavelength: {system.Wavelengths[waveIdx].Value:F6} um");
+            sb.AppendLine($"Wavelength: {wlAt(waveIdx)} um");
         sb.AppendLine();
 
         for (int f = 0; f < _lastFieldResults.Length; f++)
@@ -202,7 +205,7 @@ public partial class FftMtfViewModel : ObservableObject
 
             string label = polychromatic
                 ? $"Field {f + 1}: {fieldY:F1} {fieldUnit}, Polychromatic"
-                : $"Field {f + 1}: {fieldY:F1} {fieldUnit}, Wave {waveIdx + 1}: {system.Wavelengths[waveIdx].Value:F6} um";
+                : $"Field {f + 1}: {fieldY:F1} {fieldUnit}, Wave {waveIdx + 1}: {wlAt(waveIdx)} um";
 
             sb.AppendLine(FftMtfTextExport.Export(result,
                 label, cutT, cutS, fieldY,

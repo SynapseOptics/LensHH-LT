@@ -73,6 +73,7 @@ public partial class MainViewModel : ObservableObject
     public PupilAberrationFanViewModel PupilAberrationFan { get; }
     public LateralColorViewModel LateralColor { get; }
     public ChromaticFocalShiftViewModel ChromaticFocalShift { get; }
+    public LongitudinalAberrationViewModel LongitudinalAberration { get; }
     public SingleRayTraceViewModel SingleRayTrace { get; }
     public SystemDataViewModel SystemData { get; }
     public GuiSession Session => _session;
@@ -101,6 +102,7 @@ public partial class MainViewModel : ObservableObject
         PupilAberrationFan = new PupilAberrationFanViewModel(session);
         LateralColor = new LateralColorViewModel(session);
         ChromaticFocalShift = new ChromaticFocalShiftViewModel(session);
+        LongitudinalAberration = new LongitudinalAberrationViewModel(session);
         SingleRayTrace = new SingleRayTraceViewModel(session);
         SystemData = new SystemDataViewModel(session);
         _session.SystemChanged += _ =>

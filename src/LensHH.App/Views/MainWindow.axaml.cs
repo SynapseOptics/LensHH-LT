@@ -1037,9 +1037,10 @@ public partial class MainWindow : Window
 
         // Build columns: Field, then Tangential/Sagittal per wavelength
         var colList = new System.Collections.Generic.List<string> { "Field (" + fieldUnit + ")" };
+        string fcWlFmt = "F" + LensHH.Rendering.LabelFormat.WavelengthDigits(mwResult.Wavelengths);
         for (int w = 0; w < mwResult.Wavelengths.Count; w++)
         {
-            string wl = $"{mwResult.Wavelengths[w]:F6}";
+            string wl = mwResult.Wavelengths[w].ToString(fcWlFmt, System.Globalization.CultureInfo.InvariantCulture);
             colList.Add($"T {wl} \u00b5m");
             colList.Add($"S {wl} \u00b5m");
         }
@@ -1453,10 +1454,11 @@ public partial class MainWindow : Window
             wavelengthIndices.Add(pt.WavelengthIndex);
 
         var colList = new System.Collections.Generic.List<string> { "Field (" + fieldUnit + ")" };
+        string lcWlFmt = "F" + LensHH.Rendering.LabelFormat.WavelengthDigits(system.Wavelengths);
         foreach (var wi in wavelengthIndices)
         {
             string wlLabel = wi < system.Wavelengths.Count
-                ? $"{system.Wavelengths[wi].Value:F6} \u00b5m"
+                ? $"{system.Wavelengths[wi].Value.ToString(lcWlFmt, System.Globalization.CultureInfo.InvariantCulture)} \u00b5m"
                 : $"W{wi + 1}";
             colList.Add(wlLabel + " (" + shiftUnit + ")");
         }
@@ -1515,11 +1517,13 @@ public partial class MainWindow : Window
         string unit = result.IsAfocal ? "diopters" : "mm";
         var columns = new[] { "Wavelength (\u00b5m)", $"Focal Shift ({unit})", "EFL (mm)" };
         var rows = new System.Collections.Generic.List<string[]>();
+        string cfsWlFmt = "F" + LensHH.Rendering.LabelFormat.WavelengthDigits(
+            result.Points.Select(p => p.Wavelength));
         foreach (var pt in result.Points)
         {
             rows.Add(new[]
             {
-                $"{pt.Wavelength:F6}",
+                pt.Wavelength.ToString(cfsWlFmt, System.Globalization.CultureInfo.InvariantCulture),
                 LensHH.Rendering.LabelFormat.Auto(pt.FocalShift),
                 LensHH.Rendering.LabelFormat.Auto(pt.Efl)
             });
@@ -1537,10 +1541,70 @@ public partial class MainWindow : Window
         VM.SelectedTabIndex = 0;
     }
 
+    // ── Longitudinal Aberration ──
+
+    private async void LongitudinalAberration_Click(object? sender, RoutedEventArgs e)
+    {
+        VM.LongitudinalAberration.IsVisible = true;
+        VM.SelectedTabIndex = 20; // after Chromatic Focal Shift
+        await VM.LongitudinalAberration.ComputeCommand.ExecuteAsync(null);
+    }
+
+    private async void LongitudinalAberrationShowTable_Click(object? sender, RoutedEventArgs e)
+    {
+        var result = VM.LongitudinalAberration.LastResult;
+        if (result == null || result.Points.Count == 0) return;
+
+        int numWl = result.WavelengthsUm.Length;
+        int wlDigits = LensHH.Rendering.LabelFormat.WavelengthDigits(result.WavelengthsUm);
+        string wlFmt = "F" + wlDigits;
+
+        var perWl = new System.Collections.Generic.List<System.Collections.Generic.List<LensHH.Core.Analysis.LongitudinalAberrationPoint>>(numWl);
+        for (int i = 0; i < numWl; i++) perWl.Add(new System.Collections.Generic.List<LensHH.Core.Analysis.LongitudinalAberrationPoint>());
+        foreach (var p in result.Points)
+            if (p.WavelengthIndex >= 0 && p.WavelengthIndex < numWl)
+                perWl[p.WavelengthIndex].Add(p);
+        for (int i = 0; i < numWl; i++)
+            perWl[i].Sort((a, b) => a.PupilRadius.CompareTo(b.PupilRadius));
+
+        var columns = new System.Collections.Generic.List<string> { "Pupil Radius (mm)" };
+        for (int i = 0; i < numWl; i++)
+            columns.Add($"Shift @ {result.WavelengthsUm[i].ToString(wlFmt, System.Globalization.CultureInfo.InvariantCulture)} µm (mm)");
+
+        int nRows = 0;
+        for (int i = 0; i < numWl; i++) if (perWl[i].Count > nRows) nRows = perWl[i].Count;
+
+        var rows = new System.Collections.Generic.List<string[]>();
+        for (int row = 0; row < nRows; row++)
+        {
+            double radius = 0;
+            for (int i = 0; i < numWl; i++)
+                if (row < perWl[i].Count) { radius = perWl[i][row].PupilRadius; break; }
+            var cells = new string[numWl + 1];
+            cells[0] = $"{radius:F6}";
+            for (int i = 0; i < numWl; i++)
+                cells[i + 1] = row < perWl[i].Count
+                    ? LensHH.Rendering.LabelFormat.Auto(perWl[i][row].LongitudinalShift)
+                    : "-";
+            rows.Add(cells);
+        }
+
+        var dialog = new DataTableDialog();
+        dialog.SetData("Longitudinal Aberration", columns.ToArray(), rows);
+        dialog.Width = 600;
+        await dialog.ShowDialog(this);
+    }
+
+    private void CloseLongitudinalAberrationTab_Click(object? sender, RoutedEventArgs e)
+    {
+        VM.LongitudinalAberration.IsVisible = false;
+        VM.SelectedTabIndex = 0;
+    }
+
     private void SingleRayTrace_Click(object? sender, RoutedEventArgs e)
     {
         VM.SingleRayTrace.IsVisible = true;
-        VM.SelectedTabIndex = 20;
+        VM.SelectedTabIndex = 21;
     }
 
     private void RayTraceSelectAll_Click(object? sender, RoutedEventArgs e)
@@ -1576,7 +1640,7 @@ public partial class MainWindow : Window
     private async void FftPsf_Click(object? sender, RoutedEventArgs e)
     {
         VM.FftPsf.IsVisible = true;
-        VM.SelectedTabIndex = 21;
+        VM.SelectedTabIndex = 22;
         await VM.FftPsf.ComputeCommand.ExecuteAsync(null);
     }
 
@@ -1601,7 +1665,7 @@ public partial class MainWindow : Window
     private async void SystemData_Click(object? sender, RoutedEventArgs e)
     {
         VM.SystemData.IsVisible = true;
-        VM.SelectedTabIndex = 22;
+        VM.SelectedTabIndex = 23;
         await VM.SystemData.ComputeCommand.ExecuteAsync(null);
     }
 
@@ -1735,6 +1799,7 @@ public partial class MainWindow : Window
             "PupilAberrationFan" => VM.PupilAberrationFan.PlotImage,
             "LateralColor" => VM.LateralColor.PlotImage,
             "ChromaticFocalShift" => VM.ChromaticFocalShift.PlotImage,
+            "LongitudinalAberration" => VM.LongitudinalAberration.PlotImage,
             "FftPsf" => VM.FftPsf.PsfImage,
             "SystemData" => VM.SystemData.PlotImage,
             _ => null

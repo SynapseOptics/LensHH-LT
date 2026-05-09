@@ -264,7 +264,8 @@ namespace LensHH.CLI.Commands
                 }
             }
 
-            AnsiConsole.MarkupLine($"[green]Wavelength {idx + 1}: {wl.Value:F6} um, weight={wl.Weight:F2}[/]");
+            string wlFmt = "F" + LensHH.Rendering.LabelFormat.WavelengthDigits(sys.Wavelengths);
+            AnsiConsole.MarkupLine($"[green]Wavelength {idx + 1}: {wl.Value.ToString(wlFmt, System.Globalization.CultureInfo.InvariantCulture)} um, weight={wl.Weight:F2}[/]");
         }
 
         private void EditField(Session session, string[] args)
