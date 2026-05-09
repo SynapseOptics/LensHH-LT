@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using System.Text;
 using LensHH.Core.Analysis;
 using LensHH.Core.Glass;
@@ -92,6 +93,13 @@ namespace LensHH.Rendering.TextExport
             sb.AppendLine("Refractive Index Table");
             sb.AppendLine();
 
+            // Pick the minimum decimals needed so every wavelength prints
+            // distinctly — important for systems like 0.265985 / 0.266000 /
+            // 0.266015 µm where F4 would collapse all three to "0.2660".
+            int wlDigits = LabelFormat.WavelengthDigits(
+                system.Wavelengths.Select(w => w.Value));
+            string wlFormat = "F" + wlDigits;
+
             sb.Append("Wavelength (µm)");
             foreach (var kv in materialToSurface)
                 sb.Append('\t').Append(kv.Key);
@@ -109,18 +117,21 @@ namespace LensHH.Rendering.TextExport
                     // Catalog miss / out-of-range — emit a row of blanks rather than
                     // failing the whole export. This is rare; happens if the user
                     // has a wavelength with no catalog data for one of the materials.
-                    sb.Append(wl.Value.ToString("F4", CultureInfo.InvariantCulture));
+                    sb.Append(wl.Value.ToString(wlFormat, CultureInfo.InvariantCulture));
                     foreach (var _ in materialToSurface) sb.Append("\t-");
                     sb.AppendLine();
                     continue;
                 }
 
-                sb.Append(wl.Value.ToString("F4", CultureInfo.InvariantCulture));
+                sb.Append(wl.Value.ToString(wlFormat, CultureInfo.InvariantCulture));
                 foreach (var kv in materialToSurface)
                 {
                     int surfIdx = kv.Value;
+                    // G15 gives the full IEEE-754 double precision (15-17 significant
+                    // digits) — preserves the catalog value as faithfully as the
+                    // engine returned it.
                     string cell = (surfIdx >= 0 && surfIdx < indices.Length)
-                        ? indices[surfIdx].ToString("F5", CultureInfo.InvariantCulture)
+                        ? indices[surfIdx].ToString("G15", CultureInfo.InvariantCulture)
                         : "-";
                     sb.Append('\t').Append(cell);
                 }

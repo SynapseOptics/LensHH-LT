@@ -462,12 +462,12 @@ namespace LensHH.Rendering
             {
                 string ttLabel = $"Total Track: {LabelFormat.Auto(totalTrack)} mm";
                 if (traceWavelengthMicrons > 0)
-                    ttLabel += $"   \u03BB = {traceWavelengthMicrons.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture)} \u00B5m";
+                    ttLabel += $"   \u03BB = {traceWavelengthMicrons.ToString("0.######", System.Globalization.CultureInfo.InvariantCulture)} \u00B5m";
                 sb.AppendLine(F($"<text x=\"{width / 2.0:F1}\" y=\"{by + 32:F1}\" text-anchor=\"middle\" font-size=\"11\" fill=\"#555\">{ttLabel}</text>"));
             }
             else if (traceWavelengthMicrons > 0)
             {
-                string wlLabel = $"\u03BB = {traceWavelengthMicrons.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture)} \u00B5m";
+                string wlLabel = $"\u03BB = {traceWavelengthMicrons.ToString("0.######", System.Globalization.CultureInfo.InvariantCulture)} \u00B5m";
                 sb.AppendLine(F($"<text x=\"{width / 2.0:F1}\" y=\"{by + 32:F1}\" text-anchor=\"middle\" font-size=\"11\" fill=\"#555\">{wlLabel}</text>"));
             }
         }

@@ -25,7 +25,7 @@ namespace LensHH.Rendering.TextExport
                     "Field Value ({0})\t{1:F4}", fieldUnit, fieldValue));
             if (!double.IsNaN(wavelengthUm))
                 sb.AppendLine(string.Format(CultureInfo.InvariantCulture,
-                    "Wavelength (\u00b5m)\t{0:F4}", wavelengthUm));
+                    "Wavelength (\u00b5m)\t{0:F6}", wavelengthUm));
             sb.AppendLine();
 
             sb.AppendLine($"Focus Shift ({focusUnit})\tTangential\tSagittal");

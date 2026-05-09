@@ -31,7 +31,7 @@ namespace LensHH.Rendering.TextExport
                 "Wavelength\t{0}", result.WavelengthIndex + 1));
             if (!double.IsNaN(wavelengthUm))
                 sb.AppendLine(string.Format(CultureInfo.InvariantCulture,
-                    "Wavelength (µm)\t{0:F4}", wavelengthUm));
+                    "Wavelength (µm)\t{0:F6}", wavelengthUm));
             sb.AppendLine(string.Format(CultureInfo.InvariantCulture,
                 "Max Frequency ({0})\t{1:F2}", freqUnit, result.MaxFrequency));
 

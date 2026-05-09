@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 
 namespace LensHH.Rendering
 {
@@ -77,12 +79,47 @@ namespace LensHH.Rendering
 
         /// <summary>
         /// Format a wavelength value for a legend label (in micrometers).
+        /// Default precision is enough to keep typical visible/UV/IR wavelengths
+        /// distinguishable; for systems with closely-spaced wavelengths
+        /// (e.g. 0.265985 / 0.266000 / 0.266015) compute digits up-front
+        /// via <see cref="WavelengthDigits"/> and use the (value, digits) overload.
         /// </summary>
         public static string Wavelength(double wavelengthUm)
         {
             if (wavelengthUm >= 1.0)
-                return wavelengthUm.ToString("F3", CultureInfo.InvariantCulture) + " \u00b5m";
-            return wavelengthUm.ToString("F4", CultureInfo.InvariantCulture) + " \u00b5m";
+                return wavelengthUm.ToString("F4", CultureInfo.InvariantCulture) + " \u00b5m";
+            return wavelengthUm.ToString("F6", CultureInfo.InvariantCulture) + " \u00b5m";
+        }
+
+        /// <summary>
+        /// Format a wavelength value with caller-specified decimal precision.
+        /// </summary>
+        public static string Wavelength(double wavelengthUm, int decimals)
+        {
+            if (decimals < 0) decimals = 0;
+            if (decimals > 10) decimals = 10;
+            return wavelengthUm.ToString("F" + decimals, CultureInfo.InvariantCulture) + " \u00b5m";
+        }
+
+        /// <summary>
+        /// Compute the minimum number of decimal digits needed so that every
+        /// value in <paramref name="wavelengthsUm"/> renders to a distinct
+        /// string. Floor 4 (standard visible-spectrum precision); cap 10
+        /// (beyond which IEEE-754 doubles run out of significant digits).
+        /// Returns 4 for empty / single-value inputs.
+        /// </summary>
+        public static int WavelengthDigits(IEnumerable<double> wavelengthsUm)
+        {
+            if (wavelengthsUm == null) return 4;
+            var values = wavelengthsUm.ToList();
+            if (values.Count <= 1) return 4;
+            for (int d = 4; d <= 10; d++)
+            {
+                var formatted = values.Select(w => w.ToString("F" + d, CultureInfo.InvariantCulture));
+                if (formatted.Distinct().Count() == values.Count)
+                    return d;
+            }
+            return 10;
         }
 
         /// <summary>

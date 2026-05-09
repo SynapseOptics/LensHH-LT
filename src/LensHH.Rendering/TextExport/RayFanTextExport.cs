@@ -42,12 +42,19 @@ namespace LensHH.Rendering.TextExport
         {
             var byWl = points.GroupBy(p => p.WavelengthIndex).OrderBy(g => g.Key).ToList();
 
+            // Dynamic decimals so closely-spaced wavelengths don't render to
+            // identical column headers (e.g. 0.265985/0.266000/0.266015 µm).
+            int wlDigits = wavelengthsUm != null
+                ? LabelFormat.WavelengthDigits(wavelengthsUm)
+                : 4;
+            string wlFormat = "{0:F" + wlDigits + "}um";
+
             sb.Append("Pupil Coordinate");
             foreach (var g in byWl)
             {
                 int wIdx = g.Key;
                 string wlLabel = wavelengthsUm != null && wIdx < wavelengthsUm.Length
-                    ? string.Format(CultureInfo.InvariantCulture, "{0:F4}um", wavelengthsUm[wIdx])
+                    ? string.Format(CultureInfo.InvariantCulture, wlFormat, wavelengthsUm[wIdx])
                     : $"W{wIdx + 1}";
                 sb.Append($"\t{wlLabel} Aberration ({unit})");
             }

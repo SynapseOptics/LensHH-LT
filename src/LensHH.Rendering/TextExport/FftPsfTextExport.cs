@@ -23,7 +23,7 @@ namespace LensHH.Rendering.TextExport
                 "Wavelength\t{0}", result.WavelengthIndex + 1));
             if (!double.IsNaN(wavelengthUm))
                 sb.AppendLine(string.Format(CultureInfo.InvariantCulture,
-                    "Wavelength (µm)\t{0:F4}", wavelengthUm));
+                    "Wavelength (µm)\t{0:F6}", wavelengthUm));
             sb.AppendLine(string.Format(CultureInfo.InvariantCulture,
                 "Grid Size\t{0}", result.GridSize));
             sb.AppendLine(string.Format(CultureInfo.InvariantCulture,

@@ -57,11 +57,15 @@ namespace LensHH.Rendering.TextExport
             {
                 sb.AppendLine("Per-Wavelength Ray Counts");
                 sb.AppendLine("Wavelength\tAttempted\tSucceeded\tFailed");
+                int wlDigits = wavelengthsUm != null
+                    ? LabelFormat.WavelengthDigits(wavelengthsUm)
+                    : 4;
+                string wlFormat = "{0:F" + wlDigits + "} um";
                 for (int w = 0; w < result.PerWavelengthRays.Count; w++)
                 {
                     var (attempted, succeeded) = result.PerWavelengthRays[w];
                     string wlLabel = wavelengthsUm != null && w < wavelengthsUm.Length
-                        ? string.Format(CultureInfo.InvariantCulture, "{0:F4} um", wavelengthsUm[w])
+                        ? string.Format(CultureInfo.InvariantCulture, wlFormat, wavelengthsUm[w])
                         : $"W{w + 1}";
                     sb.AppendLine(string.Format(CultureInfo.InvariantCulture,
                         "{0}\t{1}\t{2}\t{3}", wlLabel, attempted, succeeded, attempted - succeeded));
