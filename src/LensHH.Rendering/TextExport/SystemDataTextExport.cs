@@ -127,11 +127,12 @@ namespace LensHH.Rendering.TextExport
                 foreach (var kv in materialToSurface)
                 {
                     int surfIdx = kv.Value;
-                    // G15 gives the full IEEE-754 double precision (15-17 significant
-                    // digits) — preserves the catalog value as faithfully as the
-                    // engine returned it.
+                    // F7: 7 decimals matches typical catalog precision for
+                    // refractive indices (Conrady / Sellmeier fits). G15 was
+                    // surfacing IEEE-754 trailing noise (e.g. "1.49979879996278")
+                    // that buried the meaningful "1.4997988" digits.
                     string cell = (surfIdx >= 0 && surfIdx < indices.Length)
-                        ? indices[surfIdx].ToString("G15", CultureInfo.InvariantCulture)
+                        ? indices[surfIdx].ToString("F7", CultureInfo.InvariantCulture)
                         : "-";
                     sb.Append('\t').Append(cell);
                 }
