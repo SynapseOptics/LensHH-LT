@@ -1,17 +1,25 @@
 using System;
 using System.Net.Http;
 using System.Text;
+using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
+using Avalonia.Platform.Storage;
 using LensHH.Core.Activation;
 
 namespace LensHH.App.Views;
 
 public partial class TrialActivationDialog : Window
 {
+    // Sentinel returned to the caller when the offline path completes
+    // successfully. Real online tokens are JSON objects beginning with '{',
+    // so this string can never collide with a valid token.
+    public const string OfflineActivatedResult = "OFFLINE_OK";
+
     private const string BaseUrl = "https://synapseoptics-license.javier-ruiz.workers.dev";
     private static readonly HttpClient _http = new() { Timeout = TimeSpan.FromSeconds(30) };
     private string _email = "";
+    private string? _offlineTokenPath;
 
     public TrialActivationDialog()
     {
@@ -137,6 +145,78 @@ public partial class TrialActivationDialog : Window
         Step1Panel.IsVisible = true;
         SendCodeButton.IsEnabled = true;
         StatusText.Text = "";
+    }
+
+    private void Offline_Click(object? sender, RoutedEventArgs e)
+    {
+        MachineIdBox.Text = ActivationManager.GetMachineFingerprint();
+        TokenPathBox.Text = "";
+        _offlineTokenPath = null;
+        ActivateOfflineButton.IsEnabled = false;
+        Step1Panel.IsVisible = false;
+        Step3Panel.IsVisible = true;
+        StatusText.Text = "";
+    }
+
+    private void BackFromOffline_Click(object? sender, RoutedEventArgs e)
+    {
+        Step3Panel.IsVisible = false;
+        Step1Panel.IsVisible = true;
+        StatusText.Text = "";
+    }
+
+    private async void BrowseToken_Click(object? sender, RoutedEventArgs e)
+    {
+        var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = "Select trial token file",
+            AllowMultiple = false,
+            FileTypeFilter = new[]
+            {
+                new FilePickerFileType("Trial token") { Patterns = new[] { "*.json" } },
+                new FilePickerFileType("All files") { Patterns = new[] { "*" } },
+            }
+        });
+        if (files.Count == 0) return;
+
+        string? path = files[0].TryGetLocalPath();
+        if (path == null)
+        {
+            StatusText.Text = "Could not resolve the selected file path.";
+            return;
+        }
+
+        _offlineTokenPath = path;
+        TokenPathBox.Text = path;
+        ActivateOfflineButton.IsEnabled = true;
+        StatusText.Text = "";
+    }
+
+    private async void ActivateOffline_Click(object? sender, RoutedEventArgs e)
+    {
+        if (string.IsNullOrEmpty(_offlineTokenPath))
+        {
+            StatusText.Text = "Choose a token file first.";
+            return;
+        }
+
+        ActivateOfflineButton.IsEnabled = false;
+        BrowseTokenButton.IsEnabled = false;
+        StatusText.Text = "Activating...";
+
+        string tokenPath = _offlineTokenPath;
+        string? error = await Task.Run(() => ActivationManager.ActivateOffline(tokenPath));
+
+        if (error == null)
+        {
+            Close(OfflineActivatedResult);
+        }
+        else
+        {
+            StatusText.Text = error;
+            ActivateOfflineButton.IsEnabled = true;
+            BrowseTokenButton.IsEnabled = true;
+        }
     }
 
     private void Cancel_Click(object? sender, RoutedEventArgs e)

@@ -314,19 +314,28 @@ public partial class MainWindow : Window
         }
 
         var dialog = new TrialActivationDialog();
-        var token = await dialog.ShowDialog<string?>(this);
-        if (token != null)
+        var result = await dialog.ShowDialog<string?>(this);
+        if (result == null) return;
+
+        if (result == TrialActivationDialog.OfflineActivatedResult)
         {
-            string? error = await Task.Run(() => ActivationManager.ActivateTrial(token));
-            if (error == null)
-            {
-                VM.RefreshLicenseMenuState();
-                await ShowMessageBox("Trial Activated",
-                    "Your 45-day trial has been activated. Enjoy LensHH-LT!");
-            }
-            else
-                await ShowMessageBox("Trial Activation Failed", error);
+            // Offline path: dialog already verified the token file and activated
+            // the native engine via ActivationManager.ActivateOffline.
+            VM.RefreshLicenseMenuState();
+            await ShowMessageBox("Trial Activated",
+                "Your 45-day trial has been activated. Enjoy LensHH-LT!");
+            return;
         }
+
+        string? error = await Task.Run(() => ActivationManager.ActivateTrial(result));
+        if (error == null)
+        {
+            VM.RefreshLicenseMenuState();
+            await ShowMessageBox("Trial Activated",
+                "Your 45-day trial has been activated. Enjoy LensHH-LT!");
+        }
+        else
+            await ShowMessageBox("Trial Activation Failed", error);
     }
 
     private async void ActivateLicense_Click(object? sender, RoutedEventArgs e)
