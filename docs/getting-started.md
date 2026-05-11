@@ -31,14 +31,37 @@ under the **Help** menu.
 ### Start a free trial (45 days)
 
 1. **Help → Start Free Trial...**
-2. Paste the trial token you received from
-   [synapseoptics.com](https://synapseoptics.com) (or your
-   distributor) into the dialog and click **Activate**.
-3. The trial runs for 45 days from activation. **Help → License
-   Status...** shows days remaining at any time.
+2. Enter your email address and click **Send Code**. A six-digit
+   verification code is sent to that address.
+3. Enter the code in the dialog and click **Activate**.
+4. The trial runs for 45 days from activation. **Help → License
+   Status...** shows the days remaining at any time.
 
-You only need a trial token once per machine. The clock cannot be
-extended by reinstalling.
+One trial per email address. Reinstalling does not reset the clock.
+
+#### If your network blocks the activation server
+
+If your corporate firewall cannot reach the licensing host (see
+[Network requirements](#network-requirements) below), use the
+offline path on the same dialog:
+
+1. **Help → Start Free Trial...** → click **Activate offline from
+   token file...** at the bottom of the dialog.
+
+   ![Offline trial activation dialog showing the machine ID and token file fields](images/ManualActivation.png)
+
+2. Email the **machine ID** shown in the dialog, plus the email
+   address you'd like the trial bound to, to
+   `support@synapseoptics.com`.
+3. Synapse Optics replies with a signed `trial-token.json` file.
+   Save it locally (USB transfer is fine — the machine doesn't
+   need internet to receive the file).
+4. Back in the dialog, click **Browse...**, select the token file,
+   and click **Activate**. The 45-day clock starts at activation.
+
+The token is bound to the machine ID you sent — the embedded
+signature only verifies on that machine. The flow works on
+fully air-gapped machines.
 
 ### Activate a paid license
 
@@ -66,6 +89,30 @@ activation token from your distributor (mention your machine ID,
 shown under **Help → License Status...**), save it as a `.json`
 file, and import it via **Help → Activate License...** — the dialog
 detects a token file vs a key string automatically.
+
+## Network requirements
+
+LensHH-LT only reaches the network for license activation and
+deactivation. Ray tracing, optimization, analyses, and file I/O run
+fully offline once activated.
+
+If your IT department restricts outbound traffic, the values below
+are everything they need to whitelist:
+
+| Field           | Value                                                                                  |
+|-----------------|----------------------------------------------------------------------------------------|
+| Hostname        | `synapseoptics-license.javier-ruiz.workers.dev`                                        |
+| Protocol / port | HTTPS / TCP 443                                                                        |
+| Methods         | `POST` (trial request, trial verify, activate, deactivate)                             |
+| Hosting         | Cloudflare Workers (anycast — whitelist by hostname / SNI; no fixed IP range)          |
+| TLS             | TLS 1.2 or 1.3, public CA-signed certificate                                           |
+| TLS inspection  | Do not intercept — the client pins to the hostname's certificate via SNI               |
+| Direction       | Outbound only — LensHH-LT does not accept inbound connections                          |
+
+If the host cannot be allowlisted, both the
+[offline trial](#if-your-network-blocks-the-activation-server) and
+the [offline paid-license activation](#offline-activation) flows
+work with zero network access on the target machine.
 
 ## Your First Lens
 
