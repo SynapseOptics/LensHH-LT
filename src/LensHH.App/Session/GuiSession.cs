@@ -455,7 +455,12 @@ public class GuiSession
 
     private static readonly JsonSerializerOptions _snapshotJsonOptions = new()
     {
-        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingDefault,
+        // Skip only true nulls, NOT type-default values. The earlier
+        // WhenWritingDefault setting dropped any property equal to its
+        // CLR default — so a merit operand explicitly set to Weight=0
+        // would round-trip back to Weight=1 on Cancel/Revert, silently
+        // re-enabling operands the user had disabled.
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
         NumberHandling = JsonNumberHandling.AllowNamedFloatingPointLiterals,
         Converters = { new JsonStringEnumConverter() }
     };

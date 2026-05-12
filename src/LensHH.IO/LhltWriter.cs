@@ -15,7 +15,13 @@ namespace LensHH.Core.IO
         private static readonly JsonSerializerOptions JsonOptions = new JsonSerializerOptions
         {
             WriteIndented = true,
-            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingDefault,
+            // Skip only true nulls (e.g. nullable Minimum/Maximum), NOT
+            // type-default values. WhenWritingDefault was previously used
+            // here and dropped any property equal to its CLR default — so
+            // an operand explicitly set to Weight=0 would round-trip back
+            // to Weight=1 (the property's init value) on reload, silently
+            // re-enabling operands the user had disabled.
+            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
             NumberHandling = JsonNumberHandling.AllowNamedFloatingPointLiterals,
             Converters = { new JsonStringEnumConverter() }
         };
