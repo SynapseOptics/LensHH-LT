@@ -61,19 +61,19 @@ namespace LensHH.Core.IO
             int ftype = system.FieldType == FieldType.ObjectAngle ? 0 : 1;
             int afocal = system.IsAfocal ? 1 : 0;
             sb.AppendLine($"FTYP {ftype} 0 {system.Fields.Count} {system.Wavelengths.Count} 0 0 {afocal} 0 0");
-            // RAIM format (verified against Zemax-saved reference files):
+            // RAIM format:
             //   RAIM 0 <mode> 1 1 0 <robust> 0 0 0 1
             //
             // Token positions (parts[0]="RAIM"):
             //   parts[2] = mode: 0=Off, 1=Paraxial, 2=Real
             //   parts[6] = robust flag (1 if real-ray aiming with robust
             //              iterative search). Always 0 unless mode=2.
-            //   parts[10] = always 1 in Zemax's output (afocal makes no
-            //               difference here; afocal is signaled in FTYP).
+            //   parts[10] = always 1 (afocal makes no difference here;
+            //               afocal is signaled in FTYP).
             //
-            // Mode mapping: LensHH-LT's Real and Robust both map to
-            // ZEMAX Real (2). Robust additionally sets the parts[6] flag.
-            // Off maps to 0.
+            // Mode mapping: LensHH-LT's Real and Robust both map to the
+            // file format's real-ray-aiming mode (2). Robust additionally
+            // sets the parts[6] flag. Off maps to 0.
             bool useRealAiming = system.RayAiming == RayAimingMode.Real
                               || system.RayAiming == RayAimingMode.Robust;
             int zmxRayAimMode = useRealAiming ? 2 : 0;
@@ -135,6 +135,11 @@ namespace LensHH.Core.IO
                 sb.AppendLine(FormatDouble("  CURV", surface.Curvature));
 
                 if (double.IsPositiveInfinity(surface.Thickness))
+                    // ZEMAX's file parser accepts "INFINITY" (all caps) — that
+                    // is what ZEMAX itself writes — and rejects "Infinity"
+                    // (mixed case) with "Invalid input for thickness", even
+                    // though the LDE cell DOES accept mixed-case input.
+                    // (Reader side accepts any casing.)
                     sb.AppendLine("  DISZ INFINITY");
                 else
                     sb.AppendLine(FormatDouble("  DISZ", surface.Thickness));

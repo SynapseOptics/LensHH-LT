@@ -238,6 +238,7 @@ namespace LensHH.CLI.Commands
             table.AddRow("ENPD", "Entrance pupil diameter", "wave");
             table.AddRow("EXPD", "Exit pupil diameter", "wave");
             table.AddRow("TTRACK", "Total track length", "wave");
+            table.AddRow("CFS", "Chromatic focal shift (max range across wavelengths)", "none");
             table.AddRow("ILL", "Relative illumination (F/#_0 / F/#_field)²", "hy");
             table.AddRow("DITAN", "Max F-tan(θ) distortion (%)", "none");
             table.AddRow("DITHETA", "Max F-θ distortion (%)", "none");

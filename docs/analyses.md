@@ -519,6 +519,45 @@ swept wavelength interval.
 
 ---
 
+## Longitudinal Aberration
+
+**Analysis → Longitudinal Aberration**
+
+For each system wavelength, sweeps the entrance pupil from the axis
+out to the marginal zone and plots the focus shift — the axial
+distance from the image plane to where that zone's marginal ray
+crosses the optical axis. One curve per wavelength.
+
+![Longitudinal Aberration — Cooke triplet, three wavelengths](images/CookeTripletAnalyses/LongitudinalAberration.png)
+
+Two distinct things are visible on a single plot:
+
+- **Spherical aberration** — the curvature of any single-wavelength
+  trace. A vertical line would mean every pupil zone focuses at the
+  same axial position; the deviation from vertical *is* the
+  longitudinal spherical aberration. Reading the Cooke triplet's
+  green (0.550 µm) curve: paraxial focus sits at about +0.20 mm
+  relative to the image plane, marginal focus around −0.05 mm —
+  a ~0.25 mm undercorrected SA characteristic of an f/5 triplet.
+- **Axial chromatic aberration** — the horizontal spread between
+  curves at any fixed pupil zone. At the paraxial (zone 0) point:
+  blue is at +0.19 mm, green at +0.20 mm, red at +0.28 mm — the
+  red focus is significantly further from the image plane than
+  the blue. This is the same axial color reported by the
+  Chromatic Focal Shift analysis, viewed in cross-section.
+
+The reference (the vertical line at 0) is the system's paraxial focus
+at the primary wavelength. For infinite-conjugate systems this equals
+the paraxial BFL; for finite-conjugate systems it is the on-axis
+object's paraxial image distance (which moves with the object
+distance — the analysis tracks this automatically).
+
+| Input | Meaning |
+|---|---|
+| **Number of zones** | Pupil samples between axis and full aperture. Default 32. |
+
+---
+
 ## Seidel Coefficients
 
 **Analysis → Seidel**

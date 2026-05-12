@@ -60,6 +60,7 @@ public partial class OperandRowViewModel : ObservableObject
         OperandType.EFL or OperandType.MAG or OperandType.AMAG
         or OperandType.EXPZ or OperandType.ENPZ
         or OperandType.ENPD or OperandType.EXPD or OperandType.TTRACK
+        or OperandType.CFS
         or OperandType.ILL
         or OperandType.DITAN or OperandType.DITHETA
         or OperandType.DITANF or OperandType.DITHETAF or OperandType.LCF
@@ -96,7 +97,8 @@ public partial class OperandRowViewModel : ObservableObject
         && _operand.Type != OperandType.DITHETA
         && _operand.Type != OperandType.DITANF
         && _operand.Type != OperandType.DITHETAF
-        && _operand.Type != OperandType.LCF;
+        && _operand.Type != OperandType.LCF
+        && _operand.Type != OperandType.CFS;
     private bool NeedsRayCoords => GetCategory() is Category.RayIntercept;
     private bool NeedsHyOnly => _operand.Type is OperandType.ILL
         or OperandType.DITANF or OperandType.DITHETAF or OperandType.LCF;
@@ -490,6 +492,7 @@ public partial class MeritFunctionEditorViewModel : ObservableObject
         OperandType.ENPD => "ENPD — Entrance pupil diameter. Params: Wave (optional)",
         OperandType.EXPD => "EXPD — Exit pupil diameter. Params: Wave (optional)",
         OperandType.TTRACK => "TTRACK — Total track (surface 1 to image). No params.",
+        OperandType.CFS => "CFS — Chromatic focal shift. Peak-to-trough range across the system's wavelengths (mm focal / diopters afocal). Same number reported by the Chromatic Focal Shift analysis. No params.",
         OperandType.ILL => "ILL — Relative illumination at field point. RI = (F/#_on-axis / F/#_field)². Uses primary wavelength. Can exceed 1.0. Params: Hy",
         OperandType.DITAN => "DITAN — Maximum F-tan(θ) distortion (%) across all fields. Returns signed value with largest absolute distortion. No params.",
         OperandType.DITHETA => "DITHETA — Maximum F-θ distortion (%) across all fields. Returns signed value with largest absolute distortion. No params.",

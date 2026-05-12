@@ -381,7 +381,10 @@ namespace LensHH.Core.IO
                     case "DISZ":
                         if (parts.Length > 1)
                         {
-                            if (parts[1] == "INFINITY")
+                            // Accept "INFINITY" / "Infinity" / "infinity" — the
+                            // .zmx format uses all caps, but tolerate any
+                            // casing on read.
+                            if (string.Equals(parts[1], "Infinity", StringComparison.OrdinalIgnoreCase))
                                 surface.Thickness = double.PositiveInfinity;
                             else if (TryParseDouble(parts[1], out double disz))
                             {

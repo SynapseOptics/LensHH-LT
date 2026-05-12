@@ -49,20 +49,33 @@ public partial class FftMtfVsFocusViewModel : ObservableObject
     private const double FocalDefaultFrequency = 50.0;  // cy/mm
     private const double FocalDefaultFocusRange = 0.1;  // mm
 
+    private bool _lastWasAfocal;
+
     public FftMtfVsFocusViewModel(GuiSession session)
     {
         _session = session;
+        _lastWasAfocal = _session.System != null && _session.System.IsAfocal;
         ApplyDefaultsForMode();
-        // Re-apply defaults whenever the session's system is swapped out or
-        // the user toggles afocal mode — user asked for this: loading a new
-        // file or changing afocal mode should immediately push the toolbar
-        // back to mode-appropriate defaults + labels.
         _session.SystemChanged += OnSessionSystemChanged;
     }
 
+    // Only reset frequency / focus range on a fresh file load ("session")
+    // or when the afocal mode actually flips (units change). Optimization
+    // and per-cell edits also fire SystemChanged but must NOT clobber the
+    // user-set values.
     private void OnSessionSystemChanged(string sender)
     {
-        ApplyDefaultsForMode();
+        bool nowAfocal = _session.System != null && _session.System.IsAfocal;
+        bool modeFlipped = nowAfocal != _lastWasAfocal;
+        if (sender == "session" || modeFlipped)
+        {
+            _lastWasAfocal = nowAfocal;
+            ApplyDefaultsForMode();
+        }
+        else
+        {
+            IsAfocal = nowAfocal; // keep the disabled-overlay flag in sync
+        }
     }
 
     /// <summary>

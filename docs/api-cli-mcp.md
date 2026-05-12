@@ -187,13 +187,26 @@ exit 1`.
 A Model Context Protocol server that exposes the engine as tools an
 LLM can invoke. Uses standard stdio transport per MCP spec.
 
-### Configuring Claude Desktop
+### Configuring Claude Desktop and Claude Code
 
-LensHH-LT ships a helper — **Start Menu → Configure Claude MCP** —
-that edits Claude Desktop's `claude_desktop_config.json` for you.
-Launch it, pick *Register LensHH-LT*, restart Claude Desktop.
+LensHH-LT ships a small Windows utility — **Start Menu → LensHH-LT
+Claude Configure** — that registers (or unregisters) the MCP server
+with both Claude clients in one place. It auto-detects the bundled
+`LensHH.Mcp.exe`; a green check appears once the path resolves.
 
-Manual configuration (if you prefer):
+![LensHH-LT Claude Configure utility](images/ConfigureClaudeMcp.png)
+
+| Section | Configure button | What it does | Remove button |
+|---|---|---|---|
+| **Claude Desktop** | Edits `%APPDATA%\Claude\claude_desktop_config.json`, adding an `mcpServers.LensHH-LT` entry that points at the MCP exe. | Reverts the edit. | Restart Claude Desktop for the change to take effect. |
+| **Claude Code** | Shells out to `claude mcp add --transport stdio --scope user LensHH-LT -- "<exe>"`, so the registration goes through the official Claude Code CLI. If `claude` isn't on PATH the equivalent command is copied to your clipboard. | Runs `claude mcp remove --scope user LensHH-LT`. |
+
+Status indicators below each section show whether the registration
+is currently active, so you can use the same utility to verify the
+setup after install or after moving the install path.
+
+Manual configuration (Claude Desktop, if you prefer to edit JSON by
+hand):
 
 ```json
 {
@@ -206,7 +219,61 @@ Manual configuration (if you prefer):
 }
 ```
 
-Other MCP-aware hosts (Cursor, custom clients) use the same exe/args.
+Manual configuration for Claude Code (the utility runs this verbatim):
+
+```
+claude mcp add --transport stdio --scope user LensHH-LT -- "C:\Program Files\LensHH-LT\mcp\LensHH.Mcp.exe"
+```
+
+Other MCP-aware hosts (Cursor, custom clients) use the same exe/args
+as the Claude Desktop JSON block.
+
+### Claude Code vs Claude Desktop — which to use
+
+Both clients can drive every tool in the server, but they handle
+*long-running* tools very differently. **Claude Code is the
+recommended host for any optimization that runs for more than a
+minute.** Specifically:
+
+- **Multistart Optimization**
+- **Basin Hopping (HJ-LM)**
+- **Split Element**
+- **Synthesis by SPC**
+
+These four are not exposed as single blocking calls. They run as
+**background jobs**: a `*_start` tool kicks the work off on a worker
+thread and returns immediately with a `jobId`. The host then polls
+`optimize_status(jobId)` for progress (phase, current trial / hop /
+level, accepted vs rejected, current best merit, elapsed time) and
+calls `optimize_cancel(jobId)` to stop early. `optimize_jobs` lists
+every job tracked by the current session.
+
+| Tool | Returns | Used to … |
+|---|---|---|
+| `optimize_multistart_start` | jobId | Start the optimizer in the background |
+| `optimize_basin_hopping_start` | jobId | Same — BH variant |
+| `optimize_split_element_start` | jobId | Same — Split Element variant |
+| `optimize_synthesis_by_spc_start` | jobId | Same — SPC variant |
+| `optimize_status` | progress fields | Poll a running job |
+| `optimize_cancel` | confirmation | Request cancellation |
+| `optimize_jobs` | one row per job | List every job tracked by the session |
+
+The job pattern exists *because* these optimizers routinely run for
+many minutes (Multistart) to many hours (SPC, Split Element). Claude
+Code is a much better fit for this:
+
+- It maintains a long-lived session and is comfortable polling on a
+  10–30 second cadence over hours.
+- It can be left to drive the optimization unattended.
+- Its result-rendering doesn't share Claude Desktop's per-turn output
+  / response-time constraints, which can stall on tool calls that
+  emit lots of incremental progress.
+
+Claude Desktop is fine for short interactive tool calls
+(`spot_diagram`, `fft_mtf_vs_freq`, single `optimize_local` runs,
+analyses in general). For the four long-running optimizers above,
+use Claude Code — register both with the utility shown above and
+pick the right one for the task at hand.
 
 ### Tool Categories
 
@@ -234,8 +301,8 @@ those descriptions verbatim.
 
 ### Typical LLM Workflow
 
-With LensHH-LT registered in Claude Desktop, a conversation like this
-works end-to-end:
+With LensHH-LT registered in Claude Desktop or Claude Code, a
+conversation like this works end-to-end:
 
 > **User:** Open `triplet.zmx` in `C:\lenses\`, add SPOT and EFL=100
 > merit operands, make all curvatures variable, and run the LM

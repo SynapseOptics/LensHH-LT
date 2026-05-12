@@ -30,6 +30,7 @@ public partial class FftMtfVsFieldViewModel : ObservableObject
     public ObservableCollection<string> WavelengthOptions { get; } = new();
 
     private double[] _frequencies = { 50, 100 };
+    private bool _lastWasAfocal;
     private MtfVsFieldMultiFreqResult? _lastResult;
     public MtfVsFieldMultiFreqResult? LastResult => _lastResult;
 
@@ -41,10 +42,27 @@ public partial class FftMtfVsFieldViewModel : ObservableObject
     public FftMtfVsFieldViewModel(GuiSession session)
     {
         _session = session;
+        _lastWasAfocal = _session.System != null && _session.System.IsAfocal;
         ApplyDefaultsForMode();
-        // Track the session's afocal state — reload/lens-type-swap updates
-        // the toolbar defaults and label units without the user clicking in.
-        _session.SystemChanged += _ => ApplyDefaultsForMode();
+        _session.SystemChanged += OnSessionSystemChanged;
+    }
+
+    // Only reset frequencies on a fresh file load ("session") or when the
+    // afocal mode actually flips (units change). Optimization and per-cell
+    // edits also fire SystemChanged but must NOT clobber user-set frequencies.
+    private void OnSessionSystemChanged(string sender)
+    {
+        bool nowAfocal = _session.System != null && _session.System.IsAfocal;
+        bool modeFlipped = nowAfocal != _lastWasAfocal;
+        if (sender == "session" || modeFlipped)
+        {
+            _lastWasAfocal = nowAfocal;
+            ApplyDefaultsForMode();
+        }
+        else
+        {
+            UpdateFrequencyLabel();
+        }
     }
 
     /// <summary>
