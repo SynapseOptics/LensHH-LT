@@ -1,0 +1,379 @@
+CC ============================================================================
+CC MISC.AGF -- Synapse Optics public-domain catalog for LensHH-LT
+CC ============================================================================
+CC Built from public sources only. Each entry cites its origin in CC comments.
+CC Repo memory:
+CC   project_misc_agf_public_only          -- no OpticStudio redistribution
+CC   project_zemax_air_relative_vacuum     -- VACUUM index < 1, not = 1
+CC   project_zemax_agf_ed_status_trap      -- ED line last field MUST be 0
+CC   feedback_no_fabrication_glass_codes   -- cite source, do not invent
+CC
+CC Catalog version: 1.2  (2026-05-16)
+CC Maintainer:      Synapse Optics
+CC Target consumer: LensHH-LT (vendor stock-lens import for Edmund Optics,
+CC                  Thorlabs, Newport, etc., where vendor .zmx files reference
+CC                  materials not present in the standard SCHOTT/OHARA/CDGM/
+CC                  HOYA/SUMITA/CORNING_FS/CORNING_B/LIGHTPATH catalogs).
+CC
+CC Air-index convention: Zemax / OpticStudio uses air at 1 atm, 20 C as the
+CC n=1 reference. All indices in this file are *relative to air at STP*. For
+CC VACUUM this means n approx 0.99973 (since absolute n_vacuum = 1.0 and
+CC n_air > 1.0, the ratio is slightly less than 1).
+CC
+CC AGF format notes:
+CC   NM <name> <formula_code> <MIL> <Nd> <Vd> <ExcludeSubs> <Status> <MeltFreq>
+CC   Formula codes: 1=Schott, 2=Sellmeier 1, 3=Herzberger, 4=Sellmeier 2,
+CC                  5=Conrady, 6=Sellmeier 3, ...
+CC   ED line last field (Status): MUST be 0 to avoid the silent-fallthrough
+CC   trap where ZEMAX accepts the entry but disables the dispersion formula
+CC   evaluation (see project_zemax_agf_ed_status_trap).
+CC ============================================================================
+CC
+CC ---------------------------------------------------------------------------
+CC VACUUM  (relative to air at 1 atm, 20 C, dry, ~330 ppm CO2)
+CC ---------------------------------------------------------------------------
+CC Source: B. Edlen, "The refractive index of air", Metrologia 2, 71-80 (1966).
+CC         Evaluated at 20 C, 1 atm dry air; reciprocal taken to give
+CC         relative-to-air vacuum index per Zemax/OpticStudio convention.
+CC
+CC Reference values (computed; verify if precision matters):
+CC    @ 486.1 nm (F-line): n approx 0.999726
+CC    @ 587.6 nm (d-line): n approx 0.999728   <-- catalog table value
+CC    @ 656.3 nm (C-line): n approx 0.999729
+CC    @ 1064.0 nm        : n approx 0.999730
+CC Vd (computed from F/d/C above) approx 90.7
+CC
+CC Formula: Schott (type 1), constant approximation n^2 = 0.99945607
+CC          (= 0.999728^2).
+CC Wavelength dependence of n_vacuum_relative is < 6e-6 across 400-1000 nm,
+CC so the constant approximation is adequate for ray tracing in vacuum-
+CC immersed sections. If higher precision is needed for a specific design,
+CC refit using Edlen 1966 or Ciddor 1996 at the actual operating conditions.
+CC ---------------------------------------------------------------------------
+NM VACUUM 1 0 0.999728 90.7 0 0 1
+GC Vacuum, relative to air at 20C 1atm; Edlen 1966; Synapse Optics fit
+ED 0.000000 0.000000 0.000000 0.000000 0 0
+CD 9.99456074E-001 0.000000E+000 0.000000E+000 0.000000E+000 0.000000E+000 0.000000E+000
+TD 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 2.000000E+001
+LD 1.000000E-001 1.000000E+002
+CC
+CC ---------------------------------------------------------------------------
+CC CAF2  (Calcium Fluoride, single-crystal)
+CC ---------------------------------------------------------------------------
+CC Source: I.H. Malitson, "A Redetermination of Some Optical Properties of
+CC         Calcium Fluoride," Applied Optics 2, 1103-1107 (1963).
+CC         Single-crystal CaF2, room temperature (~20 C).
+CC
+CC Published Sellmeier (Malitson 1963), wavelength in micrometers:
+CC   n^2 - 1 = 0.5675888 * L^2 / (L^2 - 0.050263605^2)
+CC           + 0.4710914 * L^2 / (L^2 - 0.1003909^2)
+CC           + 3.8484723 * L^2 / (L^2 - 34.649040^2)
+CC
+CC AGF Sellmeier 1 (formula type 2) stores the L_i denominator constants in
+CC squared form (units of um^2):
+CC   L1 = 0.050263605^2 = 0.002526427
+CC   L2 = 0.1003909^2   = 0.010078335
+CC   L3 = 34.649040^2   = 1200.555808
+CC
+CC Reference values (computed from above coefficients; verify if precision matters):
+CC    @ 486.1 nm (F-line): n approx 1.437056
+CC    @ 587.6 nm (d-line): n approx 1.433880    <-- catalog table value
+CC    @ 656.3 nm (C-line): n approx 1.432422
+CC Vd (computed F/d/C) approx 93.6
+CC
+CC Validity (Malitson 1963): 0.23 - 9.7 um.
+CC Density 3.18 g/cm^3; TCE approx 19 ppm/K (0-50 C); dn/dT approx -1.07e-5 /K
+CC at room temperature, visible.
+CC ---------------------------------------------------------------------------
+NM CAF2 2 0 1.43388 93.6 0 0 1
+GC Calcium fluoride, single crystal; Malitson 1963
+ED 1.900000E+001 2.400000E+001 3.180000E+000 0.000000E+000 0 0
+CD 5.6758880E-001 2.5264270E-003 4.7109140E-001 1.0078335E-002 3.8484723E+000 1.2005558E+003
+TD -1.070000E-005 0.000000E+000 0.000000E+000 0.000000E+000 0.000000E+000 0.000000E+000 2.000000E+001
+LD 2.300000E-001 9.700000E+000
+CC
+CC ---------------------------------------------------------------------------
+CC SAPPHIRE  (single-crystal Al2O3, ordinary ray)
+CC ---------------------------------------------------------------------------
+CC Source: I.H. Malitson and M.J. Dodge, "Refractive Index and Birefringence
+CC         of Synthetic Sapphire," J. Opt. Soc. Am. 62, 1405A (1972).
+CC         Single-crystal Al2O3, room temperature, ordinary-ray index n_o.
+CC
+CC Sapphire is uniaxial (n_o != n_e); the ordinary-ray index is used for
+CC stock optics where the c-axis is normal to the optical axis (typical
+CC for c-cut and a-cut windows / lenses sold as "isotropic sapphire").
+CC
+CC Published Sellmeier (Malitson & Dodge 1972), wavelength in micrometers:
+CC   n_o^2 - 1 = 1.4313493  * L^2 / (L^2 - 0.0726631^2)
+CC             + 0.65054713 * L^2 / (L^2 - 0.1193242^2)
+CC             + 5.3414021  * L^2 / (L^2 - 18.028251^2)
+CC
+CC AGF Sellmeier 1 (formula type 2) stores L_i in squared form (um^2):
+CC   L1 = 0.0726631^2  = 0.005279927
+CC   L2 = 0.1193242^2  = 0.014238265
+CC   L3 = 18.028251^2  = 325.017834
+CC
+CC Reference values (computed):
+CC    @ 486.1 nm (F-line): n_o approx 1.7747
+CC    @ 587.6 nm (d-line): n_o approx 1.7682    <-- catalog table value
+CC    @ 656.3 nm (C-line): n_o approx 1.7651
+CC Vd (computed F/d/C) approx 78
+CC
+CC Validity (Malitson & Dodge 1972): 0.265 - 5.5 um.
+CC Density 3.98 g/cm^3; TCE approx 6.7 ppm/K (parallel c-axis), 5.0 ppm/K
+CC (perpendicular c-axis); dn/dT approx +1.3e-5 /K at room temperature visible.
+CC ---------------------------------------------------------------------------
+NM SAPPHIRE 2 0 1.7682 78.0 0 0 1
+GC Sapphire ordinary ray; Malitson and Dodge 1972
+ED 6.700000E+000 6.700000E+000 3.980000E+000 0.000000E+000 0 0
+CD 1.4313493E+000 5.2799270E-003 6.5054713E-001 1.4238265E-002 5.3414021E+000 3.2501783E+002
+TD 1.300000E-005 0.000000E+000 0.000000E+000 0.000000E+000 0.000000E+000 0.000000E+000 2.000000E+001
+LD 2.650000E-001 5.500000E+000
+CC
+CC ---------------------------------------------------------------------------
+CC AL2O3  (alias for SAPPHIRE, same material)
+CC ---------------------------------------------------------------------------
+CC Identical Sellmeier to SAPPHIRE above. Some vendor .zmx files (e.g. Edmund)
+CC use "AL2O3" as the GLAS name; this entry resolves those without name remapping.
+CC ---------------------------------------------------------------------------
+NM AL2O3 2 0 1.7682 78.0 0 0 1
+GC Aluminum oxide (sapphire), ordinary ray; alias of SAPPHIRE
+ED 6.700000E+000 6.700000E+000 3.980000E+000 0.000000E+000 0 0
+CD 1.4313493E+000 5.2799270E-003 6.5054713E-001 1.4238265E-002 5.3414021E+000 3.2501783E+002
+TD 1.300000E-005 0.000000E+000 0.000000E+000 0.000000E+000 0.000000E+000 0.000000E+000 2.000000E+001
+LD 2.650000E-001 5.500000E+000
+CC
+CC ---------------------------------------------------------------------------
+CC PMMA  (Poly(methyl methacrylate), atactic, cast or extruded)
+CC ---------------------------------------------------------------------------
+CC Source: N. Sultanova, S. Kasarova, I. Nikolov, "Dispersion Properties of
+CC         Optical Polymers," Acta Physica Polonica A 116, 585-587 (2009).
+CC         Single-term Sellmeier fit over 0.4368 - 1.052 um at 293 K.
+CC         Coefficients from refractiveindex.info Sultanova 2009 PMMA page.
+CC
+CC Published Sellmeier (Sultanova 2009), wavelength in micrometers:
+CC   n^2 - 1 = 1.1819 * L^2 / (L^2 - 0.011313)
+CC
+CC AGF Sellmeier 1 (formula type 2) stores L_i in squared form (um^2). The
+CC Sultanova denominator constant is already in um^2, so it maps directly:
+CC   K1 = 1.1819, L1 = 0.011313, K2 = L2 = K3 = L3 = 0
+CC
+CC Reference values (computed from Sellmeier above):
+CC    @ 486.1 nm (F-line): n approx 1.49707
+CC    @ 587.6 nm (d-line): n approx 1.49061   <-- catalog table value
+CC    @ 656.3 nm (C-line): n approx 1.48782
+CC Vd (computed F/d/C) approx 53.0
+CC
+CC Note: Handbook PMMA values are often nd=1.491 / Vd=57.4. The Sultanova
+CC single-term fit reproduces nd well but underpredicts Vd vs handbook (the
+CC second resonance term is absorbed into the single L1 constant). Acceptable
+CC for stock-lens import; for high-precision design, refit with a 3-term
+CC Sellmeier from the original tabulated data.
+CC
+CC Density 1.19 g/cm^3; TCE approx 70 ppm/K (0-50 C); dn/dT approx -1.05e-4
+CC /K at room temperature visible (note: negative and large, typical polymer).
+CC ---------------------------------------------------------------------------
+NM PMMA 2 0 1.49061 53.0 0 0 1
+GC Poly(methyl methacrylate); Sultanova Kasarova Nikolov 2009
+ED 7.000000E+001 7.000000E+001 1.190000E+000 0.000000E+000 0 0
+CD 1.1819000E+000 1.1313000E-002 0.0000000E+000 0.0000000E+000 0.0000000E+000 0.0000000E+000
+TD -1.050000E-004 0.000000E+000 0.000000E+000 0.000000E+000 0.000000E+000 0.000000E+000 2.000000E+001
+LD 4.368000E-001 1.052000E+000
+CC
+CC ---------------------------------------------------------------------------
+CC ACRYLIC  (alias for PMMA, same material)
+CC ---------------------------------------------------------------------------
+CC Identical Sellmeier to PMMA above. "Acrylic" is the trade/vendor name
+CC commonly used in Edmund and Thorlabs .zmx GLAS lines.
+CC ---------------------------------------------------------------------------
+NM ACRYLIC 2 0 1.49061 53.0 0 0 1
+GC Acrylic polymer; alias of PMMA (Sultanova 2009)
+ED 7.000000E+001 7.000000E+001 1.190000E+000 0.000000E+000 0 0
+CD 1.1819000E+000 1.1313000E-002 0.0000000E+000 0.0000000E+000 0.0000000E+000 0.0000000E+000
+TD -1.050000E-004 0.000000E+000 0.000000E+000 0.000000E+000 0.000000E+000 0.000000E+000 2.000000E+001
+LD 4.368000E-001 1.052000E+000
+CC
+CC ---------------------------------------------------------------------------
+CC POLYCARB  (Polycarbonate, bisphenol-A based, optical grade)
+CC ---------------------------------------------------------------------------
+CC Source: N. Sultanova, S. Kasarova, I. Nikolov, "Dispersion Properties of
+CC         Optical Polymers," Acta Physica Polonica A 116, 585-587 (2009).
+CC         Single-term Sellmeier fit over 0.4368 - 1.052 um at 293 K.
+CC         Coefficients from refractiveindex.info Sultanova 2009 PC page.
+CC
+CC Published Sellmeier (Sultanova 2009), wavelength in micrometers:
+CC   n^2 - 1 = 1.4182 * L^2 / (L^2 - 0.021304)
+CC
+CC AGF Sellmeier 1 (formula type 2):
+CC   K1 = 1.4182, L1 = 0.021304, K2 = L2 = K3 = L3 = 0
+CC
+CC Reference values (computed):
+CC    @ 486.1 nm (F-line): n approx 1.59959
+CC    @ 587.6 nm (d-line): n approx 1.58472   <-- catalog table value
+CC    @ 656.3 nm (C-line): n approx 1.57863
+CC Vd (computed F/d/C) approx 27.9
+CC
+CC Note: Handbook PC values are often nd=1.585 / Vd=30. As with PMMA, the
+CC single-term fit underpredicts Vd. Acceptable for stock-lens import.
+CC
+CC Density 1.20 g/cm^3; TCE approx 67 ppm/K; dn/dT approx -1.07e-4 /K.
+CC ---------------------------------------------------------------------------
+NM POLYCARB 2 0 1.58472 27.9 0 0 1
+GC Polycarbonate (bisphenol-A); Sultanova Kasarova Nikolov 2009
+ED 6.700000E+001 6.700000E+001 1.200000E+000 0.000000E+000 0 0
+CD 1.4182000E+000 2.1304000E-002 0.0000000E+000 0.0000000E+000 0.0000000E+000 0.0000000E+000
+TD -1.070000E-004 0.000000E+000 0.000000E+000 0.000000E+000 0.000000E+000 0.000000E+000 2.000000E+001
+LD 4.368000E-001 1.052000E+000
+CC
+CC ---------------------------------------------------------------------------
+CC E48R  (Zeonex E48R, cyclo-olefin polymer; Zeon Corporation)
+CC ---------------------------------------------------------------------------
+CC Source: N. Sultanova, S. Kasarova, I. Nikolov, "Dispersion Properties of
+CC         Optical Polymers," Acta Physica Polonica A 116, 585-587 (2009).
+CC         Single-term Sellmeier fit over 0.4368 - 1.052 um at 293 K.
+CC         Coefficients from refractiveindex.info Sultanova 2009 ZeonexE48R.
+CC
+CC Published Sellmeier (Sultanova 2009), wavelength in micrometers:
+CC   n^2 - 1 = 1.2969 * L^2 / (L^2 - 0.011721)
+CC
+CC AGF Sellmeier 1 (formula type 2):
+CC   K1 = 1.2969, L1 = 0.011721, K2 = L2 = K3 = L3 = 0
+CC
+CC Reference values (computed):
+CC    @ 486.1 nm (F-line): n approx 1.53774
+CC    @ 587.6 nm (d-line): n approx 1.53050   <-- catalog table value
+CC    @ 656.3 nm (C-line): n approx 1.52747
+CC Vd (computed F/d/C) approx 51.7
+CC
+CC Note: Handbook E48R values: nd=1.531 / Vd=56. Single-term fit reproduces
+CC nd to 0.0005 and underpredicts Vd; acceptable for stock-lens import.
+CC
+CC Density 1.01 g/cm^3; TCE approx 60 ppm/K (lowest among common optical
+CC polymers); dn/dT approx -9.2e-5 /K. Used in injection-molded precision
+CC optics (mobile-camera lens stacks, blu-ray pickups, low-cost imagers).
+CC ---------------------------------------------------------------------------
+NM E48R 2 0 1.53050 51.7 0 0 1
+GC Zeonex E48R cyclo-olefin polymer; Sultanova Kasarova Nikolov 2009
+ED 6.000000E+001 6.000000E+001 1.010000E+000 0.000000E+000 0 0
+CD 1.2969000E+000 1.1721000E-002 0.0000000E+000 0.0000000E+000 0.0000000E+000 0.0000000E+000
+TD -9.200000E-005 0.000000E+000 0.000000E+000 0.000000E+000 0.000000E+000 0.000000E+000 2.000000E+001
+LD 4.368000E-001 1.052000E+000
+CC
+CC ---------------------------------------------------------------------------
+CC EDMUND_REPLICA_POLYMER_152V52  (synthesized; Edmund hybrid-doublet replica)
+CC ---------------------------------------------------------------------------
+CC Source: Synthesized 1-term Sellmeier calibrated to match Edmund's
+CC         "___BLANK 1.517 52" model-glass spec found in the GLAS lines of
+CC         hybrid asphere doublets 49-656 through 49-665. The replica is the
+CC         UV-cured polymer layer deposited on a glass substrate; Edmund does
+CC         not publish a vendor name or Sellmeier, so the .zmx ships with a
+CC         model-glass (nd/Vd-only) entry. LensHH-LT has no model-glass
+CC         support (see project_lhlt_model_glass), so we materialize the
+CC         model as a named catalog entry to enable .zmx import.
+CC
+CC Synthesis method (Schmidt-Penninger style, 1-term Sellmeier):
+CC   n^2 - 1 = K1 * L^2 / (L^2 - L1)
+CC   Fit K1, L1 to (nd, Vd) at d/F/C lines. Iterated L1 by hand; selected
+CC   L1 = 0.01160 um^2 giving K1 = 1.25756 and (nd, Vd) = (1.51700, 51.96).
+CC   Target was (1.517, 52). Residuals well within the 3-4 sig-fig precision
+CC   of Edmund's BLANK spec.
+CC
+CC Reference values (computed):
+CC    @ 486.1 nm (F-line): n approx 1.52401
+CC    @ 587.6 nm (d-line): n approx 1.51700   <-- catalog table value
+CC    @ 656.3 nm (C-line): n approx 1.51406
+CC Vd (computed F/d/C) approx 51.96
+CC
+CC IMPORTANT: This entry exists ONLY to enable LensHH-LT import of the 9
+CC Edmund hybrid-doublet .zmx files. Do NOT use for design work. The actual
+CC polymer dispersion is unknown beyond the (nd, Vd) point; the implied
+CC Sellmeier shape is an assumption. For real design with these lenses, use
+CC the Edmund prescription tables directly or contact Edmund for the UV
+CC adhesive vendor (likely Norland NOA or similar).
+CC
+CC Density, TCE, dn/dT: unknown; left as zeros. The .zmx files this entry
+CC replaces also lack these fields.
+CC ---------------------------------------------------------------------------
+NM EDMUND_REPLICA_POLYMER_152V52 2 0 1.51700 51.96 0 0 1
+GC Synthesized Sellmeier for Edmund 49-656..49-665 hybrid-doublet replica
+ED 0.000000E+000 0.000000E+000 0.000000E+000 0.000000E+000 0 0
+CD 1.2575600E+000 1.1600000E-002 0.0000000E+000 0.0000000E+000 0.0000000E+000 0.0000000E+000
+TD 0.000000E+000 0.000000E+000 0.000000E+000 0.000000E+000 0.000000E+000 0.000000E+000 2.000000E+001
+LD 4.000000E-001 7.000000E-001
+CC
+CC ---------------------------------------------------------------------------
+CC NOA61  (Norland Optical Adhesive No. 61, UV-cured polymer)
+CC ---------------------------------------------------------------------------
+CC Source: refractiveindex.info Norland NOA-61 page (Norland datasheet fit).
+CC         Original published as Cauchy: n = A + B/L^2 + C/L^4 with
+CC         A = 1.5375, B = 0.00829045, C = -0.000211046  (L in um).
+CC         Valid 0.450 - 1.55 um per source.
+CC
+CC AGF storage: Schott formula (type 1) which is a 6-term n^2 polynomial:
+CC   n^2 = A0 + A1*L^2 + A2*L^-2 + A3*L^-4 + A4*L^-6 + A5*L^-8
+CC Expanding (A + B/L^2 + C/L^4)^2 gives the equivalent Schott coefficients:
+CC   A0 = A^2          = 2.363906     (constant n^2 term)
+CC   A1 = 0                            (no L^2 polynomial term in Cauchy)
+CC   A2 = 2AB          = 0.025493     (L^-2 coefficient)
+CC   A3 = B^2 + 2AC    = -0.000580    (L^-4 coefficient)
+CC   A4 = 2BC          = -3.500e-6    (L^-6 coefficient)
+CC   A5 = C^2          = 4.454e-8     (L^-8 coefficient)
+CC
+CC Reference values (computed from Cauchy verbatim and verified by
+CC re-evaluating the Schott form above; both yield identical n to 6dp):
+CC    @ 486.1 nm (F-line): n approx 1.56881
+CC    @ 587.6 nm (d-line): n approx 1.55974   <-- catalog table value
+CC    @ 656.3 nm (C-line): n approx 1.55561
+CC Vd (computed F/d/C) approx 42.40
+CC
+CC Note: Norland's published spec sheet gives nd~1.557 and Vd~36-37 (vendor
+CC measurement). The refractiveindex.info Cauchy fit reproduces a similar
+CC nd (1.560 vs 1.557, 0.3% high) but yields higher Vd (42 vs 37). The
+CC discrepancy reflects fitting over a broader band vs the vendor's
+CC single-spec point. For stock-lens import where NOA61 is used as a
+CC cement layer (~10 um thick), either parameterisation is design-safe.
+CC
+CC Density ~1.23 g/cm^3 cured; TCE ~220 ppm/K (large, typical polymer).
+CC dn/dT data not available; leave thermal coefficients at zero.
+CC ---------------------------------------------------------------------------
+NM NOA61 1 0 1.55974 42.40 0 0 1
+GC Norland Optical Adhesive No.61; refractiveindex.info Cauchy fit
+ED 2.200000E+002 2.200000E+002 1.230000E+000 0.000000E+000 0 0
+CD 2.3639062E+000 0.0000000E+000 2.5493010E-002 -5.8002400E-004 -3.4996600E-006 4.4540400E-008
+TD 0.000000E+000 0.000000E+000 0.000000E+000 0.000000E+000 0.000000E+000 0.000000E+000 2.000000E+001
+LD 4.500000E-001 1.550000E+000
+CC
+CC ---------------------------------------------------------------------------
+CC ZEONEX_K26R  (Zeon Corporation cyclo-olefin polymer K26R grade)
+CC ---------------------------------------------------------------------------
+CC Source: Zeon Corp ZEONEX brochure (200323391, Aug 2019). The brochure's
+CC representative-properties table lists ASTM D542 nd for each grade:
+CC   K26R: 1.535      K22R: 1.535      E48R: 1.531
+CC   F52R: 1.535      T62R: 1.536      330R: 1.509       480R: 1.525
+CC No Sellmeier or Vd is published by Zeon. The COP family (E48R per
+CC Sultanova 2009) shows Vd ~52-56 in the visible.
+CC
+CC Synthesis: 1-term Sellmeier calibrated to match (nd=1.535, Vd=56). The
+CC Vd target is the typical COP-family value extrapolated from Sultanova
+CC E48R data (Vd_E48R = 51.77). Iterated L1 by hand:
+CC   K1 = 1.31380, L1 = 0.01080 um^2
+CC giving (nd, Vd) computed = (1.53500, 56.26). Both within engineering
+CC tolerance of the Zeon spec.
+CC
+CC Edmund .zmx files reference this material as "ZEONEX_K22R&K26R_2017"
+CC (26 surface uses in BiConvex/Aspheric families). The combined name
+CC encodes "either K22R or K26R is acceptable for this design"; per the
+CC Zeon brochure, K22R and K26R have identical nd (1.535). The patcher
+CC Patch-ZmxModelGlass.ps1 substitutes the combined name with ZEONEX_K26R
+CC at .zmx-import time.
+CC
+CC Density 1.01 g/cm^3; TCE 58 ppm/K (Zeon brochure ASTM E831, -50..100C);
+CC heat distortion 143C (1.82 MPa). dn/dT for COP visible region ~-1e-4 /K
+CC (similar magnitude to E48R; not in Zeon brochure for K26R specifically).
+CC ---------------------------------------------------------------------------
+NM ZEONEX_K26R 2 0 1.53500 56.26 0 0 1
+GC Zeon Corp Zeonex K26R cyclo-olefin polymer; synthesized from Zeon brochure nd=1.535
+ED 5.800000E+001 5.800000E+001 1.010000E+000 0.000000E+000 0 0
+CD 1.3138000E+000 1.0800000E-002 0.0000000E+000 0.0000000E+000 0.0000000E+000 0.0000000E+000
+TD -1.000000E-004 0.000000E+000 0.000000E+000 0.000000E+000 0.000000E+000 0.000000E+000 2.000000E+001
+LD 4.368000E-001 1.052000E+000
