@@ -5,7 +5,7 @@
   "Designer": "",
   "Aperture": {
     "Type": "EPD",
-    "Value": 10
+    "Value": 25
   },
   "FieldType": "ObjectAngle",
   "Surfaces": [

@@ -5,7 +5,7 @@
   "Designer": "",
   "Aperture": {
     "Type": "EPD",
-    "Value": 10
+    "Value": 25
   },
   "FieldType": "ObjectAngle",
   "Surfaces": [
@@ -55,7 +55,7 @@
       "Comment": "21226",
       "Radius": 19.2,
       "Thickness": 7.3,
-      "Material": "ZEONEX_K26R",
+      "Material": "ZEONEX_K22R\u0026K26R_2017",
       "SemiDiameter": 12.5,
       "SemiDiameterMode": "Fixed",
       "ClearAperturePercent": 100,
