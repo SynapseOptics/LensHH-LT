@@ -29,6 +29,27 @@ namespace LensHH.Core.IO
             SetRayAiming(system, lines);
             SetGlassCatalogs(system, lines);
 
+            // FLOA "Float by Stop Size": ReadAperture marked the EPD with value
+            // 0 as a sentinel. Resolve to 2 × stop-surface SemiDiameter now that
+            // surfaces are parsed. If the stop has no SemiDiameter set, the
+            // hardcoded 10.0 fallback below kicks in.
+            if (system.Aperture.Type == ApertureType.EPD && system.Aperture.Value == 0.0)
+            {
+                int floaStopIdx = system.StopSurfaceIndex;
+                if (floaStopIdx > 0 && floaStopIdx < system.Surfaces.Count)
+                {
+                    double stopSd = system.Surfaces[floaStopIdx].SemiDiameter;
+                    if (stopSd > 0)
+                        system.Aperture = new Aperture(ApertureType.EPD, stopSd * 2.0);
+                    else
+                        system.Aperture = new Aperture(ApertureType.EPD, 10.0);
+                }
+                else
+                {
+                    system.Aperture = new Aperture(ApertureType.EPD, 10.0);
+                }
+            }
+
             // Stock-lens EPD override: if Aperture is EPD-type and the stop surface
             // has a CLAP outer radius defined, replace the ENPD-derived value with
             // the optical CA diameter (= 2 × CLAP outer radius). Vendor stock-lens
@@ -242,6 +263,15 @@ namespace LensHH.Core.IO
 
         private static Aperture ReadAperture(string[] lines)
         {
+            // FLOA "Float by Stop Size" supersedes ENPD/FNUM in Zemax: the
+            // pupil diameter is set from the stop surface's DIAM at runtime.
+            // We return EPD=0 as a sentinel here; Read() resolves the actual
+            // value after surfaces are parsed (see ResolveFloaAperture).
+            foreach (var line in lines)
+            {
+                if (line.StartsWith("FLOA"))
+                    return new Aperture(ApertureType.EPD, 0.0);
+            }
             foreach (var line in lines)
             {
                 if (line.StartsWith("ENPD"))
