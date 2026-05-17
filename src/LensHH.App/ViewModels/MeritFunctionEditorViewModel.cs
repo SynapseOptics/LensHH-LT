@@ -64,6 +64,7 @@ public partial class OperandRowViewModel : ObservableObject
         or OperandType.ILL
         or OperandType.DITAN or OperandType.DITHETA
         or OperandType.DITANF or OperandType.DITHETAF or OperandType.LCF
+        or OperandType.FCF or OperandType.ASTF
             => Category.System,
 
         // Boundary
@@ -101,7 +102,8 @@ public partial class OperandRowViewModel : ObservableObject
         && _operand.Type != OperandType.CFS;
     private bool NeedsRayCoords => GetCategory() is Category.RayIntercept;
     private bool NeedsHyOnly => _operand.Type is OperandType.ILL
-        or OperandType.DITANF or OperandType.DITHETAF or OperandType.LCF;
+        or OperandType.DITANF or OperandType.DITHETAF or OperandType.LCF
+        or OperandType.FCF or OperandType.ASTF;
     private bool NeedsRingsArms => GetCategory() is Category.Macro;
     // RELI/ILL borrows the Arms column for pupil-boundary directions; Rings
     // doesn't apply (the binary search is the radial sample). Macro
@@ -499,6 +501,8 @@ public partial class MeritFunctionEditorViewModel : ObservableObject
         OperandType.DITANF => "DITANF — F-tan(θ) distortion (%) at a specific field point. Params: Hy",
         OperandType.DITHETAF => "DITHETAF — F-θ distortion (%) at a specific field point. Params: Hy",
         OperandType.LCF => "LCF — Lateral color at a specific field point. Max chief ray height spread across all wavelengths (µm or arcmin). Params: Hy",
+        OperandType.FCF => "FCF — Field curvature at a field point. Medial focus shift (sag+tan)/2 relative to on-axis primary-wave focus. Zero on-axis at primary by construction. Params: Hy, WaveNo",
+        OperandType.ASTF => "ASTF — Astigmatism at a field point. SAG focus − TAN focus. Identically zero on-axis. Params: Hy, WaveNo",
 
         // Boundary
         OperandType.CV => "CV — Curvature of surfaces in range. Use Mode to set Min/Max bounds. Params: Surf, Surf2",
