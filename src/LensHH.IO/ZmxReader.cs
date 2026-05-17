@@ -29,12 +29,129 @@ namespace LensHH.Core.IO
             SetRayAiming(system, lines);
             SetGlassCatalogs(system, lines);
 
+            // Stock-lens EPD override: if Aperture is EPD-type and the stop surface
+            // has a CLAP outer radius defined, replace the ENPD-derived value with
+            // the optical CA diameter (= 2 × CLAP outer radius). Vendor stock-lens
+            // .zmx files set ENPD = mechanical OD (the part's full diameter), but
+            // the lens's effective optical aperture is the smaller CLAP zone. Using
+            // CLAP as the EPD prevents marginal rays from being launched outside
+            // the lens's good optical region (which previously caused rays to
+            // appear "through air" past the lens edge in layout drawings).
+            if (system.Aperture.Type == ApertureType.EPD)
+            {
+                double stopClapOuter = ExtractStopClapOuter(lines, system.StopSurfaceIndex);
+                if (stopClapOuter > 0)
+                    system.Aperture = new Aperture(ApertureType.EPD, stopClapOuter * 2.0);
+            }
+
+            // Stock-lens drawing convention: when the .zmx puts the stop on a
+            // refractive vertex of the first element and the part has a CLAP
+            // defined (single-element vendor catalog files do this), we want
+            // the layout to show the lens body at its mechanical OD (MEMA)
+            // with rays clipped at the smaller optical CA (CLAP). Achieved by
+            // inserting a new zero-thickness dummy surface in air just ahead
+            // of the lens, moving IsStop to that dummy, and setting all
+            // lens-group vertices to SemiDiameter = MEMA (Fixed).
+            InsertStockLensStopDummy(system);
+
             // Convert all distances from file lens unit to mm
             double scale = ReadLensUnitScale(lines);
             if (scale != 1.0)
                 LensUnitConverter.ConvertToMm(system, scale);
 
             return system;
+        }
+
+        /// <summary>
+        /// For stock-lens imports: if the stop sits on a refractive vertex and a
+        /// CLAP/MEMA is defined on it, insert a dummy stop in air in front of the
+        /// lens element group and set the lens vertices to SemiDiameter=MEMA Fixed.
+        /// </summary>
+        private static void InsertStockLensStopDummy(OpticalSystem system)
+        {
+            int stopIdx = system.StopSurfaceIndex;
+            if (stopIdx <= 0 || stopIdx >= system.Surfaces.Count - 1) return;
+
+            var stopSurf = system.Surfaces[stopIdx];
+            if (string.IsNullOrEmpty(stopSurf.Material)) return; // stop already in air
+            if (stopSurf.SemiDiameter <= 0) return;              // no optical CA known
+
+            // Walk forward through the bonded element group: contiguous vertices
+            // whose outgoing medium is glass (Material non-empty). The group ends
+            // at the first surface with empty Material (air on the back side).
+            int groupEnd = stopIdx;
+            while (groupEnd < system.Surfaces.Count - 1
+                   && !string.IsNullOrEmpty(system.Surfaces[groupEnd].Material))
+            {
+                groupEnd++;
+            }
+            // groupEnd is the air-side back surface of the element.
+
+            double clap = stopSurf.SemiDiameter;
+            double mema = 0.0;
+            for (int i = stopIdx; i <= groupEnd; i++)
+            {
+                double v = system.Surfaces[i].ClapOuterRadius;
+                if (v > mema) mema = v;
+            }
+            if (mema <= 0) mema = clap;
+            double cap = clap > 0 ? mema / clap * 100.0 : 100.0;
+
+            var dummy = new Surface
+            {
+                Type = SurfaceType.Standard,
+                Radius = double.PositiveInfinity,
+                Thickness = 0.0,
+                Material = string.Empty,
+                SemiDiameter = clap,
+                SemiDiameterMode = SemiDiameterMode.Auto,
+                IsStop = true,
+                Comment = string.Empty
+            };
+
+            for (int i = stopIdx; i <= groupEnd; i++)
+            {
+                var s = system.Surfaces[i];
+                s.SemiDiameter = mema;
+                s.SemiDiameterMode = SemiDiameterMode.Fixed;
+                s.ClearAperturePercent = cap;
+                if (i == stopIdx) s.IsStop = false;
+            }
+
+            system.Surfaces.Insert(stopIdx, dummy);
+            for (int i = 0; i < system.Surfaces.Count; i++)
+                system.Surfaces[i].Index = i;
+        }
+
+        /// <summary>
+        /// Walk the raw .zmx lines and return the CLAP outer radius written on
+        /// the given stop-surface block, or 0 if no CLAP keyword appears there.
+        /// Independent re-scan because ParseSurfaceBlock writes CLAP into
+        /// surface.ClapOuterRadius only when MEMA hasn't already populated it
+        /// — so the surface model alone can't tell us the original CLAP value.
+        /// </summary>
+        private static double ExtractStopClapOuter(string[] lines, int stopIndex)
+        {
+            int currentSurfIdx = -1;
+            foreach (var rawLine in lines)
+            {
+                var line = rawLine.TrimStart();
+                if (line.Length == 0) continue;
+                var parts = SplitLine(line);
+                if (parts.Length == 0) continue;
+                if (parts[0] == "SURF" && parts.Length > 1 && int.TryParse(parts[1], out int idx))
+                {
+                    currentSurfIdx = idx;
+                    continue;
+                }
+                if (currentSurfIdx == stopIndex
+                    && parts[0] == "CLAP" && parts.Length >= 3
+                    && TryParseDouble(parts[2], out double clapOuter))
+                {
+                    return clapOuter;
+                }
+            }
+            return 0;
         }
 
         private static string[] ReadFileLines(string filePath)
@@ -439,22 +556,25 @@ namespace LensHH.Core.IO
                         break;
 
                     case "DIAM":
-                        // DIAM format: DIAM <value> <mode> ...
-                        // Zemax modes: 0=Auto, 1=Marginal ray (auto), 2=Maximum (fixed), 3=Manual (fixed)
+                        // DIAM format in OpticStudio: DIAM <value> <user_defined_flag> <x_dec> <y_dec> <display_flag> <comment>
+                        // field 2 (user_defined_flag): 0 = auto (value is last-computed semi-diameter from ray trace),
+                        //                              1 = user-fixed (value is user input, locked).
+                        // Empirically verified against Edmund Optics vendor .zmx 2026-05-17: fixed surfaces write
+                        // field 2 = 1; auto surfaces write field 2 = 0. The earlier "0..3" interpretation was wrong.
                         if (parts.Length > 1 && TryParseDouble(parts[1], out double diam))
                         {
                             int diamMode = 0;
                             if (parts.Length > 2) int.TryParse(parts[2], out diamMode);
 
-                            if (diamMode >= 2 && diam > 0)
+                            if (diamMode >= 1 && diam > 0)
                             {
-                                // Mode 2 (Maximum) or 3 (Manual) = user-specified fixed
+                                // User-fixed semi-diameter
                                 surface.SemiDiameter = diam;
                                 surface.SemiDiameterMode = Enums.SemiDiameterMode.Fixed;
                             }
                             else if (diam > 0)
                             {
-                                // Mode 0 or 1 = auto; use value as initial estimate
+                                // Auto: keep last-computed value as initial estimate
                                 surface.SemiDiameter = diam;
                             }
                         }
@@ -480,11 +600,30 @@ namespace LensHH.Core.IO
 
                     case "CLAP":
                         // CLAP inner_radius outer_radius x_decenter
-                        // Annular aperture (central hole), e.g. Cassegrain primary mirror
+                        // inner_radius : central hole (annular aperture, e.g. Cassegrain primary).
+                        // outer_radius : optical clear-aperture zone (the "good" optical region).
+                        //
+                        // For stock-lens imports we prefer MEMA (mechanical extent) over CLAP
+                        // for ClapOuterRadius (the drawn extent). Apply CLAP only if MEMA
+                        // hasn't already populated it — keeps the answer order-independent
+                        // regardless of which keyword OpticStudio writes first.
+                        // The CLAP outer is RE-EXTRACTED at end of Read() to override the
+                        // system EPD aperture (see ExtractStopClapOuter).
                         if (parts.Length >= 2 && TryParseDouble(parts[1], out double clapInner))
                             surface.InnerRadius = clapInner;
-                        if (parts.Length >= 3 && TryParseDouble(parts[2], out double clapOuter))
+                        if (parts.Length >= 3 && TryParseDouble(parts[2], out double clapOuter)
+                            && surface.ClapOuterRadius <= 0)
                             surface.ClapOuterRadius = clapOuter;
+                        break;
+
+                    case "MEMA":
+                        // MEMA semi_diameter ... — mechanical maximum aperture (full lens OD / 2).
+                        // Drives ClapOuterRadius (drawn extent) for stock-lens imports, where
+                        // we want the layout to show the part's mechanical edge, not just the
+                        // optical CA zone. Overrides any CLAP value previously set on this
+                        // surface (CLAP only sets ClapOuterRadius when ClapOuterRadius is 0).
+                        if (parts.Length >= 2 && TryParseDouble(parts[1], out double memaR) && memaR > 0)
+                            surface.ClapOuterRadius = memaR;
                         break;
 
                     case "OBSC":
