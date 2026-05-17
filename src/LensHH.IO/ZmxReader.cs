@@ -74,7 +74,10 @@ namespace LensHH.Core.IO
 
             var stopSurf = system.Surfaces[stopIdx];
             if (string.IsNullOrEmpty(stopSurf.Material)) return; // stop already in air
-            if (stopSurf.SemiDiameter <= 0) return;              // no optical CA known
+            double clap = stopSurf.SemiDiameter > 0
+                ? stopSurf.SemiDiameter
+                : stopSurf.ClapOuterRadius; // MEMA-only vendor files: no DIAM/CLAP, only MEMA
+            if (clap <= 0) return;                                // no aperture info at all
 
             // Walk forward through the bonded element group: contiguous vertices
             // whose outgoing medium is glass (Material non-empty). The group ends
@@ -87,7 +90,6 @@ namespace LensHH.Core.IO
             }
             // groupEnd is the air-side back surface of the element.
 
-            double clap = stopSurf.SemiDiameter;
             double mema = 0.0;
             for (int i = stopIdx; i <= groupEnd; i++)
             {
