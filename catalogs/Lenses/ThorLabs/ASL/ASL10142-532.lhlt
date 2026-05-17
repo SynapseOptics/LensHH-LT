@@ -1,0 +1,145 @@
+{
+  "FormatVersion": 1,
+  "Title": "1\u0022 Aspheric Lens, NA=0.145, DW=780nm, 532nm VARC, f=77.8mm at 532nm",
+  "Notes": "",
+  "Designer": "",
+  "Aperture": {
+    "Type": "EPD",
+    "Value": 22.86
+  },
+  "FieldType": "ObjectAngle",
+  "Surfaces": [
+    {
+      "Index": 0,
+      "Type": "Standard",
+      "Comment": "",
+      "Radius": "Infinity",
+      "Thickness": "Infinity",
+      "Material": "",
+      "SemiDiameter": 0,
+      "SemiDiameterMode": "Auto",
+      "ClearAperturePercent": 100,
+      "Conic": 0,
+      "IsStop": false,
+      "InnerRadius": 0,
+      "ObscurationRadius": 0,
+      "FloatingApertureRadius": 0,
+      "CurvatureVariable": false,
+      "ThicknessVariable": false,
+      "ConicVariable": false,
+      "HasMarginalRaySolve": false
+    },
+    {
+      "Index": 1,
+      "Type": "Standard",
+      "Comment": "",
+      "Radius": "Infinity",
+      "Thickness": 0,
+      "Material": "",
+      "SemiDiameter": 12.7,
+      "SemiDiameterMode": "Auto",
+      "ClearAperturePercent": 100,
+      "Conic": 0,
+      "IsStop": true,
+      "InnerRadius": 0,
+      "ObscurationRadius": 0,
+      "FloatingApertureRadius": 0,
+      "CurvatureVariable": false,
+      "ThicknessVariable": false,
+      "ConicVariable": false,
+      "HasMarginalRaySolve": false
+    },
+    {
+      "Index": 2,
+      "Type": "EvenAsphere",
+      "Comment": "ASL10142-532",
+      "Radius": 35.82564756085095,
+      "Thickness": 6,
+      "Material": "C79-80",
+      "SemiDiameter": 12.7,
+      "SemiDiameterMode": "Fixed",
+      "ClearAperturePercent": 100,
+      "Conic": -0.6291250563026,
+      "IsStop": false,
+      "InnerRadius": 0,
+      "ObscurationRadius": 0,
+      "FloatingApertureRadius": 12.7,
+      "AsphericCoefficients": [
+        0,
+        1.439837307613E-07,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "CurvatureVariable": false,
+      "ThicknessVariable": false,
+      "ConicVariable": false,
+      "HasMarginalRaySolve": false
+    },
+    {
+      "Index": 3,
+      "Type": "Standard",
+      "Comment": "",
+      "Radius": "Infinity",
+      "Thickness": 73.65693902176,
+      "Material": "",
+      "SemiDiameter": 12.7,
+      "SemiDiameterMode": "Fixed",
+      "ClearAperturePercent": 100,
+      "Conic": 0,
+      "IsStop": false,
+      "InnerRadius": 0,
+      "ObscurationRadius": 0,
+      "FloatingApertureRadius": 12.7,
+      "CurvatureVariable": false,
+      "ThicknessVariable": false,
+      "ConicVariable": false,
+      "HasMarginalRaySolve": false
+    },
+    {
+      "Index": 4,
+      "Type": "Standard",
+      "Comment": "",
+      "Radius": "Infinity",
+      "Thickness": 0,
+      "Material": "",
+      "SemiDiameter": 1,
+      "SemiDiameterMode": "Fixed",
+      "ClearAperturePercent": 100,
+      "Conic": 0,
+      "IsStop": false,
+      "InnerRadius": 0,
+      "ObscurationRadius": 0,
+      "FloatingApertureRadius": 0,
+      "CurvatureVariable": false,
+      "ThicknessVariable": false,
+      "ConicVariable": false,
+      "HasMarginalRaySolve": false
+    }
+  ],
+  "Wavelengths": [
+    {
+      "Value": 0.532,
+      "Weight": 1,
+      "IsPrimary": true
+    }
+  ],
+  "Fields": [
+    {
+      "Y": 0,
+      "Weight": 1,
+      "Variable": false
+    }
+  ],
+  "Pickups": [],
+  "RayAiming": "Off",
+  "IsAfocal": false,
+  "GlassCatalogs": [
+    "SCHOTT",
+    "INFRARED",
+    "CORNING"
+  ]
+}

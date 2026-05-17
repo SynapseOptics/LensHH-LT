@@ -1,0 +1,145 @@
+{
+  "FormatVersion": 1,
+  "Title": "AYL2520-B",
+  "Notes": "",
+  "Designer": "",
+  "Aperture": {
+    "Type": "EPD",
+    "Value": 22.5
+  },
+  "FieldType": "ObjectAngle",
+  "Surfaces": [
+    {
+      "Index": 0,
+      "Type": "Standard",
+      "Comment": "",
+      "Radius": "Infinity",
+      "Thickness": "Infinity",
+      "Material": "",
+      "SemiDiameter": 0,
+      "SemiDiameterMode": "Auto",
+      "ClearAperturePercent": 100,
+      "Conic": 0,
+      "IsStop": false,
+      "InnerRadius": 0,
+      "ObscurationRadius": 0,
+      "FloatingApertureRadius": 0,
+      "CurvatureVariable": false,
+      "ThicknessVariable": false,
+      "ConicVariable": false,
+      "HasMarginalRaySolve": false
+    },
+    {
+      "Index": 1,
+      "Type": "Standard",
+      "Comment": "",
+      "Radius": "Infinity",
+      "Thickness": 0,
+      "Material": "",
+      "SemiDiameter": 12.5,
+      "SemiDiameterMode": "Auto",
+      "ClearAperturePercent": 100,
+      "Conic": 0,
+      "IsStop": true,
+      "InnerRadius": 0,
+      "ObscurationRadius": 0,
+      "FloatingApertureRadius": 0,
+      "CurvatureVariable": false,
+      "ThicknessVariable": false,
+      "ConicVariable": false,
+      "HasMarginalRaySolve": false
+    },
+    {
+      "Index": 2,
+      "Type": "EvenAsphere",
+      "Comment": "AYL2520-B",
+      "Radius": 15.538,
+      "Thickness": 7.5,
+      "Material": "S-LAH64",
+      "SemiDiameter": 12.5,
+      "SemiDiameterMode": "Fixed",
+      "ClearAperturePercent": 100,
+      "Conic": -1,
+      "IsStop": false,
+      "InnerRadius": 0,
+      "ObscurationRadius": 0,
+      "FloatingApertureRadius": 0,
+      "AsphericCoefficients": [
+        0,
+        0,
+        1.192607459341E-05,
+        -2.932349708982E-09,
+        -1.871888883198E-11,
+        -1.700996123128E-14,
+        3.548154201923E-17,
+        6.524129633457E-20
+      ],
+      "CurvatureVariable": false,
+      "ThicknessVariable": false,
+      "ConicVariable": false,
+      "HasMarginalRaySolve": false
+    },
+    {
+      "Index": 3,
+      "Type": "Standard",
+      "Comment": "",
+      "Radius": "Infinity",
+      "Thickness": 15.77925939124,
+      "Material": "",
+      "SemiDiameter": 12.5,
+      "SemiDiameterMode": "Fixed",
+      "ClearAperturePercent": 100,
+      "Conic": 0,
+      "IsStop": false,
+      "InnerRadius": 0,
+      "ObscurationRadius": 0,
+      "FloatingApertureRadius": 0,
+      "CurvatureVariable": false,
+      "ThicknessVariable": false,
+      "ConicVariable": false,
+      "HasMarginalRaySolve": false
+    },
+    {
+      "Index": 4,
+      "Type": "Standard",
+      "Comment": "",
+      "Radius": "Infinity",
+      "Thickness": 0,
+      "Material": "",
+      "SemiDiameter": 0,
+      "SemiDiameterMode": "Auto",
+      "ClearAperturePercent": 100,
+      "Conic": 0,
+      "IsStop": false,
+      "InnerRadius": 0,
+      "ObscurationRadius": 0,
+      "FloatingApertureRadius": 0,
+      "CurvatureVariable": false,
+      "ThicknessVariable": false,
+      "ConicVariable": false,
+      "HasMarginalRaySolve": false
+    }
+  ],
+  "Wavelengths": [
+    {
+      "Value": 0.78,
+      "Weight": 1,
+      "IsPrimary": true
+    }
+  ],
+  "Fields": [
+    {
+      "Y": 0,
+      "Weight": 1,
+      "Variable": false
+    }
+  ],
+  "Pickups": [],
+  "RayAiming": "Off",
+  "IsAfocal": false,
+  "GlassCatalogs": [
+    "SCHOTT",
+    "MISC",
+    "OHARA"
+  ]
+}

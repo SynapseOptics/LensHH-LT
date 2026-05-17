@@ -1,0 +1,145 @@
+{
+  "FormatVersion": 1,
+  "Title": "33012 Asphere 25mm x 30mm",
+  "Notes": "",
+  "Designer": "",
+  "Aperture": {
+    "Type": "EPD",
+    "Value": 25
+  },
+  "FieldType": "ObjectAngle",
+  "Surfaces": [
+    {
+      "Index": 0,
+      "Type": "Standard",
+      "Comment": "",
+      "Radius": "Infinity",
+      "Thickness": "Infinity",
+      "Material": "",
+      "SemiDiameter": 0,
+      "SemiDiameterMode": "Auto",
+      "ClearAperturePercent": 100,
+      "Conic": 0,
+      "IsStop": false,
+      "InnerRadius": 0,
+      "ObscurationRadius": 0,
+      "FloatingApertureRadius": 0,
+      "CurvatureVariable": false,
+      "ThicknessVariable": false,
+      "ConicVariable": false,
+      "HasMarginalRaySolve": false
+    },
+    {
+      "Index": 1,
+      "Type": "Standard",
+      "Comment": "",
+      "Radius": "Infinity",
+      "Thickness": 0,
+      "Material": "",
+      "SemiDiameter": 11.25,
+      "SemiDiameterMode": "Auto",
+      "ClearAperturePercent": 100,
+      "Conic": 0,
+      "IsStop": true,
+      "InnerRadius": 0,
+      "ObscurationRadius": 0,
+      "FloatingApertureRadius": 0,
+      "CurvatureVariable": false,
+      "ThicknessVariable": false,
+      "ConicVariable": false,
+      "HasMarginalRaySolve": false
+    },
+    {
+      "Index": 2,
+      "Type": "EvenAsphere",
+      "Comment": "33012",
+      "Radius": 13.754,
+      "Thickness": 8.5,
+      "Material": "C79-80",
+      "SemiDiameter": 12.5,
+      "SemiDiameterMode": "Fixed",
+      "ClearAperturePercent": 111.11111111111111,
+      "Conic": -2.0501907,
+      "IsStop": false,
+      "InnerRadius": 0,
+      "ObscurationRadius": 0,
+      "FloatingApertureRadius": 11.25,
+      "AsphericCoefficients": [
+        0,
+        7.1228748E-05,
+        -1.0688222E-07,
+        3.2884865E-10,
+        -3.774342E-13,
+        0,
+        0,
+        0
+      ],
+      "CurvatureVariable": false,
+      "ThicknessVariable": false,
+      "ConicVariable": false,
+      "HasMarginalRaySolve": false
+    },
+    {
+      "Index": 3,
+      "Type": "Standard",
+      "Comment": "",
+      "Radius": "Infinity",
+      "Thickness": 23.084606504930267,
+      "Material": "",
+      "SemiDiameter": 12.5,
+      "SemiDiameterMode": "Fixed",
+      "ClearAperturePercent": 111.11111111111111,
+      "Conic": 0,
+      "IsStop": false,
+      "InnerRadius": 0,
+      "ObscurationRadius": 0,
+      "FloatingApertureRadius": 11.25,
+      "CurvatureVariable": false,
+      "ThicknessVariable": false,
+      "ConicVariable": false,
+      "HasMarginalRaySolve": false
+    },
+    {
+      "Index": 4,
+      "Type": "Standard",
+      "Comment": "",
+      "Radius": "Infinity",
+      "Thickness": 0,
+      "Material": "",
+      "SemiDiameter": 0.009004732022910744,
+      "SemiDiameterMode": "Auto",
+      "ClearAperturePercent": 100,
+      "Conic": 0,
+      "IsStop": false,
+      "InnerRadius": 0,
+      "ObscurationRadius": 0,
+      "FloatingApertureRadius": 0,
+      "CurvatureVariable": false,
+      "ThicknessVariable": false,
+      "ConicVariable": false,
+      "HasMarginalRaySolve": false
+    }
+  ],
+  "Wavelengths": [
+    {
+      "Value": 0.35,
+      "Weight": 1,
+      "IsPrimary": true
+    }
+  ],
+  "Fields": [
+    {
+      "Y": 0,
+      "Weight": 1,
+      "Variable": false
+    }
+  ],
+  "Pickups": [],
+  "RayAiming": "Off",
+  "IsAfocal": false,
+  "GlassCatalogs": [
+    "SCHOTT",
+    "OHARA",
+    "CORNING"
+  ]
+}

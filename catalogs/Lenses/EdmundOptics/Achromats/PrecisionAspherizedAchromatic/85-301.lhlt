@@ -1,0 +1,187 @@
+{
+  "FormatVersion": 1,
+  "Title": "85301",
+  "Notes": "",
+  "Designer": "",
+  "Aperture": {
+    "Type": "EPD",
+    "Value": 25
+  },
+  "FieldType": "ObjectAngle",
+  "Surfaces": [
+    {
+      "Index": 0,
+      "Type": "Standard",
+      "Comment": "",
+      "Radius": "Infinity",
+      "Thickness": "Infinity",
+      "Material": "",
+      "SemiDiameter": 0,
+      "SemiDiameterMode": "Auto",
+      "ClearAperturePercent": 100,
+      "Conic": 0,
+      "IsStop": false,
+      "InnerRadius": 0,
+      "ObscurationRadius": 0,
+      "FloatingApertureRadius": 0,
+      "CurvatureVariable": false,
+      "ThicknessVariable": false,
+      "ConicVariable": false,
+      "HasMarginalRaySolve": false
+    },
+    {
+      "Index": 1,
+      "Type": "Standard",
+      "Comment": "",
+      "Radius": "Infinity",
+      "Thickness": 0,
+      "Material": "",
+      "SemiDiameter": 12.5,
+      "SemiDiameterMode": "Auto",
+      "ClearAperturePercent": 100,
+      "Conic": 0,
+      "IsStop": true,
+      "InnerRadius": 0,
+      "ObscurationRadius": 0,
+      "FloatingApertureRadius": 0,
+      "CurvatureVariable": false,
+      "ThicknessVariable": false,
+      "ConicVariable": false,
+      "HasMarginalRaySolve": false
+    },
+    {
+      "Index": 2,
+      "Type": "EvenAsphere",
+      "Comment": "85301",
+      "Radius": 11.803,
+      "Thickness": 15.00000012139,
+      "Material": "N-PK51",
+      "SemiDiameter": 12.5,
+      "SemiDiameterMode": "Fixed",
+      "ClearAperturePercent": 100,
+      "Conic": -0.7795089582496,
+      "IsStop": false,
+      "InnerRadius": 0,
+      "ObscurationRadius": 0,
+      "FloatingApertureRadius": 12.5,
+      "AsphericCoefficients": [
+        0,
+        1.350574178415E-05,
+        8.673593431946E-08,
+        -2.403414075604E-09,
+        2.947423335177E-11,
+        -1.811364002504E-13,
+        3.91932743999E-16,
+        0
+      ],
+      "CurvatureVariable": false,
+      "ThicknessVariable": false,
+      "ConicVariable": false,
+      "HasMarginalRaySolve": false
+    },
+    {
+      "Index": 3,
+      "Type": "Standard",
+      "Comment": "",
+      "Radius": -16.151,
+      "Thickness": 8.2,
+      "Material": "S-NPH2",
+      "SemiDiameter": 12.5,
+      "SemiDiameterMode": "Fixed",
+      "ClearAperturePercent": 100,
+      "Conic": 0,
+      "IsStop": false,
+      "InnerRadius": 0,
+      "ObscurationRadius": 0,
+      "FloatingApertureRadius": 12.5,
+      "CurvatureVariable": false,
+      "ThicknessVariable": false,
+      "ConicVariable": false,
+      "HasMarginalRaySolve": false
+    },
+    {
+      "Index": 4,
+      "Type": "EvenAsphere",
+      "Comment": "",
+      "Radius": -20.892,
+      "Thickness": 8.567086267095,
+      "Material": "",
+      "SemiDiameter": 12.5,
+      "SemiDiameterMode": "Fixed",
+      "ClearAperturePercent": 100,
+      "Conic": 1.166251657542,
+      "IsStop": false,
+      "InnerRadius": 0,
+      "ObscurationRadius": 0,
+      "FloatingApertureRadius": 12.5,
+      "AsphericCoefficients": [
+        0,
+        -5.5674930324E-05,
+        3.590521318863E-06,
+        -7.621198611785E-08,
+        1.023863639193E-09,
+        -8.388534390796E-12,
+        3.858496764412E-14,
+        -7.595170297038E-17
+      ],
+      "CurvatureVariable": false,
+      "ThicknessVariable": false,
+      "ConicVariable": false,
+      "HasMarginalRaySolve": false
+    },
+    {
+      "Index": 5,
+      "Type": "Standard",
+      "Comment": "",
+      "Radius": "Infinity",
+      "Thickness": 0,
+      "Material": "",
+      "SemiDiameter": 0.3281791401431,
+      "SemiDiameterMode": "Fixed",
+      "ClearAperturePercent": 100,
+      "Conic": 0,
+      "IsStop": false,
+      "InnerRadius": 0,
+      "ObscurationRadius": 0,
+      "FloatingApertureRadius": 0,
+      "CurvatureVariable": false,
+      "ThicknessVariable": false,
+      "ConicVariable": false,
+      "HasMarginalRaySolve": false
+    }
+  ],
+  "Wavelengths": [
+    {
+      "Value": 0.4861327,
+      "Weight": 1,
+      "IsPrimary": false
+    },
+    {
+      "Value": 0.5875618,
+      "Weight": 1,
+      "IsPrimary": true
+    },
+    {
+      "Value": 0.6562725,
+      "Weight": 1,
+      "IsPrimary": false
+    }
+  ],
+  "Fields": [
+    {
+      "Y": 0,
+      "Weight": 1,
+      "Variable": false
+    }
+  ],
+  "Pickups": [],
+  "RayAiming": "Off",
+  "IsAfocal": false,
+  "GlassCatalogs": [
+    "SCHOTT",
+    "OHARA",
+    "MISC",
+    "CORNING",
+    "INFRARED"
+  ]
+}

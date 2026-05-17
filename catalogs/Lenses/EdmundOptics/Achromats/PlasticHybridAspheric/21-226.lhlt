@@ -1,0 +1,154 @@
+{
+  "FormatVersion": 1,
+  "Title": "21226 Plastic Hybrid Asphere",
+  "Notes": "",
+  "Designer": "",
+  "Aperture": {
+    "Type": "EPD",
+    "Value": 10
+  },
+  "FieldType": "ObjectAngle",
+  "Surfaces": [
+    {
+      "Index": 0,
+      "Type": "Standard",
+      "Comment": "",
+      "Radius": "Infinity",
+      "Thickness": "Infinity",
+      "Material": "",
+      "SemiDiameter": 0,
+      "SemiDiameterMode": "Auto",
+      "ClearAperturePercent": 100,
+      "Conic": 0,
+      "IsStop": false,
+      "InnerRadius": 0,
+      "ObscurationRadius": 0,
+      "FloatingApertureRadius": 0,
+      "CurvatureVariable": false,
+      "ThicknessVariable": false,
+      "ConicVariable": false,
+      "HasMarginalRaySolve": false
+    },
+    {
+      "Index": 1,
+      "Type": "Standard",
+      "Comment": "",
+      "Radius": "Infinity",
+      "Thickness": 0,
+      "Material": "",
+      "SemiDiameter": 12.5,
+      "SemiDiameterMode": "Auto",
+      "ClearAperturePercent": 100,
+      "Conic": 0,
+      "IsStop": true,
+      "InnerRadius": 0,
+      "ObscurationRadius": 0,
+      "FloatingApertureRadius": 0,
+      "CurvatureVariable": false,
+      "ThicknessVariable": false,
+      "ConicVariable": false,
+      "HasMarginalRaySolve": false
+    },
+    {
+      "Index": 2,
+      "Type": "EvenAsphere",
+      "Comment": "21226",
+      "Radius": 19.2,
+      "Thickness": 7.3,
+      "Material": "ZEONEX_K26R",
+      "SemiDiameter": 12.5,
+      "SemiDiameterMode": "Fixed",
+      "ClearAperturePercent": 100,
+      "Conic": -0.52,
+      "IsStop": false,
+      "InnerRadius": 0,
+      "ObscurationRadius": 0,
+      "FloatingApertureRadius": 12.5,
+      "AsphericCoefficients": [
+        0,
+        -4.547226231342E-06,
+        -1.014467220018E-08,
+        -1.537219164814E-11,
+        0,
+        0,
+        0,
+        0
+      ],
+      "CurvatureVariable": false,
+      "ThicknessVariable": false,
+      "ConicVariable": false,
+      "HasMarginalRaySolve": false
+    },
+    {
+      "Index": 3,
+      "Type": "Standard",
+      "Comment": "",
+      "Radius": -127,
+      "Thickness": 25.81702031625,
+      "Material": "",
+      "SemiDiameter": 12.5,
+      "SemiDiameterMode": "Fixed",
+      "ClearAperturePercent": 100,
+      "Conic": 0,
+      "IsStop": false,
+      "InnerRadius": 0,
+      "ObscurationRadius": 0,
+      "FloatingApertureRadius": 12.5,
+      "CurvatureVariable": false,
+      "ThicknessVariable": false,
+      "ConicVariable": false,
+      "HasMarginalRaySolve": false
+    },
+    {
+      "Index": 4,
+      "Type": "Standard",
+      "Comment": "",
+      "Radius": "Infinity",
+      "Thickness": 0,
+      "Material": "",
+      "SemiDiameter": 0.02715337761365788,
+      "SemiDiameterMode": "Auto",
+      "ClearAperturePercent": 100,
+      "Conic": 0,
+      "IsStop": false,
+      "InnerRadius": 0,
+      "ObscurationRadius": 0,
+      "FloatingApertureRadius": 0,
+      "CurvatureVariable": false,
+      "ThicknessVariable": false,
+      "ConicVariable": false,
+      "HasMarginalRaySolve": false
+    }
+  ],
+  "Wavelengths": [
+    {
+      "Value": 0.5875618,
+      "Weight": 1,
+      "IsPrimary": false
+    },
+    {
+      "Value": 0.5875618,
+      "Weight": 1,
+      "IsPrimary": true
+    },
+    {
+      "Value": 0.5875618,
+      "Weight": 1,
+      "IsPrimary": false
+    }
+  ],
+  "Fields": [
+    {
+      "Y": 0,
+      "Weight": 1,
+      "Variable": false
+    }
+  ],
+  "Pickups": [],
+  "RayAiming": "Off",
+  "IsAfocal": false,
+  "GlassCatalogs": [
+    "ZEON",
+    "MISC"
+  ]
+}

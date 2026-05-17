@@ -48,3 +48,17 @@ logs/
 # refer to and is bundled into the installer.
 catalogs/FilteredGlassCatalogues/*
 !catalogs/FilteredGlassCatalogues/CoreSet28.AGF
+
+# Vendor optical files (raw stock-lens prescriptions scraped or extracted
+# from vendor distributions). Large (~540 MB) and re-derivable: Edmund
+# .zmx come from the scraper; Thorlabs from THORLABS_*.ZMF via
+# catalogs/scripts/Extract-ZmfCatalog.ps1. Our derived .lhlt ARE tracked.
+catalogs/Lenses/**/*.zmx
+catalogs/Lenses/**/*.zar
+catalogs/Lenses/**/*.seq
+catalogs/Lenses/**/*.ZMF
+catalogs/Lenses/**/*.zip
+catalogs/Lenses/**/*.dat
+catalogs/Lenses/**/*.DAT
+catalogs/Lenses/**/*.xlsx
+catalogs/Lenses/ThorLabs/zemaxcatalog/
