@@ -144,6 +144,13 @@ namespace LensHH.Core.IO
             system.Surfaces.Insert(stopIdx, dummy);
             for (int i = 0; i < system.Surfaces.Count; i++)
                 system.Surfaces[i].Index = i;
+
+            // Stock-lens convention: real ray aiming buys nothing for a singlet
+            // (or simple cemented multiplet) at a modest aperture. Some Edmund
+            // vendor .zmx files ship with RAIM=Real anyway; force Off here so
+            // the .lhlt convention is consistent regardless of source. Users
+            // who genuinely need ray aiming can re-enable it after import.
+            system.RayAiming = LensHH.Core.Enums.RayAimingMode.Off;
         }
 
         /// <summary>
