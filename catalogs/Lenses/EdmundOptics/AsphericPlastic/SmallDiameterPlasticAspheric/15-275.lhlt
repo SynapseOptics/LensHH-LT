@@ -135,7 +135,7 @@
     }
   ],
   "Pickups": [],
-  "RayAiming": "Real",
+  "RayAiming": "Off",
   "IsAfocal": false,
   "GlassCatalogs": [
     "MISC",
