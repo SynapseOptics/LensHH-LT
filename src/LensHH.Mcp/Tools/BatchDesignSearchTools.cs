@@ -42,11 +42,17 @@ namespace LensHH.Mcp.Tools
             + "strict serial — required if you select innerOptimizer=multistart AND your operands enable glass "
             + "substitution (which mutates the shared catalog and isn't safe under concurrent execution)."
             + "\n\n"
+            + "Multistart tuning (only used when innerOptimizer=multistart): msMaxTrials (default 500), msLmPerTrial "
+            + "(default 100, LM iters inside each perturbation trial), msInitialLm (default 300, LM iters on the "
+            + "centered starting point before any perturbation). Heavier values escape local minima better but "
+            + "multiply the per-candidate runtime; the defaults match the standalone multistart_optimize_start tool."
+            + "\n\n"
             + "hostLhltPath must point to a .lhlt that already has OBJ, aperture, fields, wavelengths, "
             + "merit-function operands, and the appropriate stop convention for the task case (a / b / c / d / e — "
             + "see docs/agent-stock-lens-workflow.md).")]
         public string BatchDesignSearchStart(string hostLhltPath, string candidatesJson,
-            string innerOptimizer = "lm", int parallelism = 0)
+            string innerOptimizer = "lm", int parallelism = 0,
+            int msMaxTrials = 500, int msLmPerTrial = 100, int msInitialLm = 300)
         {
             List<CandidateDescriptor> candidates;
             try
@@ -62,10 +68,14 @@ namespace LensHH.Mcp.Tools
             try
             {
                 var job = _session.BatchDesignSearch.Start(
-                    _session, hostLhltPath, candidates, innerOptimizer, parallelism);
+                    _session, hostLhltPath, candidates, innerOptimizer, parallelism,
+                    msMaxTrials, msLmPerTrial, msInitialLm);
+                string msTune = innerOptimizer.Equals("multistart", StringComparison.OrdinalIgnoreCase)
+                    ? $", msMaxTrials={msMaxTrials} msLmPerTrial={msLmPerTrial} msInitialLm={msInitialLm}"
+                    : "";
                 return $"Started batch_design_search. jobId={job.JobId}; "
                      + $"{candidates.Count} candidate(s), innerOptimizer={innerOptimizer}, "
-                     + $"parallelism={parallelism}. Poll batch_design_search_status({job.JobId}).";
+                     + $"parallelism={parallelism}{msTune}. Poll batch_design_search_status({job.JobId}).";
             }
             catch (Exception ex)
             {

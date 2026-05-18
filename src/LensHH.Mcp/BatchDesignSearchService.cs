@@ -100,6 +100,12 @@ namespace LensHH.Mcp
         public CandidateResult[] Results { get; set; } = Array.Empty<CandidateResult>();
         public string InnerOptimizer { get; set; } = "lm";
         public int Parallelism { get; set; } = 1;
+        // Multistart tuning (only consulted when InnerOptimizer == "multistart").
+        // Defaults match what the standalone multistart_optimize_start uses,
+        // not the legacy 200×50 cap that was hardcoded here in fa6e3a3.
+        public int MsMaxTrials { get; set; } = 500;
+        public int MsLmPerTrial { get; set; } = 100;
+        public int MsInitialLm { get; set; } = 300;
         public int Done; // updated via Interlocked
     }
 
@@ -131,7 +137,8 @@ namespace LensHH.Mcp
         /// agent polls via batch_design_search_status(jobId).
         /// </summary>
         public RunningJob Start(McpSession session, string hostPath,
-            List<CandidateDescriptor> candidates, string innerOptimizer, int parallelism)
+            List<CandidateDescriptor> candidates, string innerOptimizer, int parallelism,
+            int msMaxTrials = 500, int msLmPerTrial = 100, int msInitialLm = 300)
         {
             if (!File.Exists(hostPath))
                 throw new FileNotFoundException($"Host .lhlt not found: {hostPath}");
@@ -167,6 +174,9 @@ namespace LensHH.Mcp
                 Results        = new CandidateResult[candidates.Count],
                 InnerOptimizer = innerOptimizer,
                 Parallelism    = parallelism,
+                MsMaxTrials    = msMaxTrials,
+                MsLmPerTrial   = msLmPerTrial,
+                MsInitialLm    = msInitialLm,
             };
             for (int i = 0; i < candidates.Count; i++)
                 data.Results[i] = new CandidateResult
@@ -364,7 +374,12 @@ namespace LensHH.Mcp
                 }
                 else
                 {
-                    var msSettings = new MultistartSettings { MaxTrials = 200, LmIterationsPerTrial = 50 };
+                    var msSettings = new MultistartSettings
+                    {
+                        MaxTrials             = data.MsMaxTrials,
+                        LmIterationsPerTrial  = data.MsLmPerTrial,
+                        InitialLmIterations   = data.MsInitialLm,
+                    };
                     var ms = new MultistartOptimizer(system, merit, session.GlassCatalog, config)
                     { Settings = msSettings };
                     var msResult = ms.Optimize(job.Cts.Token);
