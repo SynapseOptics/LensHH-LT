@@ -8,7 +8,7 @@ CC   project_zemax_air_relative_vacuum     -- VACUUM index < 1, not = 1
 CC   project_zemax_agf_ed_status_trap      -- ED line last field MUST be 0
 CC   feedback_no_fabrication_glass_codes   -- cite source, do not invent
 CC
-CC Catalog version: 1.3  (2026-05-17)
+CC Catalog version: 1.4  (2026-05-17 — added BACD9 for Ross Optical catalog)
 CC Maintainer:      Synapse Optics
 CC Target consumer: LensHH-LT (vendor stock-lens import for Edmund Optics,
 CC                  Thorlabs, Newport, etc., where vendor .zmx files reference
@@ -742,3 +742,18 @@ ED 5.800000E+001 5.800000E+001 1.010000E+000 0.000000E+000 0 0
 CD 1.3138000E+000 1.0800000E-002 0.0000000E+000 0.0000000E+000 0.0000000E+000 0.0000000E+000
 TD -1.000000E-004 0.000000E+000 0.000000E+000 0.000000E+000 0.000000E+000 0.000000E+000 2.000000E+001
 LD 4.368000E-001 1.052000E+000
+CC
+CC ---------------------------------------------------------------------------
+CC BACD9  (older HOYA designation, renamed to BACD16; same Schott formula)
+CC ---------------------------------------------------------------------------
+CC Ross Optical's 2014 .ZMF catalog uses the older Hoya "BACD9" name for what
+CC was later renamed BACD16 (nd=1.62041, Vd=60.35). 4 cemented Ross doublets
+CC (L-AOC000/007/037/287) reference it. Coefficients mirror HOYA BACD16 from
+CC HOYA.AGF (Schott formula type 1).
+CC ---------------------------------------------------------------------------
+NM BACD9 1 620603 1.62041 60.35 0 0 1
+GC Alias of HOYA BACD16 (older Hoya designation BACD9)
+ED 6.000000E+000 7.100000E+000 3.520000E+000 -3.000000E-004 0 0
+CD 2.5859898E+000 -1.1940432E-002 1.3995502E-002 4.8974502E-004 -3.9120717E-005 2.2611915E-006
+TD 1.986760E-006 0.000000E+000 0.000000E+000 0.000000E+000 0.000000E+000 0.000000E+000 2.300000E+001
+LD 3.650100E-001 1.529600E+000

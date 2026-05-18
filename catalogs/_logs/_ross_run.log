@@ -1,0 +1,12 @@
+[20:40:58] Loading LensHH-LT assemblies from C:\GIT\TEST_INSTALL\LensHH-LT\mcp ...
+[20:40:58] Activation OK.
+[20:40:58] GlassCatalog loaded: 9 catalogs.
+[20:40:58] Found 1463 .zmx files across 18 Ross prefixes.
+[20:40:59] 
+[20:40:59] DONE: 0.4s wall time, 1463 files.
+[20:40:59]   ok                     1
+[20:40:59]   glass_unresolved       0
+[20:40:59]   import_exception       0
+[20:40:59]   save_exception         0
+[20:40:59]   paraxial_exception     0
+[20:40:59]   skipped_existing_lhlt  1462
