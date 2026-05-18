@@ -619,6 +619,114 @@ public partial class MainWindow : Window
         await dialog.ShowDialog(this);
     }
 
+    // ── Insert Lens from File ─────────────────────────────────────────────
+
+    private async void InsertLensFromFile_Click(object? sender, RoutedEventArgs e)
+        => await InsertLensFromFileAsync(reversed: false);
+
+    private async void InsertLensFromFileReversed_Click(object? sender, RoutedEventArgs e)
+        => await InsertLensFromFileAsync(reversed: true);
+
+    /// <summary>
+    /// Open a file picker, load a .lhlt, extract its lens vertices (skipping
+    /// OBJ + dummy stop + IMG), optionally reverse them, and splice into the
+    /// current system after the currently-selected surface. The host's stop
+    /// surface is left untouched; merit-function operand and pickup surface
+    /// refs are bumped automatically via SurfaceIndexUpdater.
+    /// </summary>
+    private async Task InsertLensFromFileAsync(bool reversed)
+    {
+        var sys = VM.Session.System;
+        if (sys == null || sys.Surfaces.Count < 2)
+        {
+            await ShowMessage("Insert Lens", "No host system loaded. Open or create a system first.");
+            return;
+        }
+
+        var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = reversed ? "Insert Lens (Reversed) — pick source .lhlt"
+                             : "Insert Lens — pick source .lhlt",
+            AllowMultiple = false,
+            FileTypeFilter = new[]
+            {
+                new FilePickerFileType("LensHH-LT Files") { Patterns = new[] { "*.lhlt" } },
+            }
+        });
+        if (files.Count == 0) return;
+        var path = files[0].TryGetLocalPath();
+        if (path == null) return;
+
+        try
+        {
+            var loaded = LensHH.Core.IO.LhltReader.Read(path);
+            var vertices = LensHH.Core.IO.LensInsertHelpers.ExtractLensVertices(loaded.System, out string? extractError);
+            if (vertices == null)
+            {
+                await ShowMessage("Insert Lens", $"Couldn't extract lens vertices from {System.IO.Path.GetFileName(path)}: {extractError}");
+                return;
+            }
+            if (vertices.Count == 0)
+            {
+                await ShowMessage("Insert Lens", "Source file has no optical vertices between stop and IMG.");
+                return;
+            }
+            if (reversed) vertices = LensHH.Core.IO.LensInsertHelpers.ReverseVertexGroup(vertices);
+
+            // Insertion point: after the currently-selected row, or before IMG.
+            int afterSurface;
+            var sel = VM.SurfaceEditor.SelectedSurface;
+            if (sel != null && sel.Index >= 0 && sel.Index < sys.Surfaces.Count - 1)
+                afterSurface = sel.Index;
+            else
+                afterSurface = sys.Surfaces.Count - 2; // last lens vertex = just before IMG
+
+            // Splice — match insert_stock_lens convention: last vertex T=0 (touches next existing surface).
+            vertices[vertices.Count - 1].Thickness = 0.0;
+            int insertAt = afterSurface + 1;
+            for (int i = 0; i < vertices.Count; i++)
+            {
+                sys.Surfaces.Insert(insertAt + i, vertices[i]);
+                LensHH.Core.Models.SurfaceIndexUpdater.OnSurfaceInserted(
+                    insertAt + i, sys, VM.Session.MeritFunction, VM.Session.ConfigEditor);
+            }
+            for (int i = 0; i < sys.Surfaces.Count; i++) sys.Surfaces[i].Index = i;
+
+            VM.SurfaceEditor.Refresh();
+            VM.Session.NotifySystemChanged("structure");
+        }
+        catch (Exception ex)
+        {
+            await ShowMessage("Insert Lens", $"Failed: {ex.Message}");
+        }
+    }
+
+    private async Task ShowMessage(string title, string body)
+    {
+        var dlg = new Avalonia.Controls.Window
+        {
+            Title = title,
+            Width = 500, Height = 160,
+            WindowStartupLocation = Avalonia.Controls.WindowStartupLocation.CenterOwner,
+            Content = new Avalonia.Controls.StackPanel
+            {
+                Margin = new Avalonia.Thickness(12),
+                Spacing = 12,
+                Children =
+                {
+                    new Avalonia.Controls.TextBlock { Text = body, TextWrapping = Avalonia.Media.TextWrapping.Wrap },
+                    new Avalonia.Controls.Button
+                    {
+                        Content = "OK",
+                        HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right,
+                    }
+                }
+            }
+        };
+        ((Avalonia.Controls.Button)((Avalonia.Controls.StackPanel)dlg.Content).Children[1]).Click += (_, _) => dlg.Close();
+        await dlg.ShowDialog(this);
+    }
+
     private async void SetClearThickness_Click(object? sender, RoutedEventArgs e)
     {
         var dialog = new SetClearVariablesDialog

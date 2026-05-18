@@ -251,15 +251,15 @@ namespace LensHH.Mcp
                 foreach (var ins in cand.Inserts)
                 {
                     // Resolve part -> .lhlt
-                    var (_, lhltRel) = StockLensInsertHelpers.ResolvePart(ins.PartNumber, ins.Vendor);
-                    string lhltPath = StockLensInsertHelpers.ResolveLhltPath(lhltRel);
+                    var (_, lhltRel) = StockLensCatalog.ResolvePart(ins.PartNumber, ins.Vendor);
+                    string lhltPath = StockLensCatalog.ResolveLhltPath(lhltRel);
                     var stockSys = LhltReader.Read(lhltPath).System;
 
-                    var vertices = StockLensInsertHelpers.ExtractLensVertices(stockSys, out string? extractErr);
+                    var vertices = LensInsertHelpers.ExtractLensVertices(stockSys, out string? extractErr);
                     if (vertices == null || vertices.Count == 0)
                         throw new InvalidOperationException(
                             $"insert {ins.PartNumber}: no lens vertices ({extractErr ?? "empty"}).");
-                    if (ins.Reversed) vertices = StockLensInsertHelpers.ReverseVertexGroup(vertices);
+                    if (ins.Reversed) vertices = LensInsertHelpers.ReverseVertexGroup(vertices);
 
                     // Determine where this insert lands in CURRENT numbering.
                     int insertAfterCurrent;
@@ -486,12 +486,12 @@ namespace LensHH.Mcp
             var priorByHostTarget = new List<(int hostTarget, int vertices)>();
             foreach (var ins in cand.Inserts)
             {
-                var (_, lhltRel) = StockLensInsertHelpers.ResolvePart(ins.PartNumber, ins.Vendor);
-                string lhltPath = StockLensInsertHelpers.ResolveLhltPath(lhltRel);
+                var (_, lhltRel) = StockLensCatalog.ResolvePart(ins.PartNumber, ins.Vendor);
+                string lhltPath = StockLensCatalog.ResolveLhltPath(lhltRel);
                 var stockSys = LhltReader.Read(lhltPath).System;
-                var vertices = StockLensInsertHelpers.ExtractLensVertices(stockSys, out _);
+                var vertices = LensInsertHelpers.ExtractLensVertices(stockSys, out _);
                 if (vertices == null || vertices.Count == 0) continue;
-                if (ins.Reversed) vertices = StockLensInsertHelpers.ReverseVertexGroup(vertices);
+                if (ins.Reversed) vertices = LensInsertHelpers.ReverseVertexGroup(vertices);
 
                 int insertAfterCurrent;
                 int hostTarget;

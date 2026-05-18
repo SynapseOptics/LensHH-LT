@@ -149,6 +149,11 @@
             <Button Content="Insert Surface" Command="{Binding SurfaceEditor.InsertSurfaceCommand}" />
             <Button Content="Delete Surface" Command="{Binding SurfaceEditor.DeleteSurfaceCommand}" />
             <Border Width="1" Background="#CCC" Margin="4,2" />
+            <Button Content="Insert Lens..." Click="InsertLensFromFile_Click"
+                    ToolTip.Tip="Splice the optical vertices from a .lhlt file in after the selected surface. Host stop is preserved; the source file's OBJ, aperture stop, and IMG are stripped. Merit-function operands shift automatically." />
+            <Button Content="Insert Lens (Reversed)..." Click="InsertLensFromFileReversed_Click"
+                    ToolTip.Tip="Same as Insert Lens... but the inserted element(s) are flipped 180° (radii negated, surface order reversed)." />
+            <Border Width="1" Background="#CCC" Margin="4,2" />
             <Button Content="Set/Clear Thickness Variables" Click="SetClearThickness_Click" />
             <Button Content="Set/Clear Curvature Variables" Click="SetClearCurvature_Click" />
             <Button Content="Clear All Variables" Click="ClearAllVariables_Click" />

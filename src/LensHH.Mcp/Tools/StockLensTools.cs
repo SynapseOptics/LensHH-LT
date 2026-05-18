@@ -51,7 +51,7 @@ namespace LensHH.Mcp.Tools
             double? vdPrimaryMax = null,
             int limit = 20)
         {
-            string dbPath = StockLensInsertHelpers.ResolveDbPath();
+            string dbPath = StockLensCatalog.ResolveDbPath();
             using var conn = new SqliteConnection($"Data Source={dbPath};Mode=ReadOnly");
             conn.Open();
 
@@ -135,18 +135,18 @@ namespace LensHH.Mcp.Tools
 
             // 1. Resolve part number → lhlt path via SQLite.
             string lhltRel; string resolvedVendor;
-            try { (resolvedVendor, lhltRel) = StockLensInsertHelpers.ResolvePart(partNumber, vendor); }
+            try { (resolvedVendor, lhltRel) = StockLensCatalog.ResolvePart(partNumber, vendor); }
             catch (Exception ex) { return ex.Message; }
-            string lhltPath = StockLensInsertHelpers.ResolveLhltPath(lhltRel);
+            string lhltPath = StockLensCatalog.ResolveLhltPath(lhltRel);
 
             // 2. Load the stock-lens .lhlt and extract just its lens vertices.
             var stockResult = LhltReader.Read(lhltPath);
-            var vertices = StockLensInsertHelpers.ExtractLensVertices(stockResult.System, out string? extractError);
+            var vertices = LensInsertHelpers.ExtractLensVertices(stockResult.System, out string? extractError);
             if (vertices == null) return $"Failed to extract lens vertices from {lhltRel}: {extractError}";
             if (vertices.Count == 0) return $"Stock lens {partNumber} contains no optical vertices.";
 
             // 3. Optionally reverse.
-            if (reversed) vertices = StockLensInsertHelpers.ReverseVertexGroup(vertices);
+            if (reversed) vertices = LensInsertHelpers.ReverseVertexGroup(vertices);
 
             // The last inserted vertex has its trailing thickness zeroed (per design:
             // it touches the next existing surface; user adjusts later).
@@ -199,11 +199,11 @@ namespace LensHH.Mcp.Tools
 
             // Snapshot the original group, then write a mirrored copy back.
             var original = new List<Surface>(count);
-            for (int i = 0; i < count; i++) original.Add(StockLensInsertHelpers.CloneSurface(sys.Surfaces[startSurface + i]));
+            for (int i = 0; i < count; i++) original.Add(LensInsertHelpers.CloneSurface(sys.Surfaces[startSurface + i]));
 
             for (int i = 0; i < count; i++)
             {
-                var newSurf = StockLensInsertHelpers.CloneSurface(original[count - 1 - i]);
+                var newSurf = LensInsertHelpers.CloneSurface(original[count - 1 - i]);
                 newSurf.Radius = -original[count - 1 - i].Radius; // sign of infinity stays infinity
 
                 // Thickness + material reorder: gap *after* surface i comes from
