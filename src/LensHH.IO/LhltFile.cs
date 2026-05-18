@@ -30,6 +30,13 @@ namespace LensHH.Core.IO
         public List<LhltPickup> Pickups { get; set; } = new List<LhltPickup>();
         public RayAimingMode RayAiming { get; set; }
         public bool IsAfocal { get; set; }
+        /// <summary>
+        /// When true, the merit-function evaluator emits a stiff per-ray
+        /// penalty for every vignetted ray (on- AND off-axis). Default false
+        /// preserves the legacy "off-axis vignetting is free" behavior. See
+        /// OpticalSystem.PenalizeVignetting for the runtime semantics.
+        /// </summary>
+        public bool PenalizeVignetting { get; set; }
         public List<string> GlassCatalogs { get; set; } = new List<string>();
 
         // Glass substitution settings

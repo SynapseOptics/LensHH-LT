@@ -53,6 +53,7 @@ namespace LensHH.Core.IO
                 FieldType = file.FieldType,
                 RayAiming = file.RayAiming,
                 IsAfocal = file.IsAfocal,
+                PenalizeVignetting = file.PenalizeVignetting,
                 GlassCatalogs = file.GlassCatalogs ?? new System.Collections.Generic.List<string>()
             };
 

@@ -46,6 +46,11 @@
     <!-- Afocal -->
     <CheckBox Content="Afocal" IsChecked="{Binding IsAfocal}" />
 
+    <!-- Penalize Vignetting -->
+    <CheckBox Content="Penalize Vignetting"
+              IsChecked="{Binding PenalizeVignetting}"
+              ToolTip.Tip="When on, every vignetted (clipped) ray — off-axis included — incurs a stiff per-ray penalty during optimization. Use for stock-lens designs where catalog apertures must not be exceeded." />
+
     <!-- Ray Aiming -->
     <CheckBox Content="Real Ray Aiming" IsChecked="{Binding RayAiming}" />
     <CheckBox Content="Robust Ray Aiming (wide angle)" IsChecked="{Binding RobustRayAiming}"

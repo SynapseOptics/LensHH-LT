@@ -57,7 +57,7 @@ public partial class OperandRowViewModel : ObservableObject
             => Category.MacroRect,
 
         // System
-        OperandType.EFL or OperandType.MAG or OperandType.AMAG
+        OperandType.EFL or OperandType.BFL or OperandType.MAG or OperandType.AMAG
         or OperandType.EXPZ or OperandType.ENPZ
         or OperandType.ENPD or OperandType.EXPD or OperandType.TTRACK
         or OperandType.CFS
@@ -487,6 +487,7 @@ public partial class MeritFunctionEditorViewModel : ObservableObject
 
         // System
         OperandType.EFL => "EFL — Effective focal length. Params: Wave (optional)",
+        OperandType.BFL => "BFL — Paraxial back focal length: distance from last refractive surface to paraxial focus. For infinite conjugate matches the parallel-ray BFL; for finite conjugate equals the paraxial image distance from the last lens. Params: Wave (optional)",
         OperandType.MAG => "MAG — Paraxial magnification. Params: Wave (optional)",
         OperandType.AMAG => "AMAG — Angular magnification. Params: Wave (optional)",
         OperandType.EXPZ => "EXPZ — Exit pupil Z position (distance from image). Params: Wave (optional)",

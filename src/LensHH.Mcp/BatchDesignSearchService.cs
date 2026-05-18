@@ -36,6 +36,15 @@ namespace LensHH.Mcp
         public string? Label { get; set; }
         /// <summary>For floating-stop hosts (case a/b): seed S1.Thickness.</summary>
         public double? EntrancePupil { get; set; }
+        /// <summary>
+        /// Optional BFL seed. When present, overrides the last insert's
+        /// trailing "air thickness" — that air gap becomes the back focal
+        /// length seed for the optimizer. Convenient when the candidate
+        /// JSON's last insert just says <c>"air thickness": 0</c> and the
+        /// real BFL is set once at the top level instead of being duplicated
+        /// into the last insert. Ignored when there are no inserts.
+        /// </summary>
+        public double? Bfl { get; set; }
         public List<InsertSpec> Inserts { get; set; } = new();
     }
 
@@ -317,6 +326,16 @@ namespace LensHH.Mcp
                     cursor = lastInsertedIdx;
                     priorByHostTarget.Add((hostTarget, vertices.Count));
                     totalVerticesAdded += vertices.Count;
+                }
+
+                // Optional BFL seed: override the LAST insert's trailing air
+                // gap with cand.Bfl. We do this AFTER the insert loop so it
+                // applies regardless of how many inserts the candidate had.
+                if (cand.Bfl.HasValue && cursor.HasValue)
+                {
+                    system.Surfaces[cursor.Value].Thickness = cand.Bfl.Value;
+                    // Already marked variable inside the insert loop, no need
+                    // to re-mark.
                 }
 
                 for (int i = 0; i < system.Surfaces.Count; i++) system.Surfaces[i].Index = i;

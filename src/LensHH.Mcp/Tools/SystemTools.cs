@@ -150,6 +150,7 @@ namespace LensHH.Mcp.Tools
             sb.AppendLine($"Field Type: {sys.FieldType}");
             sb.AppendLine($"Ray Aiming: {sys.RayAiming}");
             sb.AppendLine($"Afocal: {sys.IsAfocal}");
+            sb.AppendLine($"Penalize Vignetting: {sys.PenalizeVignetting}");
             sb.AppendLine($"Stop Surface: {sys.StopSurfaceIndex}");
             sb.AppendLine();
 
@@ -317,6 +318,13 @@ namespace LensHH.Mcp.Tools
         {
             _session.System.IsAfocal = afocal;
             return $"Afocal mode set to {(afocal ? "On" : "Off")}.";
+        }
+
+        [McpServerTool, Description("Toggle the system's PenalizeVignetting flag. When true, the merit-function evaluator emits a stiff per-ray penalty for EVERY vignetted ray, including off-axis. Default (false) preserves the legacy 'off-axis vignetting is free' behavior. Turn this on for stock-lens designs where apertures are fixed by the catalog and the optimizer must not 'buy' aberration relief by clipping pupil rays. Persisted in .lhlt.")]
+        public string SetPenalizeVignetting(bool penalize)
+        {
+            _session.System.PenalizeVignetting = penalize;
+            return $"PenalizeVignetting set to {(penalize ? "On" : "Off")}.";
         }
 
         [McpServerTool, Description("Set preferred glass catalogs for glass search and substitution. Provide catalog names as comma-separated values (e.g. 'SCHOTT,OHARA,HOYA'). Empty string clears the list.")]

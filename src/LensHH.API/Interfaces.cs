@@ -77,6 +77,7 @@ namespace LensHH.API
         void SetFieldType(FieldType fieldType);
         void SetRayAiming(RayAimingMode mode);
         void SetAfocal(bool afocal);
+        void SetPenalizeVignetting(bool penalize);
 
         int AddSurface(double radius = double.PositiveInfinity, double thickness = 0,
             string material = "", double semiDiameter = 0);

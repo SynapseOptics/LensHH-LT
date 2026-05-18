@@ -10,7 +10,7 @@ namespace LensHH.CLI.Commands
     public class SystemCommand : ICommand
     {
         public string Name => "system";
-        public string Description => "System properties: info, set-aperture, set-fields, set-wavelengths, set-afocal, set-catalogs";
+        public string Description => "System properties: info, set-aperture, set-fields, set-wavelengths, set-afocal, set-penalize-vignetting, set-catalogs";
 
         public string Help => @"[bold]system[/] - System properties
   [green]system info[/]                          Show system summary
@@ -23,6 +23,7 @@ namespace LensHH.CLI.Commands
   [green]system edit-wavelength <index> [[wv=<v>]] [[weight=<v>]][/]  Edit wavelength value/weight
   [green]system edit-field <index> [[y=<v>]] [[weight=<v>]][/]        Edit field Y value/weight
   [green]system set-afocal on|off[/]                 Set afocal mode
+  [green]system set-penalize-vignetting on|off[/]    Penalize all vignetted rays (incl. off-axis) during optimization
   [green]system set-ray-aiming off|real|robust[/]   Set ray aiming mode
   [green]system set-catalogs <cat1> <cat2> ...[/]   Set preferred glass catalogs (e.g. SCHOTT OHARA)";
 
@@ -60,6 +61,10 @@ namespace LensHH.CLI.Commands
                 case "set-afocal":
                     SetAfocal(session, args);
                     break;
+                case "set-penalize-vignetting":
+                case "set-penalize-vignette":
+                    SetPenalizeVignetting(session, args);
+                    break;
                 case "set-ray-aiming":
                     SetRayAiming(session, args);
                     break;
@@ -80,6 +85,7 @@ namespace LensHH.CLI.Commands
             AnsiConsole.MarkupLine($"[bold]Aperture:[/] {sys.Aperture.Type} = {sys.Aperture.Value}");
             AnsiConsole.MarkupLine($"[bold]Field Type:[/] {sys.FieldType}");
             AnsiConsole.MarkupLine($"[bold]Afocal:[/] {(sys.IsAfocal ? "On" : "Off")}");
+            AnsiConsole.MarkupLine($"[bold]Penalize Vignetting:[/] {(sys.PenalizeVignetting ? "On" : "Off")}");
             AnsiConsole.MarkupLine($"[bold]Ray Aiming:[/] {sys.RayAiming}");
             AnsiConsole.MarkupLine($"[bold]Glass Catalogs:[/] {(sys.GlassCatalogs.Count > 0 ? string.Join(", ", sys.GlassCatalogs) : "(none)")}");
 
@@ -359,6 +365,36 @@ namespace LensHH.CLI.Commands
             }
 
             AnsiConsole.MarkupLine($"[green]Afocal mode set to {(sys.IsAfocal ? "On" : "Off")}[/]");
+        }
+
+        private void SetPenalizeVignetting(Session session, string[] args)
+        {
+            var sys = session.EnsureSystem();
+            if (args.Length < 2)
+            {
+                AnsiConsole.MarkupLine($"[bold]Penalize Vignetting:[/] {(sys.PenalizeVignetting ? "On" : "Off")}");
+                AnsiConsole.MarkupLine("[dim]Usage: system set-penalize-vignetting on|off[/]");
+                return;
+            }
+
+            switch (args[1].ToLowerInvariant())
+            {
+                case "on":
+                case "true":
+                case "1":
+                    sys.PenalizeVignetting = true;
+                    break;
+                case "off":
+                case "false":
+                case "0":
+                    sys.PenalizeVignetting = false;
+                    break;
+                default:
+                    AnsiConsole.MarkupLine("[red]Use 'on' or 'off'.[/]");
+                    return;
+            }
+
+            AnsiConsole.MarkupLine($"[green]Penalize Vignetting set to {(sys.PenalizeVignetting ? "On" : "Off")}[/]");
         }
 
         private void SetCatalogs(Session session, string[] args)

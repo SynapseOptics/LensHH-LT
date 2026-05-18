@@ -52,6 +52,7 @@ namespace LensHH.Core.IO
                 FieldType = system.FieldType,
                 RayAiming = system.RayAiming,
                 IsAfocal = system.IsAfocal,
+                PenalizeVignetting = system.PenalizeVignetting,
                 GlassCatalogs = system.GlassCatalogs
             };
 

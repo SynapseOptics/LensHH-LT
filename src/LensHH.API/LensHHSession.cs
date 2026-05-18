@@ -305,6 +305,18 @@ namespace LensHH.API
             _system!.IsAfocal = afocal;
         }
 
+        /// <summary>
+        /// Set the system's PenalizeVignetting flag. When true, off-axis
+        /// vignetting incurs a per-ray penalty during merit-function
+        /// evaluation (stock-lens use case). Default is false (off-axis
+        /// vignetting is free, the legacy behavior).
+        /// </summary>
+        public void SetPenalizeVignetting(bool penalize)
+        {
+            EnsureSystem();
+            _system!.PenalizeVignetting = penalize;
+        }
+
         // ─── Surface editing ───────────────────────────────────────────
 
         /// <summary>Insert a new surface before the image surface. Returns the new surface index.</summary>

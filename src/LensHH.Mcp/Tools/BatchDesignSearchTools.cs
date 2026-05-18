@@ -29,7 +29,8 @@ namespace LensHH.Mcp.Tools
             + "to load the winner into the session. "
             + "\n\n"
             + "candidatesJson is a JSON array. Each element is an object: "
-            + "{ label?, entrance pupil?, inserts: [{ partNumber, vendor?, reversed?, air thickness, after_surface? }] }. "
+            + "{ label?, entrance pupil?, bfl?, inserts: [{ partNumber, vendor?, reversed?, air thickness, after_surface? }] }. "
+            + "When `bfl` is set on the candidate, it overrides the LAST insert's 'air thickness' — i.e. the trailing air gap from the last lens to IMG becomes the BFL seed. "
             + "Insert ops without after_surface go sequentially after the prior insert; with after_surface they "
             + "start a new group at HOST-numbered surface after_surface. The host's air gap at any insert's "
             + "after_surface (the 'leading gap') is automatically marked variable; so is every insert's trailing "
@@ -205,6 +206,9 @@ namespace LensHH.Mcp.Tools
                     TryGetDouble(elem, "entrance_pupil", out ep) ||
                     TryGetDouble(elem, "entrancePupil",  out ep))
                     c.EntrancePupil = ep;
+                if (TryGetDouble(elem, "bfl", out double bfl) ||
+                    TryGetDouble(elem, "BFL", out bfl))
+                    c.Bfl = bfl;
                 if (elem.TryGetProperty("inserts", out var ins) && ins.ValueKind == JsonValueKind.Array)
                 {
                     foreach (var ie in ins.EnumerateArray())

@@ -15,13 +15,13 @@ namespace LensHH.Mcp.Tools
         private readonly McpSession _session;
         public OptimizationTools(McpSession session) => _session = session;
 
-        [McpServerTool, Description("Add a merit function operand. type is the operand type (e.g. EFL, CV, RX, RY, WAVEX, CTA, CT). target is the desired value. weight is the importance. Optional: surface, wave, min, max, operationCode (NONE,SINE,COSINE,ACOS,ASIN,TANGENT,ATN,SQRT,ABSO). Boundary operands (CT, CTA, CTG, ET, EA, EG, CV, CVA, CVG, SD) use min/max to constrain a surface range.")]
+        [McpServerTool, Description("Add a merit function operand. type is the operand type (e.g. EFL, BFL, CV, RX, RY, WAVEX, CTA, CT). target is the desired value. weight is the importance. Optional: surface (Surface1), surface2 (Surface2, for span boundary operands), wave, min, max, operationCode (NONE,SINE,COSINE,ACOS,ASIN,TANGENT,ATN,SQRT,ABSO). Boundary operands (CT, CTA, CTG, ET, EA, EG, CV, CVA, CVG, SD, DTRG, RI, RE) scan [surface, surface2] and use min/max. Surface sentinels: 0 = mirror the other endpoint (single-surface span); -1 = last refractive surface (count − 2); -2 = image; -3 = first surface after stop; -4 = stop surface. When omitted, surface2 defaults to surface so single-surface operands work without an extra parameter.")]
         public string AddOperand(string type, double target = 0, double weight = 1,
-            int surface = 0, int wave = 0, double? min = null, double? max = null,
+            int surface = 0, int? surface2 = null, int wave = 0, double? min = null, double? max = null,
             string operationCode = "NONE")
         {
             if (!Enum.TryParse<OperandType>(type, true, out var opType))
-                return $"Unknown operand type '{type}'. Use types like EFL, CV, RX, RY, WAVEX, SPOTM, SPOT, CTA, CT, etc.";
+                return $"Unknown operand type '{type}'. Use types like EFL, BFL, CV, RX, RY, WAVEX, SPOTM, SPOT, CTA, CT, etc.";
 
             if (!Enum.TryParse<Core.Enums.OperationCode>(operationCode, true, out var opCode))
                 opCode = Core.Enums.OperationCode.None;
@@ -32,6 +32,13 @@ namespace LensHH.Mcp.Tools
                 Target = target,
                 Weight = weight,
                 Surface1 = surface,
+                // Default: single-surface span. The evaluator's sentinel resolver
+                // treats Surface2=0 as "mirror Surface1", so an `add_operand(...,
+                // surface=5)` call without surface2 evaluates as if the user had
+                // typed surface2=5 — fixing the long-standing trap where
+                // boundary operands authored via add_operand never scanned any
+                // surfaces because Surface2 silently stayed at 0.
+                Surface2 = surface2 ?? surface,
                 WaveIndex = wave,
                 OpCode = opCode
             };
@@ -43,7 +50,8 @@ namespace LensHH.Mcp.Tools
                 _session.MeritFunction = new MeritFunction();
 
             _session.MeritFunction.Operands.Add(operand);
-            return $"Added {type} operand (target={target}, weight={weight}). " +
+            return $"Added {type} operand (target={target}, weight={weight}, " +
+                   $"surface={surface}, surface2={operand.Surface2}). " +
                    $"Total operands: {_session.MeritFunction.Operands.Count}.";
         }
 
@@ -54,14 +62,14 @@ namespace LensHH.Mcp.Tools
                 return "No operands in merit function.";
 
             var sb = new StringBuilder();
-            sb.AppendLine($"{"#",4} {"Type",-12} {"Target",10} {"Weight",8} {"Min",10} {"Max",10} {"Surf",5} {"Wave",5}");
+            sb.AppendLine($"{"#",4} {"Type",-12} {"Target",10} {"Weight",8} {"Min",10} {"Max",10} {"Surf1",6} {"Surf2",6} {"Wave",5}");
 
             for (int i = 0; i < _session.MeritFunction.Operands.Count; i++)
             {
                 var op = _session.MeritFunction.Operands[i];
                 string minStr = op.Minimum.HasValue ? op.Minimum.Value.ToString("G4") : "---";
                 string maxStr = op.Maximum.HasValue ? op.Maximum.Value.ToString("G4") : "---";
-                sb.AppendLine($"{i,4} {op.Type,-12} {op.Target,10:G4} {op.Weight,8:F2} {minStr,10} {maxStr,10} {op.Surface1,5} {op.WaveIndex,5}");
+                sb.AppendLine($"{i,4} {op.Type,-12} {op.Target,10:G4} {op.Weight,8:F2} {minStr,10} {maxStr,10} {op.Surface1,6} {op.Surface2,6} {op.WaveIndex,5}");
             }
             return sb.ToString();
         }
@@ -84,9 +92,9 @@ namespace LensHH.Mcp.Tools
             return $"Operand {index} removed. Total operands: {_session.MeritFunction.Operands.Count}.";
         }
 
-        [McpServerTool, Description("Edit a merit function operand in place by index. Only provided parameters are changed; omit parameters to keep their current values. index is 0-based.")]
+        [McpServerTool, Description("Edit a merit function operand in place by index. Only provided parameters are changed; omit parameters to keep their current values. index is 0-based. surface sets Surface1, surface2 sets Surface2 (the span end for boundary operands). Surface sentinels: 0 = mirror the other endpoint; -1 = last refractive surface; -2 = image; -3 = first surface after stop; -4 = stop surface.")]
         public string EditOperand(int index, double? target = null, double? weight = null,
-            int? surface = null, int? wave = null, double? min = null, double? max = null,
+            int? surface = null, int? surface2 = null, int? wave = null, double? min = null, double? max = null,
             string? operationCode = null)
         {
             if (_session.MeritFunction == null || index < 0 || index >= _session.MeritFunction.Operands.Count)
@@ -96,6 +104,7 @@ namespace LensHH.Mcp.Tools
             if (target.HasValue) op.Target = target.Value;
             if (weight.HasValue) op.Weight = weight.Value;
             if (surface.HasValue) op.Surface1 = surface.Value;
+            if (surface2.HasValue) op.Surface2 = surface2.Value;
             if (wave.HasValue) op.WaveIndex = wave.Value;
             if (min.HasValue) op.Minimum = min.Value;
             if (max.HasValue) op.Maximum = max.Value;
