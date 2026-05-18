@@ -174,8 +174,14 @@ public partial class OperandRowViewModel : ObservableObject
         {
             if (!NeedsSurface || !int.TryParse(value, out int v)) return;
             int maxSurf = _session.System.Surfaces.Count - 1;
-            if (v < 0 || v > maxSurf) return;
-            if (GetCategory() == Category.Boundary)
+            // Boundary operands accept the sentinel range -4..-1 in addition
+            // to literal [0, maxSurf]: -1 = last refractive, -2 = image,
+            // -3 = first surface after stop, -4 = stop. Other categories
+            // (ray intercept, surface property) don't use sentinels.
+            bool isBoundary = GetCategory() == Category.Boundary;
+            int minV = isBoundary ? -4 : 0;
+            if (v < minV || v > maxSurf) return;
+            if (isBoundary)
                 _operand.Surface1 = v;
             else { _operand.SurfaceIndex = v; _operand.Surface1 = v; }
             OnPropertyChanged();
@@ -189,7 +195,10 @@ public partial class OperandRowViewModel : ObservableObject
         {
             if (!NeedsSurface2 || !int.TryParse(value, out int v)) return;
             int maxSurf = _session.System.Surfaces.Count - 1;
-            if (v < 0 || v > maxSurf) return;
+            // Surface2 is boundary-only; accept the sentinel range -4..-1
+            // alongside literal [0, maxSurf] so users can type the auto-
+            // tracking placeholders directly into the merit-function grid.
+            if (v < -4 || v > maxSurf) return;
             _operand.Surface2 = v;
             OnPropertyChanged();
         }
