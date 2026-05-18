@@ -1,6 +1,6 @@
 {
   "FormatVersion": 1,
-  "Title": "f=25.0mm, \uFFFD1/2\u0022 Achromatic Doublet, ARC: 400-1100nm",
+  "Title": "f=25.0mm, �1/2\" Achromatic Doublet, ARC: 400-1100nm",
   "Notes": "",
   "Designer": "",
   "Aperture": {
@@ -111,26 +111,6 @@
     },
     {
       "Index": 5,
-      "Type": "Standard",
-      "Comment": "",
-      "Radius": "Infinity",
-      "Thickness": 0,
-      "Material": "",
-      "SemiDiameter": 0,
-      "SemiDiameterMode": "Auto",
-      "ClearAperturePercent": 100,
-      "Conic": 0,
-      "IsStop": false,
-      "InnerRadius": 0,
-      "ObscurationRadius": 0,
-      "FloatingApertureRadius": 0,
-      "CurvatureVariable": false,
-      "ThicknessVariable": false,
-      "ConicVariable": false,
-      "HasMarginalRaySolve": false
-    },
-    {
-      "Index": 6,
       "Type": "Standard",
       "Comment": "",
       "Radius": "Infinity",

@@ -118,26 +118,6 @@
       "ThicknessVariable": false,
       "ConicVariable": false,
       "HasMarginalRaySolve": false
-    },
-    {
-      "Index": 5,
-      "Type": "Standard",
-      "Comment": "",
-      "Radius": "Infinity",
-      "Thickness": 0,
-      "Material": "",
-      "SemiDiameter": 1.776970140809908E-05,
-      "SemiDiameterMode": "Auto",
-      "ClearAperturePercent": 100,
-      "Conic": 0,
-      "IsStop": false,
-      "InnerRadius": 0,
-      "ObscurationRadius": 0,
-      "FloatingApertureRadius": 0,
-      "CurvatureVariable": false,
-      "ThicknessVariable": false,
-      "ConicVariable": false,
-      "HasMarginalRaySolve": false
     }
   ],
   "Wavelengths": [

@@ -151,6 +151,54 @@ namespace LensHH.Core.IO
             // the .lhlt convention is consistent regardless of source. Users
             // who genuinely need ray aiming can re-enable it after import.
             system.RayAiming = LensHH.Core.Enums.RayAimingMode.Off;
+
+            // Some vendor .zmx files insert extra air-only "best-focus offset"
+            // dummies between the last refractive vertex and IMG (e.g. Edmund
+            // 29-094 / 29-095 plano-convex singlets; a few Thorlabs AC / LA /
+            // LJ). For a stock-lens-as-building-block use the offset is noise
+            // — host systems determine their own image plane. They also break
+            // the engine's paraxial BFL = -y/u at surface[N-2] (which then
+            // measures from the dummy, not the lens back). Collapse them into
+            // the lens-back vertex's thickness.
+            CollapseTrailingDummies(system);
+        }
+
+        /// <summary>
+        /// Sum any air-only surfaces between the last refractive vertex and
+        /// IMG into the lens-back vertex's thickness, then remove the
+        /// intermediate dummies. After this runs, the IMG surface always sits
+        /// directly after the lens-back air-side vertex.
+        /// </summary>
+        private static void CollapseTrailingDummies(OpticalSystem system)
+        {
+            int n = system.Surfaces.Count;
+            if (n < 4) return;
+
+            int lastGlassIdx = -1;
+            for (int i = 0; i < n; i++)
+            {
+                if (!string.IsNullOrEmpty(system.Surfaces[i].Material))
+                    lastGlassIdx = i;
+            }
+            if (lastGlassIdx < 0) return;
+
+            int lastBackIdx = lastGlassIdx + 1;
+            int imgIdx = n - 1;
+            int nTrail = imgIdx - lastBackIdx - 1;
+            if (nTrail <= 0) return;
+
+            double sumT = 0.0;
+            for (int i = lastBackIdx; i < imgIdx; i++)
+                sumT += system.Surfaces[i].Thickness;
+            system.Surfaces[lastBackIdx].Thickness = sumT;
+
+            // Remove surfaces (lastBackIdx+1) through (imgIdx-1) in reverse so
+            // indices stay valid through the loop.
+            for (int i = imgIdx - 1; i >= lastBackIdx + 1; i--)
+                system.Surfaces.RemoveAt(i);
+
+            for (int i = 0; i < system.Surfaces.Count; i++)
+                system.Surfaces[i].Index = i;
         }
 
         /// <summary>
