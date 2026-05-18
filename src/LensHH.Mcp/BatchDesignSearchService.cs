@@ -54,6 +54,28 @@ namespace LensHH.Mcp
         public List<(int surfaceIndex, double thickness)> OptimizedThicknesses { get; set; } = new();
         /// <summary>Final EFL (mm), from SystemDataCalculator post-optimization.</summary>
         public double FinalEfl { get; set; } = double.NaN;
+        /// <summary>
+        /// For floating-stop hosts (case a/b where entrance pupil was specified):
+        /// reports where the stop actually landed after the optimizer moved S1.Thickness.
+        /// Null when the candidate didn't supply entrance pupil (cases c/d/e — host stop fixed).
+        /// </summary>
+        public StopLocation? StopLocation { get; set; }
+    }
+
+    /// <summary>
+    /// Post-optimization placement of the entrance pupil relative to the
+    /// lens stack. For case-a hosts the optimizer may move S1.Thickness to
+    /// any value; if that lands the stop INSIDE a glass element, the
+    /// candidate is physically invalid (you can't put an iris inside glass).
+    /// </summary>
+    public class StopLocation
+    {
+        /// <summary>Final S1.Thickness; sign convention matches Zemax (negative = pupil behind S1).</summary>
+        public double S1Thickness { get; set; }
+        /// <summary>"in air before S2" / "between S3 and S4" / "INSIDE glass element at S4" / "between last lens and IMG".</summary>
+        public string Context { get; set; } = "";
+        /// <summary>True if the stop fell inside any glass element — candidate is physically invalid.</summary>
+        public bool BuriedInGlass { get; set; }
     }
 
     /// <summary>
@@ -109,7 +131,19 @@ namespace LensHH.Mcp
             innerOptimizer = (innerOptimizer ?? "lm").ToLowerInvariant();
             if (innerOptimizer != "lm" && innerOptimizer != "multistart")
                 throw new ArgumentException($"innerOptimizer must be 'lm' or 'multistart', got '{innerOptimizer}'.");
-            if (parallelism < 1) parallelism = 1;
+            // Thread-safety audit (2026-05-18, fa6e3a3-era):
+            //   ArbitraryRay     : static _aimCache is ConditionalWeakTable (.NET-thread-safe);
+            //                      DebugLog is atomic bool. Safe under concurrent calls.
+            //   LocalOptimizer   : no non-readonly static fields; pure per-instance state.
+            //   GlassCatalogMgr  : per-McpSession instance; Dictionary read-only after initial
+            //                      load (LM doesn't mutate). Multistart with glass substitution
+            //                      WOULD mutate — agent should pass parallelism=1 in that case.
+            //   Native side      : caller-provides-buffers, no globals (per feedback_native_no_alloc).
+            // Each LocalOptimizer already runs ParallelEvaluation=true internally, so candidate-
+            // level parallelism × LM's inner ray-fan can saturate cores. Cap default at
+            // ProcessorCount/4 to leave breathing room.
+            if (parallelism < 1)
+                parallelism = Math.Max(1, Environment.ProcessorCount / 4);
 
             var job = new RunningJob(kind: "batch_design_search")
             {
@@ -334,6 +368,10 @@ namespace LensHH.Mcp
                 }
                 catch { }
 
+                // Stop-location analysis for case-a/b hosts (floating stop).
+                StopLocation? stopLoc = null;
+                if (cand.EntrancePupil.HasValue) stopLoc = AnalyzeStopLocation(system);
+
                 lock (_lock)
                 {
                     result.InitialMerit         = initMerit;
@@ -341,6 +379,7 @@ namespace LensHH.Mcp
                     result.Iterations           = iters;
                     result.OptimizedThicknesses = optimized;
                     result.FinalEfl             = finalEfl;
+                    result.StopLocation         = stopLoc;
                     result.Status               = "ok";
                 }
             }
@@ -358,6 +397,63 @@ namespace LensHH.Mcp
                 int done = Interlocked.Increment(ref data.Done);
                 job.Phase = $"running {done}/{data.Candidates.Count}";
             }
+        }
+
+        /// <summary>
+        /// Locate the entrance pupil for a case-a/b host after LM converged.
+        /// The host convention is S0=OBJ, S1=stop with thickness = entrance-pupil
+        /// distance (signed). Walk forward summing z from S1 and find which
+        /// inter-surface interval the pupil falls into. If that interval has
+        /// glass material on it, the candidate is physically invalid.
+        /// </summary>
+        private static StopLocation AnalyzeStopLocation(OpticalSystem system)
+        {
+            int stopIdx = system.StopSurfaceIndex;
+            if (stopIdx < 0 || stopIdx >= system.Surfaces.Count)
+                return new StopLocation { S1Thickness = 0, Context = "no stop surface", BuriedInGlass = false };
+
+            double s1T = system.Surfaces[stopIdx].Thickness;
+            // Entrance pupil z relative to S1: just s1T (the thickness IS the offset).
+            // Walk forward from S1 cumulatively; find which gap contains the pupil position.
+            // A negative s1T means the pupil is behind S1 (toward OBJ) — between S0 and S1.
+            if (s1T <= 0)
+            {
+                return new StopLocation
+                {
+                    S1Thickness = s1T,
+                    Context     = $"in air {-s1T:0.###} mm before S{stopIdx + 1} (between S{stopIdx} and S{stopIdx + 1})",
+                    BuriedInGlass = false,
+                };
+            }
+            // Positive s1T: pupil is somewhere downstream of S1. Sum forward.
+            double zRel = 0.0; // z relative to S1 going forward through subsequent surfaces
+            for (int i = stopIdx; i < system.Surfaces.Count - 1; i++)
+            {
+                double t = system.Surfaces[i].Thickness;
+                double zNext = zRel + t;
+                // The pupil at z = s1T falls in the gap (zRel, zNext) on the OUT side of surface i.
+                if (s1T >= zRel && s1T <= zNext)
+                {
+                    bool inGlass = !string.IsNullOrEmpty(system.Surfaces[i].Material)
+                                && !system.Surfaces[i].Material.Equals("MIRROR", StringComparison.OrdinalIgnoreCase);
+                    string context = inGlass
+                        ? $"INSIDE glass element after S{i} (material '{system.Surfaces[i].Material}'), S1.T = {s1T:0.###}"
+                        : $"in air between S{i} and S{i + 1}, S1.T = {s1T:0.###}";
+                    return new StopLocation
+                    {
+                        S1Thickness  = s1T,
+                        Context      = context,
+                        BuriedInGlass = inGlass,
+                    };
+                }
+                zRel = zNext;
+            }
+            return new StopLocation
+            {
+                S1Thickness = s1T,
+                Context     = $"past the last lens vertex, S1.T = {s1T:0.###}",
+                BuriedInGlass = false,
+            };
         }
 
         /// <summary>

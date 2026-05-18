@@ -36,14 +36,16 @@ namespace LensHH.Mcp.Tools
             + "'air thickness'. For build-from-scratch hosts with a floating stop, entrance pupil seeds S1.Thickness. "
             + "\n\n"
             + "innerOptimizer: 'lm' (default, damped least squares — fast) or 'multistart' (heavier, escapes local "
-            + "minima). parallelism: number of candidates to optimize concurrently (default 1; bump only after the "
-            + "engine thread-safety has been audited). "
+            + "minima). parallelism: number of candidates to optimize concurrently. Pass 0 for the service default "
+            + "(Math.Max(1, ProcessorCount/4); each LM already parallelizes its own ray-fan internally). Pass 1 for "
+            + "strict serial — required if you select innerOptimizer=multistart AND your operands enable glass "
+            + "substitution (which mutates the shared catalog and isn't safe under concurrent execution)."
             + "\n\n"
             + "hostLhltPath must point to a .lhlt that already has OBJ, aperture, fields, wavelengths, "
             + "merit-function operands, and the appropriate stop convention for the task case (a / b / c / d / e — "
             + "see docs/agent-stock-lens-workflow.md).")]
         public string BatchDesignSearchStart(string hostLhltPath, string candidatesJson,
-            string innerOptimizer = "lm", int parallelism = 1)
+            string innerOptimizer = "lm", int parallelism = 0)
         {
             List<CandidateDescriptor> candidates;
             try
@@ -110,6 +112,11 @@ namespace LensHH.Mcp.Tools
                 sb.AppendLine($"  {r.CandidateIndex,-4} {lab,-40} {r.Status,-10} {merit,-15} {r.Iterations,-7} {efl,-10}");
                 if (r.Status == "error" && !string.IsNullOrEmpty(r.Error))
                     sb.AppendLine($"        error: {r.Error}");
+                if (r.StopLocation != null)
+                {
+                    string warn = r.StopLocation.BuriedInGlass ? " *** STOP BURIED IN GLASS — physically invalid" : "";
+                    sb.AppendLine($"        stop: {r.StopLocation.Context}{warn}");
+                }
                 if (++shown >= 25) { sb.AppendLine($"  ... ({ordered.Count - shown} more not shown)"); break; }
             }
             if (job.Status == JobStatus.Completed && !string.IsNullOrEmpty(job.Result))

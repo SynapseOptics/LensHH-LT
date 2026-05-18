@@ -1,10 +1,11 @@
 # Agent Workflow — Stock-Lens-Based Design
 
 This is for an AI agent (Claude, Cursor, etc.) connected to the LensHH-LT MCP
-server. The catalog (`catalogs/stock-lens-catalog.sqlite`, ~6,100 parts from
-Edmund Optics and Thorlabs) is queryable through three MCP tools. They compose
-with the existing analyze/optimize tools to let an agent go end-to-end on a
-stock-lens design without leaving the protocol.
+server. The catalog (`catalogs/stock-lens-catalog.sqlite`, ~7,600 parts from
+Edmund Optics, Thorlabs, and Ross Optical) is queryable through three single-
+candidate MCP tools — and a five-tool **batch search** workflow for trying
+many configurations at once. They compose with the existing analyze/optimize
+tools to let an agent go end-to-end without leaving the protocol.
 
 ---
 
@@ -28,6 +29,194 @@ save_as_system             →  persist the best design
 ```
 
 ---
+
+## Batch design search (when you need to compare many candidates)
+
+When the user's problem requires comparing tens or hundreds of stock-lens
+configurations — different parts, orientations, insertion positions — use the
+**batch_design_search** tool family instead of looping the single-candidate
+tools.
+
+```
+agent prepares host .lhlt (case-appropriate stop convention + merit + fields)
+batch_design_search_start(host, candidates_json, innerOptimizer, parallelism)
+  ↓ returns jobId
+batch_design_search_status(jobId)        →  poll for ranked partial results
+                                            (cancel early if a winner is clear)
+batch_design_search_keep(jobId, idx)     →  load winner into session
+batch_design_search_discard(jobId)       →  free memory
+```
+
+### Five host setups depending on the design task
+
+The agent prepares the host `.lhlt` differently per case. **The batch tool itself is agnostic** — it just clones the host, applies inserts, optimizes:
+
+| Case | Host structure | Stop |
+|---|---|---|
+| (a) infinite from scratch | OBJ + S1 stop + merit/fields/wavelengths | floating (S1.T variable, seed via `entrance pupil`) |
+| (a) finite from scratch | OBJ@finite + S1 + S2 stop + S2.T pickup from S1 × −1 | floating (S1.T variable) |
+| (b) with filters in host | (a) + filter flat-flat surfaces fixed in place | floating, same as (a) |
+| (c) augment existing lens, in front | full existing design + its stop | fixed in host |
+| (d) augment existing lens, behind | full existing design + its stop | fixed in host |
+| (e) augment existing lens, both ends | full existing design + its stop | fixed in host |
+
+### Candidate descriptor
+
+```json
+{
+  "label": "optional human-readable name",
+  "entrance pupil": -10,                   // case (a)/(b) only — seeds S1.T
+  "inserts": [
+    { "partNumber": "AC127-050-AB",
+      "reversed": false,                   // optional
+      "air thickness": 5,                  // seed for trailing gap, auto-variable
+      "after_surface": 3                   // optional; if absent → sequential.
+                                           // HOST-numbered (pre-insert indices)
+    }
+  ]
+}
+```
+
+Air-gap variable policy:
+- Trailing `air thickness` after each insert → **variable**
+- Leading gap before each insert (host's `after_surface`.Thickness) → **variable**
+- For case (a)/(b), `entrance pupil` sets S1.Thickness which is already variable
+
+`after_surface` indices refer to the **host's original numbering**, not the
+post-insert state. The tool translates on the fly: each prior insert with
+host-target ≤ H bumps subsequent H references.
+
+### Results
+
+`batch_design_search_status` returns one row per candidate:
+- `candidateIndex, label, finalMerit, iterations, FinalEfl, status`
+- `OptimizedThicknesses` (surfaceIndex → final value, only for variables)
+- `StopLocation` (only for case-(a)/(b) hosts with `entrance pupil`):
+  - `S1Thickness` (final value the LM converged to)
+  - `Context` — e.g. `"in air between S3 and S4"` or **`"INSIDE glass element at S2"`**
+  - `BuriedInGlass` — true means physically invalid: an iris can't go inside a lens
+
+**Always check `BuriedInGlass` before trusting a low merit on a case-(a) host.**
+
+### Five worked examples
+
+#### (a) pure stock from scratch, infinite conjugate, EFL ≈ 50 mm
+
+Host build:
+```
+new_system
+set_aperture(type='EPD', value=10)
+set_wavelengths('0.4861,0.5876,0.6563')
+set_fields('0,5,10')
+add_surface(radius=1e18, thickness=∞)               # S0 = OBJ
+add_surface(radius=1e18, thickness=-10)             # S1 = STOP (set IsStop, mark variable)
+add_surface(radius=1e18, thickness=0)               # IMG placeholder
+add_operand('EFL', target=50, weight=1)
+add_operand('RMSSpot', weight=1)
+save_as_system('C:/tmp/host_a.lhlt')
+```
+
+Batch call:
+```
+batch_design_search_start(
+  hostLhltPath='C:/tmp/host_a.lhlt',
+  candidatesJson='[
+    { "label": "AC127-050 forward",
+      "inserts": [{ "partNumber": "AC127-050-AB", "reversed": false, "air thickness": 0 }],
+      "entrance pupil": -10
+    },
+    { "label": "AC127-050 reversed",
+      "inserts": [{ "partNumber": "AC127-050-AB", "reversed": true, "air thickness": 0 }],
+      "entrance pupil": -10
+    },
+    { "label": "LB1781 + LE5839 reversed",
+      "inserts": [
+        { "partNumber": "LB1781", "reversed": false, "air thickness": 5 },
+        { "partNumber": "LE5839", "reversed": true,  "air thickness": 0 }
+      ],
+      "entrance pupil": -10
+    }
+  ]'
+)
+```
+
+When `batch_design_search_status` reports done, the result rows include
+`StopLocation`; reject any candidate where `BuriedInGlass: true`.
+
+#### (b) with existing filters
+
+Same as (a), but the host has filter surfaces somewhere. Just include filter
+flat-flat surfaces in the host `.lhlt`; the batch tool's `after_surface`
+indices target the host's numbering, so the agent can insert lenses before or
+after the filters without disturbing them.
+
+#### (c) add elements in FRONT of existing custom objective
+
+Host: pre-existing complex objective with its own stop. Candidate `after_surface = 0`
+(insert after OBJ, before existing first lens vertex). Omit `entrance pupil`.
+
+```json
+{ "label": "field-flattener in front",
+  "inserts": [
+    { "partNumber": "LA1027-A", "reversed": false, "air thickness": 2, "after_surface": 0 }
+  ]
+}
+```
+
+#### (d) add elements BEHIND existing custom objective
+
+Host: pre-existing design ending at, say, surface 12 (last lens vertex).
+Candidate `after_surface = 12` (insert after the last lens vertex, before IMG).
+The host's S12.Thickness (= the original BFL) becomes the leading-gap variable
+for the new element.
+
+```json
+{ "label": "relay behind",
+  "inserts": [
+    { "partNumber": "AC127-050-AB", "reversed": false, "air thickness": 8, "after_surface": 12 }
+  ]
+}
+```
+
+#### (e) add elements BEFORE AND BEHIND
+
+Both groups in one candidate. The flat `inserts` list mixes both insertion
+positions; each insert with explicit `after_surface` starts a new group, then
+following inserts go sequentially after the prior:
+
+```json
+{ "label": "front field-flattener + rear relay",
+  "inserts": [
+    { "partNumber": "LA1027-A",     "reversed": false, "air thickness": 3, "after_surface": 0  },
+    { "partNumber": "AC127-050-AB", "reversed": false, "air thickness": 8, "after_surface": 12 }
+  ]
+}
+```
+
+`after_surface` always refers to the **host's** numbering. After the LA1027-A
+insert adds 2 vertices, the AC127-050-AB at host-target=12 lands at current
+index 14 — the tool computes that translation internally.
+
+### Inner optimizer choice
+
+- `innerOptimizer="lm"` (default): one LM pass per candidate. Fast.
+- `innerOptimizer="multistart"`: LM-with-random-restarts per candidate.
+  Heavier, more likely to escape local minima. **Use `parallelism=1` if your
+  merit function has glass-substitution operands** (which mutate the shared
+  glass catalog and aren't safe under concurrent execution).
+
+### Parallelism
+
+`parallelism=0` (default): tool picks `Math.Max(1, ProcessorCount/4)`. Each LM
+already parallelizes its inner ray-fan, so candidate-level × ray-fan can
+saturate CPUs; the 1/4 cap leaves breathing room. Pass `parallelism=1` for
+strict serial.
+
+---
+
+## Single-candidate flow (older)
+
+The original chain still works for one-off explorations:
 
 ## 1. Frame the problem
 
