@@ -32,6 +32,7 @@
     <PackageReference Include="ModelContextProtocol" Version="1.1.0" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.0" />
     <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.10" />
   </ItemGroup>
 
   <!-- Copy native library to output for activation gate and native ray tracing.
