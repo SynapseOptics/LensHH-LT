@@ -24,68 +24,8 @@ namespace LensHH.Mcp.Tools
         private readonly McpSession _session;
         public StockLensTools(McpSession session) => _session = session;
 
-        // ── Database / file-tree discovery ─────────────────────────────────────
-
-        /// <summary>
-        /// Locate stock-lens-catalog.sqlite by walking a few candidate paths
-        /// relative to the MCP executable. Production install: catalogs/ is a
-        /// sibling of mcp/. Dev tree: catalogs/ is several levels up.
-        /// </summary>
-        private static string ResolveDbPath()
-        {
-            // 1. Environment override.
-            var env = Environment.GetEnvironmentVariable("LENSHH_CATALOGS_DIR");
-            if (!string.IsNullOrWhiteSpace(env))
-            {
-                var p = Path.Combine(env, "stock-lens-catalog.sqlite");
-                if (File.Exists(p)) return p;
-            }
-
-            // 2. Standard candidates relative to the executable.
-            foreach (var rel in new[] {
-                Path.Combine("..", "catalogs", "stock-lens-catalog.sqlite"),                       // TEST_INSTALL: mcp/../catalogs/
-                Path.Combine("catalogs", "stock-lens-catalog.sqlite"),                              // App folder root
-                Path.Combine("..", "..", "..", "..", "..", "catalogs", "stock-lens-catalog.sqlite"), // dev: src/LensHH.Mcp/bin/Release/net8.0
-            })
-            {
-                var p = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, rel));
-                if (File.Exists(p)) return p;
-            }
-
-            // 3. Dev-tree fallback: TEST_INSTALL/LensHH-LT/mcp/ → SynapseLensHH-LT/LensHH-LT/catalogs/.
-            //    Mirror-replace "TEST_INSTALL" with "SynapseLensHH-LT" anywhere in the path.
-            string baseDir = AppContext.BaseDirectory.Replace('\\', '/');
-            if (baseDir.Contains("/TEST_INSTALL/"))
-            {
-                string mirror = baseDir.Replace("/TEST_INSTALL/", "/SynapseLensHH-LT/");
-                // walk up from the mirrored base looking for a catalogs/ folder
-                var dir = new DirectoryInfo(mirror);
-                while (dir != null)
-                {
-                    var candidate = Path.Combine(dir.FullName, "catalogs", "stock-lens-catalog.sqlite");
-                    if (File.Exists(candidate)) return candidate;
-                    dir = dir.Parent;
-                }
-            }
-
-            throw new FileNotFoundException(
-                "stock-lens-catalog.sqlite not found. Searched relative to "
-                + AppContext.BaseDirectory + " and set LENSHH_CATALOGS_DIR env var as a fallback.");
-        }
-
-        /// <summary>Resolve a relative path from the SQLite (under catalogs/Lenses/) to an absolute path.</summary>
-        private static string ResolveLhltPath(string lhltRelPath)
-        {
-            // SQLite stores paths like "EdmundOptics/BiConvex/32-018.lhlt"
-            // relative to catalogs/Lenses/. The catalogs root is the dir
-            // containing stock-lens-catalog.sqlite.
-            string dbPath = ResolveDbPath();
-            string catalogsRoot = Path.GetDirectoryName(dbPath)!; // .../catalogs
-            string full = Path.GetFullPath(Path.Combine(catalogsRoot, "Lenses", lhltRelPath));
-            if (!File.Exists(full))
-                throw new FileNotFoundException($"Stock-lens .lhlt not found: {full}");
-            return full;
-        }
+        // Catalog path resolution + vertex helpers live in StockLensInsertHelpers
+        // (shared with BatchDesignSearchService).
 
         // ── Tool 1: search ─────────────────────────────────────────────────────
 
@@ -111,7 +51,7 @@ namespace LensHH.Mcp.Tools
             double? vdPrimaryMax = null,
             int limit = 20)
         {
-            string dbPath = ResolveDbPath();
+            string dbPath = StockLensInsertHelpers.ResolveDbPath();
             using var conn = new SqliteConnection($"Data Source={dbPath};Mode=ReadOnly");
             conn.Open();
 
@@ -194,41 +134,19 @@ namespace LensHH.Mcp.Tools
                 return $"afterSurface {afterSurface} out of range (0 to {sys.Surfaces.Count - 1}).";
 
             // 1. Resolve part number → lhlt path via SQLite.
-            string lhltRel;
-            string resolvedVendor;
-            {
-                string dbPath = ResolveDbPath();
-                using var conn = new SqliteConnection($"Data Source={dbPath};Mode=ReadOnly");
-                conn.Open();
-                using var cmd = conn.CreateCommand();
-                if (vendor != null)
-                {
-                    cmd.CommandText = "SELECT vendor, lhlt_relpath FROM stock_lenses WHERE vendor=@v AND part_number=@p LIMIT 1;";
-                    cmd.Parameters.AddWithValue("@v", vendor);
-                }
-                else
-                {
-                    cmd.CommandText = "SELECT vendor, lhlt_relpath FROM stock_lenses WHERE part_number=@p LIMIT 1;";
-                }
-                cmd.Parameters.AddWithValue("@p", partNumber);
-                using var rdr = cmd.ExecuteReader();
-                if (!rdr.Read())
-                    return $"Stock lens not found: part_number='{partNumber}'{(vendor != null ? $", vendor='{vendor}'" : "")}.";
-                resolvedVendor = rdr.GetString(0);
-                if (rdr.IsDBNull(1))
-                    return $"Stock lens '{partNumber}' has no .lhlt file recorded in the catalog.";
-                lhltRel = rdr.GetString(1);
-            }
-            string lhltPath = ResolveLhltPath(lhltRel);
+            string lhltRel; string resolvedVendor;
+            try { (resolvedVendor, lhltRel) = StockLensInsertHelpers.ResolvePart(partNumber, vendor); }
+            catch (Exception ex) { return ex.Message; }
+            string lhltPath = StockLensInsertHelpers.ResolveLhltPath(lhltRel);
 
             // 2. Load the stock-lens .lhlt and extract just its lens vertices.
             var stockResult = LhltReader.Read(lhltPath);
-            var vertices = ExtractLensVertices(stockResult.System, out string? extractError);
+            var vertices = StockLensInsertHelpers.ExtractLensVertices(stockResult.System, out string? extractError);
             if (vertices == null) return $"Failed to extract lens vertices from {lhltRel}: {extractError}";
             if (vertices.Count == 0) return $"Stock lens {partNumber} contains no optical vertices.";
 
             // 3. Optionally reverse.
-            if (reversed) vertices = ReverseVertexGroup(vertices);
+            if (reversed) vertices = StockLensInsertHelpers.ReverseVertexGroup(vertices);
 
             // The last inserted vertex has its trailing thickness zeroed (per design:
             // it touches the next existing surface; user adjusts later).
@@ -281,11 +199,11 @@ namespace LensHH.Mcp.Tools
 
             // Snapshot the original group, then write a mirrored copy back.
             var original = new List<Surface>(count);
-            for (int i = 0; i < count; i++) original.Add(CloneSurface(sys.Surfaces[startSurface + i]));
+            for (int i = 0; i < count; i++) original.Add(StockLensInsertHelpers.CloneSurface(sys.Surfaces[startSurface + i]));
 
             for (int i = 0; i < count; i++)
             {
-                var newSurf = CloneSurface(original[count - 1 - i]);
+                var newSurf = StockLensInsertHelpers.CloneSurface(original[count - 1 - i]);
                 newSurf.Radius = -original[count - 1 - i].Radius; // sign of infinity stays infinity
 
                 // Thickness + material reorder: gap *after* surface i comes from
@@ -314,98 +232,6 @@ namespace LensHH.Mcp.Tools
             return string.Format(System.Globalization.CultureInfo.InvariantCulture,
                 "Reversed surfaces [{0}-{1}] ({2} surfaces). EFL {3:0.###} -> {4:0.###} mm; F/# {5:0.##} -> {6:0.##}.",
                 startSurface, startSurface + count - 1, count, eflBefore, eflAfter, fnBefore, fnAfter);
-        }
-
-        // ── Internal helpers ───────────────────────────────────────────────────
-
-        /// <summary>
-        /// Return just the optical-vertex surfaces from a stock-lens .lhlt:
-        /// skip OBJ (index 0), the dummy aperture stop our stock-lens import
-        /// inserts (the next surface, IsStop=true, R=∞, T=0, material=""),
-        /// and IMG (last surface). The remaining surfaces are the lens body.
-        /// </summary>
-        private static List<Surface>? ExtractLensVertices(OpticalSystem system, out string? error)
-        {
-            error = null;
-            int n = system.Surfaces.Count;
-            if (n < 4)
-            {
-                error = $"system has only {n} surface(s); need at least 4 (OBJ + stop + lens + IMG)";
-                return null;
-            }
-
-            // Find the dummy stop surface: first IsStop surface after OBJ.
-            int stopIdx = -1;
-            for (int i = 1; i < n - 1; i++)
-            {
-                if (system.Surfaces[i].IsStop) { stopIdx = i; break; }
-            }
-            if (stopIdx < 0)
-            {
-                error = ".lhlt has no stop surface; cannot identify which range is the lens body";
-                return null;
-            }
-
-            // Lens vertices = surfaces strictly between the stop and the IMG surface.
-            var verts = new List<Surface>();
-            for (int i = stopIdx + 1; i < n - 1; i++)
-                verts.Add(CloneSurface(system.Surfaces[i]));
-            // Force IsStop=false on all extracted vertices (the host system has its own stop).
-            foreach (var s in verts) s.IsStop = false;
-            return verts;
-        }
-
-        private static List<Surface> ReverseVertexGroup(List<Surface> vertices)
-        {
-            int n = vertices.Count;
-            var reversed = new List<Surface>(n);
-            for (int i = 0; i < n; i++)
-            {
-                var src = CloneSurface(vertices[n - 1 - i]);
-                src.Radius = -vertices[n - 1 - i].Radius;
-                if (i < n - 1)
-                {
-                    src.Thickness = vertices[n - 2 - i].Thickness;
-                    src.Material  = vertices[n - 2 - i].Material;
-                }
-                else
-                {
-                    // Trailing surface: keep its own thickness (caller will zero it
-                    // for InsertStockLens, but ReverseVertexGroup itself is generic).
-                    src.Thickness = vertices[n - 1].Thickness;
-                    src.Material  = vertices[n - 1].Material;
-                }
-                reversed.Add(src);
-            }
-            return reversed;
-        }
-
-        private static Surface CloneSurface(Surface s)
-        {
-            return new Surface
-            {
-                Index                  = s.Index,
-                Type                   = s.Type,
-                Comment                = s.Comment,
-                Radius                 = s.Radius,
-                Thickness              = s.Thickness,
-                Material               = s.Material,
-                SemiDiameter           = s.SemiDiameter,
-                SemiDiameterMode       = s.SemiDiameterMode,
-                ClearAperturePercent   = s.ClearAperturePercent,
-                Conic                  = s.Conic,
-                AsphericCoefficients   = s.AsphericCoefficients != null ? (double[])s.AsphericCoefficients.Clone() : new double[8],
-                CurvatureVariable      = s.CurvatureVariable,
-                ThicknessVariable      = s.ThicknessVariable,
-                ConicVariable          = s.ConicVariable,
-                AsphericVariable       = s.AsphericVariable != null ? (bool[])s.AsphericVariable.Clone() : new bool[8],
-                HasMarginalRaySolve    = s.HasMarginalRaySolve,
-                IsStop                 = s.IsStop,
-                InnerRadius            = s.InnerRadius,
-                ClapOuterRadius        = s.ClapOuterRadius,
-                ObscurationRadius      = s.ObscurationRadius,
-                FloatingApertureRadius = s.FloatingApertureRadius,
-            };
         }
 
         private (double efl, double fnum) TryGetEflFnum(OpticalSystem system)

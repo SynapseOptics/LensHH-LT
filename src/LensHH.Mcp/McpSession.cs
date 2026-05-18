@@ -182,6 +182,13 @@ namespace LensHH.Mcp
         public MeritFunction? MeritFunction { get; set; }
         public ConfigurationEditor? ConfigEditor { get; set; }
 
+        /// <summary>
+        /// Backing store for the batch_design_search_* MCP tools. Holds
+        /// per-job structural data (candidate list, results array) keyed by
+        /// the RunningJob's JobId. Persists for the life of the session.
+        /// </summary>
+        public BatchDesignSearchService BatchDesignSearch { get; } = new BatchDesignSearchService();
+
         public string? CurrentFilePath
         {
             get => _currentFilePath;
