@@ -40,6 +40,10 @@ and the programmatic interfaces.
 - **[API, CLI, and MCP](api-cli-mcp.md)** — programmatic access: embed the
   C# API in your own .NET code, drive the engine from the interactive
   CLI, or expose it to Claude/Cursor/other MCP hosts.
+- **[Agent Workflow — Stock-Lens-Based Design](agent-stock-lens-workflow.md)** —
+  recipe for an LLM agent to chain `search_stock_lenses` →
+  `insert_stock_lens` → analyze → `reverse_lens` → optimize against the
+  bundled 6,100-part Edmund + Thorlabs catalog.
 - **[Building from Source](building.md)** — required on macOS (no
   installer); also covers Linux and source-build options on Windows.
 
