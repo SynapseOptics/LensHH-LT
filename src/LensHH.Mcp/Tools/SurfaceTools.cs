@@ -58,6 +58,96 @@ namespace LensHH.Mcp.Tools
             return $"Surface added at index {insertIndex}. System now has {sys.Surfaces.Count} surfaces.";
         }
 
+        [McpServerTool, Description(
+            "Insert a complete singlet (one glass element) after a given surface. Adds TWO surfaces — glass front and glass back — with every invariant the engine relies on set correctly: "
+            + "SemiDiameter (defaults to 12.5 mm = Ø25, override via semiDiameter), SemiDiameterMode=Auto, Material set on the front surface and explicitly empty-string on the back surface (so the JSON serializes consistently and a reload doesn't produce null materials that crash ray tracing), and both curvatures + thicknesses marked as optimization variables by default. "
+            + "frontRadius / backRadius in mm (use 1e18 for plano). glassThickness is the center thickness of the glass. material is the glass name (required, no empty allowed). airThicknessAfter is the air gap from the singlet's back surface to whatever comes next (default 5 mm). markCurvaturesVariable / markThicknessesVariable default true. The surface BEFORE afterSurface keeps its existing thickness as the leading air gap to the new singlet — adjust separately if needed. "
+            + "Returns the indices of the inserted front and back surfaces.")]
+        public string AddSinglet(
+            int afterSurface,
+            double frontRadius,
+            double backRadius,
+            double glassThickness,
+            string material,
+            double semiDiameter = 12.5,
+            double airThicknessAfter = 5.0,
+            bool markCurvaturesVariable = true,
+            bool markThicknessesVariable = true,
+            double frontConic = 0,
+            double backConic = 0)
+        {
+            // ── Input validation ────────────────────────────────────────────────
+            // Catch every "agent forgot to specify X" failure mode at the boundary
+            // so the engine sees a fully-formed pair of surfaces every time.
+            if (string.IsNullOrWhiteSpace(material))
+                return "AddSinglet error: material is required (use a glass name like 'N-BK7'; empty/whitespace not allowed for the glass surface).";
+            if (semiDiameter <= 0)
+                return $"AddSinglet error: semiDiameter must be positive (got {semiDiameter}).";
+            if (glassThickness <= 0)
+                return $"AddSinglet error: glassThickness must be positive (got {glassThickness}).";
+
+            var sys = _session.System;
+            if (afterSurface < 0 || afterSurface >= sys.Surfaces.Count - 1)
+                return $"AddSinglet error: afterSurface={afterSurface} out of range (must be 0..{sys.Surfaces.Count - 2}; can't insert after image surface).";
+
+            // ── Build the two surfaces with every required field set ──────────
+            // KEY INVARIANTS this helper enforces (vs raw add_surface):
+            //   * SemiDiameter > 0       — zero crashes the ray-trace null path
+            //   * SemiDiameterMode=Auto  — lets paraxial size the actual rim later
+            //   * back.Material = ""    — empty string, NOT null. AddSurface's
+            //                              IsNullOrWhitespace-to-null mapping
+            //                              causes the JSON serializer to skip
+            //                              the field entirely, and the next load
+            //                              reads it back as null which trips
+            //                              MaterialIsAir checks elsewhere.
+            //   * Variable flags set    — caller will optimize; defaults reflect
+            //                              the typical "vary everything" intent.
+            var front = new Surface
+            {
+                Radius              = frontRadius,
+                Thickness           = glassThickness,
+                Material            = material,
+                Conic               = frontConic,
+                SemiDiameter        = semiDiameter,
+                SemiDiameterMode    = SemiDiameterMode.Auto,
+                CurvatureVariable   = markCurvaturesVariable,
+                ThicknessVariable   = markThicknessesVariable,
+            };
+            var back = new Surface
+            {
+                Radius              = backRadius,
+                Thickness           = airThicknessAfter,
+                Material            = "",   // explicit empty string — see invariant above
+                Conic               = backConic,
+                SemiDiameter        = semiDiameter,
+                SemiDiameterMode    = SemiDiameterMode.Auto,
+                CurvatureVariable   = markCurvaturesVariable,
+                ThicknessVariable   = markThicknessesVariable,
+            };
+
+            // Splice both surfaces in, then fire SurfaceIndexUpdater after each so
+            // operand spans, pickups, glass-substitution settings track correctly.
+            int frontIdx = afterSurface + 1;
+            int backIdx  = frontIdx + 1;
+            sys.Surfaces.Insert(frontIdx, front);
+            SurfaceIndexUpdater.OnSurfaceInserted(frontIdx, sys,
+                _session.MeritFunction, _session.ConfigEditor);
+            sys.Surfaces.Insert(backIdx, back);
+            SurfaceIndexUpdater.OnSurfaceInserted(backIdx, sys,
+                _session.MeritFunction, _session.ConfigEditor);
+
+            // Reindex
+            for (int i = 0; i < sys.Surfaces.Count; i++)
+                sys.Surfaces[i].Index = i;
+
+            return $"Singlet inserted at surfaces [{frontIdx}-{backIdx}]: "
+                 + $"front R={frontRadius} t={glassThickness} {material}, "
+                 + $"back R={backRadius} air={airThicknessAfter}. "
+                 + $"SemiDiameter={semiDiameter} (Auto mode). "
+                 + $"Variables: C={markCurvaturesVariable} T={markThicknessesVariable}. "
+                 + $"System now has {sys.Surfaces.Count} surfaces.";
+        }
+
         [McpServerTool, Description("Remove a surface by index.")]
         public string RemoveSurface(int surfaceIndex)
         {
