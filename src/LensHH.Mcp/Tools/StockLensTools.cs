@@ -140,7 +140,9 @@ namespace LensHH.Mcp.Tools
             + "  • 'split_pcx'        – two plano-convex singlets, plano sides facing, combined power matches target (both POSITIVE only).\n"
             + "  • 'split_pcc'        – two plano-concave singlets, plano sides facing, combined power matches target (both NEGATIVE only).\n"
             + "  • 'split_pcx_pcc'    – one PCX + one PCC plano-to-plano (the Sasian trick). Combined power can be net positive or net negative. The two different glasses give chromatic trim a single catalog lens can't provide.\n\n"
-            + "diameter_mm >= 2 × targetSemiDiameter is enforced on every candidate. If targetNd is given, candidates with closer nd_primary rank higher (loose match — don't fail on glass family mismatch, just down-rank). eflTolerancePercent controls how loose the EFL match can be (±% of targetEfl). For pairs, the same tolerance applies to the COMBINED EFL.\n\n"
+            + "Diameter constraints: every candidate's diameter_mm must be >= 2 × targetSemiDiameter; if maxDiameter is given, also <= maxDiameter (filters out preposterous oversized parts like Ø162 mm singlets paired with a Ø47 design).\n\n"
+            + "Aspherics: excludeAspherics defaults to TRUE. Aspheric singlets (Thorlabs AL/ACL series, Edmund 'Aspheric*' family) are tuned for single-wavelength laser focusing and behave poorly under polychromatic field-of-view loads. Set excludeAspherics=false if you specifically want them.\n\n"
+            + "Ranking: combined-EFL closeness + half-weighted glass-distance from targetNd (if given) + (pair only) aperture-mismatch penalty (favors pairs whose two diameters are similar; punishes mixing Ø25 + Ø162). The mismatch term uses |log2(D_A/D_B)|.\n\n"
             + "Output: one line per candidate / pair, format depends on pattern.")]
         public string FindMatchingStock(
             double targetEfl,
@@ -148,6 +150,8 @@ namespace LensHH.Mcp.Tools
             string pattern = "single",
             double? targetNd = null,
             double eflTolerancePercent = 10,
+            double? maxDiameter = null,
+            bool excludeAspherics = true,
             int topN = 5)
         {
             var p = (pattern ?? "single").ToLowerInvariant().Replace("-", "_");
@@ -158,10 +162,15 @@ namespace LensHH.Mcp.Tools
             if (topN <= 0 || topN > 50) topN = 5;
 
             double minDiameter = 2.0 * targetSemiDiameter;
+            if (maxDiameter.HasValue && maxDiameter.Value < minDiameter)
+                return $"FindMatchingStock error: maxDiameter ({maxDiameter}) is smaller than 2 × targetSemiDiameter ({minDiameter}).";
             double tolFrac = Math.Max(0, eflTolerancePercent) / 100.0;
 
             // Pool the catalog once. We need every singlet at or above the required
             // diameter; pattern-specific shape filtering happens in-memory below.
+            // maxDiameter (when given) caps the pool — typical use: 1.6×–2× the
+            // target full diameter, so we keep reasonable headroom but reject the
+            // industrial-size outliers (e.g. Ø162 mm in a 73 mm EFL imaging lens).
             string dbPath = StockLensCatalog.ResolveDbPath();
             using var conn = new SqliteConnection($"Data Source={dbPath};Mode=ReadOnly");
             conn.Open();
@@ -171,17 +180,33 @@ namespace LensHH.Mcp.Tools
                 cmd.CommandText =
                     "SELECT vendor, part_number, family, efl_mm, diameter_mm, nd_primary, vd_primary "
                     + "FROM stock_lenses "
-                    + "WHERE import_status='ok' AND n_elements=1 AND diameter_mm >= @minD "
+                    + "WHERE import_status='ok' AND n_elements=1 "
+                    + "AND diameter_mm >= @minD "
+                    + (maxDiameter.HasValue ? "AND diameter_mm <= @maxD " : "")
                     + "AND efl_mm IS NOT NULL";
                 cmd.Parameters.AddWithValue("@minD", minDiameter);
+                if (maxDiameter.HasValue) cmd.Parameters.AddWithValue("@maxD", maxDiameter.Value);
                 using var rdr = cmd.ExecuteReader();
                 while (rdr.Read())
                 {
+                    var family = rdr.IsDBNull(2) ? "" : rdr.GetString(2);
+
+                    // Aspheric filter: drops Thorlabs AL/ACL family, Edmund
+                    // "AsphericGlassPolished" / "AsphericPlastic". Polychromatic
+                    // imaging optimization rarely benefits from a stock aspheric
+                    // because its conic + 4th–8th-order coefficients are tuned
+                    // for a specific wavelength/conjugate combination; using one
+                    // here introduces a fixed aberration the optimizer can't
+                    // correct via gaps.
+                    if (excludeAspherics &&
+                        family.Contains("Aspheric", StringComparison.OrdinalIgnoreCase))
+                        continue;
+
                     pool.Add(new StockLens
                     {
                         Vendor      = rdr.IsDBNull(0) ? "" : rdr.GetString(0),
                         PartNumber  = rdr.IsDBNull(1) ? "" : rdr.GetString(1),
-                        Family      = rdr.IsDBNull(2) ? "" : rdr.GetString(2),
+                        Family      = family,
                         Efl         = rdr.IsDBNull(3) ? 0  : rdr.GetDouble(3),
                         Diameter    = rdr.IsDBNull(4) ? 0  : rdr.GetDouble(4),
                         Nd          = rdr.IsDBNull(5) ? 0  : rdr.GetDouble(5),
@@ -190,7 +215,10 @@ namespace LensHH.Mcp.Tools
                 }
             }
             if (pool.Count == 0)
-                return $"FindMatchingStock: no stock singlets with diameter >= {minDiameter:F2} mm in catalog.";
+                return $"FindMatchingStock: no stock singlets with diameter in "
+                     + $"[{minDiameter:F2}{(maxDiameter.HasValue ? $", {maxDiameter.Value:F2}" : ", ∞")}] mm "
+                     + (excludeAspherics ? "(aspherics excluded) " : "")
+                     + "in catalog.";
 
             // Glass-distance scorer. Smaller is better. Zero when targetNd not given
             // — we don't want to bias rankings by an unknown.
@@ -312,7 +340,19 @@ namespace LensHH.Mcp.Tools
                 // Glass-distance score is the SUM across the pair so the ranking
                 // favors well-matched glass when targetNd is given.
                 double glassScore = NdDistance(a.Nd) + NdDistance(best.Nd);
-                pairs.Add((a, best, combined, err + 0.5 * glassScore));
+
+                // Aperture-mismatch penalty: punish pairs whose two diameters
+                // differ by more than ~2× (|log2| > 1). Catches the
+                // Ø57+Ø162 mathematically-perfect pair from the v7 retry —
+                // physically nonsensical even though the EFL math is exact.
+                // Within a factor of √2 (|log2| < 0.5) the term is negligible;
+                // beyond that it scales linearly with the log ratio.
+                double apertureMismatch = (a.Diameter > 0 && best.Diameter > 0)
+                    ? Math.Abs(Math.Log(a.Diameter / best.Diameter, 2))
+                    : 0;
+
+                pairs.Add((a, best, combined,
+                    err + 0.5 * glassScore + 0.25 * apertureMismatch));
             }
 
             if (pairs.Count == 0)
