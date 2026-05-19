@@ -51,6 +51,22 @@ namespace LensHH.Rendering
             }
             if (maxAbsRayY > maxSD) maxSD = maxAbsRayY;
 
+            // Find the actual z extent of the optical surfaces. The renderer
+            // can't assume surfaces start at z = 0 — buried-pupil designs
+            // (where Surface[1].Thickness is negative because the entrance
+            // pupil sits AHEAD of S1) place real lens surfaces at NEGATIVE
+            // z. The old code used minZ = -zPadLeft on the assumption that
+            // S1 was always the leftmost vertex; for negative S1.Thickness
+            // the front element ended up off the left side of the canvas
+            // and any element before z = -zPadLeft simply didn't render.
+            double surfaceMinZ = double.MaxValue, surfaceMaxZ = double.MinValue;
+            foreach (var s in layout.Surfaces)
+            {
+                if (s.VertexZ < surfaceMinZ) surfaceMinZ = s.VertexZ;
+                if (s.VertexZ > surfaceMaxZ) surfaceMaxZ = s.VertexZ;
+            }
+            if (surfaceMinZ == double.MaxValue) { surfaceMinZ = 0; surfaceMaxZ = totalLen; }
+
             // Add padding for incoming rays lead-in and sag
             double leadIn = layout.StartsFromSurface1 ? Math.Max(totalLen * 0.15, 5) : 0;
             double zPadLeft = leadIn + totalLen * 0.05;
@@ -64,7 +80,11 @@ namespace LensHH.Rendering
             double drawnWidth = totalZRange * scale;
             double xOffset = marginX + (plotW - drawnWidth) / 2.0;
 
-            double minZ = -zPadLeft;
+            // Anchor minZ at the leftmost actual surface, not at -zPadLeft.
+            // This lets buried-pupil designs (surfaceMinZ < 0) get drawn in
+            // the canvas; for the conventional case where the leftmost
+            // surface is at z = 0 this collapses to the previous behavior.
+            double minZ = surfaceMinZ - zPadLeft;
             double centerY = height / 2.0;
 
             double SvgX(double z) => xOffset + (z - minZ) * scale;
@@ -78,9 +98,11 @@ namespace LensHH.Rendering
             if (!string.IsNullOrEmpty(title))
                 sb.AppendLine(F($"<text x=\"{width / 2}\" y=\"16\" text-anchor=\"middle\" font-size=\"12\" font-weight=\"bold\">{Esc(title)}</text>"));
 
-            // Optical axis
+            // Optical axis — anchored to the actual surface z range so it
+            // covers buried-pupil designs (where the leftmost surface sits
+            // at negative z) as well as conventional layouts.
             double axisX1 = SvgX(minZ);
-            double axisX2 = SvgX(totalLen + zPadRight);
+            double axisX2 = SvgX(surfaceMaxZ + zPadRight);
             sb.AppendLine(F($"<line x1=\"{axisX1:F1}\" y1=\"{centerY:F1}\" x2=\"{axisX2:F1}\" y2=\"{centerY:F1}\" stroke=\"#999\" stroke-width=\"0.5\" stroke-dasharray=\"4,2\"/>"));
 
             // Glass elements (filled polygons)
