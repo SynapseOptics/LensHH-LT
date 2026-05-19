@@ -189,6 +189,13 @@ namespace LensHH.Mcp
         /// </summary>
         public BatchDesignSearchService BatchDesignSearch { get; } = new BatchDesignSearchService();
 
+        /// <summary>
+        /// Backing store for the sasian_design_* MCP tools. Holds per-job state
+        /// (trials, winners, saved intermediate paths) keyed by jobId. Persists
+        /// for the life of the session.
+        /// </summary>
+        public SasianDesignService SasianDesign { get; } = new SasianDesignService();
+
         public string? CurrentFilePath
         {
             get => _currentFilePath;
