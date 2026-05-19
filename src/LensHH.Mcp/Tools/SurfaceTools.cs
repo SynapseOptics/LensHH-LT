@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Text;
 using LensHH.Core.Enums;
@@ -76,19 +77,54 @@ namespace LensHH.Mcp.Tools
             double frontConic = 0,
             double backConic = 0)
         {
+            var (frontIdx, backIdx, err) = InsertSingletCore(
+                afterSurface, frontRadius, backRadius, glassThickness, material,
+                semiDiameter, airThicknessAfter, markCurvaturesVariable,
+                markThicknessesVariable, frontConic, backConic);
+            if (err != null) return err;
+            return $"Singlet inserted at surfaces [{frontIdx}-{backIdx}]: "
+                 + $"front R={frontRadius} t={glassThickness} {material}, "
+                 + $"back R={backRadius} air={airThicknessAfter}. "
+                 + $"SemiDiameter={semiDiameter} (Auto mode). "
+                 + $"Variables: C={markCurvaturesVariable} T={markThicknessesVariable}. "
+                 + $"System now has {_session.System.Surfaces.Count} surfaces.";
+        }
+
+        /// <summary>
+        /// Shared singlet-insertion core. AddSinglet (MCP tool) and BuildSkeleton
+        /// both go through this so every singlet in the system has the same set
+        /// of invariants honored: SemiDiameter > 0 with Auto mode, Material on the
+        /// glass surface and explicit empty-string on the air surface, variable
+        /// flags set, SurfaceIndexUpdater fired after each splice. Returns the
+        /// (frontIdx, backIdx) of the new surfaces and a null error string on
+        /// success, or a populated error string on failure (caller short-circuits).
+        /// </summary>
+        internal (int frontIdx, int backIdx, string? error) InsertSingletCore(
+            int afterSurface,
+            double frontRadius,
+            double backRadius,
+            double glassThickness,
+            string material,
+            double semiDiameter,
+            double airThicknessAfter,
+            bool markCurvaturesVariable,
+            bool markThicknessesVariable,
+            double frontConic = 0,
+            double backConic = 0)
+        {
             // ── Input validation ────────────────────────────────────────────────
             // Catch every "agent forgot to specify X" failure mode at the boundary
             // so the engine sees a fully-formed pair of surfaces every time.
             if (string.IsNullOrWhiteSpace(material))
-                return "AddSinglet error: material is required (use a glass name like 'N-BK7'; empty/whitespace not allowed for the glass surface).";
+                return (-1, -1, "AddSinglet/BuildSkeleton error: material is required (use a glass name like 'N-BK7'; empty/whitespace not allowed for the glass surface).");
             if (semiDiameter <= 0)
-                return $"AddSinglet error: semiDiameter must be positive (got {semiDiameter}).";
+                return (-1, -1, $"AddSinglet/BuildSkeleton error: semiDiameter must be positive (got {semiDiameter}).");
             if (glassThickness <= 0)
-                return $"AddSinglet error: glassThickness must be positive (got {glassThickness}).";
+                return (-1, -1, $"AddSinglet/BuildSkeleton error: glassThickness must be positive (got {glassThickness}).");
 
             var sys = _session.System;
             if (afterSurface < 0 || afterSurface >= sys.Surfaces.Count - 1)
-                return $"AddSinglet error: afterSurface={afterSurface} out of range (must be 0..{sys.Surfaces.Count - 2}; can't insert after image surface).";
+                return (-1, -1, $"AddSinglet/BuildSkeleton error: afterSurface={afterSurface} out of range (must be 0..{sys.Surfaces.Count - 2}; can't insert after image surface).");
 
             // ── Build the two surfaces with every required field set ──────────
             // KEY INVARIANTS this helper enforces (vs raw add_surface):
@@ -140,12 +176,144 @@ namespace LensHH.Mcp.Tools
             for (int i = 0; i < sys.Surfaces.Count; i++)
                 sys.Surfaces[i].Index = i;
 
-            return $"Singlet inserted at surfaces [{frontIdx}-{backIdx}]: "
-                 + $"front R={frontRadius} t={glassThickness} {material}, "
-                 + $"back R={backRadius} air={airThicknessAfter}. "
-                 + $"SemiDiameter={semiDiameter} (Auto mode). "
-                 + $"Variables: C={markCurvaturesVariable} T={markThicknessesVariable}. "
-                 + $"System now has {sys.Surfaces.Count} surfaces.";
+            return (frontIdx, backIdx, null);
+        }
+
+        // ── Helper #3: build a complete skeleton from a high-level spec ─────
+
+        [McpServerTool, Description(
+            "Build a complete lens skeleton (multiple elements + entrance-pupil offset + glass substitution) on the CURRENT system in one call. Expects the host to already have the merit function, fields, wavelengths, and stop set up; this helper adds the lens elements and configures them ready for `multistart_optimize_start`.\n\n"
+            + "Architecture (currently supported):\n"
+            + "  • 'single-single-single' (alias 'sss', 'cooke'): three singlets — front + (biconcave SF11) + back. Standard Cooke-triplet starting seed: BK7 / SF11 / BK7, biconvex / biconcave / biconvex, with all curvatures + thicknesses + entrance-pupil-offset marked variable and glass substitution enabled on every glass surface against substitutionCatalog (default 'SCHOTT').\n\n"
+            + "More architectures (doublets, Tessar, double-Gauss skeletons) will land here next; for now the single-single-single seed already covers the bulk of v5/v6/v7's free-optimize starting points.\n\n"
+            + "Parameters:\n"
+            + "  • entrancePupilOffset (default −10 mm): seed for the stop-surface trailing thickness. Negative = buried pupil (pupil ahead of S1), as v6/v7 free-opts settled on.\n"
+            + "  • semiDiameterDefault (default 12.5 mm = Ø25): seed semi-D for every element. Mode=Auto so the SD solver resizes during optimization.\n"
+            + "  • airGap (default 10 mm): air spacing between adjacent elements. Marked variable.\n"
+            + "  • bflSeed (default 45 mm): trailing air gap from the last element to the image. Marked variable.\n"
+            + "  • substitutionCatalog (default 'SCHOTT'): catalog name for glass substitution on every glass surface. Pass empty to disable substitution.\n\n"
+            + "After the call, the system is ready to call `multistart_optimize_start` with `glassSubPercent > 0`. Eliminates the 12–15 micro-tool ritual (edit_surface stop thickness, set_variable thickness, add_singlet × N, set_glass_substitution × N).")]
+        public string BuildSkeleton(
+            string architecture = "single-single-single",
+            double entrancePupilOffset = -10.0,
+            double semiDiameterDefault = 12.5,
+            double airGap = 10.0,
+            double bflSeed = 45.0,
+            string substitutionCatalog = "SCHOTT")
+        {
+            // ── Validate architecture key ─────────────────────────────────────
+            var arch = (architecture ?? "").Trim().ToLowerInvariant().Replace('_', '-');
+            bool isCooke = arch == "single-single-single" || arch == "sss" || arch == "cooke";
+            if (!isCooke)
+                return $"BuildSkeleton error: unknown architecture '{architecture}'. Supported: 'single-single-single' (Cooke triplet).";
+
+            var sys = _session.System;
+            if (sys == null || sys.Surfaces.Count < 3)
+                return "BuildSkeleton error: host system must already have OBJ + STOP + IMG (use load_system on a template first).";
+
+            // ── Identify the stop surface ─────────────────────────────────────
+            // We assume the standard template layout: OBJ=0, STOP=1 (IsStop=true,
+            // air), IMG=last. If the host is shaped differently we still try —
+            // we just use sys.StopSurfaceIndex regardless of where it sits.
+            int stopIdx = sys.StopSurfaceIndex;
+            if (stopIdx <= 0)
+                return $"BuildSkeleton error: stop surface not found (stopIdx={stopIdx}). Make sure the template has IsStop=true on one of the surfaces.";
+
+            // Refuse to run on a system that already has glass elements — we
+            // don't want to silently double-insert if the agent calls this on
+            // an already-populated design. Caller should reload the template.
+            bool hasExistingGlass = false;
+            for (int i = 0; i < sys.Surfaces.Count; i++)
+                if (!string.IsNullOrEmpty(sys.Surfaces[i].Material)) { hasExistingGlass = true; break; }
+            if (hasExistingGlass)
+                return "BuildSkeleton error: system already contains glass elements. Reload a fresh template before calling BuildSkeleton.";
+
+            // ── Set entrance-pupil offset and make it variable ────────────────
+            // S1.Thickness is the distance from stop to first lens. Free-opt
+            // basins often want negative values (buried pupil); seeding with
+            // −10 mm gets the optimizer going in roughly the right direction.
+            sys.Surfaces[stopIdx].Thickness = entrancePupilOffset;
+            sys.Surfaces[stopIdx].ThicknessVariable = true;
+
+            var report = new StringBuilder();
+            report.AppendLine($"BuildSkeleton: architecture='{(isCooke ? "single-single-single (Cooke)" : architecture)}'");
+            report.AppendLine($"  Stop at S{stopIdx}, entrance-pupil offset = {entrancePupilOffset} mm (variable).");
+
+            // ── Cooke triplet seed values ─────────────────────────────────────
+            // Element 1: BK7 biconvex,  R=±50,  t=4 mm,  airAfter=airGap
+            // Element 2: SF11 biconcave, R=∓30, t=3 mm,  airAfter=airGap
+            // Element 3: BK7 biconvex,  R=±50,  t=4 mm,  airAfter=bflSeed
+            //
+            // The biconvex/biconcave seeds give the optimizer a clean +,−,+
+            // power signature with substantial wiggle room. Glass substitution
+            // on top will explore alternative glasses; the optimizer can also
+            // bend the radii via the curvature variables.
+            var ops = new (string label, double r1, double r2, double t, string mat, double airAfter, double sd)[]
+            {
+                ("E1 (positive, BK7)",  +50, -50, 4, "N-BK7",  airGap,  semiDiameterDefault),
+                ("E2 (negative, SF11)", -30, +30, 3, "N-SF11", airGap,  semiDiameterDefault),
+                ("E3 (positive, BK7)",  +50, -50, 4, "N-BK7",  bflSeed, semiDiameterDefault),
+            };
+
+            int afterSurface = stopIdx;
+            var glassSurfacesForSub = new List<int>();
+            foreach (var op in ops)
+            {
+                var (front, back, err) = InsertSingletCore(
+                    afterSurface,
+                    op.r1, op.r2, op.t, op.mat,
+                    op.sd, op.airAfter,
+                    markCurvaturesVariable: true,
+                    markThicknessesVariable: true);
+                if (err != null) return $"BuildSkeleton error during {op.label}: {err}";
+                glassSurfacesForSub.Add(front);
+                afterSurface = back;
+                report.AppendLine($"  {op.label}: surfaces [{front}-{back}].");
+            }
+
+            // ── Enable glass substitution on every glass surface ──────────────
+            // The Cooke triplet has 3 glass surfaces (one per singlet's front,
+            // since the back is already an air surface). Glass substitution
+            // will let multistart pick from the chosen catalog during trials.
+            if (!string.IsNullOrWhiteSpace(substitutionCatalog))
+            {
+                foreach (var glassSurf in glassSurfacesForSub)
+                {
+                    sys.GlassSubstitutions.Add(new GlassSubstitutionSetting
+                    {
+                        SurfaceIndex = glassSurf,
+                        Substitute = true,
+                        CatalogName = substitutionCatalog
+                    });
+                }
+                report.AppendLine($"  Glass substitution enabled on {glassSurfacesForSub.Count} surface(s) against catalog '{substitutionCatalog}'.");
+            }
+            else
+            {
+                report.AppendLine("  Glass substitution disabled (empty substitutionCatalog).");
+            }
+
+            // ── Final sanity check: a fresh evaluation should succeed ─────────
+            // Catches any invariant we missed (e.g., a null Material slipping
+            // through). The merit value itself isn't meaningful at the seed —
+            // it's just a "the engine doesn't crash" smoke test.
+            try
+            {
+                if (_session.MeritFunction != null && _session.MeritFunction.Operands.Count > 0)
+                {
+                    var evaluator = new LensHH.Core.MeritFunction.MeritFunctionEvaluator(
+                        sys, _session.GlassCatalog);
+                    double seedMerit = evaluator.Evaluate(_session.MeritFunction);
+                    report.AppendLine($"  Seed merit (pre-optimize): {seedMerit:E4}.");
+                }
+            }
+            catch (Exception ex)
+            {
+                return $"BuildSkeleton error: skeleton built but merit evaluation crashed — {ex.Message}";
+            }
+
+            report.Append($"System now has {sys.Surfaces.Count} surfaces, ready for multistart_optimize_start.");
+            return report.ToString();
         }
 
         [McpServerTool, Description("Remove a surface by index.")]
