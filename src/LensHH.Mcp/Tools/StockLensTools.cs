@@ -437,6 +437,172 @@ namespace LensHH.Mcp.Tools
                 eflBefore, eflAfter, fnBefore, fnAfter);
         }
 
+        // ── Tool 2b: replace one element with stock part(s) ────────────────────
+
+        [McpServerTool, Description(
+            "Replace one element in the current optical system with stock part(s), surgically: identifies the chosen element's surfaces, removes them, splices in the new part(s), and reconnects air gaps + variables. Replaces the 6–10 micro-tool sequence (remove_surface ×N, insert_stock_lens ×M, edit_surface for trailing thickness, set_variable) with a single call.\n\n"
+            + "elementIndex (1-based): which lens element in the stack to replace. Elements are counted as contiguous glass surfaces (a doublet counts as ONE element). Element 1 is the first lens after the stop.\n\n"
+            + "replacementParts is a comma-separated list of part numbers, each optionally followed by ':rev' to flip orientation. Examples:\n"
+            + "  • 'L-PCX040'                         – single stock singlet, default orientation\n"
+            + "  • 'L-AOC203:rev'                     – single stock doublet, reversed\n"
+            + "  • 'L-PCX333,L-PCX412:rev'            – split-pair (positive PCX-PCX, plano sides facing)\n"
+            + "  • '45-145,48-316:rev'                – Sasian PCX+PCC pair (BK7 PCX + FS PCC, plano-to-plano)\n\n"
+            + "airThicknessAfter (default 5 mm): trailing air gap to the next existing element / image. Marked variable. Use a larger seed when the replacement is much smaller-power than the original (gives the optimizer room).\n\n"
+            + "splitGapMm (default 0.5 mm): for multi-part replacements, the air gap between the new parts. Marked variable. Use a small value for plano-to-plano contact pairs (the Sasian trick), or a larger value if you intend them as two separate elements.\n\n"
+            + "Preserves the air gap BEFORE the element (the trailing thickness on the surface BEFORE the element's first surface is untouched — that gap defines where the lens stack starts and the agent typically wants to keep it).")]
+        public string ReplaceElement(
+            int elementIndex,
+            string replacementParts,
+            double airThicknessAfter = 5.0,
+            double splitGapMm = 0.5)
+        {
+            var sys = _session.System;
+            if (sys == null || sys.Surfaces.Count < 3)
+                return "ReplaceElement error: no host system loaded (need at least OBJ + STOP + IMG).";
+            if (string.IsNullOrWhiteSpace(replacementParts))
+                return "ReplaceElement error: replacementParts is required (e.g. 'L-PCX040' or 'L-PCX333,L-PCX412:rev').";
+            if (elementIndex < 1)
+                return $"ReplaceElement error: elementIndex must be >= 1 (got {elementIndex}; element 1 is the first lens after the stop).";
+
+            // ── Identify all elements ─────────────────────────────────────────
+            // An element is a contiguous run of glass surfaces (consecutive
+            // surfaces with non-empty Material). Air surface that immediately
+            // follows ends the element's footprint; the element occupies
+            // [first_glass, last_glass+1] where last_glass+1 is that trailing-
+            // air surface (we'll remove it too on replacement so the new part's
+            // trailing air thickness can take its place).
+            var elements = new List<(int firstSurface, int lastSurface)>();
+            int? glassStart = null;
+            for (int i = 0; i < sys.Surfaces.Count; i++)
+            {
+                bool hasGlass = !string.IsNullOrEmpty(sys.Surfaces[i].Material);
+                if (hasGlass)
+                {
+                    if (glassStart == null) glassStart = i;
+                }
+                else if (glassStart != null)
+                {
+                    // Surface i is the air-back of the element that started at glassStart.
+                    elements.Add((glassStart.Value, i));
+                    glassStart = null;
+                }
+            }
+            if (elements.Count == 0)
+                return "ReplaceElement error: no glass elements found in the current system.";
+            if (elementIndex > elements.Count)
+                return $"ReplaceElement error: elementIndex {elementIndex} out of range (system has {elements.Count} element(s)).";
+
+            var (firstSurface, lastSurface) = elements[elementIndex - 1];
+            int countToRemove = lastSurface - firstSurface + 1;
+            int afterSurface = firstSurface - 1;  // we'll insert AFTER this surface
+
+            // ── Parse the comma-separated replacement spec ────────────────────
+            // Each token is 'partNumber' or 'partNumber:rev' / 'partNumber:fwd'.
+            // Vendor disambiguation isn't supported here — when needed the agent
+            // can call insert_stock_lens with the explicit vendor and skip this
+            // helper. (Catalog has very few part-number collisions across
+            // vendors in practice.)
+            var tokens = replacementParts.Split(',', StringSplitOptions.RemoveEmptyEntries);
+            var parts = new List<(string part, bool reversed)>();
+            foreach (var rawT in tokens)
+            {
+                var t = rawT.Trim();
+                if (t.Length == 0) continue;
+                bool rev = false;
+                int colon = t.IndexOf(':');
+                string pn = t;
+                if (colon > 0)
+                {
+                    pn = t.Substring(0, colon).Trim();
+                    string suffix = t.Substring(colon + 1).Trim().ToLowerInvariant();
+                    if (suffix == "rev" || suffix == "reversed") rev = true;
+                    else if (suffix == "fwd" || suffix == "forward" || suffix == "") rev = false;
+                    else return $"ReplaceElement error: unknown orientation suffix ':{suffix}' for '{pn}'. Use ':rev' or omit.";
+                }
+                parts.Add((pn, rev));
+            }
+            if (parts.Count == 0)
+                return "ReplaceElement error: replacementParts parsed to zero parts.";
+
+            // ── Resolve every part up-front so we fail fast on a typo ─────────
+            // (vs ripping out the original element and THEN discovering the
+            // replacement doesn't exist).
+            var resolvedParts = new List<(string vendor, List<Surface> vertices, bool reversed, string part)>();
+            foreach (var (part, rev) in parts)
+            {
+                try
+                {
+                    var (vendor, lhltRel) = StockLensCatalog.ResolvePart(part, null);
+                    string lhltPath = StockLensCatalog.ResolveLhltPath(lhltRel);
+                    var stockSys = LhltReader.Read(lhltPath).System;
+                    var verts = LensInsertHelpers.ExtractLensVertices(stockSys, out string? extractErr);
+                    if (verts == null || verts.Count == 0)
+                        return $"ReplaceElement error: stock lens '{part}' returned no vertices ({extractErr ?? "empty"}).";
+                    if (rev) verts = LensInsertHelpers.ReverseVertexGroup(verts);
+                    resolvedParts.Add((vendor, verts, rev, part));
+                }
+                catch (Exception ex)
+                {
+                    return $"ReplaceElement error: could not resolve '{part}': {ex.Message}";
+                }
+            }
+
+            // ── Remove the old element's surfaces ─────────────────────────────
+            // Remove from highest index downward so the indices stay stable
+            // during the loop. Each removal fires SurfaceIndexUpdater to keep
+            // merit-operand spans, pickups, and glass-subs in sync.
+            for (int idx = lastSurface; idx >= firstSurface; idx--)
+            {
+                sys.Surfaces.RemoveAt(idx);
+                LensHH.Core.Models.SurfaceIndexUpdater.OnSurfaceRemoved(
+                    idx, sys, _session.MeritFunction, _session.ConfigEditor);
+            }
+
+            // ── Splice in the replacement parts sequentially ──────────────────
+            int insertAt = afterSurface + 1;
+            int firstInserted = insertAt;
+            var insertedRanges = new List<(string label, int first, int last)>();
+            for (int pIdx = 0; pIdx < resolvedParts.Count; pIdx++)
+            {
+                var (vendor, vertices, rev, part) = resolvedParts[pIdx];
+                int partFirst = insertAt;
+                for (int v = 0; v < vertices.Count; v++)
+                {
+                    sys.Surfaces.Insert(insertAt + v, vertices[v]);
+                    LensHH.Core.Models.SurfaceIndexUpdater.OnSurfaceInserted(
+                        insertAt + v, sys, _session.MeritFunction, _session.ConfigEditor);
+                }
+                int partLast = insertAt + vertices.Count - 1;
+                insertedRanges.Add(($"{vendor}/{part}{(rev ? "(rev)" : "")}", partFirst, partLast));
+
+                // Set the trailing air thickness of THIS part:
+                //   – If another part follows: use splitGapMm, mark variable
+                //     (the optimizer needs room to balance the split pair).
+                //   – If this is the LAST part: use airThicknessAfter, variable
+                //     (the trailing air gap to the next existing element / IMG).
+                bool morePartsAfter = (pIdx + 1) < resolvedParts.Count;
+                double trailingT = morePartsAfter ? splitGapMm : airThicknessAfter;
+                sys.Surfaces[partLast].Thickness = trailingT;
+                sys.Surfaces[partLast].ThicknessVariable = true;
+
+                insertAt = partLast + 1;
+            }
+
+            // Reindex
+            for (int i = 0; i < sys.Surfaces.Count; i++) sys.Surfaces[i].Index = i;
+
+            int totalInserted = insertAt - firstInserted;
+            var sb = new StringBuilder();
+            sb.AppendLine($"ReplaceElement: removed element #{elementIndex} (surfaces [{firstSurface}-{lastSurface}], {countToRemove} surfaces). "
+                + $"Inserted {resolvedParts.Count} part(s), {totalInserted} surfaces total.");
+            foreach (var (label, first, last) in insertedRanges)
+                sb.AppendLine($"  {label}: surfaces [{first}-{last}]");
+            sb.AppendLine($"Trailing air thickness = {airThicknessAfter} mm (variable). "
+                + (resolvedParts.Count > 1 ? $"Inter-part air gap = {splitGapMm} mm (variable)." : ""));
+            sb.Append($"System now has {sys.Surfaces.Count} surfaces.");
+            return sb.ToString();
+        }
+
         // ── Tool 3: reverse ────────────────────────────────────────────────────
 
         [McpServerTool, Description(
