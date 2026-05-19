@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
+using System.Linq;
 using System.Text;
 using LensHH.Core.Enums;
 using LensHH.Core.IO;
@@ -11,6 +12,21 @@ using ModelContextProtocol.Server;
 
 namespace LensHH.Mcp.Tools
 {
+    /// <summary>
+    /// Catalog DTO for find_matching_stock pool enumeration.
+    /// </summary>
+    internal sealed class StockLens
+    {
+        public string Vendor      { get; set; } = "";
+        public string PartNumber  { get; set; } = "";
+        public string Family      { get; set; } = "";
+        public double Efl;
+        public double Diameter;
+        public double Nd;
+        public double Vd;
+    }
+
+
     /// <summary>
     /// MCP tools for working with the bundled stock-lens catalog
     /// (catalogs/stock-lens-catalog.sqlite + per-lens .lhlt files).
@@ -111,6 +127,210 @@ namespace LensHH.Mcp.Tools
             }
             if (count == 0) return "No stock lenses match the given filters.";
             sb.Insert(0, $"Found {count} stock lens(es) (limit {limit}):\n");
+            return sb.ToString();
+        }
+
+        // ── Tool 1b: find ranked replacement candidates (single or split pair) ─
+
+        [McpServerTool, Description(
+            "Find ranked stock-lens replacement candidates for an optimized element, with optional split-pair patterns. "
+            + "Given an optimized free element's EFL, glass index, and semi-diameter, returns candidate stock substitutions ranked by closeness. "
+            + "Pattern choices:\n"
+            + "  • 'single'           – one stock singlet whose EFL is near targetEfl.\n"
+            + "  • 'split_pcx'        – two plano-convex singlets, plano sides facing, combined power matches target (both POSITIVE only).\n"
+            + "  • 'split_pcc'        – two plano-concave singlets, plano sides facing, combined power matches target (both NEGATIVE only).\n"
+            + "  • 'split_pcx_pcc'    – one PCX + one PCC plano-to-plano (the Sasian trick). Combined power can be net positive or net negative. The two different glasses give chromatic trim a single catalog lens can't provide.\n\n"
+            + "diameter_mm >= 2 × targetSemiDiameter is enforced on every candidate. If targetNd is given, candidates with closer nd_primary rank higher (loose match — don't fail on glass family mismatch, just down-rank). eflTolerancePercent controls how loose the EFL match can be (±% of targetEfl). For pairs, the same tolerance applies to the COMBINED EFL.\n\n"
+            + "Output: one line per candidate / pair, format depends on pattern.")]
+        public string FindMatchingStock(
+            double targetEfl,
+            double targetSemiDiameter,
+            string pattern = "single",
+            double? targetNd = null,
+            double eflTolerancePercent = 10,
+            int topN = 5)
+        {
+            var p = (pattern ?? "single").ToLowerInvariant().Replace("-", "_");
+            if (p != "single" && p != "split_pcx" && p != "split_pcc" && p != "split_pcx_pcc")
+                return $"FindMatchingStock error: unknown pattern '{pattern}'. Use one of: single, split_pcx, split_pcc, split_pcx_pcc.";
+            if (targetSemiDiameter <= 0)
+                return $"FindMatchingStock error: targetSemiDiameter must be positive (got {targetSemiDiameter}).";
+            if (topN <= 0 || topN > 50) topN = 5;
+
+            double minDiameter = 2.0 * targetSemiDiameter;
+            double tolFrac = Math.Max(0, eflTolerancePercent) / 100.0;
+
+            // Pool the catalog once. We need every singlet at or above the required
+            // diameter; pattern-specific shape filtering happens in-memory below.
+            string dbPath = StockLensCatalog.ResolveDbPath();
+            using var conn = new SqliteConnection($"Data Source={dbPath};Mode=ReadOnly");
+            conn.Open();
+            var pool = new List<StockLens>();
+            using (var cmd = conn.CreateCommand())
+            {
+                cmd.CommandText =
+                    "SELECT vendor, part_number, family, efl_mm, diameter_mm, nd_primary, vd_primary "
+                    + "FROM stock_lenses "
+                    + "WHERE import_status='ok' AND n_elements=1 AND diameter_mm >= @minD "
+                    + "AND efl_mm IS NOT NULL";
+                cmd.Parameters.AddWithValue("@minD", minDiameter);
+                using var rdr = cmd.ExecuteReader();
+                while (rdr.Read())
+                {
+                    pool.Add(new StockLens
+                    {
+                        Vendor      = rdr.IsDBNull(0) ? "" : rdr.GetString(0),
+                        PartNumber  = rdr.IsDBNull(1) ? "" : rdr.GetString(1),
+                        Family      = rdr.IsDBNull(2) ? "" : rdr.GetString(2),
+                        Efl         = rdr.IsDBNull(3) ? 0  : rdr.GetDouble(3),
+                        Diameter    = rdr.IsDBNull(4) ? 0  : rdr.GetDouble(4),
+                        Nd          = rdr.IsDBNull(5) ? 0  : rdr.GetDouble(5),
+                        Vd          = rdr.IsDBNull(6) ? 0  : rdr.GetDouble(6),
+                    });
+                }
+            }
+            if (pool.Count == 0)
+                return $"FindMatchingStock: no stock singlets with diameter >= {minDiameter:F2} mm in catalog.";
+
+            // Glass-distance scorer. Smaller is better. Zero when targetNd not given
+            // — we don't want to bias rankings by an unknown.
+            double NdDistance(double nd) => targetNd.HasValue ? Math.Abs(nd - targetNd.Value) : 0;
+
+            var sb = new StringBuilder();
+
+            if (p == "single")
+            {
+                // Filter to candidates whose EFL is within ±tol of target.
+                double absT = Math.Abs(targetEfl);
+                double minE = targetEfl - absT * tolFrac;
+                double maxE = targetEfl + absT * tolFrac;
+                if (maxE < minE) (minE, maxE) = (maxE, minE);
+
+                var hits = pool
+                    .Where(s => s.Efl >= minE && s.Efl <= maxE)
+                    .OrderBy(s => Math.Abs(s.Efl - targetEfl) / absT + 5 * NdDistance(s.Nd))
+                    .Take(topN)
+                    .ToList();
+                if (hits.Count == 0)
+                    return $"FindMatchingStock(single): no candidates with EFL in [{minE:F2}, {maxE:F2}] mm and Ø >= {minDiameter:F2} mm. Try a larger eflTolerancePercent.";
+
+                sb.AppendLine($"Found {hits.Count} 'single' candidate(s) for EFL={targetEfl:F2} mm, Ø>={minDiameter:F2} mm"
+                    + (targetNd.HasValue ? $", nd≈{targetNd.Value:F3}" : "") + ":");
+                int rank = 1;
+                foreach (var h in hits)
+                {
+                    double dE = h.Efl - targetEfl;
+                    sb.Append($"  #{rank++} {h.Vendor} {h.PartNumber} {h.Family} ");
+                    sb.Append($"EFL={h.Efl:F2} (ΔEFL={dE:+0.00;-0.00}) ");
+                    sb.Append($"D={h.Diameter:F2} nd={h.Nd:F3} vd={h.Vd:F2}");
+                    if (targetNd.HasValue) sb.Append($" (Δnd={(h.Nd - targetNd.Value):+0.000;-0.000})");
+                    sb.AppendLine();
+                }
+                return sb.ToString();
+            }
+
+            // ── Pair patterns ─────────────────────────────────────────────────
+            // Partition the pool by lens shape. The split trick requires plano-
+            // sided lenses (PCX or PCC); biconvex/biconcave can't be plano-to-
+            // plano. We identify shapes by family-string convention:
+            //   PCX  ⇐ family contains 'PCX' / 'PlanoConvex' / Thorlabs 'LA'
+            //   PCC  ⇐ family contains 'PCC' / 'PlanoConcave' / Thorlabs LC/LD/LF
+            // Sign of EFL is the second check: PCX must be positive, PCC negative.
+            bool IsPcxFamily(string f) =>
+                   f.Contains("PCX", StringComparison.OrdinalIgnoreCase)
+                || f.Contains("PlanoConvex", StringComparison.OrdinalIgnoreCase)
+                || f.Contains("ThorLabs/LA", StringComparison.OrdinalIgnoreCase);
+            bool IsPccFamily(string f) =>
+                   f.Contains("PCC", StringComparison.OrdinalIgnoreCase)
+                || f.Contains("PlanoConcave", StringComparison.OrdinalIgnoreCase)
+                || f.Contains("ThorLabs/LC", StringComparison.OrdinalIgnoreCase)
+                || f.Contains("ThorLabs/LD", StringComparison.OrdinalIgnoreCase)
+                || f.Contains("ThorLabs/LF", StringComparison.OrdinalIgnoreCase);
+
+            var pcxPool = pool.Where(s => IsPcxFamily(s.Family) && s.Efl > 0).ToList();
+            var pccPool = pool.Where(s => IsPccFamily(s.Family) && s.Efl < 0).ToList();
+
+            // 1/T = 1/f1 + 1/f2  ⇒  f2 = T·f1 / (f1 − T)
+            // Enumerate f1 over the appropriate pool, compute the f2 the math
+            // demands, then look up the closest stock match in the f2 pool.
+            // Score = |combined − target| / |target|  +  Δglass-distance.
+            List<(StockLens a, StockLens b, double combined, double score)> pairs = new();
+            double absTarget = Math.Abs(targetEfl);
+            if (absTarget < 1e-6) return "FindMatchingStock: targetEfl too close to zero for pair patterns.";
+
+            List<StockLens> poolA, poolB;
+            if (p == "split_pcx")
+            {
+                if (targetEfl <= 0) return "FindMatchingStock(split_pcx): targetEfl must be POSITIVE for split-PCX (both lenses contribute positive power).";
+                poolA = pcxPool; poolB = pcxPool;
+            }
+            else if (p == "split_pcc")
+            {
+                if (targetEfl >= 0) return "FindMatchingStock(split_pcc): targetEfl must be NEGATIVE for split-PCC (both lenses contribute negative power).";
+                poolA = pccPool; poolB = pccPool;
+            }
+            else // split_pcx_pcc
+            {
+                // PCX (positive) + PCC (negative). Combined power can be either sign,
+                // so no targetEfl sign constraint.
+                poolA = pcxPool; poolB = pccPool;
+            }
+            if (poolA.Count == 0 || poolB.Count == 0)
+                return $"FindMatchingStock({p}): pool empty (PCX:{pcxPool.Count}, PCC:{pccPool.Count}) at the required diameter. Lower targetSemiDiameter or relax pattern.";
+
+            // For each f1, compute required f2 and find nearest in poolB.
+            // Skip same-part pairs in split_pcx / split_pcc when the user might
+            // not want a "pair" of the IDENTICAL lens — but actually two of the
+            // same PCX is a valid (often-preferred) design choice. So we KEEP
+            // those, just don't enumerate (a,b) and (b,a) twice for symmetric
+            // pools. For asymmetric (split_pcx_pcc) the order is fixed by sign.
+            bool symmetric = p == "split_pcx" || p == "split_pcc";
+
+            foreach (var a in poolA)
+            {
+                if (Math.Abs(a.Efl - targetEfl) < 1e-9) continue; // degenerate
+                double requiredB = targetEfl * a.Efl / (a.Efl - targetEfl);
+
+                // Closest f2 candidate in poolB
+                StockLens? best = null;
+                double bestDiff = double.MaxValue;
+                foreach (var b in poolB)
+                {
+                    // Skip ordering-duplicate pairs in symmetric pools
+                    if (symmetric && string.Compare(a.PartNumber + a.Vendor, b.PartNumber + b.Vendor,
+                        StringComparison.Ordinal) > 0) continue;
+                    double diff = Math.Abs(b.Efl - requiredB);
+                    if (diff < bestDiff) { bestDiff = diff; best = b; }
+                }
+                if (best == null) continue;
+
+                // Combined power check (thin-lens, ignoring small gap)
+                double combined = 1.0 / (1.0 / a.Efl + 1.0 / best.Efl);
+                double err = Math.Abs(combined - targetEfl) / absTarget;
+                if (err > tolFrac) continue;
+
+                // Glass-distance score is the SUM across the pair so the ranking
+                // favors well-matched glass when targetNd is given.
+                double glassScore = NdDistance(a.Nd) + NdDistance(best.Nd);
+                pairs.Add((a, best, combined, err + 0.5 * glassScore));
+            }
+
+            if (pairs.Count == 0)
+                return $"FindMatchingStock({p}): no pairs whose combined EFL lands within ±{eflTolerancePercent}% of {targetEfl:F2}. Try larger eflTolerancePercent or a different pattern.";
+
+            var ranked = pairs.OrderBy(t => t.score).Take(topN).ToList();
+            sb.AppendLine($"Found {ranked.Count} '{p}' pair(s) for combined EFL={targetEfl:F2} mm, Ø>={minDiameter:F2} mm"
+                + (targetNd.HasValue ? $", nd≈{targetNd.Value:F3}" : "") + ":");
+            int prank = 1;
+            foreach (var (a, b, comb, _) in ranked)
+            {
+                sb.Append($"  #{prank++}  combined EFL={comb:F2} (Δ={(comb - targetEfl):+0.00;-0.00})");
+                sb.AppendLine();
+                sb.Append($"        A: {a.Vendor} {a.PartNumber} {a.Family} EFL={a.Efl:F2} D={a.Diameter:F2} nd={a.Nd:F3}");
+                sb.AppendLine();
+                sb.Append($"        B: {b.Vendor} {b.PartNumber} {b.Family} EFL={b.Efl:F2} D={b.Diameter:F2} nd={b.Nd:F3}");
+                sb.AppendLine();
+            }
             return sb.ToString();
         }
 
