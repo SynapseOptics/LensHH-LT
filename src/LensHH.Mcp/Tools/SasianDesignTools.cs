@@ -27,8 +27,8 @@ namespace LensHH.Mcp.Tools
             + "architecture: skeleton layout (currently 'single-single-single' / 'cooke').\n\n"
             + "candidatesPerPattern (default 3): how many top stock candidates to try per pattern per element. Per element the pipeline runs about 3 patterns × N candidates multistart re-optimizations, so total wall time scales linearly with this. Use 1-2 for fast exploration, 3 for thorough.\n\n"
             + "msMaxTrials/msLmPerTrial/msInitialLm: multistart budget per re-optimization. Defaults match standalone multistart_optimize_start (500/100/300).\n\n"
-            + "entrancePupilOffset / semiDiameterSeed / airGapSeed / bflSeed: skeleton seed parameters, see build_skeleton.\n\n"
-            + "substitutionCatalog (default 'SCHOTT'): glass-substitution catalog enabled on all glass surfaces during the free-optimize phase.")]
+            + "stopPosition / semiDiameterSeed / airGapSeed / bflSeed: skeleton seed parameters, see build_skeleton. stopPosition (default 1) places the physical aperture stop in the chosen air gap; 0 = leading air before L1, 1 = between L1 and L2 (Cooke default), 2 = between L2 and L3, 3 = BFL gap.\n\n"
+            + "substitutionCatalog (default 'auto'): glass-substitution catalog. 'auto' picks StockGlassesUV if min(wavelengths) < 0.380 µm else StockGlassesVisible; explicit names like 'SCHOTT' or 'StockGlassesVisible' override.")]
         public string SasianDesignStart(
             string templatePath,
             string outputDir,
@@ -37,11 +37,11 @@ namespace LensHH.Mcp.Tools
             int msMaxTrials = 500,
             int msLmPerTrial = 100,
             int msInitialLm = 300,
-            double entrancePupilOffset = -10.0,
+            int stopPosition = 1,
             double semiDiameterSeed = 12.5,
             double airGapSeed = 10.0,
             double bflSeed = 45.0,
-            string substitutionCatalog = "SCHOTT")
+            string substitutionCatalog = "auto")
         {
             try
             {
@@ -52,7 +52,7 @@ namespace LensHH.Mcp.Tools
                     Architecture = architecture,
                     CandidatesPerPattern = candidatesPerPattern,
                     SubstitutionCatalog = substitutionCatalog,
-                    EntrancePupilOffset = entrancePupilOffset,
+                    StopPosition = stopPosition,
                     SemiDiameterSeed = semiDiameterSeed,
                     AirGapSeed = airGapSeed,
                     BflSeed = bflSeed,

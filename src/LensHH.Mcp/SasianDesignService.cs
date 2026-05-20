@@ -37,8 +37,8 @@ namespace LensHH.Mcp
         public string OutputDir { get; set; } = "";
         public string Architecture { get; set; } = "single-single-single";
         public int CandidatesPerPattern { get; set; } = 3;
-        public string SubstitutionCatalog { get; set; } = "SCHOTT";
-        public double EntrancePupilOffset { get; set; } = -10;
+        public string SubstitutionCatalog { get; set; } = "auto";
+        public int StopPosition { get; set; } = 1;
         public double SemiDiameterSeed { get; set; } = 12.5;
         public double AirGapSeed { get; set; } = 10;
         public double BflSeed { get; set; } = 45;
@@ -221,16 +221,29 @@ namespace LensHH.Mcp
             session.ConfigEditor = result.ConfigEditor;
         }
 
-        /// <summary>Build a Cooke-triplet skeleton on the loaded template,
-        /// mirroring SurfaceTools.BuildSkeleton. Kept inline so the orchestrator
+        /// <summary>Build a Cooke-triplet skeleton on the loaded template
+        /// using the physically-realizable-stop convention: drops the template
+        /// dummy stop, inserts the three singlets in sequence, then inserts a
+        /// real flat IsStop surface in the air gap selected by data.StopPosition.
+        /// Mirrors SurfaceTools.BuildSkeleton; kept inline so the orchestrator
         /// doesn't depend on tool-class lifetimes.</summary>
         private static void BuildSkeletonInline(McpSession session, SasianJobData data)
         {
             var sys = session.System!;
-            int stopIdx = sys.StopSurfaceIndex;
-            sys.Surfaces[stopIdx].Thickness = data.EntrancePupilOffset;
-            sys.Surfaces[stopIdx].ThicknessVariable = true;
 
+            int numElements = 3;
+            int stopPosition = Math.Max(0, Math.Min(numElements, data.StopPosition));
+
+            // Drop the template's dummy stop, preserving OBJ→(first refractive) distance.
+            int oldStopIdx = sys.StopSurfaceIndex;
+            double origObjT   = sys.Surfaces[0].Thickness;
+            double origDummyT = sys.Surfaces[oldStopIdx].Thickness;
+            sys.Surfaces.RemoveAt(oldStopIdx);
+            sys.Surfaces[0].Thickness = origObjT + origDummyT;
+            for (int i = 0; i < sys.Surfaces.Count; i++) sys.Surfaces[i].Index = i;
+            SurfaceIndexUpdater.OnSurfaceRemoved(oldStopIdx, sys, session.MeritFunction, session.ConfigEditor);
+
+            // Insert the three singlets in sequence (no stop yet).
             var ops = new (double r1, double r2, double t, string mat, double airAfter)[]
             {
                 (+50, -50, 4, "N-BK7",  data.AirGapSeed),
@@ -238,8 +251,9 @@ namespace LensHH.Mcp
                 (+50, -50, 4, "N-BK7",  data.BflSeed),
             };
 
-            int afterSurface = stopIdx;
+            int afterSurface = 0; // start inserting right after OBJ
             var glassSurfaces = new List<int>();
+            var elementBacks = new List<int>();
             foreach (var op in ops)
             {
                 var front = new Surface
@@ -263,12 +277,61 @@ namespace LensHH.Mcp
                 sys.Surfaces.Insert(backIdx, back);
                 SurfaceIndexUpdater.OnSurfaceInserted(backIdx, sys, session.MeritFunction, session.ConfigEditor);
                 glassSurfaces.Add(frontIdx);
+                elementBacks.Add(backIdx);
                 afterSurface = backIdx;
             }
             for (int i = 0; i < sys.Surfaces.Count; i++) sys.Surfaces[i].Index = i;
 
-            // Enable glass substitution
-            if (!string.IsNullOrWhiteSpace(data.SubstitutionCatalog))
+            // Insert the physical stop into the chosen air gap.
+            int prevSurfIdx = (stopPosition == 0) ? 0 : elementBacks[stopPosition - 1];
+            double origGap = sys.Surfaces[prevSurfIdx].Thickness;
+            double leadingAir, trailingAir;
+            if (double.IsInfinity(origGap))
+            {
+                leadingAir  = origGap;
+                trailingAir = data.AirGapSeed;
+            }
+            else
+            {
+                leadingAir  = origGap / 2.0;
+                trailingAir = origGap / 2.0;
+            }
+
+            int stopInsertAt = prevSurfIdx + 1;
+            sys.Surfaces[prevSurfIdx].Thickness = leadingAir;
+            var stopS = new Surface
+            {
+                Type             = LensHH.Core.Enums.SurfaceType.Standard,
+                Radius           = 1e18,
+                Thickness        = trailingAir,
+                Material         = "",
+                SemiDiameter     = data.SemiDiameterSeed,
+                SemiDiameterMode = LensHH.Core.Enums.SemiDiameterMode.Auto,
+                Conic            = 0,
+                IsStop           = true,
+                ThicknessVariable = true,
+            };
+            sys.Surfaces.Insert(stopInsertAt, stopS);
+            SurfaceIndexUpdater.OnSurfaceInserted(stopInsertAt, sys, session.MeritFunction, session.ConfigEditor);
+            for (int i = 0; i < sys.Surfaces.Count; i++) sys.Surfaces[i].Index = i;
+
+            if (!double.IsInfinity(sys.Surfaces[prevSurfIdx].Thickness))
+                sys.Surfaces[prevSurfIdx].ThicknessVariable = true;
+
+            // Glass-surface indices shift +1 if they're at or after the stop insert.
+            for (int i = 0; i < glassSurfaces.Count; i++)
+                if (glassSurfaces[i] >= stopInsertAt) glassSurfaces[i]++;
+
+            // Resolve substitutionCatalog (auto-detect UV vs Visible).
+            string resolvedCatalog = data.SubstitutionCatalog;
+            if (string.Equals(resolvedCatalog?.Trim(), "auto", StringComparison.OrdinalIgnoreCase))
+            {
+                double minWl = (sys.Wavelengths != null && sys.Wavelengths.Count > 0)
+                    ? sys.Wavelengths.Min(w => w.Value) : 0.587;
+                resolvedCatalog = minWl < 0.380 ? "StockGlassesUV" : "StockGlassesVisible";
+            }
+
+            if (!string.IsNullOrWhiteSpace(resolvedCatalog))
             {
                 foreach (var glassSurf in glassSurfaces)
                 {
@@ -276,8 +339,22 @@ namespace LensHH.Mcp
                     {
                         SurfaceIndex = glassSurf,
                         Substitute = true,
-                        CatalogName = data.SubstitutionCatalog
+                        CatalogName = resolvedCatalog
                     });
+                }
+            }
+
+            // Rewrite merit-function span operands Surface1=-3 → 1 (same logic
+            // as the standalone build_skeleton).
+            if (session.MeritFunction != null)
+            {
+                foreach (var op in session.MeritFunction.Operands)
+                {
+                    bool isSpan = op.Type == LensHH.Core.MeritFunction.OperandType.CTA
+                               || op.Type == LensHH.Core.MeritFunction.OperandType.EA
+                               || op.Type == LensHH.Core.MeritFunction.OperandType.CTG
+                               || op.Type == LensHH.Core.MeritFunction.OperandType.EG;
+                    if (isSpan && op.Surface1 == -3) op.Surface1 = 1;
                 }
             }
         }

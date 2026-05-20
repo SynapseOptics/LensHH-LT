@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Linq;
 using System.Text;
 using LensHH.Core.Enums;
 using LensHH.Core.Models;
@@ -182,24 +183,24 @@ namespace LensHH.Mcp.Tools
         // ── Helper #3: build a complete skeleton from a high-level spec ─────
 
         [McpServerTool, Description(
-            "Build a complete lens skeleton (multiple elements + entrance-pupil offset + glass substitution) on the CURRENT system in one call. Expects the host to already have the merit function, fields, wavelengths, and stop set up; this helper adds the lens elements and configures them ready for `multistart_optimize_start`.\n\n"
+            "Build a complete lens skeleton (multiple elements + physical aperture stop + glass substitution) on the CURRENT system in one call. Expects the host to already have the merit function, fields, wavelengths, and stop set up; this helper drops the template's dummy stop, inserts the lens elements, then inserts a REAL flat aperture-stop surface in the chosen air gap with both surrounding thicknesses bounded variables — physically realizable from the start.\n\n"
             + "Architecture (currently supported):\n"
-            + "  • 'single-single-single' (alias 'sss', 'cooke'): three singlets — front + (biconcave SF11) + back. Standard Cooke-triplet starting seed: BK7 / SF11 / BK7, biconvex / biconcave / biconvex, with all curvatures + thicknesses + entrance-pupil-offset marked variable and glass substitution enabled on every glass surface against substitutionCatalog (default 'SCHOTT').\n\n"
-            + "More architectures (doublets, Tessar, double-Gauss skeletons) will land here next; for now the single-single-single seed already covers the bulk of v5/v6/v7's free-optimize starting points.\n\n"
+            + "  • 'single-single-single' (alias 'sss', 'cooke'): three singlets — BK7 / SF11 / BK7, biconvex / biconcave / biconvex. Standard Cooke-triplet starting seed.\n\n"
             + "Parameters:\n"
-            + "  • entrancePupilOffset (default −10 mm): seed for the stop-surface trailing thickness. Negative = buried pupil (pupil ahead of S1), as v6/v7 free-opts settled on.\n"
-            + "  • semiDiameterDefault (default 12.5 mm = Ø25): seed semi-D for every element. Mode=Auto so the SD solver resizes during optimization.\n"
-            + "  • airGap (default 10 mm): air spacing between adjacent elements. Marked variable.\n"
+            + "  • stopPosition (default 1): which air gap to place the stop in. 0 = leading air before L1 (wide-angle convention), 1 = between L1 and L2 (Cooke triplet default, mid-stack), 2 = between L2 and L3, … N (= numElements) = BFL gap after the last element.\n"
+            + "  • semiDiameterDefault (default 12.5 mm): seed semi-D for every element. Mode=Auto so the SD solver resizes during optimization.\n"
+            + "  • airGap (default 10 mm): element-to-element air gap. For the gap that holds the new stop, this is split half-and-half into leading + trailing air thicknesses (both marked variable).\n"
             + "  • bflSeed (default 45 mm): trailing air gap from the last element to the image. Marked variable.\n"
-            + "  • substitutionCatalog (default 'SCHOTT'): catalog name for glass substitution on every glass surface. Pass empty to disable substitution.\n\n"
-            + "After the call, the system is ready to call `multistart_optimize_start` with `glassSubPercent > 0`. Eliminates the 12–15 micro-tool ritual (edit_surface stop thickness, set_variable thickness, add_singlet × N, set_glass_substitution × N).")]
+            + "  • substitutionCatalog (default 'auto'): catalog name for glass substitution on every spherical glass surface. 'auto' picks StockGlassesUV if min(wavelengths) < 0.380 µm, else StockGlassesVisible — the same logic as set_stock_glass_substitution. Pass '' to disable substitution; pass any explicit name (e.g. 'SCHOTT', 'StockGlassesVisible') to override.\n\n"
+            + "The helper also rewrites any merit-function span operand (CTA / EA / CTG / EG) with Surface1=-3 to Surface1=1, so the spans cover EVERY refractive surface from L1 onward — including the new stop's leading/trailing air pair and the lens elements that now sit before the stop. (-3 = first surface after stop was correct for the old buried-pupil convention; for the physical-stop convention -3 points mid-stack and would under-constrain the design.)\n\n"
+            + "After the call, the system is ready for `multistart_optimize_start` with `glassSubPercent > 0`.")]
         public string BuildSkeleton(
             string architecture = "single-single-single",
-            double entrancePupilOffset = -10.0,
+            int stopPosition = 1,
             double semiDiameterDefault = 12.5,
             double airGap = 10.0,
             double bflSeed = 45.0,
-            string substitutionCatalog = "SCHOTT")
+            string substitutionCatalog = "auto")
         {
             // ── Validate architecture key ─────────────────────────────────────
             var arch = (architecture ?? "").Trim().ToLowerInvariant().Replace('_', '-');
@@ -207,17 +208,13 @@ namespace LensHH.Mcp.Tools
             if (!isCooke)
                 return $"BuildSkeleton error: unknown architecture '{architecture}'. Supported: 'single-single-single' (Cooke triplet).";
 
+            int numElements = 3; // single-single-single
+            if (stopPosition < 0 || stopPosition > numElements)
+                return $"BuildSkeleton error: stopPosition={stopPosition} out of range [0, {numElements}] for {numElements}-element architecture.";
+
             var sys = _session.System;
             if (sys == null || sys.Surfaces.Count < 3)
                 return "BuildSkeleton error: host system must already have OBJ + STOP + IMG (use load_system on a template first).";
-
-            // ── Identify the stop surface ─────────────────────────────────────
-            // We assume the standard template layout: OBJ=0, STOP=1 (IsStop=true,
-            // air), IMG=last. If the host is shaped differently we still try —
-            // we just use sys.StopSurfaceIndex regardless of where it sits.
-            int stopIdx = sys.StopSurfaceIndex;
-            if (stopIdx <= 0)
-                return $"BuildSkeleton error: stop surface not found (stopIdx={stopIdx}). Make sure the template has IsStop=true on one of the surfaces.";
 
             // Refuse to run on a system that already has glass elements — we
             // don't want to silently double-insert if the agent calls this on
@@ -228,26 +225,35 @@ namespace LensHH.Mcp.Tools
             if (hasExistingGlass)
                 return "BuildSkeleton error: system already contains glass elements. Reload a fresh template before calling BuildSkeleton.";
 
-            // ── Set entrance-pupil offset and make it variable ────────────────
-            // S1.Thickness is the distance from stop to first lens. Free-opt
-            // basins often want negative values (buried pupil); seeding with
-            // −10 mm gets the optimizer going in roughly the right direction.
-            sys.Surfaces[stopIdx].Thickness = entrancePupilOffset;
-            sys.Surfaces[stopIdx].ThicknessVariable = true;
+            // ── Drop the template's dummy stop ───────────────────────────────
+            // The template was authored with a placeholder stop S1 that the
+            // old build_skeleton repurposed as the "entrance pupil offset"
+            // variable. The physically-realizable convention uses a REAL flat
+            // stop surface inserted into a chosen air gap later — the dummy
+            // is no longer needed. We delete it and adjust OBJ.Thickness so
+            // the OBJ-to-first-refractive distance is preserved (∞ + finite
+            // stays ∞ in IEEE 754, the correct behavior for infinite
+            // conjugate).
+            int oldStopIdx = sys.StopSurfaceIndex;
+            if (oldStopIdx <= 0)
+                return $"BuildSkeleton error: stop surface not found in template (stopIdx={oldStopIdx}).";
+
+            double origObjT   = sys.Surfaces[0].Thickness;
+            double origDummyT = sys.Surfaces[oldStopIdx].Thickness;
+            sys.Surfaces.RemoveAt(oldStopIdx);
+            sys.Surfaces[0].Thickness = origObjT + origDummyT;
+            for (int i = 0; i < sys.Surfaces.Count; i++) sys.Surfaces[i].Index = i;
+            SurfaceIndexUpdater.OnSurfaceRemoved(oldStopIdx, sys, _session.MeritFunction, _session.ConfigEditor);
 
             var report = new StringBuilder();
-            report.AppendLine($"BuildSkeleton: architecture='{(isCooke ? "single-single-single (Cooke)" : architecture)}'");
-            report.AppendLine($"  Stop at S{stopIdx}, entrance-pupil offset = {entrancePupilOffset} mm (variable).");
+            report.AppendLine($"BuildSkeleton: architecture='single-single-single (Cooke)', stopPosition={stopPosition}");
+            report.AppendLine($"  Dropped template's dummy stop S{oldStopIdx} (was T={origDummyT}).");
 
             // ── Cooke triplet seed values ─────────────────────────────────────
-            // Element 1: BK7 biconvex,  R=±50,  t=4 mm,  airAfter=airGap
-            // Element 2: SF11 biconcave, R=∓30, t=3 mm,  airAfter=airGap
-            // Element 3: BK7 biconvex,  R=±50,  t=4 mm,  airAfter=bflSeed
-            //
-            // The biconvex/biconcave seeds give the optimizer a clean +,−,+
-            // power signature with substantial wiggle room. Glass substitution
-            // on top will explore alternative glasses; the optimizer can also
-            // bend the radii via the curvature variables.
+            // Element 1: BK7 biconvex,  R=±50,  t=4 mm
+            // Element 2: SF11 biconcave, R=∓30, t=3 mm
+            // Element 3: BK7 biconvex,  R=±50,  t=4 mm
+            // Trailing air after each: airGap (or bflSeed for the last)
             var ops = new (string label, double r1, double r2, double t, string mat, double airAfter, double sd)[]
             {
                 ("E1 (positive, BK7)",  +50, -50, 4, "N-BK7",  airGap,  semiDiameterDefault),
@@ -255,8 +261,11 @@ namespace LensHH.Mcp.Tools
                 ("E3 (positive, BK7)",  +50, -50, 4, "N-BK7",  bflSeed, semiDiameterDefault),
             };
 
-            int afterSurface = stopIdx;
+            // Insert all singlets in sequence — no stop yet, the lens stack
+            // sits directly after OBJ.
+            int afterSurface = 0; // After OBJ
             var glassSurfacesForSub = new List<int>();
+            var elementBacks = new List<int>(); // index of each element's back surface after insertion
             foreach (var op in ops)
             {
                 var (front, back, err) = InsertSingletCore(
@@ -267,15 +276,63 @@ namespace LensHH.Mcp.Tools
                     markThicknessesVariable: true);
                 if (err != null) return $"BuildSkeleton error during {op.label}: {err}";
                 glassSurfacesForSub.Add(front);
+                elementBacks.Add(back);
                 afterSurface = back;
                 report.AppendLine($"  {op.label}: surfaces [{front}-{back}].");
             }
 
+            // ── Insert the physical stop into the chosen air gap ─────────────
+            //   stopPosition = 0: leading air gap (between OBJ and L1 front)
+            //   stopPosition = k for 1..N-1: between Lk back and L(k+1) front
+            //   stopPosition = N: BFL gap (between LN back and IMG)
+            int prevSurfIdx = (stopPosition == 0) ? 0 : elementBacks[stopPosition - 1];
+            double origGap = sys.Surfaces[prevSurfIdx].Thickness;
+
+            double leadingAir;
+            double trailingAir;
+            if (double.IsInfinity(origGap))
+            {
+                // Leading-gap case with infinite-conjugate object: OBJ.Thickness
+                // is ∞. Don't try to split — keep OBJ.T = ∞, put a finite air
+                // distance from the new stop to the next surface.
+                leadingAir  = origGap;          // ∞ stays ∞
+                trailingAir = airGap;           // a sensible finite distance to L1
+            }
+            else
+            {
+                leadingAir  = origGap / 2.0;
+                trailingAir = origGap / 2.0;
+            }
+
+            int stopInsertAt = prevSurfIdx + 1;
+            InsertStopInGap(sys, prevSurfIdx, leadingAir, trailingAir);
+
+            // Mark prev surface's thickness variable (so the leading-air can
+            // also move on re-opt). InsertStopInGap already marked the new
+            // stop's trailing-air variable.
+            if (!double.IsInfinity(sys.Surfaces[prevSurfIdx].Thickness))
+                sys.Surfaces[prevSurfIdx].ThicknessVariable = true;
+
+            // After the stop insert, glass-surface indices >= stopInsertAt
+            // shifted +1.
+            for (int i = 0; i < glassSurfacesForSub.Count; i++)
+                if (glassSurfacesForSub[i] >= stopInsertAt) glassSurfacesForSub[i]++;
+
+            report.AppendLine($"  Inserted physical stop at S{stopInsertAt} in the air gap after S{prevSurfIdx}: "
+                + $"leading air = {leadingAir:F4} mm, trailing air = {trailingAir:F4} mm (both variable).");
+
+            // ── Resolve substitutionCatalog (auto-detect UV vs Visible) ──────
+            string resolvedCatalog = substitutionCatalog;
+            if (string.Equals(substitutionCatalog?.Trim(), "auto", StringComparison.OrdinalIgnoreCase))
+            {
+                double minWl = (sys.Wavelengths != null && sys.Wavelengths.Count > 0)
+                    ? sys.Wavelengths.Min(w => w.Value) : 0.587;
+                resolvedCatalog = minWl < 0.380 ? "StockGlassesUV" : "StockGlassesVisible";
+                report.AppendLine($"  substitutionCatalog='auto' resolved to '{resolvedCatalog}' (min wavelength {minWl:F4} um).");
+            }
+
             // ── Enable glass substitution on every glass surface ──────────────
-            // The Cooke triplet has 3 glass surfaces (one per singlet's front,
-            // since the back is already an air surface). Glass substitution
-            // will let multistart pick from the chosen catalog during trials.
-            if (!string.IsNullOrWhiteSpace(substitutionCatalog))
+            if (!string.IsNullOrWhiteSpace(resolvedCatalog))
             {
                 foreach (var glassSurf in glassSurfacesForSub)
                 {
@@ -283,15 +340,40 @@ namespace LensHH.Mcp.Tools
                     {
                         SurfaceIndex = glassSurf,
                         Substitute = true,
-                        CatalogName = substitutionCatalog
+                        CatalogName = resolvedCatalog
                     });
                 }
-                report.AppendLine($"  Glass substitution enabled on {glassSurfacesForSub.Count} surface(s) against catalog '{substitutionCatalog}'.");
+                report.AppendLine($"  Glass substitution enabled on {glassSurfacesForSub.Count} surface(s) against catalog '{resolvedCatalog}'.");
             }
             else
             {
                 report.AppendLine("  Glass substitution disabled (empty substitutionCatalog).");
             }
+
+            // ── Rewrite merit-function span operands ──────────────────────────
+            // The template was authored with CTA(-3,-1) / EA(-3,-1) / CTG(-3,-1)
+            // / EG(-3,-1). -3 = "first surface after stop". For the OLD buried-
+            // pupil convention with stop at S1, -3 = L1f and the span correctly
+            // covered all refractive surfaces. For the NEW physical-stop
+            // convention the stop sits mid-stack, so -3 points at a later
+            // surface and misses the lens elements + air gaps that now sit
+            // before the stop. Rewriting Surface1=-3 → 1 (absolute first
+            // refractive surface index in the new layout) restores full
+            // coverage.
+            int rewrites = 0;
+            if (_session.MeritFunction != null)
+            {
+                foreach (var op in _session.MeritFunction.Operands)
+                {
+                    bool isSpan = op.Type == LensHH.Core.MeritFunction.OperandType.CTA
+                               || op.Type == LensHH.Core.MeritFunction.OperandType.EA
+                               || op.Type == LensHH.Core.MeritFunction.OperandType.CTG
+                               || op.Type == LensHH.Core.MeritFunction.OperandType.EG;
+                    if (isSpan && op.Surface1 == -3) { op.Surface1 = 1; rewrites++; }
+                }
+            }
+            if (rewrites > 0)
+                report.AppendLine($"  Merit-function rewrite: {rewrites} span operand(s) had Surface1=-3 → 1 (covers leading/trailing air around new stop + lenses before stop).");
 
             // ── Final sanity check: a fresh evaluation should succeed ─────────
             // Catches any invariant we missed (e.g., a null Material slipping
