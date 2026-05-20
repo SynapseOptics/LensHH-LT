@@ -602,6 +602,45 @@ namespace LensHH.Mcp.Tools
             //    surface = -oldStopT (positive, since oldStopT < 0).
             double zTarget = -oldStopT;
 
+            // 6a. Rewrite the merit function for the candidates. The source
+            //     template was authored with span operands like CTA(-3,-1) /
+            //     EA(-3,-1) / CTG(-3,-1) / EG(-3,-1), where -3 = "first
+            //     surface after stop". For the buried-pupil source that
+            //     deliberately EXCLUDED the dummy stop's leading thickness
+            //     (S1.T) so the optimizer could push it negative and bury
+            //     the pupil.
+            //
+            //     In the converted candidates the stop has moved into the
+            //     middle of the lens stack, so -3 now points at the surface
+            //     AFTER the new stop — which means the lens elements + air
+            //     gaps BEFORE the new stop (including the stop's own leading
+            //     and trailing air pair) are no longer covered by these
+            //     constraints. We want the new candidates' CTA/EA/CTG/EG to
+            //     cover EVERY refractive surface from L1 onward, so re-opt
+            //     can hold every air gap and every glass thickness in bounds.
+            //
+            //     The fix (Option A from the user discussion): rewrite each
+            //     CTA/EA/CTG/EG operand's Surface1 from -3 to absolute 1
+            //     (= first refractive surface in the new layout, since the
+            //     dummy S1 has been dropped). Surface2 = -1 stays as the
+            //     sentinel for the last refractive surface.
+            LensHH.Core.MeritFunction.MeritFunction? candidateMf = null;
+            if (src.MeritFunction != null)
+            {
+                candidateMf = src.MeritFunction.Clone();
+                foreach (var op in candidateMf.Operands)
+                {
+                    bool isSpanOperand = op.Type == LensHH.Core.MeritFunction.OperandType.CTA
+                                      || op.Type == LensHH.Core.MeritFunction.OperandType.EA
+                                      || op.Type == LensHH.Core.MeritFunction.OperandType.CTG
+                                      || op.Type == LensHH.Core.MeritFunction.OperandType.EG;
+                    if (isSpanOperand && op.Surface1 == -3)
+                    {
+                        op.Surface1 = 1;
+                    }
+                }
+            }
+
             // 7. For each gap, generate 3 candidates (start / middle / end).
             //    Use small inset from gap edges to avoid coincident surfaces.
             var sb = new StringBuilder();
@@ -609,6 +648,19 @@ namespace LensHH.Mcp.Tools
             sb.AppendLine($"S{oldStopIdx}.Thickness = {oldStopT:F4} mm (buried, |T|={Math.Abs(oldStopT):F4} mm)");
             sb.AppendLine($"Target entrance pupil position: z = {zTarget:F4} mm (relative to first refractive surface)");
             sb.AppendLine($"Internal air gaps to scan: {gaps.Count}");
+            if (candidateMf != null)
+            {
+                int rewriteCount = 0;
+                foreach (var op in candidateMf.Operands)
+                {
+                    bool isSpan = op.Type == LensHH.Core.MeritFunction.OperandType.CTA
+                              || op.Type == LensHH.Core.MeritFunction.OperandType.EA
+                              || op.Type == LensHH.Core.MeritFunction.OperandType.CTG
+                              || op.Type == LensHH.Core.MeritFunction.OperandType.EG;
+                    if (isSpan && op.Surface1 == 1) rewriteCount++;
+                }
+                sb.AppendLine($"Merit-function rewrite: {rewriteCount} span operand(s) had Surface1=-3 → 1 (covers leading/trailing air around new stop + lenses before stop).");
+            }
             sb.AppendLine();
             sb.AppendLine($"{"Gap",-4}{"Pos",-8}{"z_stop",10}{"z_ep",12}{"Δ",12}  File");
 
@@ -656,7 +708,7 @@ namespace LensHH.Mcp.Tools
                     // Save candidate.
                     string fileName = $"{baseName}_gap{gapNum}_{labels[j]}.lhlt";
                     string outPath = System.IO.Path.Combine(outputDir, fileName);
-                    try { LensHH.Core.IO.LhltWriter.Write(candidate, outPath, src.MeritFunction, src.ConfigEditor); }
+                    try { LensHH.Core.IO.LhltWriter.Write(candidate, outPath, candidateMf, src.ConfigEditor); }
                     catch (Exception ex)
                     {
                         sb.AppendLine($"{gapNum,-4}{labels[j],-8}{p,10:F4}    (save failed: {ex.Message})");
