@@ -187,7 +187,7 @@ namespace LensHH.Mcp.Tools
             + "Architecture (currently supported):\n"
             + "  • 'single-single-single' (alias 'sss', 'cooke'): three singlets — BK7 / SF11 / BK7, biconvex / biconcave / biconvex. Standard Cooke-triplet starting seed.\n\n"
             + "Parameters:\n"
-            + "  • stopPosition (default 1): which air gap to place the stop in. 0 = leading air before L1 (wide-angle convention), 1 = between L1 and L2 (Cooke triplet default, mid-stack), 2 = between L2 and L3, … N (= numElements) = BFL gap after the last element.\n"
+            + "  • stopPosition (default 2 for Cooke triplet): which air gap to place the stop in. 0 = leading air before L1 (wide-angle convention), 1 = between L1 and L2, 2 = between L2 and L3 (classic Cooke default — near-symmetry around the negative middle element balances coma and lateral color), … N (= numElements) = BFL gap after the last element.\n"
             + "  • semiDiameterDefault (default 12.5 mm): seed semi-D for every element. Mode=Auto so the SD solver resizes during optimization.\n"
             + "  • airGap (default 10 mm): element-to-element air gap. For the gap that holds the new stop, this is split half-and-half into leading + trailing air thicknesses (both marked variable).\n"
             + "  • bflSeed (default 45 mm): trailing air gap from the last element to the image. Marked variable.\n"
@@ -196,7 +196,7 @@ namespace LensHH.Mcp.Tools
             + "After the call, the system is ready for `multistart_optimize_start` with `glassSubPercent > 0`.")]
         public string BuildSkeleton(
             string architecture = "single-single-single",
-            int stopPosition = 1,
+            int stopPosition = 2,
             double semiDiameterDefault = 12.5,
             double airGap = 10.0,
             double bflSeed = 45.0,

@@ -38,7 +38,7 @@ namespace LensHH.Mcp
         public string Architecture { get; set; } = "single-single-single";
         public int CandidatesPerPattern { get; set; } = 3;
         public string SubstitutionCatalog { get; set; } = "auto";
-        public int StopPosition { get; set; } = 1;
+        public int StopPosition { get; set; } = 2;
         public double SemiDiameterSeed { get; set; } = 12.5;
         public double AirGapSeed { get; set; } = 10;
         public double BflSeed { get; set; } = 45;
