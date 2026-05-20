@@ -490,6 +490,304 @@ namespace LensHH.Mcp.Tools
             return sb.ToString();
         }
 
+        // ──────────────────────────────────────────────────────────────────────
+        // relocate_stop_scan: scan-and-save physical-stop candidates
+        //
+        // For a buried-pupil design (sourcePath has S1.Thickness < 0), this
+        // builds 3 candidate alternative designs PER internal air gap — one
+        // each near the front, middle, and back of the gap — with the dummy
+        // S1 dropped and a real flat aperture-stop surface inserted into the
+        // chosen air gap. Each candidate is saved as its own .lhlt the user
+        // can open in the GUI, and the engine-computed entrance-pupil position
+        // (via SystemDataCalculator) is reported in the response table.
+        //
+        // Goal: the user can compare each candidate's reported entrance pupil
+        // against the original target (= -S1.Thickness, relative to the first
+        // refractive surface). If a candidate matches the target, that's the
+        // physical-stop design with the same chief-ray geometry. If no
+        // candidate matches, the table reveals which gap's range BRACKETS the
+        // target — the user can then re-optimize that candidate with the
+        // stop's surrounding air-thicknesses bounded variables.
+        //
+        // Caveats: merit-function operands using sentinel surface refs
+        // (-1/-2/-3/-4) auto-track the new indexing; absolute refs like
+        // Surface=3 will point at a different surface in the candidate and
+        // should be reviewed before use. Glass-substitution settings and
+        // pickups are dropped (their indices are stale after reorder).
+
+        [McpServerTool, Description(
+            "For a buried-pupil source design (S1.Thickness < 0), build 3 alternative-stop-position candidate designs PER internal air gap (start, middle, end of each gap), each with the dummy S1 removed and a real flat IsStop surface inserted into the chosen gap. Saves each candidate as a .lhlt under outputDir and reports the engine-computed entrance pupil position for each in a table.\n\n"
+            + "Goal: the user can verify in the GUI which candidate (if any) puts the entrance pupil exactly where the original (buried) one was. Target = -S1.Thickness, relative to the first refractive surface. If no candidate matches exactly, the table shows which gap's start/end BRACKET the target — load that candidate and re-optimize with the stop's leading and trailing air-thicknesses set as bounded variables.\n\n"
+            + "If S1.Thickness >= 0 in the source, no buried pupil exists; the helper just copies the source unchanged to outputDir and returns.\n\n"
+            + "Internal air gaps only: leading (before first lens) and BFL (after last lens) gaps are skipped — physical stops belong between lens elements.\n\n"
+            + "Caveats: merit-function operands referencing surfaces by sentinel (-1/-2/-3/-4) auto-track; absolute Surface=k refs may now point at a different surface. Glass-substitution settings and pickups are NOT copied to candidates (stale indices after reorder).")]
+        public string RelocateStopScan(string sourcePath, string outputDir)
+        {
+            if (string.IsNullOrWhiteSpace(sourcePath) || !System.IO.File.Exists(sourcePath))
+                return $"RelocateStopScan error: sourcePath '{sourcePath}' does not exist.";
+            if (string.IsNullOrWhiteSpace(outputDir))
+                return "RelocateStopScan error: outputDir is required.";
+
+            // 1. Load source
+            LensHH.Core.IO.LhltReadResult src;
+            try { src = LensHH.Core.IO.LhltReader.Read(sourcePath); }
+            catch (Exception ex) { return $"RelocateStopScan error reading source: {ex.Message}"; }
+
+            var srcSys = src.System;
+            int n = srcSys.Surfaces.Count;
+            if (n < 4) return $"RelocateStopScan error: source has {n} surfaces (need OBJ + dummy + at least one lens + IMG).";
+
+            int oldStopIdx = srcSys.StopSurfaceIndex;
+            if (oldStopIdx < 1 || oldStopIdx >= n - 1)
+                return $"RelocateStopScan error: stop surface index {oldStopIdx} is OBJ or IMG; nothing to relocate.";
+
+            double oldStopT = srcSys.Surfaces[oldStopIdx].Thickness;
+
+            try { System.IO.Directory.CreateDirectory(outputDir); }
+            catch (Exception ex) { return $"RelocateStopScan error creating outputDir: {ex.Message}"; }
+
+            // 2. Not buried? Just copy source unchanged.
+            if (oldStopT >= -1e-9)
+            {
+                var copyName = System.IO.Path.GetFileName(sourcePath);
+                var copyPath = System.IO.Path.Combine(outputDir, copyName);
+                try { System.IO.File.Copy(sourcePath, copyPath, overwrite: true); }
+                catch (Exception ex) { return $"RelocateStopScan error during copy: {ex.Message}"; }
+                return $"S{oldStopIdx}.Thickness = {oldStopT:F4} >= 0 (not buried). Source copied unchanged to {copyPath}.";
+            }
+
+            // 3. Build the base system (dummy S1 dropped). OBJ thickness is
+            //    adjusted so the OBJ→(was S2) distance equals the original
+            //    OBJ→S2 distance (∞ + negative = ∞ in IEEE 754, which is what
+            //    we want for infinite conjugate; for finite conjugate this
+            //    gives the right finite sum).
+            var baseSys = BuildBaseSystemWithoutDummyStop(srcSys, oldStopIdx);
+
+            // 4. Compute physical z for each surface in the base system,
+            //    anchoring the first refractive surface (new S1) at z=0.
+            int baseN = baseSys.Surfaces.Count;
+            double[] zBase = new double[baseN];
+            zBase[0] = double.NegativeInfinity; // OBJ — never used directly
+            zBase[1] = 0;
+            for (int i = 2; i < baseN; i++)
+            {
+                double t = baseSys.Surfaces[i - 1].Thickness;
+                if (double.IsInfinity(t) || double.IsNaN(t)) t = 0;
+                zBase[i] = zBase[i - 1] + t;
+            }
+
+            // 5. Identify INTERNAL air gaps. A gap [zBase[i], zBase[i+1]] is
+            //    internal iff: surface i has empty Material (air after it),
+            //    surface i+1 has non-empty Material (lens front), AND
+            //    surface i-1 has non-empty Material (so surface i is a lens
+            //    back, not the OBJ→first-lens air space). i+1 must not be
+            //    the image surface.
+            var gaps = new List<(int prevIdx, double zLow, double zHigh)>();
+            for (int i = 1; i < baseN - 2; i++)
+            {
+                var s = baseSys.Surfaces[i];
+                if (!string.IsNullOrEmpty(s.Material)) continue; // s is glass-front, not air-after
+                if (i < 2) continue;
+                var prevS = baseSys.Surfaces[i - 1];
+                if (string.IsNullOrEmpty(prevS.Material)) continue; // s isn't a lens back; this is the leading gap
+                var nextS = baseSys.Surfaces[i + 1];
+                if (string.IsNullOrEmpty(nextS.Material)) continue; // i+1 isn't a lens front
+                gaps.Add((i, zBase[i], zBase[i + 1]));
+            }
+
+            if (gaps.Count == 0)
+                return "RelocateStopScan: no internal air gaps found (system has no lens-to-lens air spaces).";
+
+            // 6. Target entrance pupil position relative to first refractive
+            //    surface = -oldStopT (positive, since oldStopT < 0).
+            double zTarget = -oldStopT;
+
+            // 7. For each gap, generate 3 candidates (start / middle / end).
+            //    Use small inset from gap edges to avoid coincident surfaces.
+            var sb = new StringBuilder();
+            sb.AppendLine($"Source:  {sourcePath}");
+            sb.AppendLine($"S{oldStopIdx}.Thickness = {oldStopT:F4} mm (buried, |T|={Math.Abs(oldStopT):F4} mm)");
+            sb.AppendLine($"Target entrance pupil position: z = {zTarget:F4} mm (relative to first refractive surface)");
+            sb.AppendLine($"Internal air gaps to scan: {gaps.Count}");
+            sb.AppendLine();
+            sb.AppendLine($"{"Gap",-4}{"Pos",-8}{"z_stop",10}{"z_ep",12}{"Δ",12}  File");
+
+            string baseName = System.IO.Path.GetFileNameWithoutExtension(sourcePath);
+            string[] labels = { "start", "middle", "end" };
+
+            int gapNum = 0;
+            int candidatesSaved = 0;
+            int candidatesFailed = 0;
+            foreach (var gap in gaps)
+            {
+                gapNum++;
+                double gapLen = gap.zHigh - gap.zLow;
+                // ε scales with gap length so tiny gaps still produce 3 distinct positions.
+                double eps = Math.Min(0.05, gapLen * 0.1);
+                double[] positions =
+                {
+                    gap.zLow + eps,
+                    (gap.zLow + gap.zHigh) / 2.0,
+                    gap.zHigh - eps,
+                };
+
+                for (int j = 0; j < 3; j++)
+                {
+                    double p = positions[j];
+
+                    // Build candidate: deep-clone base, then insert stop in gap.
+                    var candidate = CloneSystem(baseSys);
+                    InsertStopInGap(candidate, gap.prevIdx, p - gap.zLow, gap.zHigh - p);
+
+                    // Compute entrance pupil via the engine's paraxial solver.
+                    double zEp = double.NaN;
+                    try
+                    {
+                        var sysData = LensHH.Core.Analysis.SystemDataCalculator.Calculate(candidate, _session.GlassCatalog);
+                        zEp = sysData.EntrancePupilPosition;
+                    }
+                    catch (Exception ex)
+                    {
+                        sb.AppendLine($"{gapNum,-4}{labels[j],-8}{p,10:F4}    (paraxial failed: {ex.Message})");
+                        candidatesFailed++;
+                        continue;
+                    }
+
+                    // Save candidate.
+                    string fileName = $"{baseName}_gap{gapNum}_{labels[j]}.lhlt";
+                    string outPath = System.IO.Path.Combine(outputDir, fileName);
+                    try { LensHH.Core.IO.LhltWriter.Write(candidate, outPath, src.MeritFunction, src.ConfigEditor); }
+                    catch (Exception ex)
+                    {
+                        sb.AppendLine($"{gapNum,-4}{labels[j],-8}{p,10:F4}    (save failed: {ex.Message})");
+                        candidatesFailed++;
+                        continue;
+                    }
+
+                    double delta = zEp - zTarget;
+                    sb.AppendLine($"{gapNum,-4}{labels[j],-8}{p,10:F4}{zEp,12:F4}{delta,12:F4}  {fileName}");
+                    candidatesSaved++;
+                }
+            }
+
+            sb.AppendLine();
+            sb.AppendLine($"Saved {candidatesSaved} candidate(s) under {outputDir}."
+                + (candidatesFailed > 0 ? $" {candidatesFailed} failed." : ""));
+            sb.AppendLine("Verify in GUI: open any candidate .lhlt and check the entrance pupil position in System Data.");
+            sb.AppendLine("Δ column is engine_z_ep - target. Δ0 → physical stop reproduces the original chief-ray geometry exactly.");
+
+            return sb.ToString();
+        }
+
+        /// <summary>
+        /// Drop the dummy stop surface (oldStopIdx) and return a new
+        /// OpticalSystem. OBJ thickness is set to (origOBJ.T + origDummy.T)
+        /// so the geometric OBJ→(was S2) distance is preserved. For infinite
+        /// conjugate this stays ∞ in IEEE 754 arithmetic; for finite it gives
+        /// the correct finite sum. Wavelengths, fields, catalogs preserved;
+        /// pickups + glass-substitutions dropped (their refs are stale).
+        /// </summary>
+        private static LensHH.Core.Models.OpticalSystem BuildBaseSystemWithoutDummyStop(
+            LensHH.Core.Models.OpticalSystem srcSys, int oldStopIdx)
+        {
+            var dst = new LensHH.Core.Models.OpticalSystem
+            {
+                Title              = srcSys.Title,
+                Notes              = srcSys.Notes,
+                Designer           = srcSys.Designer,
+                Aperture           = new LensHH.Core.Models.Aperture(srcSys.Aperture.Type, srcSys.Aperture.Value),
+                FieldType          = srcSys.FieldType,
+                IsAfocal           = srcSys.IsAfocal,
+                PenalizeVignetting = srcSys.PenalizeVignetting,
+                RayAiming          = srcSys.RayAiming,
+            };
+
+            double origObjT   = srcSys.Surfaces[0].Thickness;
+            double origDummyT = srcSys.Surfaces[oldStopIdx].Thickness;
+
+            for (int i = 0; i < srcSys.Surfaces.Count; i++)
+            {
+                if (i == oldStopIdx) continue;
+                var s = LensHH.Core.IO.LensInsertHelpers.CloneSurface(srcSys.Surfaces[i]);
+                s.IsStop = false; // any stop flag goes onto the newly-inserted surface later
+                dst.Surfaces.Add(s);
+            }
+
+            // Adjust OBJ.Thickness so OBJ→(was S2) distance is preserved.
+            // ∞ + finite = ∞ in IEEE 754, which is the correct behavior for
+            // infinite-conjugate systems.
+            dst.Surfaces[0].Thickness = origObjT + origDummyT;
+
+            // Reindex
+            for (int i = 0; i < dst.Surfaces.Count; i++) dst.Surfaces[i].Index = i;
+
+            dst.Wavelengths.AddRange(srcSys.Wavelengths);
+            dst.Fields.AddRange(srcSys.Fields);
+            dst.GlassCatalogs.AddRange(srcSys.GlassCatalogs);
+
+            return dst;
+        }
+
+        /// <summary>Deep clone of an OpticalSystem (surfaces, wavelengths, fields, catalogs).</summary>
+        private static LensHH.Core.Models.OpticalSystem CloneSystem(LensHH.Core.Models.OpticalSystem src)
+        {
+            var dst = new LensHH.Core.Models.OpticalSystem
+            {
+                Title              = src.Title,
+                Notes              = src.Notes,
+                Designer           = src.Designer,
+                Aperture           = new LensHH.Core.Models.Aperture(src.Aperture.Type, src.Aperture.Value),
+                FieldType          = src.FieldType,
+                IsAfocal           = src.IsAfocal,
+                PenalizeVignetting = src.PenalizeVignetting,
+                RayAiming          = src.RayAiming,
+            };
+            foreach (var s in src.Surfaces) dst.Surfaces.Add(LensHH.Core.IO.LensInsertHelpers.CloneSurface(s));
+            dst.Wavelengths.AddRange(src.Wavelengths);
+            dst.Fields.AddRange(src.Fields);
+            dst.GlassCatalogs.AddRange(src.GlassCatalogs);
+            return dst;
+        }
+
+        /// <summary>
+        /// Insert a flat aperture-stop surface in the air gap immediately
+        /// after baseSys.Surfaces[prevIdx]. leadingAir = air thickness from
+        /// the previous lens back to the new stop; trailingAir = air thickness
+        /// from the new stop to the next lens front. The total of these two
+        /// should equal the original gap length so the rest of the lens stack
+        /// stays at its original physical positions.
+        /// </summary>
+        private static void InsertStopInGap(LensHH.Core.Models.OpticalSystem sys,
+            int prevIdx, double leadingAir, double trailingAir)
+        {
+            var prevS = sys.Surfaces[prevIdx];
+            var nextS = sys.Surfaces[prevIdx + 1];
+
+            // Pick SemiDiameter that doesn't pinch either neighbor.
+            double sd = Math.Max(prevS.SemiDiameter, nextS.SemiDiameter);
+            if (sd <= 0) sd = 12.5; // sensible fallback
+
+            var stopS = new LensHH.Core.Models.Surface
+            {
+                Type             = LensHH.Core.Enums.SurfaceType.Standard,
+                Radius           = 1e18,           // plano (engine's flat-surface sentinel)
+                Thickness        = trailingAir,
+                Material         = "",             // explicit empty-string (not null) — matches add_singlet convention
+                SemiDiameter     = sd,
+                SemiDiameterMode = LensHH.Core.Enums.SemiDiameterMode.Auto,
+                Conic            = 0,
+                IsStop           = true,
+            };
+
+            // Modify the leading-side surface's thickness: was the full air-gap
+            // length; becomes just the leading-air segment.
+            prevS.Thickness = leadingAir;
+
+            sys.Surfaces.Insert(prevIdx + 1, stopS);
+
+            for (int i = 0; i < sys.Surfaces.Count; i++) sys.Surfaces[i].Index = i;
+        }
+
         [McpServerTool, Description("Set clear aperture percentage for a range of surfaces. Only affects Auto (non-fixed, non-stop) surfaces. Values >100 increase semi-diameter beyond clear aperture, <100 causes vignetting.")]
         public string SetClearAperturePercent(int surface1, int surface2, double caPercent = 100)
         {
