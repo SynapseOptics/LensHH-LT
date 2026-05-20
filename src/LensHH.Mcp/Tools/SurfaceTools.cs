@@ -520,7 +520,8 @@ namespace LensHH.Mcp.Tools
             + "Goal: the user can verify in the GUI which candidate (if any) puts the entrance pupil exactly where the original (buried) one was. Target = -S1.Thickness, relative to the first refractive surface. If no candidate matches exactly, the table shows which gap's start/end BRACKET the target — load that candidate and re-optimize with the stop's leading and trailing air-thicknesses set as bounded variables.\n\n"
             + "If S1.Thickness >= 0 in the source, no buried pupil exists; the helper just copies the source unchanged to outputDir and returns.\n\n"
             + "Internal air gaps only: leading (before first lens) and BFL (after last lens) gaps are skipped — physical stops belong between lens elements.\n\n"
-            + "Caveats: merit-function operands referencing surfaces by sentinel (-1/-2/-3/-4) auto-track; absolute Surface=k refs may now point at a different surface. Glass-substitution settings and pickups are NOT copied to candidates (stale indices after reorder).")]
+            + "Per-surface glass-substitution settings ARE copied to candidates with SurfaceIndex re-mapped for the dummy-drop and stop-insert. The new stop surface is marked ThicknessVariable so re-optimization can slide it within the bounded air gap.\n\n"
+            + "Caveats: merit-function operands referencing surfaces by sentinel (-1/-2/-3/-4) auto-track; absolute Surface=k refs may now point at a different surface. Pickups are not copied.")]
         public string RelocateStopScan(string sourcePath, string outputDir)
         {
             if (string.IsNullOrWhiteSpace(sourcePath) || !System.IO.File.Exists(sourcePath))
@@ -736,8 +737,12 @@ namespace LensHH.Mcp.Tools
         /// OpticalSystem. OBJ thickness is set to (origOBJ.T + origDummy.T)
         /// so the geometric OBJ→(was S2) distance is preserved. For infinite
         /// conjugate this stays ∞ in IEEE 754 arithmetic; for finite it gives
-        /// the correct finite sum. Wavelengths, fields, catalogs preserved;
-        /// pickups + glass-substitutions dropped (their refs are stale).
+        /// the correct finite sum. Wavelengths, fields, catalogs and
+        /// per-surface GlassSubstitution settings preserved; entries pointing
+        /// at the dropped dummy are removed and remaining SurfaceIndex values
+        /// are shifted to match the dropped-surface renumbering. Pickups are
+        /// not copied — their references aren't worth re-mapping for a one-
+        /// shot conversion.
         /// </summary>
         private static LensHH.Core.Models.OpticalSystem BuildBaseSystemWithoutDummyStop(
             LensHH.Core.Models.OpticalSystem srcSys, int oldStopIdx)
@@ -777,10 +782,27 @@ namespace LensHH.Mcp.Tools
             dst.Fields.AddRange(srcSys.Fields);
             dst.GlassCatalogs.AddRange(srcSys.GlassCatalogs);
 
+            // Copy GlassSubstitution settings with index re-mapping for the
+            // dropped dummy. Each entry's SurfaceIndex was its position in the
+            // ORIGINAL system; in the new system surfaces with original index
+            // > oldStopIdx have shifted down by 1. Entries pointing AT the
+            // dummy itself (unusual but possible) are dropped.
+            foreach (var gs in srcSys.GlassSubstitutions)
+            {
+                if (gs.SurfaceIndex == oldStopIdx) continue;
+                int newIdx = gs.SurfaceIndex > oldStopIdx ? gs.SurfaceIndex - 1 : gs.SurfaceIndex;
+                dst.GlassSubstitutions.Add(new LensHH.Core.Models.GlassSubstitutionSetting
+                {
+                    SurfaceIndex = newIdx,
+                    Substitute   = gs.Substitute,
+                    CatalogName  = gs.CatalogName,
+                });
+            }
+
             return dst;
         }
 
-        /// <summary>Deep clone of an OpticalSystem (surfaces, wavelengths, fields, catalogs).</summary>
+        /// <summary>Deep clone of an OpticalSystem (surfaces, wavelengths, fields, catalogs, glass substitutions).</summary>
         private static LensHH.Core.Models.OpticalSystem CloneSystem(LensHH.Core.Models.OpticalSystem src)
         {
             var dst = new LensHH.Core.Models.OpticalSystem
@@ -798,6 +820,15 @@ namespace LensHH.Mcp.Tools
             dst.Wavelengths.AddRange(src.Wavelengths);
             dst.Fields.AddRange(src.Fields);
             dst.GlassCatalogs.AddRange(src.GlassCatalogs);
+            foreach (var gs in src.GlassSubstitutions)
+            {
+                dst.GlassSubstitutions.Add(new LensHH.Core.Models.GlassSubstitutionSetting
+                {
+                    SurfaceIndex = gs.SurfaceIndex,
+                    Substitute   = gs.Substitute,
+                    CatalogName  = gs.CatalogName,
+                });
+            }
             return dst;
         }
 
@@ -807,7 +838,11 @@ namespace LensHH.Mcp.Tools
         /// the previous lens back to the new stop; trailingAir = air thickness
         /// from the new stop to the next lens front. The total of these two
         /// should equal the original gap length so the rest of the lens stack
-        /// stays at its original physical positions.
+        /// stays at its original physical positions. The new stop surface is
+        /// marked ThicknessVariable so re-optimization can slide the stop
+        /// within the bounded air gap (CTA min/max from the merit function).
+        /// GlassSubstitution entries with SurfaceIndex >= the insert position
+        /// are shifted up by 1 to match the new surface numbering.
         /// </summary>
         private static void InsertStopInGap(LensHH.Core.Models.OpticalSystem sys,
             int prevIdx, double leadingAir, double trailingAir)
@@ -821,23 +856,32 @@ namespace LensHH.Mcp.Tools
 
             var stopS = new LensHH.Core.Models.Surface
             {
-                Type             = LensHH.Core.Enums.SurfaceType.Standard,
-                Radius           = 1e18,           // plano (engine's flat-surface sentinel)
-                Thickness        = trailingAir,
-                Material         = "",             // explicit empty-string (not null) — matches add_singlet convention
-                SemiDiameter     = sd,
-                SemiDiameterMode = LensHH.Core.Enums.SemiDiameterMode.Auto,
-                Conic            = 0,
-                IsStop           = true,
+                Type              = LensHH.Core.Enums.SurfaceType.Standard,
+                Radius            = 1e18,           // plano (engine's flat-surface sentinel)
+                Thickness         = trailingAir,
+                Material          = "",             // explicit empty-string (not null) — matches add_singlet convention
+                SemiDiameter      = sd,
+                SemiDiameterMode  = LensHH.Core.Enums.SemiDiameterMode.Auto,
+                Conic             = 0,
+                IsStop            = true,
+                ThicknessVariable = true,           // re-opt should be able to slide the stop within the gap
             };
 
             // Modify the leading-side surface's thickness: was the full air-gap
             // length; becomes just the leading-air segment.
             prevS.Thickness = leadingAir;
 
-            sys.Surfaces.Insert(prevIdx + 1, stopS);
+            int insertAt = prevIdx + 1;
+            sys.Surfaces.Insert(insertAt, stopS);
 
             for (int i = 0; i < sys.Surfaces.Count; i++) sys.Surfaces[i].Index = i;
+
+            // Shift GlassSubstitution SurfaceIndex for entries at or after
+            // the insert position.
+            foreach (var gs in sys.GlassSubstitutions)
+            {
+                if (gs.SurfaceIndex >= insertAt) gs.SurfaceIndex++;
+            }
         }
 
         [McpServerTool, Description("Set clear aperture percentage for a range of surfaces. Only affects Auto (non-fixed, non-stop) surfaces. Values >100 increase semi-diameter beyond clear aperture, <100 causes vignetting.")]
