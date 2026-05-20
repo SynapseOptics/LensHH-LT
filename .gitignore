@@ -48,6 +48,8 @@ logs/
 # refer to and is bundled into the installer.
 catalogs/FilteredGlassCatalogues/*
 !catalogs/FilteredGlassCatalogues/CoreSet28.AGF
+!catalogs/FilteredGlassCatalogues/StockGlassesUV.AGF
+!catalogs/FilteredGlassCatalogues/StockGlassesVisible.AGF
 
 # Vendor optical files (raw stock-lens prescriptions scraped or extracted
 # from vendor distributions). Large (~540 MB) and re-derivable: Edmund

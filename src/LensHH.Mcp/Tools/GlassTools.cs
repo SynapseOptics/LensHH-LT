@@ -133,6 +133,55 @@ namespace LensHH.Mcp.Tools
             return $"Surface {surfaceIndex}: substitution {(substitute ? "enabled" : "disabled")}, catalog='{catalogName}'.";
         }
 
+        [McpServerTool, Description(
+            "Enable glass substitution on every non-aspheric glass surface in the current system, using a stock-lens-derived filtered catalog automatically picked from the system's wavelengths: "
+            + "if min(wavelengths) < 0.380 microns the system is in the UV regime and StockGlassesUV is selected (CAF2 + fused-silica variants only — the materials stock lenses are actually built in for UV). Otherwise StockGlassesVisible is selected, which contains every distinct glass found across the non-aspheric singlets in catalogs/stock-lens-catalog.sqlite (~19 materials: the common Schott N-series, B270, BAF2, ACRYLIC, plus fused-silica aliases).\n\n"
+            + "Aspheric surfaces (Type=EvenAsphere) are SKIPPED — molded aspheric lenses are typically vendor-specific materials with no stock-lens equivalent, so substitution there would generate non-physical combinations. The action sets Substitute=true on every spherical glass surface, replacing any existing substitution settings on those surfaces. Already-disabled settings on aspheric surfaces are left alone.\n\n"
+            + "After calling this, run multistart_optimize with glassSubPercent > 0 to actually swap glasses.")]
+        public string SetStockGlassSubstitution()
+        {
+            var sys = _session.System;
+            if (sys.Wavelengths == null || sys.Wavelengths.Count == 0)
+                return "SetStockGlassSubstitution error: no wavelengths defined; cannot decide UV vs Visible.";
+
+            double minWl = sys.Wavelengths.Min(w => w.Value);
+            string catalog = minWl < 0.380 ? "StockGlassesUV" : "StockGlassesVisible";
+
+            int enabledCount = 0;
+            int skippedAspheric = 0;
+            int skippedAir = 0;
+            int skippedMirror = 0;
+
+            for (int i = 0; i < sys.Surfaces.Count; i++)
+            {
+                var s = sys.Surfaces[i];
+                if (string.IsNullOrEmpty(s.Material)) { skippedAir++; continue; }
+                if (s.Material.Equals("MIRROR", StringComparison.OrdinalIgnoreCase)) { skippedMirror++; continue; }
+                if (s.Type == LensHH.Core.Enums.SurfaceType.EvenAsphere) { skippedAspheric++; continue; }
+
+                var existing = sys.GlassSubstitutions.FirstOrDefault(gs => gs.SurfaceIndex == i);
+                if (existing != null)
+                {
+                    existing.Substitute  = true;
+                    existing.CatalogName = catalog;
+                }
+                else
+                {
+                    sys.GlassSubstitutions.Add(new GlassSubstitutionSetting
+                    {
+                        SurfaceIndex = i,
+                        Substitute   = true,
+                        CatalogName  = catalog
+                    });
+                }
+                enabledCount++;
+            }
+
+            return $"Stock glass substitution enabled: catalog={catalog} (min wavelength {minWl:F4} um). "
+                + $"Substitute=true set on {enabledCount} spherical glass surface(s). "
+                + $"Skipped: {skippedAspheric} aspheric, {skippedAir} air, {skippedMirror} mirror.";
+        }
+
         [McpServerTool, Description("Clear glass substitution settings. If surfaceIndex is -1, clears all; otherwise clears the specified surface.")]
         public string ClearGlassSubstitutions(int surfaceIndex = -1)
         {
