@@ -357,7 +357,7 @@ namespace LensHH.Mcp.Tools
             // covered all refractive surfaces. For the NEW physical-stop
             // convention the stop sits mid-stack, so -3 points at a later
             // surface and misses the lens elements + air gaps that now sit
-            // before the stop. Rewriting Surface1=-3 → 1 (absolute first
+            // before the stop. Rewriting Surface1=-3 → -5 (sentinel "first
             // refractive surface index in the new layout) restores full
             // coverage.
             int rewrites = 0;
@@ -369,11 +369,11 @@ namespace LensHH.Mcp.Tools
                                || op.Type == LensHH.Core.MeritFunction.OperandType.EA
                                || op.Type == LensHH.Core.MeritFunction.OperandType.CTG
                                || op.Type == LensHH.Core.MeritFunction.OperandType.EG;
-                    if (isSpan && op.Surface1 == -3) { op.Surface1 = 1; rewrites++; }
+                    if (isSpan && op.Surface1 == -3) { op.Surface1 = -5; rewrites++; }
                 }
             }
             if (rewrites > 0)
-                report.AppendLine($"  Merit-function rewrite: {rewrites} span operand(s) had Surface1=-3 → 1 (covers leading/trailing air around new stop + lenses before stop).");
+                report.AppendLine($"  Merit-function rewrite: {rewrites} span operand(s) had Surface1=-3 → -5 (covers leading/trailing air around new stop + lenses before stop).");
 
             // ── Final sanity check: a fresh evaluation should succeed ─────────
             // Catches any invariant we missed (e.g., a null Material slipping
@@ -719,7 +719,7 @@ namespace LensHH.Mcp.Tools
                                       || op.Type == LensHH.Core.MeritFunction.OperandType.EG;
                     if (isSpanOperand && op.Surface1 == -3)
                     {
-                        op.Surface1 = 1;
+                        op.Surface1 = -5; // first refractive surface sentinel
                     }
                 }
             }
@@ -740,9 +740,9 @@ namespace LensHH.Mcp.Tools
                               || op.Type == LensHH.Core.MeritFunction.OperandType.EA
                               || op.Type == LensHH.Core.MeritFunction.OperandType.CTG
                               || op.Type == LensHH.Core.MeritFunction.OperandType.EG;
-                    if (isSpan && op.Surface1 == 1) rewriteCount++;
+                    if (isSpan && op.Surface1 == -5) rewriteCount++;
                 }
-                sb.AppendLine($"Merit-function rewrite: {rewriteCount} span operand(s) had Surface1=-3 → 1 (covers leading/trailing air around new stop + lenses before stop).");
+                sb.AppendLine($"Merit-function rewrite: {rewriteCount} span operand(s) had Surface1=-3 → -5 (covers leading/trailing air around new stop + lenses before stop).");
             }
             sb.AppendLine();
             sb.AppendLine($"{"Gap",-4}{"Pos",-8}{"z_stop",10}{"z_ep",12}{"Δ",12}  File");

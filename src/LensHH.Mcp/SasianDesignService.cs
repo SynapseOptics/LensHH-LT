@@ -344,7 +344,7 @@ namespace LensHH.Mcp
                 }
             }
 
-            // Rewrite merit-function span operands Surface1=-3 → 1 (same logic
+            // Rewrite merit-function span operands Surface1=-3 → -5 (same logic
             // as the standalone build_skeleton).
             if (session.MeritFunction != null)
             {
@@ -354,7 +354,7 @@ namespace LensHH.Mcp
                                || op.Type == LensHH.Core.MeritFunction.OperandType.EA
                                || op.Type == LensHH.Core.MeritFunction.OperandType.CTG
                                || op.Type == LensHH.Core.MeritFunction.OperandType.EG;
-                    if (isSpan && op.Surface1 == -3) op.Surface1 = 1;
+                    if (isSpan && op.Surface1 == -3) op.Surface1 = -5;
                 }
             }
         }
