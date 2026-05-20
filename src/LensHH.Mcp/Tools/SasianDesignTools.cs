@@ -25,18 +25,18 @@ namespace LensHH.Mcp.Tools
             + "templatePath: a .lhlt with merit function operands, fields, wavelengths, aperture, and stop already configured. The pipeline replaces only the lens stack; everything else is preserved.\n\n"
             + "outputDir: a folder for intermediate .lhlt saves. Created if it doesn't exist. Files are named '01_freeopt.lhlt', '02_E1_<descr>_merit<m>.lhlt', '03_E2_…', and finally '0N_final_allstock_merit<m>.lhlt'.\n\n"
             + "architecture: skeleton layout (currently 'single-single-single' / 'cooke').\n\n"
-            + "candidatesPerPattern (default 3): how many top stock candidates to try per pattern per element. Per element the pipeline runs about 3 patterns × N candidates multistart re-optimizations, so total wall time scales linearly with this. Use 1-2 for fast exploration, 3 for thorough.\n\n"
-            + "msMaxTrials/msLmPerTrial/msInitialLm: multistart budget per re-optimization. Defaults match standalone multistart_optimize_start (500/100/300).\n\n"
+            + "candidatesPerPattern (default 3): how many top stock candidates to try per pattern per element. Per element the pipeline runs about 3 patterns × N candidates BH+LM re-optimizations, so total wall time scales linearly with this. Use 1-2 for fast exploration, 3 for thorough.\n\n"
+            + "bhMaxHops/bhLmPerHop/bhHjPerHop: Basin Hopping + LM budget per optimization run. Defaults 2000/60/30 match BasinHoppingSettings standalone defaults. Increase MaxHops for harder problems, LmPerHop for tighter inner refinement.\n\n"
             + "stopPosition / semiDiameterSeed / airGapSeed / bflSeed: skeleton seed parameters, see build_skeleton. stopPosition (default 2) places the physical aperture stop in the chosen air gap; 0 = leading air before L1, 1 = between L1 and L2, 2 = between L2 and L3 (classic Cooke default — near-symmetry around L2), 3 = BFL gap.\n\n"
-            + "substitutionCatalog (default 'auto'): glass-substitution catalog. 'auto' picks StockGlassesUV if min(wavelengths) < 0.380 µm else StockGlassesVisible; explicit names like 'SCHOTT' or 'StockGlassesVisible' override.")]
+            + "substitutionCatalog (default 'auto'): glass-substitution catalog used by BH on every hop. 'auto' picks StockGlassesUV if min(wavelengths) < 0.380 µm else StockGlassesVisible. BH auto-detects eligible glass surfaces by whether the element has a reshaping variable on its front or back face — locked stock parts inserted by replace_element are automatically skipped because their curvatures + glass thicknesses are fixed. Free-opt skeleton elements stay eligible. Pass '' to disable substitution.")]
         public string SasianDesignStart(
             string templatePath,
             string outputDir,
             string architecture = "single-single-single",
             int candidatesPerPattern = 3,
-            int msMaxTrials = 500,
-            int msLmPerTrial = 100,
-            int msInitialLm = 300,
+            int bhMaxHops = 2000,
+            int bhLmPerHop = 60,
+            int bhHjPerHop = 30,
             int stopPosition = 2,
             double semiDiameterSeed = 12.5,
             double airGapSeed = 10.0,
@@ -56,14 +56,14 @@ namespace LensHH.Mcp.Tools
                     SemiDiameterSeed = semiDiameterSeed,
                     AirGapSeed = airGapSeed,
                     BflSeed = bflSeed,
-                    MsMaxTrials = msMaxTrials,
-                    MsLmPerTrial = msLmPerTrial,
-                    MsInitialLm = msInitialLm,
+                    BhMaxHops = bhMaxHops,
+                    BhLmPerHop = bhLmPerHop,
+                    BhHjPerHop = bhHjPerHop,
                 };
                 var job = _session.SasianDesign.Start(_session, data);
                 return $"Started sasian_design. jobId={job.JobId}; architecture={architecture}, "
                      + $"candidatesPerPattern={candidatesPerPattern}, "
-                     + $"msTrials={msMaxTrials}×{msLmPerTrial}+{msInitialLm}initial. "
+                     + $"BH: {bhMaxHops} hops × ({bhLmPerHop} LM + {bhHjPerHop} HJ). "
                      + $"Poll sasian_design_status({job.JobId}).";
             }
             catch (System.Exception ex)

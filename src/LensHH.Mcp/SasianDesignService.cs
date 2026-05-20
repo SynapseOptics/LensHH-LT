@@ -42,9 +42,9 @@ namespace LensHH.Mcp
         public double SemiDiameterSeed { get; set; } = 12.5;
         public double AirGapSeed { get; set; } = 10;
         public double BflSeed { get; set; } = 45;
-        public int MsMaxTrials { get; set; } = 500;
-        public int MsLmPerTrial { get; set; } = 100;
-        public int MsInitialLm { get; set; } = 300;
+        public int BhMaxHops { get; set; } = 2000;
+        public int BhLmPerHop { get; set; } = 60;
+        public int BhHjPerHop { get; set; } = 30;
 
         // Progress tracking
         public double FreeOptMerit { get; set; } = double.NaN;
@@ -120,7 +120,7 @@ namespace LensHH.Mcp
 
                 // Phase B: free-optimize
                 job.Phase = "free-optimizing";
-                RunMultistart(session, data, job.Cts.Token);
+                RunOptimization(session, data, job.Cts.Token);
                 data.FreeOptMerit = EvalMerit(session);
                 SaveIntermediate(session, data, "01_freeopt");
 
@@ -162,7 +162,7 @@ namespace LensHH.Mcp
                                 // restore snapshot and try this candidate
                                 DeserializeSystem(session, snapshot);
                                 ReplaceElementInline(session, elem, cand);
-                                RunMultistart(session, data, job.Cts.Token);
+                                RunOptimization(session, data, job.Cts.Token);
                                 double m = EvalMerit(session);
                                 trial.Merit = m;
                                 trial.Status = "ok";
@@ -359,17 +359,41 @@ namespace LensHH.Mcp
             }
         }
 
-        private static void RunMultistart(McpSession session, SasianJobData data, CancellationToken ct)
+        /// <summary>
+        /// Run the configured optimizer (Basin Hopping + LM) on the current
+        /// session. Glass substitution is enabled throughout; BH's auto-detect
+        /// gates eligible surfaces by whether the element has any reshaping
+        /// variable (curvature / glass-thickness / conic / asphere) on its
+        /// front or back face. Locked stock parts inserted by replace_element
+        /// have those flags clear, so BH correctly skips substitution on them.
+        /// Free-opt skeleton elements have the flags set by build_skeleton, so
+        /// they remain eligible. No manual surface-tracking needed.
+        /// </summary>
+        private static void RunOptimization(McpSession session, SasianJobData data, CancellationToken ct)
         {
-            var settings = new MultistartSettings
+            // Resolve substitutionCatalog (auto-detect UV vs Visible).
+            string resolvedCatalog = data.SubstitutionCatalog;
+            if (string.Equals(resolvedCatalog?.Trim(), "auto", StringComparison.OrdinalIgnoreCase))
             {
-                MaxTrials = data.MsMaxTrials,
-                LmIterationsPerTrial = data.MsLmPerTrial,
-                InitialLmIterations = data.MsInitialLm,
+                double minWl = (session.System!.Wavelengths != null && session.System.Wavelengths.Count > 0)
+                    ? session.System.Wavelengths.Min(w => w.Value) : 0.587;
+                resolvedCatalog = minWl < 0.380 ? "StockGlassesUV" : "StockGlassesVisible";
+            }
+
+            var settings = new BasinHoppingSettings
+            {
+                MaxHops             = data.BhMaxHops,
+                LmIterationsPerHop  = data.BhLmPerHop,
+                HjStepsPerHop       = data.BhHjPerHop,
+                GlassSubstitution   = !string.IsNullOrWhiteSpace(resolvedCatalog),
+                OnlyPreferred       = false, // filtered catalogs are already curated
             };
-            var ms = new MultistartOptimizer(session.System!, session.MeritFunction!, session.GlassCatalog, session.ConfigEditor)
+            if (!string.IsNullOrWhiteSpace(resolvedCatalog))
+                settings.GlassCatalogs.Add(resolvedCatalog);
+
+            var bh = new BasinHoppingOptimizer(session.System!, session.MeritFunction!, session.GlassCatalog, session.ConfigEditor)
             { Settings = settings };
-            ms.Optimize(ct);
+            bh.Optimize(ct);
         }
 
         private static double EvalMerit(McpSession session)
