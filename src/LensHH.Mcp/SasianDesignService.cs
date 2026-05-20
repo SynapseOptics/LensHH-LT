@@ -43,8 +43,14 @@ namespace LensHH.Mcp
         public double AirGapSeed { get; set; } = 10;
         public double BflSeed { get; set; } = 45;
         public int BhMaxHops { get; set; } = 2000;
-        public int BhLmPerHop { get; set; } = 60;
+        public int BhLmPerHop { get; set; } = 4000;
         public int BhHjPerHop { get; set; } = 30;
+
+        /// <summary>No-improvement watchdog (seconds). When &gt; 0, each BH
+        /// phase terminates if the best merit hasn't improved within this
+        /// many seconds. Default 600 s (10 min) — practical termination
+        /// criterion when BhMaxHops is set high. 0 = disabled.</summary>
+        public double BhNoImprovementSeconds { get; set; } = 600.0;
 
         // Progress tracking
         public double FreeOptMerit { get; set; } = double.NaN;
@@ -382,11 +388,12 @@ namespace LensHH.Mcp
 
             var settings = new BasinHoppingSettings
             {
-                MaxHops             = data.BhMaxHops,
-                LmIterationsPerHop  = data.BhLmPerHop,
-                HjStepsPerHop       = data.BhHjPerHop,
-                GlassSubstitution   = !string.IsNullOrWhiteSpace(resolvedCatalog),
-                OnlyPreferred       = false, // filtered catalogs are already curated
+                MaxHops                     = data.BhMaxHops,
+                LmIterationsPerHop          = data.BhLmPerHop,
+                HjStepsPerHop               = data.BhHjPerHop,
+                NoImprovementTimeoutSeconds = data.BhNoImprovementSeconds,
+                GlassSubstitution           = !string.IsNullOrWhiteSpace(resolvedCatalog),
+                OnlyPreferred               = false, // filtered catalogs are already curated
             };
             if (!string.IsNullOrWhiteSpace(resolvedCatalog))
                 settings.GlassCatalogs.Add(resolvedCatalog);

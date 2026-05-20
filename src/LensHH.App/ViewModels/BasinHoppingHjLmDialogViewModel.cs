@@ -68,6 +68,14 @@ public partial class BasinHoppingHjLmDialogViewModel : ObservableObject
     [ObservableProperty] private bool _glassSubstitution = false;
     [ObservableProperty] private int _seed = 1234;
 
+    // No-improvement watchdog: terminate the run if best merit hasn't improved
+    // within this many seconds since the last improvement. 0 = disabled. When
+    // ON, MaxHops effectively becomes a safety cap and the watchdog is the
+    // practical termination criterion. UI toggle pairs with the value box —
+    // toggling Off forces the value to 0 so the engine sees it as disabled.
+    [ObservableProperty] private bool _noImprovementEnabled = false;
+    [ObservableProperty] private double _noImprovementTimeoutSeconds = 600.0;
+
     // ── Glass catalogs (mirrors SplitElementDialogViewModel pattern) ──
     public ObservableCollection<CatalogCheckItem> Catalogs { get; } = new();
     public ObservableCollection<string> GlassSourceOptions { get; } = new();
@@ -211,6 +219,7 @@ public partial class BasinHoppingHjLmDialogViewModel : ObservableObject
             GlassCatalogs = glassCatalogs,
             OnlyPreferred = !useFiltered && OnlyPreferred,
             Seed = Seed,
+            NoImprovementTimeoutSeconds = NoImprovementEnabled ? NoImprovementTimeoutSeconds : 0.0,
         };
 
         var ct = _cts.Token;

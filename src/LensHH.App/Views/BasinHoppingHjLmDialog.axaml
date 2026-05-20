@@ -31,7 +31,7 @@
     <Border DockPanel.Dock="Top" BorderBrush="#CCC" BorderThickness="1"
             CornerRadius="4" Padding="10,6" Margin="0,0,0,6">
       <Grid ColumnDefinitions="Auto,6,80,16,Auto,6,80,16,Auto,6,80,*,Auto"
-            RowDefinitions="Auto,6,Auto,6,Auto">
+            RowDefinitions="Auto,6,Auto,6,Auto,6,Auto">
         <!-- Row 0 -->
         <TextBlock Grid.Row="0" Grid.Column="0" Text="Hops:" VerticalAlignment="Center" />
         <TextBox Grid.Row="0" Grid.Column="2" Text="{Binding MaxHops, UpdateSourceTrigger=LostFocus}" IsEnabled="{Binding !IsRunning}"
@@ -81,6 +81,19 @@
                   Tag="Swap glasses between hops on every surface whose material is a real glass (i.e., not empty, AIR, or MIRROR). Draws from the catalog selected at right. Note: this auto-detects eligible surfaces and does NOT read the per-surface toggles from Optimization → Glass Substitution Settings."
                   PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"
                   GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
+
+        <!-- Row 3: No-improvement watchdog -->
+        <CheckBox Grid.Row="6" Grid.Column="0" Grid.ColumnSpan="5" Content="Stop on no improvement"
+                  IsChecked="{Binding NoImprovementEnabled}" IsEnabled="{Binding !IsRunning}" VerticalAlignment="Center"
+                  Tag="When enabled, the run terminates early if the best merit hasn't improved within the timeout. The timer resets every time a hop produces a new best merit. Useful for long runs where MaxHops would otherwise spend hours past convergence."
+                  PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"
+                  GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
+        <TextBlock Grid.Row="6" Grid.Column="4" Text="Timeout (s):" VerticalAlignment="Center" />
+        <TextBox Grid.Row="6" Grid.Column="6" Text="{Binding NoImprovementTimeoutSeconds, UpdateSourceTrigger=LostFocus}"
+                 IsEnabled="{Binding NoImprovementEnabled}" VerticalAlignment="Center"
+                 Tag="Seconds of wall-clock time without a best-merit improvement before the run terminates. Recommended 300–1200 s. Only used when 'Stop on no improvement' is checked."
+                 PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"
+                 GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
 
         <!-- Start/Stop -->
         <StackPanel Grid.Row="0" Grid.RowSpan="5" Grid.Column="12" Orientation="Horizontal" Spacing="8"
