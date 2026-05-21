@@ -5,7 +5,7 @@
         x:DataType="vm:SystemEditorViewModel"
         Title="System Editor"
         Icon="avares://LensHH.App/Assets/icon_256.png"
-        Width="370" Height="410"
+        Width="370" Height="460"
         WindowStartupLocation="CenterOwner"
         CanResize="False">
 

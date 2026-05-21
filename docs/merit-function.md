@@ -61,6 +61,73 @@ ray belongs to:
   WAVE group — a synthetic per-group penalty fires so the optimizer
   backs away from designs that drop an entire spot.
 
+### `PenalizeVignetting` — system-wide off-axis vignetting penalty
+
+`OpticalSystem.PenalizeVignetting` is a system-level boolean (set in
+the GUI's System Editor dialog, or via `set_penalize_vignetting` in
+the MCP / CLI). When enabled, the engine **overrides the off-axis
+tolerance described above** and applies the stiff per-ray penalty to
+*every* failed ray, regardless of field — on-axis and off-axis alike.
+
+![System Editor dialog showing the Penalize Vignetting checkbox](images/SystemWithPenaltyVignetting.png)
+
+| `PenalizeVignetting` | On-axis ray failure | Off-axis ray failure |
+|---|---|---|
+| `false` (default) | per-ray penalty fires | residual = 0 (tolerated) |
+| **`true`** | per-ray penalty fires | **per-ray penalty fires** |
+
+**When to enable it:**
+
+- **Stock-lens designs.** The lens diameters are catalog-fixed. The
+  optimizer must not "buy" aberration relief by quietly clipping the
+  off-axis pupil — the as-built lens would vignette light the design
+  has already used to compute its merit. Force it to design within
+  the parts' apertures.
+- **Specifications that quantify illumination.** Anywhere relative
+  illumination is a delivered property (machine vision, projection,
+  uniform-flux instruments), tolerating off-axis vignetting can mask
+  designs that meet the spot/MTF target but fail the photometric one.
+  Setting `PenalizeVignetting = true` keeps the optimizer from
+  clipping rays; add an `ILL` operand on top of that only if the
+  illumination value itself is part of the spec.
+- **Any system whose pupil aperture is hard-fixed.** Beam-shaping
+  systems with externally-determined stops, microscope tube lenses
+  facing a real iris, etc.
+
+**When to leave it disabled:**
+
+- Wide-angle imagers and most photographic lenses where corner
+  vignetting at field edges is a known and accepted trade-off — the
+  merit function is allowed to find designs that vignette the
+  outermost rays to relieve coma or astigmatism.
+- Early-stage architecture exploration where you're more interested
+  in spot/MTF behavior at the field center and don't want vignetting
+  penalties dominating the merit gradient before the design has
+  converged on a shape.
+
+**`PenalizeVignetting` is an alternative to using merit operands as
+vignetting controls — not a complement to them.** Pick one:
+
+- **`PenalizeVignetting = true`** — the simplest path when lens
+  diameters are fixed (stock-lens designs, hard-mounted apertures).
+  No additional merit operands are needed to keep the design from
+  clipping rays at field edges; the per-ray penalty does that
+  directly. Operands like `ILL` are then only needed if relative
+  illumination itself is a delivered specification — not as a
+  vignetting guard.
+- **`PenalizeVignetting = false`** with merit-operand vignetting
+  control — use this when you want fine-grained control over which
+  vignetting is acceptable. Add operands such as `ILL` (relative
+  illumination at a field) with `Min` bounds to prevent the optimizer
+  from buying aberration relief by clipping the off-axis pupil. Other
+  per-field operands can be combined to keep specific field zones
+  unvignetted while letting outer edges roll off.
+
+In short: check `PenalizeVignetting` and you don't need separate
+vignetting-control operands. Leave it unchecked and you must add them
+yourself, otherwise the off-axis vignetting tolerance described above
+will silently let the optimizer earn merit by dropping rays.
+
 ### Forbes (`Rings × Arms`) vs rectangular grid
 
 The Forbes scheme places rays on `Arms` evenly-spaced radial spokes
@@ -197,6 +264,97 @@ Penalize the optimizer when outside the bound.
 
 Glass-only variants walk only surfaces whose outgoing material is not
 air; air-only variants the complement; the plain variant both.
+
+### Surface sentinel values
+
+`Surface1` and `Surface2` both accept either an **absolute surface
+index** (positive integer — `1`, `2`, `3`, …) or one of a small set of
+**negative sentinels**. The **same sentinel works identically in
+either field** — there is no separate "left-side" or "right-side"
+sentinel set. Whichever endpoint you put it in, it resolves to the
+position described below at evaluation time.
+
+Use the sentinel form whenever the design will be edited by tools
+(`add_singlet`, `replace_element`, `split_element`, surface insert/
+remove) that shift the absolute indices — the sentinel auto-tracks
+the renumbering, while a hard-coded positive index may end up
+pointing at a different surface than you intended.
+
+#### Sentinel values
+
+| Value | Resolves to | Numeric position |
+|---:|---|---|
+| `0`  | **Mirror** of whichever value you put in the other field | (depends on the other endpoint) |
+| `-1` | **Surface immediately before IMG** | `Surfaces.Count − 2` |
+| `-2` | **Image surface** | `Surfaces.Count − 1` |
+| `-3` | **First surface after the stop** | `StopIndex + 1` |
+| `-4` | **Stop surface** | `StopIndex` |
+| `-5` | **Surface immediately after OBJ** | `1` |
+
+#### A note on `-5` and `-1` — position-based, not material-aware
+
+`-5` and `-1` are **position sentinels**: they always resolve to index
+`1` and `Surfaces.Count − 2` respectively, regardless of what surface
+type or material sits there. For a clean design where OBJ is followed
+directly by the first glass-front and the last glass-back is followed
+directly by IMG, these positions ARE the first and last refractive
+surfaces — which is how they're commonly used.
+
+**Edge case to be aware of**: if you've placed a **dummy air surface**
+at index `1` (e.g. an explicit stop placeholder, a buried-pupil dummy,
+or any other non-optical placeholder), `-5` resolves to that dummy
+surface, not to the actual first glass-front. Symmetrically, if a
+trailing dummy sits between the last glass and IMG, `-1` resolves to
+that trailing dummy, not the actual last glass-back.
+
+Example layouts:
+
+| Layout                                              | `-5` resolves to | `-1` resolves to |
+|---|---|---|
+| `OBJ → L1 → L2 → L3 → IMG`                          | L1 front (✓ first refractive) | L3 back (✓ last refractive) |
+| `OBJ → DUMMY → L1 → L2 → L3 → IMG`                  | **DUMMY** (the placeholder, **not** L1 front) | L3 back |
+| `OBJ → L1 → L2 → L3 → DUMMY → IMG`                  | L1 front | **DUMMY** (the placeholder, **not** L3 back) |
+
+If you have dummy surfaces in your design and want a span operand to
+target the actual first / last glass-bearing surface, use the absolute
+positive index instead of `-5` / `-1`. (A material-aware "true first
+refractive" sentinel is a planned future addition; for now, position
+sentinels are what's available.)
+
+#### Concrete examples
+
+The same span operand `CTA` (center thickness, air-only) authored in
+five common ways. Note that `Surface1` and `Surface2` are independent —
+you can put a sentinel in either field, or both, or neither:
+
+| `Surface1` | `Surface2` | Resolved span | Meaning |
+|---:|---:|---|---|
+| `-5` | `-1` | first refractive → last refractive | Every air gap between L1 and the last lens. Auto-tracks insertions/removals on either end. |
+| `-3` | `-1` | first surface after stop → last refractive | Every air gap from the lens after the stop to the last lens. Excludes everything on the front side of the stop. |
+| `-4` | `-2` | stop → image | Span starts AT the stop (covers the stop's trailing air) and ends at the image (covers the BFL gap). |
+| `1`  | `-1` | absolute surface 1 → last refractive | Same range as `(-5, -1)` if your system has OBJ at index 0; if you later insert a surface at index 1, this hard-coded `1` will move with the renumbering only because `SurfaceIndexUpdater` shifts it — sentinel `-5` is safer. |
+| `5`  | `0`  | absolute surface 5 → mirror of 5 | Just surface 5. The `0` "mirror" form is how you make a span operand evaluate at a single surface. |
+
+You can also flip the order — the resolver normalizes the span so
+`s1 ≤ s2` after sentinel substitution. `Surface1 = -1, Surface2 = -5`
+reads the same as `Surface1 = -5, Surface2 = -1`.
+
+#### Where sentinels apply
+
+Every boundary operand
+(`CT`, `CTA`, `CTG`, `ET`, `EA`, `EG`, `CV`, `CVA`, `CVG`, `SD`,
+`DTRG`) and every angle operand (`RI`, `RE`) shares the same `Surface1`
+/ `Surface2` semantics described above. So `DTRG(-5, -1, max=10)`
+applies the diameter-to-thickness ratio constraint to every glass
+element in the system without naming individual surfaces.
+
+#### Where sentinels do NOT apply
+
+Single-surface refs (the `Surface` column on `WAVEX`, `EFL`, `BFL`,
+the `Hy`-driven distortion / lateral-color operands, and `DM`) take a
+single absolute index. `0` on those fields means "system-level /
+system default" — it is not a span-mirror sentinel because there's no
+other endpoint to mirror.
 
 ---
 
