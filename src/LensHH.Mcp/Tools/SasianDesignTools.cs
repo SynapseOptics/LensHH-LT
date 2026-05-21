@@ -30,7 +30,8 @@ namespace LensHH.Mcp.Tools
             + "bhNoImprovementSeconds (default 600): no-improvement watchdog. Each BH phase terminates if best merit hasn't improved within this many seconds. Default 600 s = 10 min — practical termination criterion since BhMaxHops is set high (2000). Timer resets on every best-merit improvement. Set to 0 to disable (let BH run all MaxHops).\n\n"
             + "stopPosition / semiDiameterSeed / airGapSeed / bflSeed: skeleton seed parameters, see build_skeleton. stopPosition (default 2) places the physical aperture stop in the chosen air gap; 0 = leading air before L1, 1 = between L1 and L2, 2 = between L2 and L3 (classic Cooke default — near-symmetry around L2), 3 = BFL gap.\n\n"
             + "substitutionCatalog (default 'auto'): glass-substitution catalog used by BH on every hop. 'auto' picks StockGlassesUV if min(wavelengths) < 0.380 µm else StockGlassesVisible. BH auto-detects eligible glass surfaces by whether the element has a reshaping variable on its front or back face — locked stock parts inserted by replace_element are automatically skipped because their curvatures + glass thicknesses are fixed. Free-opt skeleton elements stay eligible. Pass '' to disable substitution.\n\n"
-            + "monochromaticPhase1 (default false): when true, the template's non-primary wavelength weights are zeroed at the start of the run and restored just before the final all-stock file is written. The optimizer then minimizes a d-line-only merit during shape + glass exploration (no chromatic-aberration trade-offs). Pair with substitutionCatalog='' for a true 'all single-glass d-line design' phase that's a clean starting point for a Phase 2 doublet/chromatic-correction step. Intermediate files saved during the run carry the zeroed weights; only the final file is restored.")]
+            + "monochromaticPhase1 (default false): when true, the template's non-primary wavelength weights are zeroed at the start of the run and restored just before the final all-stock file is written. The optimizer then minimizes a d-line-only merit during shape + glass exploration (no chromatic-aberration trade-offs). Pair with substitutionCatalog='' for a true 'all single-glass d-line design' phase that's a clean starting point for a Phase 2 doublet/chromatic-correction step. Intermediate files saved during the run carry the zeroed weights; only the final file is restored.\n\n"
+            + "startFromCurrentSystem (default false): Phase 2 entry point. When true, skip LoadTemplate / BuildSkeleton / free-opt and go DIRECTLY to the per-element substitution loop on whatever system is currently loaded in the session. The loop already targets elements via CurvatureVariable=true on the front face, so the caller picks which elements get re-substituted by unlocking those flags before calling. Intended use: doublet-replacement workflow — load a Phase 1 all-stock design via load_system, replace_element to swap one positive singlet for a candidate doublet, manually unlock one neighbor (set_curvature_variables + set_thickness_variables + set_glass_substitution), then call sasian_design_start with startFromCurrentSystem=true to re-substitute the unlocked neighbor with a stock part. The templatePath parameter is unused in this mode but still required by the signature.")]
         public string SasianDesignStart(
             string templatePath,
             string outputDir,
@@ -41,6 +42,7 @@ namespace LensHH.Mcp.Tools
             int bhHjPerHop = 30,
             double bhNoImprovementSeconds = 600.0,
             bool monochromaticPhase1 = false,
+            bool startFromCurrentSystem = false,
             int stopPosition = 2,
             double semiDiameterSeed = 12.5,
             double airGapSeed = 10.0,
@@ -65,13 +67,15 @@ namespace LensHH.Mcp.Tools
                     BhHjPerHop = bhHjPerHop,
                     BhNoImprovementSeconds = bhNoImprovementSeconds,
                     MonochromaticPhase1 = monochromaticPhase1,
+                    StartFromCurrentSystem = startFromCurrentSystem,
                 };
                 var job = _session.SasianDesign.Start(_session, data);
                 string watchdog = bhNoImprovementSeconds > 0 ? $", no-progress timeout {bhNoImprovementSeconds:F0}s" : ", no-progress timeout disabled";
                 string mono = monochromaticPhase1 ? ", MONOCHROMATIC Phase 1 (non-primary wavelength weights zeroed during run, restored at end)" : "";
+                string startFrom = startFromCurrentSystem ? ", STARTING FROM CURRENT SYSTEM (skipping skeleton-build + free-opt; substituting only unlocked elements)" : "";
                 return $"Started sasian_design. jobId={job.JobId}; architecture={architecture}, "
                      + $"candidatesPerPattern={candidatesPerPattern}, "
-                     + $"BH: {bhMaxHops} hops × ({bhLmPerHop} LM + {bhHjPerHop} HJ){watchdog}{mono}. "
+                     + $"BH: {bhMaxHops} hops × ({bhLmPerHop} LM + {bhHjPerHop} HJ){watchdog}{mono}{startFrom}. "
                      + $"Poll sasian_design_status({job.JobId}).";
             }
             catch (System.Exception ex)

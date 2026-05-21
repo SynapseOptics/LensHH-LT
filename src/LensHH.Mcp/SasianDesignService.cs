@@ -69,6 +69,32 @@ namespace LensHH.Mcp
         /// </summary>
         public bool MonochromaticPhase1 { get; set; } = false;
 
+        /// <summary>
+        /// Phase 2 entry point. When true: skip LoadTemplate, skip
+        /// BuildSkeleton, skip the free-opt phase, and go directly to the
+        /// per-element substitution loop on whatever system is currently
+        /// loaded in the session. The substitution loop already targets
+        /// elements via FindNextUnsubstitutedElement (= elements whose
+        /// front-surface CurvatureVariable=true), so the caller controls
+        /// which elements get substituted by unlocking their variable
+        /// flags before invoking sasian_design.
+        ///
+        /// Intended use: doublet-replacement workflow. Load a Phase 1
+        /// all-stock design, swap one positive singlet for a candidate
+        /// doublet via replace_element, unlock ONE neighbor (set its
+        /// CurvatureVariable=true on both surfaces, ThicknessVariable=true
+        /// on its glass thickness, glass-substitution enabled), then call
+        /// sasian_design with startFromCurrentSystem=true. The pipeline
+        /// re-substitutes the unlocked neighbor with a stock part, giving
+        /// the design degrees of freedom to absorb the doublet's different
+        /// power balance while keeping the rest of the elements locked
+        /// to their existing stock prescriptions.
+        ///
+        /// Default false preserves the standard skeleton→free-opt→
+        /// substitution flow.
+        /// </summary>
+        public bool StartFromCurrentSystem { get; set; } = false;
+
         // Progress tracking
         public double FreeOptMerit { get; set; } = double.NaN;
         public int TotalElements { get; set; }
@@ -111,8 +137,21 @@ namespace LensHH.Mcp
 
         public RunningJob Start(McpSession session, SasianJobData data)
         {
-            if (!File.Exists(data.TemplatePath))
-                throw new FileNotFoundException($"Template .lhlt not found: {data.TemplatePath}");
+            // When StartFromCurrentSystem=true the template path is unused
+            // (the pipeline reuses the system already in the session). All
+                // other call-sites still require a valid template.
+            if (!data.StartFromCurrentSystem)
+            {
+                if (!File.Exists(data.TemplatePath))
+                    throw new FileNotFoundException($"Template .lhlt not found: {data.TemplatePath}");
+            }
+            else
+            {
+                if (session.System == null || session.System.Surfaces.Count < 3)
+                    throw new InvalidOperationException("startFromCurrentSystem=true requires a system already loaded in the session.");
+                if (session.MeritFunction == null || session.MeritFunction.Operands.Count == 0)
+                    throw new InvalidOperationException("startFromCurrentSystem=true requires a merit function on the loaded system.");
+            }
             if (string.IsNullOrWhiteSpace(data.OutputDir))
                 throw new ArgumentException("OutputDir is required.");
             Directory.CreateDirectory(data.OutputDir);
@@ -136,8 +175,15 @@ namespace LensHH.Mcp
             try
             {
                 // Phase A: load template + build skeleton
-                job.Phase = "building skeleton";
-                LoadTemplate(session, data.TemplatePath);
+                // SKIPPED when StartFromCurrentSystem=true — caller has already
+                // arranged the session.System into the desired starting state
+                // (e.g. Phase 1 output with a doublet spliced in + one neighbor
+                // unlocked) and we go straight to the substitution loop.
+                if (!data.StartFromCurrentSystem)
+                {
+                    job.Phase = "building skeleton";
+                    LoadTemplate(session, data.TemplatePath);
+                }
 
                 // Monochromatic Phase 1 (opt-in): capture the template's
                 // wavelength weights, then zero every non-primary weight so
@@ -169,14 +215,27 @@ namespace LensHH.Mcp
                     }
                 }
 
-                BuildSkeletonInline(session, data);
-                job.Cts.Token.ThrowIfCancellationRequested();
+                if (!data.StartFromCurrentSystem)
+                {
+                    BuildSkeletonInline(session, data);
+                    job.Cts.Token.ThrowIfCancellationRequested();
 
-                // Phase B: free-optimize
-                job.Phase = "free-optimizing";
-                RunOptimization(session, data, job.Cts.Token);
-                data.FreeOptMerit = EvalMerit(session);
-                SaveIntermediate(session, data, "01_freeopt");
+                    // Phase B: free-optimize
+                    job.Phase = "free-optimizing";
+                    RunOptimization(session, data, job.Cts.Token);
+                    data.FreeOptMerit = EvalMerit(session);
+                    SaveIntermediate(session, data, "01_freeopt");
+                }
+                else
+                {
+                    // Phase 2 entry: snapshot the starting state for the
+                    // record. data.FreeOptMerit holds the merit before any
+                    // substitution kicks in — useful for comparing to the
+                    // final to see what the substitution pass actually did.
+                    job.Phase = "starting from current system";
+                    data.FreeOptMerit = EvalMerit(session);
+                    SaveIntermediate(session, data, "01_starting");
+                }
 
                 // Phase C: per-element substitution.
                 //
@@ -197,9 +256,19 @@ namespace LensHH.Mcp
                 // count (1, 2, 3 for a 3-element skeleton), not the surface-
                 // position index — keeping the user-visible labels stable
                 // across split vs single substitution patterns.
-                int initialSkeletonElements = CountElements(session.System!);
+                // Count of elements to substitute. In the standard flow this
+                // equals the total element count (every skeleton element has
+                // CurvatureVariable=true so they're all eligible). In the
+                // Phase 2 flow (startFromCurrentSystem=true) this is just
+                // however many elements the caller unlocked — typically 1.
+                int initialSkeletonElements = data.StartFromCurrentSystem
+                    ? CountUnsubstitutedElements(session.System!)
+                    : CountElements(session.System!);
                 if (initialSkeletonElements == 0)
-                    throw new InvalidOperationException("skeleton produced zero elements — pipeline aborted.");
+                    throw new InvalidOperationException(
+                        data.StartFromCurrentSystem
+                            ? "startFromCurrentSystem=true requires at least one element with CurvatureVariable=true on its front surface; none found."
+                            : "skeleton produced zero elements — pipeline aborted.");
                 data.TotalElements = initialSkeletonElements;
 
                 int iteration = 0;
@@ -520,6 +589,30 @@ namespace LensHH.Mcp
                 bool hasGlass = !string.IsNullOrEmpty(s.Material);
                 if (hasGlass && !inGlass) { n++; inGlass = true; }
                 else if (!hasGlass) inGlass = false;
+            }
+            return n;
+        }
+
+        /// <summary>
+        /// Count glass elements whose front surface still has
+        /// CurvatureVariable=true. Used by the Phase 2 path
+        /// (startFromCurrentSystem=true) to report how many elements
+        /// the substitution loop will work through — typically 1
+        /// (the neighbor the caller unlocked).
+        /// </summary>
+        private static int CountUnsubstitutedElements(OpticalSystem sys)
+        {
+            int n = 0;
+            int? glassStart = null;
+            for (int i = 0; i < sys.Surfaces.Count; i++)
+            {
+                bool hasGlass = !string.IsNullOrEmpty(sys.Surfaces[i].Material);
+                if (hasGlass && glassStart == null) glassStart = i;
+                else if (!hasGlass && glassStart != null)
+                {
+                    if (sys.Surfaces[glassStart.Value].CurvatureVariable) n++;
+                    glassStart = null;
+                }
             }
             return n;
         }

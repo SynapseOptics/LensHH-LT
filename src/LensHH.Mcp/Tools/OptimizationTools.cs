@@ -133,9 +133,15 @@ namespace LensHH.Mcp.Tools
             for (int i = 0; i < _session.MeritFunction.Operands.Count; i++)
             {
                 var op = _session.MeritFunction.Operands[i];
-                double residual = op.IsTargetActive
-                    ? (op.Value - op.Target) * op.Weight
-                    : 0;
+                // Use the residual the evaluator already computed (which correctly
+                // handles Min/Max bounds for boundary operands like CTA / EA / CTG
+                // / EG). Previously we recomputed here as
+                //   op.IsTargetActive ? (Value-Target)*Weight : 0
+                // which silently displayed 0 for every bounded operand even when
+                // its Value was outside [Min, Max] — making boundary-constraint
+                // violations invisible in the diagnostic table, though the
+                // optimizer was correctly seeing the penalty.
+                double residual = op.Residual;
                 sb.AppendLine($"{i,4} {op.Type,-12} {op.Value,12:G6} {op.Target,10:G4} {residual,12:E4}");
             }
             return sb.ToString();
