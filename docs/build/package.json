@@ -11,6 +11,7 @@
   "description": "",
   "dependencies": {
     "lunr": "^2.3.9",
-    "marked": "^18.0.2"
+    "marked": "^18.0.2",
+    "pdf-parse": "^2.4.5"
   }
 }
