@@ -119,6 +119,17 @@ Source: "{#ConfigOllamaBin}\ConfigureOllamaBridge.deps.json"; DestDir: "{app}\co
 Source: "{#Catalogs}\Glass\*.AGF"; DestDir: "{app}\catalogs\Glass"; Flags: ignoreversion
 Source: "{#Catalogs}\FilteredGlassCatalogues\*"; DestDir: "{app}\catalogs\FilteredGlassCatalogues"; Flags: ignoreversion skipifsourcedoesntexist
 
+; Stock-lens catalog — SQLite index + per-vendor .lhlt prescription tree.
+; Required for the MCP stock-lens workflow (search_stock_lenses,
+; find_matching_stock, insert_stock_lens, replace_element, sasian_design's
+; stock-substitution phase). StockLensCatalog.ResolveDbPath looks for the
+; sqlite at {app}\catalogs\, and ResolveLhltPath then descends into
+; Lenses\<vendor>\... using the relative path stored in the DB.
+; *.lhlt pattern (with recursesubdirs) excludes the build-time .zmx /
+; .zar / .seq / .xlsx originals that live alongside in the repo tree.
+Source: "{#Catalogs}\stock-lens-catalog.sqlite"; DestDir: "{app}\catalogs"; Flags: ignoreversion skipifsourcedoesntexist
+Source: "{#Catalogs}\Lenses\*.lhlt"; DestDir: "{app}\catalogs\Lenses"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
+
 ; Sample lenses (entire tree, including UserGuide subfolders)
 Source: "{#Samples}\*"; DestDir: "{app}\samples"; Flags: ignoreversion recursesubdirs createallsubdirs
 

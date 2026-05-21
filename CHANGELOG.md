@@ -201,10 +201,43 @@ the per-row display was wrong. Fix: use `op.Residual` directly (which
 the evaluator computed correctly for both target-mode and bound-mode
 operands).
 
+### Installer — stock-lens catalog now bundled
+
+Previously the Windows installer and Linux AppImage shipped only the
+glass AGF tree; users had to clone the repo (or copy `catalogs/`
+manually) to use any stock-lens MCP tool. Now both installers ship:
+
+- **`catalogs/stock-lens-catalog.sqlite`** — the index that
+  `find_matching_stock`, `search_stock_lenses`, `insert_stock_lens`,
+  `replace_element`, and `sasian_design`'s stock-substitution phase
+  query at runtime (~7 MB).
+- **`catalogs/Lenses/<vendor>/.../<part>.lhlt`** — the 7,623 per-lens
+  prescription files referenced by the SQLite (~26 MB). Build-time
+  `.zmx` / `.zar` / `.seq` / `.xlsx` originals are excluded.
+- **`MISC.AGF`** (already bundled, but worth calling out) — picked up
+  automatically by the existing `Glass\*.AGF` glob; provides the
+  Corning HPFS 7980 fused-silica aliases (`C79-80`, `F_SILICA`,
+  `FUSED`, `SILICA`, `FUSED_SILICA`) that stock-lens prescriptions
+  reference. Built from public sources only — no OpticStudio MISC.AGF
+  content.
+- **`StockGlassesUV.AGF`** + **`StockGlassesVisible.AGF`** — also
+  already bundled via the existing `FilteredGlassCatalogues\*` glob,
+  but called out here because the stock-lens pipeline depends on them
+  for auto glass-substitution.
+
+`LensHH.Mcp.StockLensCatalog.ResolveDbPath` finds the SQLite at
+`{app}\catalogs\` automatically; the Linux AppRun additionally
+exports `LENSHH_CATALOGS_DIR` so the resolver doesn't need to walk
+the directory tree.
+
+Installer size impact: **~+10 MB** after LZMA2 ultra64 compression
+(~33 MB raw before compression).
+
 ### Build & deploy
 
 - Engine commits: `3e1e5c9` (Adjust sentinel collision + `-5`
-  sentinel) and `ef01e85` (BH no-improvement watchdog). Both built
+  sentinel), `ef01e85` (BH no-improvement watchdog), `a1e3d89`
+  (`SurfaceSentinelResolver` + IsSurfaceCovered fixes). All built
   through `LensHH-LT-Engine/scripts/publish-obfuscated.bat` and the
   obfuscated `LensHH.Core.dll` deployed into `LensHH-LT/engine/`.
 - LT installer rebuilt via `installer/LensHH-LT.iss`. Filename

@@ -102,6 +102,7 @@ mkdir -p "$APP_DIR/usr/share/applications"
 mkdir -p "$APP_DIR/usr/share/icons/hicolor/256x256/apps"
 mkdir -p "$APP_DIR/usr/share/lenshh-lt/catalogs/Glass"
 mkdir -p "$APP_DIR/usr/share/lenshh-lt/catalogs/FilteredGlassCatalogues"
+mkdir -p "$APP_DIR/usr/share/lenshh-lt/catalogs/Lenses"
 mkdir -p "$APP_DIR/usr/share/lenshh-lt/samples"
 mkdir -p "$APP_DIR/usr/share/lenshh-lt/cli"
 mkdir -p "$APP_DIR/usr/share/lenshh-lt/mcp"
@@ -120,9 +121,23 @@ cp -r "$PUBLISH_DIR/ollama"/* "$APP_DIR/usr/share/lenshh-lt/ollama/"
 # Native library
 cp "$NATIVE_SO" "$APP_DIR/usr/lib/liblenshh_native.so"
 
-# Glass catalogs
+# Glass catalogs (full Glass\*.AGF tree — picks up MISC.AGF, CORNING_*, etc.
+# automatically; plus the curated filtered subsets used by sasian_design /
+# auto glass-substitution: CoreSet28, StockGlassesUV, StockGlassesVisible).
 cp "$REPO_ROOT/catalogs/Glass/"*.AGF "$APP_DIR/usr/share/lenshh-lt/catalogs/Glass/"
 cp "$REPO_ROOT/catalogs/FilteredGlassCatalogues/"* "$APP_DIR/usr/share/lenshh-lt/catalogs/FilteredGlassCatalogues/" 2>/dev/null || true
+
+# Stock-lens catalog: SQLite index + .lhlt prescriptions only (skip the
+# build-time .zmx / .zar / .seq / .xlsx originals that live alongside).
+# StockLensCatalog.ResolveDbPath looks under catalogs/ at runtime, and
+# ResolveLhltPath then descends into Lenses/<vendor>/... — required for
+# search_stock_lenses, find_matching_stock, insert_stock_lens,
+# replace_element, and sasian_design's stock-substitution phase.
+cp "$REPO_ROOT/catalogs/stock-lens-catalog.sqlite" \
+    "$APP_DIR/usr/share/lenshh-lt/catalogs/stock-lens-catalog.sqlite"
+rsync -a --include='*/' --include='*.lhlt' --exclude='*' \
+    "$REPO_ROOT/catalogs/Lenses/" \
+    "$APP_DIR/usr/share/lenshh-lt/catalogs/Lenses/"
 
 # Sample lenses (entire tree, including UserGuide subfolders)
 cp -r "$REPO_ROOT/samples/"* "$APP_DIR/usr/share/lenshh-lt/samples/"
@@ -158,6 +173,12 @@ cat > "$APP_DIR/AppRun" << 'APPRUN'
 HERE="$(dirname "$(readlink -f "$0")")"
 export LD_LIBRARY_PATH="$HERE/usr/lib:$LD_LIBRARY_PATH"
 export LENSHH_CATALOGS="$HERE/usr/share/lenshh-lt/catalogs"
+# LENSHH_CATALOGS is read by the GUI (LensHH.App.Session.GuiSession);
+# LENSHH_CATALOGS_DIR is read by the MCP stock-lens resolver
+# (LensHH.Mcp.StockLensCatalog.ResolveDbPath) to locate
+# stock-lens-catalog.sqlite without walking up the directory tree.
+# Both point at the same bundled catalogs root.
+export LENSHH_CATALOGS_DIR="$HERE/usr/share/lenshh-lt/catalogs"
 export LENSHH_SAMPLES="$HERE/usr/share/lenshh-lt/samples"
 
 # Help the OllamaBridge find the bundled MCP server without the user
