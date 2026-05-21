@@ -52,6 +52,23 @@ namespace LensHH.Mcp
         /// criterion when BhMaxHops is set high. 0 = disabled.</summary>
         public double BhNoImprovementSeconds { get; set; } = 600.0;
 
+        /// <summary>
+        /// Opt-in monochromatic Phase 1. When true: at the start of the
+        /// pipeline (after the template is loaded), the original wavelength
+        /// weights are captured and every non-primary wavelength's weight is
+        /// set to 0 — the optimizer then minimizes a single-wavelength
+        /// (d-line) merit function and is freed from chromatic-aberration
+        /// trade-offs during shape/architecture exploration. At the end of
+        /// the pipeline, just before the final all-stock file is written,
+        /// the original weights are restored so the saved design carries
+        /// the user's intended polychromatic merit and is a valid starting
+        /// point for follow-up Phase 2 work (e.g. positive→doublet swaps).
+        /// Intermediate files saved during the run carry the zeroed weights
+        /// and reflect the monochromatic merit at that step. Default false
+        /// preserves the original polychromatic-throughout behavior.
+        /// </summary>
+        public bool MonochromaticPhase1 { get; set; } = false;
+
         // Progress tracking
         public double FreeOptMerit { get; set; } = double.NaN;
         public int TotalElements { get; set; }
@@ -121,6 +138,37 @@ namespace LensHH.Mcp
                 // Phase A: load template + build skeleton
                 job.Phase = "building skeleton";
                 LoadTemplate(session, data.TemplatePath);
+
+                // Monochromatic Phase 1 (opt-in): capture the template's
+                // wavelength weights, then zero every non-primary weight so
+                // the optimizer minimizes a d-line-only merit during the
+                // rest of the pipeline. Original weights are restored before
+                // the final all-stock save so the file is valid for Phase 2
+                // doublet/chromatic work. Default false = no change.
+                double[]? originalWavelengthWeights = null;
+                int primaryWlIdx = -1;
+                if (data.MonochromaticPhase1
+                    && session.System != null
+                    && session.System.Wavelengths != null
+                    && session.System.Wavelengths.Count > 0)
+                {
+                    originalWavelengthWeights = new double[session.System.Wavelengths.Count];
+                    for (int i = 0; i < session.System.Wavelengths.Count; i++)
+                    {
+                        var w = session.System.Wavelengths[i];
+                        originalWavelengthWeights[i] = w.Weight;
+                        if (w.IsPrimary) primaryWlIdx = i;
+                    }
+                    // Defensive: if no IsPrimary flag is set, treat
+                    // PrimaryWavelengthIndex (0 by default) as the primary.
+                    if (primaryWlIdx < 0) primaryWlIdx = session.System.PrimaryWavelengthIndex;
+                    for (int i = 0; i < session.System.Wavelengths.Count; i++)
+                    {
+                        if (i != primaryWlIdx)
+                            session.System.Wavelengths[i].Weight = 0;
+                    }
+                }
+
                 BuildSkeletonInline(session, data);
                 job.Cts.Token.ThrowIfCancellationRequested();
 
@@ -233,11 +281,29 @@ namespace LensHH.Mcp
                         $"{(iteration + 1):D2}_E{iteration}_{SanitizeFilename(best.t.PartsDescriptor)}_merit{best.t.Merit:F4}");
                 }
 
-                // Phase D: done
+                // Phase D: done.
+                //
+                // If we ran in monochromatic Phase 1 mode, the wavelength
+                // weights were zeroed at the start. Restore them now so
+                // the final saved file carries the user's original
+                // polychromatic merit definition — that's what Phase 2
+                // (doublet retrofits, chromatic correction) starts from.
+                // The reported FinalMerit then reflects the polychromatic
+                // evaluation, which differs from the monochromatic merit
+                // the optimizer was actually minimizing.
+                if (originalWavelengthWeights != null && session.System != null)
+                {
+                    for (int i = 0; i < session.System.Wavelengths.Count && i < originalWavelengthWeights.Length; i++)
+                        session.System.Wavelengths[i].Weight = originalWavelengthWeights[i];
+                }
+
                 data.FinalMerit = EvalMerit(session);
                 SaveIntermediate(session, data, $"{data.TotalElements + 2:D2}_final_allstock_merit{data.FinalMerit:F4}");
                 job.Phase = "completed";
-                job.Complete($"Sasian design complete. Final merit={data.FinalMerit:E4}.");
+                string monoNote = originalWavelengthWeights != null
+                    ? " (monochromatic Phase 1 — wavelength weights restored at end; final merit is polychromatic)"
+                    : string.Empty;
+                job.Complete($"Sasian design complete. Final merit={data.FinalMerit:E4}{monoNote}.");
             }
             catch (OperationCanceledException)
             {
