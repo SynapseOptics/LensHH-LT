@@ -130,22 +130,49 @@ namespace LensHH.Mcp
                 data.FreeOptMerit = EvalMerit(session);
                 SaveIntermediate(session, data, "01_freeopt");
 
-                // Phase C: per-element substitution
-                data.TotalElements = CountElements(session.System!);
-                if (data.TotalElements == 0)
+                // Phase C: per-element substitution.
+                //
+                // We CANNOT use a fixed positional loop (`for elem = 1..N`) because
+                // a split substitution (split_pcx, split_pcc, split_pcx_pcc) inserts
+                // MORE glass elements than it removes — so the second iteration's
+                // "element 2" would target the split partner that was just inserted
+                // (now a stock part), not the original skeleton element at L2.
+                //
+                // Fix: find the next unsubstituted element each iteration by
+                // scanning for the next contiguous-glass block whose front
+                // surface still has CurvatureVariable=true. build_skeleton
+                // sets that flag on every skeleton element; replace_element
+                // inserts stock parts with the flag clear. So the variable
+                // flag IS the "is this element still skeleton?" signal.
+                //
+                // The "Element index" in the trial table is the iteration
+                // count (1, 2, 3 for a 3-element skeleton), not the surface-
+                // position index — keeping the user-visible labels stable
+                // across split vs single substitution patterns.
+                int initialSkeletonElements = CountElements(session.System!);
+                if (initialSkeletonElements == 0)
                     throw new InvalidOperationException("skeleton produced zero elements — pipeline aborted.");
+                data.TotalElements = initialSkeletonElements;
 
-                for (int elem = 1; elem <= data.TotalElements; elem++)
+                int iteration = 0;
+                while (true)
                 {
-                    data.CurrentElement = elem;
-                    job.Phase = $"substituting element {elem}/{data.TotalElements}";
                     job.Cts.Token.ThrowIfCancellationRequested();
+
+                    int targetElem = FindNextUnsubstitutedElement(session.System!);
+                    if (targetElem < 0) break; // every skeleton element has been substituted
+
+                    iteration++;
+                    data.CurrentElement = iteration;
+                    job.Phase = $"substituting element {iteration}/{initialSkeletonElements}";
 
                     // Snapshot the current best state
                     var snapshot = SerializeSystem(session);
 
-                    // Compute target params for this element
-                    var target = ComputeElementTarget(session.System!, elem);
+                    // Compute target params for the element at its CURRENT
+                    // surface-position index (may differ from `iteration` after
+                    // a split substitution shifted things).
+                    var target = ComputeElementTarget(session.System!, targetElem);
 
                     // Try every (pattern, candidate) combo
                     var trials = new List<(SasianTrial t, string snap)>();
@@ -157,7 +184,7 @@ namespace LensHH.Mcp
                             job.Cts.Token.ThrowIfCancellationRequested();
                             var trial = new SasianTrial
                             {
-                                ElementIndex = elem,
+                                ElementIndex = iteration,
                                 Pattern = pattern,
                                 PartsDescriptor = cand.Descriptor,
                             };
@@ -165,9 +192,11 @@ namespace LensHH.Mcp
 
                             try
                             {
-                                // restore snapshot and try this candidate
+                                // restore snapshot, find target again (snapshot restored
+                                // the pre-trial state so targetElem from before is correct),
+                                // splice candidate, re-optimize.
                                 DeserializeSystem(session, snapshot);
-                                ReplaceElementInline(session, elem, cand);
+                                ReplaceElementInline(session, targetElem, cand);
                                 RunOptimization(session, data, job.Cts.Token);
                                 double m = EvalMerit(session);
                                 trial.Merit = m;
@@ -185,8 +214,14 @@ namespace LensHH.Mcp
                     if (trials.Count == 0)
                     {
                         // nothing worked for this element — leave it as-is and continue
-                        // (rare; happens if the catalog has nothing at this aperture/efl)
-                        continue;
+                        // (rare; happens if the catalog has nothing at this aperture/efl).
+                        // We must break to avoid an infinite loop, because the same
+                        // element will remain unsubstituted (still has CurvatureVariable=true)
+                        // and FindNextUnsubstitutedElement would return the same index.
+                        // Better: clear variable flags on this element so the scan moves
+                        // past it, but for now just abort the substitution phase.
+                        // (TODO: implement skip-and-continue)
+                        break;
                     }
 
                     // Pick the best trial by merit, apply permanently
@@ -195,7 +230,7 @@ namespace LensHH.Mcp
                     DeserializeSystem(session, best.snap);
                     data.Winners.Add(best.t);
                     SaveIntermediate(session, data,
-                        $"{(elem + 1):D2}_E{elem}_{SanitizeFilename(best.t.PartsDescriptor)}_merit{best.t.Merit:F4}");
+                        $"{(iteration + 1):D2}_E{iteration}_{SanitizeFilename(best.t.PartsDescriptor)}_merit{best.t.Merit:F4}");
                 }
 
                 // Phase D: done
@@ -421,6 +456,40 @@ namespace LensHH.Mcp
                 else if (!hasGlass) inGlass = false;
             }
             return n;
+        }
+
+        /// <summary>
+        /// Scan the system for the next glass element (contiguous run of
+        /// non-air, non-MIRROR surfaces) whose front surface still has
+        /// CurvatureVariable=true — the "is this still a free-opt skeleton
+        /// element?" marker. Returns the 1-based element position-index
+        /// in the current system, or -1 if every element has been
+        /// substituted (no skeleton remains).
+        ///
+        /// Why this rule works: build_skeleton sets CurvatureVariable=true
+        /// on every skeleton element's surfaces; replace_element inserts
+        /// stock parts whose .lhlt files have CurvatureVariable=false on
+        /// their glass surfaces. So the flag is a precise signal of
+        /// "skeleton vs stock" status that survives across surface
+        /// renumbering caused by split substitutions.
+        /// </summary>
+        private static int FindNextUnsubstitutedElement(OpticalSystem sys)
+        {
+            int? glassStart = null;
+            int elemIdx = 0;
+            for (int i = 0; i < sys.Surfaces.Count; i++)
+            {
+                bool hasGlass = !string.IsNullOrEmpty(sys.Surfaces[i].Material);
+                if (hasGlass && glassStart == null) glassStart = i;
+                else if (!hasGlass && glassStart != null)
+                {
+                    elemIdx++;
+                    if (sys.Surfaces[glassStart.Value].CurvatureVariable)
+                        return elemIdx;
+                    glassStart = null;
+                }
+            }
+            return -1;
         }
 
         /// <summary>Compute the (Efl, Nd, SemiDiameter) of a specific element
