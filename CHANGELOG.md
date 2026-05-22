@@ -300,12 +300,5 @@ projects. Converted to CRLF; script content unchanged. LT commit
 
 ### Build & deploy
 
-- Engine commits since last release: `3e1e5c9` (Adjust sentinel
-  collision + `-5` sentinel), `ef01e85` (BH no-improvement
-  watchdog), `a1e3d89` (`SurfaceSentinelResolver` + IsSurfaceCovered
-  fixes), `684304b` (SPC IsSurfaceCovered post-insertion sys),
-  `2985898` (RayTracer 1e10 threshold). All built through
-  `LensHH-LT-Engine/scripts/publish-obfuscated.bat` and the
-  obfuscated `LensHH.Core.dll` deployed into `LensHH-LT/engine/`.
 - LT installer rebuilt via `installer/LensHH-LT.iss`. Filename
   remains `LensHH-LT-Setup-1.0.114.exe`.
