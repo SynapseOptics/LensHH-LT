@@ -43,7 +43,13 @@ and the programmatic interfaces.
 - **[Agent Workflow — Stock-Lens-Based Design](agent-stock-lens-workflow.md)** —
   recipe for an LLM agent to chain `search_stock_lenses` →
   `insert_stock_lens` → analyze → `reverse_lens` → optimize against the
-  bundled 6,100-part Edmund + Thorlabs catalog.
+  bundled 7,600-part Edmund + Thorlabs + Ross Optical catalog.
+- **[Sasian Design — Stock-Lens Triplet Pipeline](sasian-design.md)** —
+  end-to-end MCP orchestrator (`sasian_design_start` / `_status` /
+  `_cancel` / `_discard`) that builds a Cooke-triplet skeleton,
+  free-optimizes with glass substitution, then walks element-by-element
+  replacing each free-form singlet with the best matching catalog
+  stock part. Phase 2 entry for doublet retrofits.
 - **[Building from Source](building.md)** — required on macOS (no
   installer); also covers Linux and source-build options on Windows.
 

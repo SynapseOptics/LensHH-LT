@@ -84,7 +84,9 @@ then stock-substitute" workflow end-to-end:
 - **`sasian_design_start` / `_status` / `_cancel` / `_discard`** —
   end-to-end orchestrator: skeleton + free-opt + per-element
   substitution + final all-stock save. Returns a job id; runs in the
-  background.
+  background. Documented in `docs/sasian-design.md` (recipe overview,
+  every parameter, Phase 1 vs Phase 2 doublet-retrofit flow, pattern
+  + candidate-ranking internals, worked F/2.8 example).
 
 ### Added — Stock-lens-derived glass catalogs
 
