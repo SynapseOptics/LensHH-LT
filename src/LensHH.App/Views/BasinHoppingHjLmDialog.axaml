@@ -83,7 +83,11 @@
                   GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
 
         <!-- Row 3: No-improvement watchdog -->
-        <CheckBox Grid.Row="6" Grid.Column="0" Grid.ColumnSpan="5" Content="Stop on no improvement"
+        <!-- ColumnSpan="4" (cols 0-3) so the checkbox content doesn't bleed into
+             column 4 where the "Timeout (s):" label lives. Previously
+             ColumnSpan="5" overlapped col 4 and produced visually garbled
+             text ("improvememendut") where the two labels crashed together. -->
+        <CheckBox Grid.Row="6" Grid.Column="0" Grid.ColumnSpan="4" Content="Stop on no improvement"
                   IsChecked="{Binding NoImprovementEnabled}" IsEnabled="{Binding !IsRunning}" VerticalAlignment="Center"
                   Tag="When enabled, the run terminates early if the best merit hasn't improved within the timeout. The timer resets every time a hop produces a new best merit. Useful for long runs where MaxHops would otherwise spend hours past convergence."
                   PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"
