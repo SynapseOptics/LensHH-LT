@@ -2,7 +2,7 @@
 
 All notable changes to LensHH-LT and the LensHH-LT-Engine.
 
-## 1.0.114 — 2026-05-21
+## 1.0.114 — 2026-05-22
 
 This entry describes the additions accumulated since the initial
 1.0.114 release on 2026-05-17. The version number is unchanged (per
@@ -235,12 +235,77 @@ the directory tree.
 Installer size impact: **~+10 MB** after LZMA2 ultra64 compression
 (~33 MB raw before compression).
 
+### Fixed — Engine: `RayTracer` infinite-conjugate threshold
+
+`RayTracer.cs` line 134 only treated `double.PositiveInfinity` /
+`NaN` as "infinite thickness" when deciding whether to skip ray
+propagation. Large-but-finite sentinels commonly used as "infinity"
+in optical CAD (1e10, 1e18, 1e20 — emitted by OpTaliX, Code V,
+legacy ZMX, and the GUI's own infinity convention) were treated as
+finite and the trace literally propagated rays through 10^18 mm.
+For any off-axis field, `ray.Y` at surface 1 became astronomical
+(`tan(14°) × 1e18 ≈ 2.5 × 10^17 mm`). Downstream `SystemLayout`
+then auto-scaled the viewport to ~5 × 10^17 mm and the lens stack
+rendered microscopic / invisible. Threshold now matches the
+existing convention used elsewhere in the engine:
+`Math.Abs(thickness) >= 1e10`. Engine commit `2985898`.
+
+### Fixed — Engine: SPC `IsSurfaceCovered` uses post-insertion system
+
+`SpcSynthesisService.AddOrExtendBoundaryOperand` was passing
+`_system` (the service-level original parent system) to
+`IsSurfaceCovered`, but `surfaceIndex` referred to the
+post-insertion `sys` clone. The sentinel resolver consequently
+computed `Count-2` against the *pre-insertion* count, missing the
+newly-inserted surfaces, and SPC added redundant per-surface
+`CTA(N, N)` / `EA(N, N)` operands on top of an existing
+`CTA(-5, -1)` / `EA(-5, -1)` sentinel span. Fixed by threading the
+branch's `sys` through `AddCenterThicknessOperands` /
+`AddEdgeThicknessOperands` / `AddOrExtendBoundaryOperand`. Engine
+commit `684304b`.
+
+### Fixed — GUI: merit-function editor accepts the `-5` sentinel
+
+`MeritFunctionEditorViewModel.cs` had hard-coded `minV = -4` on
+`Surface1` / `Surface2` input validation. When the user typed `-5`
+in the merit-function grid the setter silently rejected the input
+and the cell reverted to whatever the underlying value was —
+producing the appearance that "the GUI rewrote -5 to 1." The
+engine has supported the `-5` sentinel since `3e1e5c9`; the GUI
+input was the lone holdout. Now accepts the full `-5..-1` range.
+LT commit `2c43406`.
+
+### Fixed — GUI: `Basin-Hopping HJ+LM` dialog checkbox/label overlap
+
+The "Stop on no improvement" `CheckBox` had `Grid.ColumnSpan="5"`
+(covering columns 0-4), but the "Timeout (s):" `TextBlock` next to
+it lives in column 4 — the two overlapped pixel-by-pixel and
+rendered as the garbled string `Stop on no improvememendut (s):`.
+Reduced ColumnSpan to 4 so the checkbox stops cleanly before
+column 4. LT commit `5dc760f`.
+
+### Fixed — Installer: `build-installer.bat` line endings
+
+`build-installer.bat` was checked in with LF-only line endings.
+`cmd.exe` tolerates LF most of the time but occasionally misreads
+the file character-by-character — in particular when invoked via
+PowerShell's `& "...bat"` or even `cmd /c`. Symptom: leading
+characters of `setlocal` / `cd /d` get eaten (e.g. `'tlocal' is
+not recognized`), so `cd /d "%~dp0\.."` silently fails, the
+subsequent `dotnet build -c Release` runs from PowerShell's cwd
+(often the engine repo), picks up `LensHH-LT-Engine.sln` instead
+of `LensHH-LT.sln`, and bombs trying to compile engine `Tests/`
+projects. Converted to CRLF; script content unchanged. LT commit
+`52f404c`.
+
 ### Build & deploy
 
-- Engine commits: `3e1e5c9` (Adjust sentinel collision + `-5`
-  sentinel), `ef01e85` (BH no-improvement watchdog), `a1e3d89`
-  (`SurfaceSentinelResolver` + IsSurfaceCovered fixes). All built
-  through `LensHH-LT-Engine/scripts/publish-obfuscated.bat` and the
+- Engine commits since last release: `3e1e5c9` (Adjust sentinel
+  collision + `-5` sentinel), `ef01e85` (BH no-improvement
+  watchdog), `a1e3d89` (`SurfaceSentinelResolver` + IsSurfaceCovered
+  fixes), `684304b` (SPC IsSurfaceCovered post-insertion sys),
+  `2985898` (RayTracer 1e10 threshold). All built through
+  `LensHH-LT-Engine/scripts/publish-obfuscated.bat` and the
   obfuscated `LensHH.Core.dll` deployed into `LensHH-LT/engine/`.
 - LT installer rebuilt via `installer/LensHH-LT.iss`. Filename
   remains `LensHH-LT-Setup-1.0.114.exe`.
