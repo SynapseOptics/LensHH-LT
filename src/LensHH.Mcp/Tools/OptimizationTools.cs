@@ -15,7 +15,7 @@ namespace LensHH.Mcp.Tools
         private readonly McpSession _session;
         public OptimizationTools(McpSession session) => _session = session;
 
-        [McpServerTool, Description("Add a merit function operand. type is the operand type (e.g. EFL, BFL, CV, RX, RY, WAVEX, CTA, CT). target is the desired value. weight is the importance. Optional: surface (Surface1), surface2 (Surface2, for span boundary operands), wave, min, max, operationCode (NONE,SINE,COSINE,ACOS,ASIN,TANGENT,ATN,SQRT,ABSO). Boundary operands (CT, CTA, CTG, ET, EA, EG, CV, CVA, CVG, SD, DTRG, RI, RE) scan [surface, surface2] and use min/max. Surface sentinels: 0 = mirror the other endpoint (single-surface span); -1 = last refractive surface (count − 2); -2 = image; -3 = first surface after stop; -4 = stop surface. When omitted, surface2 defaults to surface so single-surface operands work without an extra parameter.")]
+        [McpServerTool, Description("Add a merit function operand. type is the operand type (e.g. EFL, BFL, CV, RX, RY, WAVEX, CTA, CT). target is the desired value. weight is the importance. Optional: surface (Surface1), surface2 (Surface2, for span boundary operands), wave, min, max, operationCode (NONE,SINE,COSINE,ACOS,ASIN,TANGENT,ATN,SQRT,ABSO). Boundary operands (CT, CTA, CTG, ET, EA, EG, CV, CVA, CVG, SD, DTRG, RI, RE) scan [surface, surface2] and use min/max. Surface sentinels: 0 = mirror the other endpoint (single-surface span); -1 = last refractive surface (count − 2); -2 = image; -3 = first surface after stop; -4 = stop surface; -5 = first surface after OBJ (position 1). When omitted, surface2 defaults to surface so single-surface operands work without an extra parameter.")]
         public string AddOperand(string type, double target = 0, double weight = 1,
             int surface = 0, int? surface2 = null, int wave = 0, double? min = null, double? max = null,
             string operationCode = "NONE")
@@ -92,7 +92,7 @@ namespace LensHH.Mcp.Tools
             return $"Operand {index} removed. Total operands: {_session.MeritFunction.Operands.Count}.";
         }
 
-        [McpServerTool, Description("Edit a merit function operand in place by index. Only provided parameters are changed; omit parameters to keep their current values. index is 0-based. surface sets Surface1, surface2 sets Surface2 (the span end for boundary operands). Surface sentinels: 0 = mirror the other endpoint; -1 = last refractive surface; -2 = image; -3 = first surface after stop; -4 = stop surface.")]
+        [McpServerTool, Description("Edit a merit function operand in place by index. Only provided parameters are changed; omit parameters to keep their current values. index is 0-based. surface sets Surface1, surface2 sets Surface2 (the span end for boundary operands). Surface sentinels: 0 = mirror the other endpoint; -1 = last refractive surface; -2 = image; -3 = first surface after stop; -4 = stop surface; -5 = first surface after OBJ (position 1).")]
         public string EditOperand(int index, double? target = null, double? weight = null,
             int? surface = null, int? surface2 = null, int? wave = null, double? min = null, double? max = null,
             string? operationCode = null)

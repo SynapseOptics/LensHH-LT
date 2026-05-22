@@ -603,7 +603,7 @@ namespace LensHH.Mcp.Tools
             + "If S1.Thickness >= 0 in the source, no buried pupil exists; the helper just copies the source unchanged to outputDir and returns.\n\n"
             + "Internal air gaps only: leading (before first lens) and BFL (after last lens) gaps are skipped — physical stops belong between lens elements.\n\n"
             + "Per-surface glass-substitution settings ARE copied to candidates with SurfaceIndex re-mapped for the dummy-drop and stop-insert. The new stop surface is marked ThicknessVariable so re-optimization can slide it within the bounded air gap.\n\n"
-            + "Caveats: merit-function operands referencing surfaces by sentinel (-1/-2/-3/-4) auto-track; absolute Surface=k refs may now point at a different surface. Pickups are not copied.")]
+            + "Caveats: merit-function operands referencing surfaces by sentinel (-1/-2/-3/-4/-5) auto-track; absolute Surface=k refs may now point at a different surface. Pickups are not copied.")]
         public string RelocateStopScan(string sourcePath, string outputDir)
         {
             if (string.IsNullOrWhiteSpace(sourcePath) || !System.IO.File.Exists(sourcePath))
