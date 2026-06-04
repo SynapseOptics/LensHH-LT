@@ -68,6 +68,19 @@ public partial class BasinHoppingHjLmDialogViewModel : ObservableObject
     [ObservableProperty] private bool _glassSubstitution = false;
     [ObservableProperty] private int _seed = 1234;
 
+    // ── Advanced — engine + derivative selection (was orange DEV banner in
+    //    ≤1.0.114; moved into a collapsed Advanced expander for 1.0.115).
+    //    Index 0 = C# (CSharp), 1 = C++ (Native). Default flipped to C++
+    //    Native on 1.0.115 — the bedrock-validated path.
+    [ObservableProperty] private int _engineModeIndex = 1;
+    //    Index 0 = Finite Difference, 1 = Analytic (forward-mode Dual<W> AD).
+    //    Only effective when EngineModeIndex == 1. Default flipped to Analytic.
+    [ObservableProperty] private int _derivativeModeIndex = 1;
+    public IReadOnlyList<string> EngineModeOptions { get; } =
+        new[] { "C# (CSharp)", "C++ (Native)" };
+    public IReadOnlyList<string> DerivativeModeOptions { get; } =
+        new[] { "Finite Difference", "Analytic" };
+
     // No-improvement watchdog: terminate the run if best merit hasn't improved
     // within this many seconds since the last improvement. 0 = disabled. When
     // ON, MaxHops effectively becomes a safety cap and the watchdog is the
@@ -245,6 +258,11 @@ public partial class BasinHoppingHjLmDialogViewModel : ObservableObject
                 _session.GlassCatalog, _session.ConfigEditor)
             {
                 Settings = settings,
+                // Phase 10a — DEV engine selection from the dialog.
+                EngineMode = (EngineModeIndex == 1) ? EngineMode.Native : EngineMode.CSharp,
+                NativeDerivativeMode = (DerivativeModeIndex == 1)
+                    ? LensHH.Core.NativeInterop.MeritDerivativeMode.Analytic
+                    : LensHH.Core.NativeInterop.MeritDerivativeMode.FiniteDifference,
                 FilteredCatalogSearchPaths = filteredDir != null ? new[] { filteredDir } : Array.Empty<string>(),
                 OnProgress = p => Dispatcher.UIThread.Post(() =>
                 {

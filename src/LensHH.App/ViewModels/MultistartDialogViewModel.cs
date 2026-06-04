@@ -60,12 +60,35 @@ public partial class MultistartDialogViewModel : ObservableObject
 
     // ── Settings ──
     [ObservableProperty] private int _maxTrials = 2000;
+    // LmIterationsPerTrial: per-trial LM cap. Restored to 4000 — the previous
+    // default — at user request 2026-05-31. The per-trial LM should be allowed
+    // to converge cleanly; user explicitly objected to a small cap here.
     [ObservableProperty] private int _lmIterationsPerTrial = 4000;
-    [ObservableProperty] private int _initialLmIterations = 4000;
+    // InitialLmIterations: Phase-1 cap. Dropped to 200 (engine default) per
+    // user agreement — Phase 1 LM mostly polishes an already-converged seed
+    // and 4000 here was overkill. Skippable entirely via the Skip Init LM box.
+    [ObservableProperty] private int _initialLmIterations = 200;
+    /// <summary>When true, MultistartOptimizer skips Phase 1 entirely (the
+    /// one-time LM pass on the seed before any randomization). Use when the
+    /// seed design is already converged and Phase 1 is pure waste — LM can't
+    /// escape the basin Phase 2 is trying to randomize out of. Forces
+    /// Settings.InitialLmIterations = 0 in StartOptimization.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(InitialLmInputEnabled))]
+    private bool _skipInitialLm = false;
+
+    /// <summary>Derived: Init LM textbox enabled when NOT running AND NOT skipping.</summary>
+    public bool InitialLmInputEnabled => !IsRunning && !SkipInitialLm;
+
+    partial void OnIsRunningChanged(bool value) => OnPropertyChanged(nameof(InitialLmInputEnabled));
     [ObservableProperty] private double _initialSigma = 0.001;
     [ObservableProperty] private double _sigmaCap = 0.5;
     [ObservableProperty] private bool _enableMetropolis = true;
-    [ObservableProperty] private int _hjStepsPerTrial = 50;
+    // Default lowered from 50 → 10 on 2026-05-31. HJ pre-step now also
+    // runs only on glass-swap trials (MultistartSettings.HjOnGlassSwapOnly
+    // default = true). Previously HJ ran every trial × 50 outer iters ×
+    // (2N+1) inner evals, dominating wall-clock on Tanabe-class designs.
+    [ObservableProperty] private int _hjStepsPerTrial = 10;
     [ObservableProperty] private int _glassSwapLmMultiplier = 4;
     [ObservableProperty] private bool _constrainedOnly = false;
     [ObservableProperty] private double _glassSubstitutionProbability = 50; // display as %
@@ -76,6 +99,32 @@ public partial class MultistartDialogViewModel : ObservableObject
     /// behavior on very smooth, well-scaled designs; raise to 1e-2 if the
     /// optimizer keeps rejecting steps early.</summary>
     [ObservableProperty] private double _initialDamping = 1e-3;
+
+    // ── Advanced — engine + derivative selection (was orange DEV banner in
+    //    ≤1.0.114; moved into a collapsed Advanced expander for 1.0.115).
+    //    Index 0 = C# (CSharp), 1 = C++ (Native). Default flipped to C++
+    //    Native on 1.0.115 — the bedrock-validated path that the GPU pre-
+    //    screen layers on top of. C# remains available via the dropdown.
+    [ObservableProperty] private int _engineModeIndex = 1;
+    //    Index 0 = Finite Difference, 1 = Analytic (forward-mode Dual<W> AD).
+    //    Only effective when EngineModeIndex == 1. Default flipped to Analytic
+    //    on 1.0.115 (faster Jacobian, bit-equal on 134/134 bedrock tests).
+    [ObservableProperty] private int _derivativeModeIndex = 1;
+    public IReadOnlyList<string> EngineModeOptions { get; } =
+        new[] { "C# (CSharp)", "C++ (Native)" };
+    public IReadOnlyList<string> DerivativeModeOptions { get; } =
+        new[] { "Finite Difference", "Analytic" };
+
+    // ── GPU pre-screen (Beta, G2 / 1.0.115) ──
+    // Bound to the checkbox in the "Hardware acceleration" strip at top.
+    // 1.0.115 ships this as a detection-only Beta: the toggle verifies the
+    // user's GPU is reachable and the dispatcher is wired, but the Multistart
+    // Phase-2 inner-loop hook lands in 1.0.116. When the kernel inner-loop
+    // integration arrives, this property already feeds MultistartSettings.
+    // UseGpuPreScreen — no UI rewiring needed.
+    [ObservableProperty] private bool _useGpuPreScreen;
+    [ObservableProperty] private string _gpuStatusText = "Detecting GPU...";
+    [ObservableProperty] private bool _isGpuToggleEnabled;
 
     // ── Status ──
     [ObservableProperty] private bool _isRunning;
@@ -106,6 +155,44 @@ public partial class MultistartDialogViewModel : ObservableObject
     public MultistartDialogViewModel(GuiSession session)
     {
         _session = session;
+        DetectGpu();
+    }
+
+    // ── G2 / 1.0.115: GPU detection ──
+    // Runs once at dialog construction. Sets IsGpuToggleEnabled so the
+    // checkbox is interactable only when a CUDA device is reachable, and
+    // populates GpuStatusText with what the user needs to know:
+    //   - GPU detected → name + 1.7-1.9× speedup expectation + Beta note
+    //   - No GPU       → reason the toggle is disabled
+    // The first call lazy-loads the CUDA driver inside the native DLL; ~50 ms.
+    private void DetectGpu()
+    {
+        try
+        {
+            bool available = LensHH.Core.NativeInterop.GpuPreScreener.IsAvailable;
+            if (available)
+            {
+                IsGpuToggleEnabled = true;
+                UseGpuPreScreen = false; // Off by default — user opts in.
+                GpuStatusText =
+                    "CUDA device detected. 1.7–1.9× speedup expected on heavy WAVEX/SPOT/SENS merits; " +
+                    "bit-equal to CPU. 1.0.115 ships detection-only — pre-screen activates in 1.0.116.";
+            }
+            else
+            {
+                IsGpuToggleEnabled = false;
+                UseGpuPreScreen = false;
+                GpuStatusText =
+                    "No compatible NVIDIA GPU detected. Pre-screen disabled. " +
+                    "(Requires CUDA-capable card and recent NVIDIA driver.)";
+            }
+        }
+        catch (System.Exception ex)
+        {
+            IsGpuToggleEnabled = false;
+            UseGpuPreScreen = false;
+            GpuStatusText = $"GPU detection failed: {ex.Message.Replace("\n", " ")}. Pre-screen disabled.";
+        }
     }
 
     [RelayCommand]
@@ -135,7 +222,7 @@ public partial class MultistartDialogViewModel : ObservableObject
                 {
                     MaxTrials = MaxTrials,
                     LmIterationsPerTrial = LmIterationsPerTrial,
-                    InitialLmIterations = InitialLmIterations,
+                    InitialLmIterations = SkipInitialLm ? 0 : InitialLmIterations,
                     InitialSigma = InitialSigma,
                     SigmaCap = SigmaCap,
                     EnableMetropolis = EnableMetropolis,
@@ -145,7 +232,17 @@ public partial class MultistartDialogViewModel : ObservableObject
                     GlassSubstitutionProbability = GlassSubstitutionProbability / 100.0,
                     UseBroydenUpdate = UseBroydenUpdate,
                     InitialDamping = InitialDamping,
+                    // G2 / 1.0.115 Beta: plumb the dialog checkbox into the
+                    // optimizer settings. 1.0.115 ships infrastructure only —
+                    // MultistartOptimizer Phase-2 hook lands in 1.0.116, at
+                    // which point this flag will start gating the GPU sieve.
+                    UseGpuPreScreen = UseGpuPreScreen,
                 },
+                // Phase 10a — DEV engine selection from the dialog.
+                EngineMode = (EngineModeIndex == 1) ? EngineMode.Native : EngineMode.CSharp,
+                NativeDerivativeMode = (DerivativeModeIndex == 1)
+                    ? LensHH.Core.NativeInterop.MeritDerivativeMode.Analytic
+                    : LensHH.Core.NativeInterop.MeritDerivativeMode.FiniteDifference,
                 FilteredCatalogSearchPaths = GlassSubstitutionViewModel.FindFilteredCatalogFolder() is string dir
                     ? new[] { dir } : Array.Empty<string>()
             };

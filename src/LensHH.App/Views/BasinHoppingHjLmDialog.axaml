@@ -27,6 +27,49 @@
                  TextWrapping="Wrap" MinHeight="28" />
     </Border>
 
+    <!-- ═══ Hardware acceleration (G2 / 1.0.115 Beta) ═══ -->
+    <!-- BasinHopping is sequential by design — one hop at a time so each
+         accept/reject decision is informed by the previous. The GPU pre-
+         screen pattern (N candidates → top-K survivors) doesn't apply
+         cleanly; we surface this clearly rather than offering a toggle
+         that wouldn't do anything. Use Multistart for GPU-accelerated
+         random-restart exploration. -->
+    <Border DockPanel.Dock="Top" Background="#F0F4FF" BorderBrush="#7050D0"
+            BorderThickness="1" CornerRadius="4" Padding="10,6" Margin="0,0,0,6">
+      <StackPanel Orientation="Vertical" Spacing="3">
+        <StackPanel Orientation="Horizontal" Spacing="8">
+          <TextBlock Text="⚡" FontSize="14" VerticalAlignment="Center" />
+          <TextBlock Text="Hardware acceleration" FontWeight="SemiBold" VerticalAlignment="Center" />
+        </StackPanel>
+        <TextBlock FontSize="11" Foreground="#555" Margin="22,0,0,0" TextWrapping="Wrap"
+                   Text="Not applicable to BasinHopping (sequential by design — each hop's accept/reject decision depends on the previous). For GPU-accelerated random-restart exploration, use Multistart." />
+      </StackPanel>
+    </Border>
+
+    <!-- ═══ Advanced (collapsed by default) — Engine / Derivative ═══ -->
+    <Expander DockPanel.Dock="Top" Header="▸ Advanced (engine, derivative, LM internals)"
+              IsExpanded="False" Margin="0,0,0,6">
+      <StackPanel Orientation="Vertical" Spacing="6" Margin="6,4,0,4">
+        <StackPanel Orientation="Horizontal" Spacing="12">
+          <TextBlock Text="Engine:" VerticalAlignment="Center" />
+          <ComboBox Width="160" ItemsSource="{Binding EngineModeOptions}"
+                    SelectedIndex="{Binding EngineModeIndex}" IsEnabled="{Binding !IsRunning}"
+                    Tag="Which merit-function engine drives this run. C# is the legacy path; C++ (Native) routes evaluate_merit + Jacobian through the native engine — bit-equal in value, typically faster on Jacobian. Default since 1.0.115 is C++ Native."
+                    PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"
+                    GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
+          <TextBlock Text="Derivative:" VerticalAlignment="Center" Margin="6,0,0,0" />
+          <ComboBox Width="180" ItemsSource="{Binding DerivativeModeOptions}"
+                    SelectedIndex="{Binding DerivativeModeIndex}"
+                    IsEnabled="{Binding !IsRunning}"
+                    Tag="C++ Jacobian mode (ignored when Engine = C#). Finite Difference perturbs each variable; Analytic uses templated Dual&lt;W&gt; forward-mode AD through the ray trace + operands."
+                    PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"
+                    GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
+        </StackPanel>
+        <TextBlock Text="Defaults reflect the engine bedrock as of 1.0.115. Most users do not need to change these."
+                   FontSize="10" Foreground="#777" FontStyle="Italic" />
+      </StackPanel>
+    </Expander>
+
     <!-- Settings -->
     <Border DockPanel.Dock="Top" BorderBrush="#CCC" BorderThickness="1"
             CornerRadius="4" Padding="10,6" Margin="0,0,0,6">

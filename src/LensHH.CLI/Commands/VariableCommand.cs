@@ -61,7 +61,10 @@ namespace LensHH.CLI.Commands
             if (vars.Count == 0)
             {
                 AnsiConsole.MarkupLine("[yellow]No variables defined.[/]");
-                AnsiConsole.MarkupLine("Use [green]surface variable[/], [green]system field-variable[/], or [green]config variable[/] to add variables.");
+                // 2026-06-01 task #102: `system field-variable` (FieldY) and
+                // `config variable` (multi-config) are out of scope for
+                // LensHH-LT (planned for LensHH-Pro). Dropped from the hint.
+                AnsiConsole.MarkupLine("Use [green]surface variable[/] to add variables.");
                 return;
             }
 

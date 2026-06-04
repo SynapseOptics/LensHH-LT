@@ -14,7 +14,7 @@ namespace LensHH.CLI.Commands
         public string Help => @"[bold]pickup[/] - Pickup operations
   [green]pickup list[/]                                          List all pickups
   [green]pickup add <target_surf> <param> <source_surf>[/]       Add pickup
-    [green][[scale=V]] [[offset=V]] [[config=N]][/]
+    [green][[scale=V]] [[offset=V]][/]
   [green]pickup remove <index>[/]                                Remove pickup
   [green]pickup apply[/]                                         Apply all pickups
 
@@ -88,7 +88,7 @@ namespace LensHH.CLI.Commands
         {
             if (args.Length < 4)
             {
-                AnsiConsole.MarkupLine("[red]Usage: pickup add <target_surf> <param> <source_surf> [scale=V] [offset=V] [config=N][/]");
+                AnsiConsole.MarkupLine("[red]Usage: pickup add <target_surf> <param> <source_surf> [scale=V] [offset=V][/]");
                 return;
             }
 
@@ -121,10 +121,10 @@ namespace LensHH.CLI.Commands
                         if (double.TryParse(kv[1], NumberStyles.Float, CultureInfo.InvariantCulture, out double o))
                             pickup.Offset = o;
                         break;
-                    case "config":
-                        if (int.TryParse(kv[1], out int c))
-                            pickup.SourceConfigurationIndex = c;
-                        break;
+                    // 2026-06-01 task #102: `config=N` removed (multi-config
+                    // is out of scope for LensHH-LT; planned for LensHH-Pro).
+                    // SourceConfigurationIndex stays in the data model so
+                    // Pro-authored .lhlt files round-trip cleanly.
                 }
             }
 

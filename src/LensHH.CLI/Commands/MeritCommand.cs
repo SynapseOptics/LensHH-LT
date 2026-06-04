@@ -561,9 +561,11 @@ namespace LensHH.CLI.Commands
                 case "gridsize":
                     if (int.TryParse(val, out int gs)) op.GridSize = gs;
                     break;
-                case "config":
-                    if (int.TryParse(val, out int cfg)) op.ConfigurationNo = cfg;
-                    break;
+                // 2026-06-01 task #102: `config=N` removed. Multi-configuration
+                // is out of scope for LensHH-LT (planned for LensHH-Pro).
+                // ConfigurationNo on the operand stays in the data model so
+                // .lhlt files authored with the Pro multi-config feature still
+                // round-trip; the CLI just no longer offers a way to set it.
                 case "opcode":
                     if (Enum.TryParse<OperationCode>(val, true, out var oc)) op.OpCode = oc;
                     break;

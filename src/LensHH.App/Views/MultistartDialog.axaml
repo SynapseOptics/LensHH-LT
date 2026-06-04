@@ -36,6 +36,54 @@
                  TextWrapping="Wrap" MinHeight="28" />
     </Border>
 
+    <!-- ═══ Hardware acceleration (G2 / 1.0.115 Beta) ═══ -->
+    <!-- GPU pre-screen will sieve N candidates → top-K survivors before HJ-LM.
+         1.0.115 ships the infrastructure (native kernel, C# wrapper, this UI);
+         the Phase-2 inner-loop integration lands in 1.0.116. The checkbox
+         here verifies the user's GPU is detected and the path is reachable. -->
+    <Border DockPanel.Dock="Top" Background="#F0F4FF" BorderBrush="#7050D0"
+            BorderThickness="1" CornerRadius="4" Padding="10,6" Margin="0,0,0,6">
+      <StackPanel Orientation="Vertical" Spacing="3">
+        <StackPanel Orientation="Horizontal" Spacing="8">
+          <TextBlock Text="⚡" FontSize="14" VerticalAlignment="Center" />
+          <TextBlock Text="Hardware acceleration" FontWeight="SemiBold" VerticalAlignment="Center" />
+          <CheckBox Content="Use GPU pre-screen (Beta)"
+                    IsChecked="{Binding UseGpuPreScreen}"
+                    IsEnabled="{Binding IsGpuToggleEnabled}"
+                    Margin="12,0,0,0" VerticalAlignment="Center"
+                    Tag="When enabled, each Phase-2 trial batch generates ~16× more candidate designs than CPU cores and evaluates them all on the GPU in one launch (60 µs per design on a 4060). Only the top-N survivors run the expensive HJ-LM polish. Currently shipping in 1.0.115 as a detection-only Beta; the inner-loop integration lands in 1.0.116."
+                    PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"
+                    GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
+        </StackPanel>
+        <TextBlock Text="{Binding GpuStatusText}" FontSize="11" Foreground="#555"
+                   Margin="22,0,0,0" TextWrapping="Wrap" />
+      </StackPanel>
+    </Border>
+
+    <!-- ═══ Advanced (collapsed by default) — Engine / Derivative / LM knobs ═══ -->
+    <Expander DockPanel.Dock="Top" Header="▸ Advanced (engine, derivative, LM internals)"
+              IsExpanded="False" Margin="0,0,0,6">
+      <StackPanel Orientation="Vertical" Spacing="6" Margin="6,4,0,4">
+        <StackPanel Orientation="Horizontal" Spacing="12">
+          <TextBlock Text="Engine:" VerticalAlignment="Center" />
+          <ComboBox Width="160" ItemsSource="{Binding EngineModeOptions}"
+                    SelectedIndex="{Binding EngineModeIndex}" IsEnabled="{Binding !IsRunning}"
+                    Tag="Which merit-function engine drives this run. C# is the legacy path; C++ (Native) routes evaluate_merit + Jacobian through the native engine — bit-equal in value, typically faster on Jacobian. Default since 1.0.115 is C++ Native for new merits."
+                    PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"
+                    GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
+          <TextBlock Text="Derivative:" VerticalAlignment="Center" Margin="6,0,0,0" />
+          <ComboBox Width="180" ItemsSource="{Binding DerivativeModeOptions}"
+                    SelectedIndex="{Binding DerivativeModeIndex}"
+                    IsEnabled="{Binding !IsRunning}"
+                    Tag="C++ Jacobian mode (ignored when Engine = C#). Finite Difference perturbs each variable; Analytic uses templated Dual&lt;W&gt; forward-mode AD through the ray trace + operands. Analytic is bit-equal to FD on 134/134 bedrock tests except a documented 1.5% drift on multi-wave OPD Jacobians (does not affect merit values)."
+                    PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"
+                    GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
+        </StackPanel>
+        <TextBlock Text="Defaults reflect the engine bedrock as of 1.0.115. Most users do not need to change these."
+                   FontSize="10" Foreground="#777" FontStyle="Italic" />
+      </StackPanel>
+    </Expander>
+
     <!-- ═══ Settings ═══ -->
     <Border DockPanel.Dock="Top" BorderBrush="#CCC" BorderThickness="1"
             CornerRadius="4" Padding="10,6" Margin="0,0,0,6">
@@ -55,8 +103,9 @@
                  GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
 
         <TextBlock Grid.Row="0" Grid.Column="8" Text="Init LM:" VerticalAlignment="Center" />
-        <TextBox Grid.Row="0" Grid.Column="10" Text="{Binding InitialLmIterations, UpdateSourceTrigger=LostFocus}" IsEnabled="{Binding !IsRunning}"
-                 Tag="Iterations for the one-time LM pass run on the starting design before any randomization. Establishes the baseline merit all trials are compared against."
+        <TextBox Grid.Row="0" Grid.Column="10" Text="{Binding InitialLmIterations, UpdateSourceTrigger=LostFocus}"
+                 IsEnabled="{Binding InitialLmInputEnabled}"
+                 Tag="Iterations for the one-time LM pass run on the starting design before any randomization. Establishes the baseline merit all trials are compared against. Set this small (or check Skip Init LM at right) when the seed is already converged — Phase 1 LM can't escape the basin that Phase 2 is randomizing out of."
                  PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"
                  GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
 
@@ -88,6 +137,12 @@
         <CheckBox Grid.Row="2" Grid.Column="8" Grid.ColumnSpan="3" Content="Broyden Update"
                   IsChecked="{Binding UseBroydenUpdate}" IsEnabled="{Binding !IsRunning}" VerticalAlignment="Center"
                   Tag="Inside each trial's LM, update the Jacobian using cheap Broyden rank-1 updates between full finite-difference refreshes. Usually faster; turn off for very ill-conditioned problems."
+                  PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"
+                  GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
+
+        <CheckBox Grid.Row="4" Grid.Column="4" Grid.ColumnSpan="3" Content="Skip Init LM"
+                  IsChecked="{Binding SkipInitialLm}" IsEnabled="{Binding !IsRunning}" VerticalAlignment="Center"
+                  Tag="Skip the one-time Phase 1 LM pass before randomization. Recommended when the seed design is already at a local minimum: Phase 1 LM can't escape the basin that Phase 2 is trying to randomize out of, so it's pure cost. When unchecked, Phase 1 uses the Init LM iteration cap above."
                   PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"
                   GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
 
