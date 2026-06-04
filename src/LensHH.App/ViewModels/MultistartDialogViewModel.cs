@@ -172,11 +172,32 @@ public partial class MultistartDialogViewModel : ObservableObject
             bool available = LensHH.Core.NativeInterop.GpuPreScreener.IsAvailable;
             if (available)
             {
-                IsGpuToggleEnabled = true;
-                UseGpuPreScreen = false; // Off by default — user opts in.
-                GpuStatusText =
-                    "CUDA device detected. 1.7–1.9× speedup expected on heavy WAVEX/SPOT/SENS merits; " +
-                    "bit-equal to CPU. 1.0.115 ships detection-only — pre-screen activates in 1.0.116.";
+                // Check whether the CURRENT design has variable types the GPU
+                // kernel can't accept. If so, surface this in the status text
+                // upfront and disable the toggle — better than letting the
+                // user enable it then quietly running CPU and only discovering
+                // via the post-run telemetry.
+                string? blocker = CheckGpuVariableCompatibility();
+                if (blocker != null)
+                {
+                    IsGpuToggleEnabled = false;
+                    UseGpuPreScreen = false;
+                    GpuStatusText =
+                        $"CUDA device detected, but this design has {blocker}. " +
+                        "GPU pre-screen requires only curvature / thickness / conic " +
+                        "variables — falling back to CPU. Remove the unsupported " +
+                        "variable types to enable.";
+                }
+                else
+                {
+                    IsGpuToggleEnabled = true;
+                    UseGpuPreScreen = false; // Off by default — user opts in.
+                    GpuStatusText =
+                        "CUDA device detected. When enabled, each Phase-2 batch generates ~16× more " +
+                        "candidate designs than CPU cores, evaluates all on GPU in one launch " +
+                        "(~60 µs/design on 4060), and runs HJ-LM only on the top survivors. " +
+                        "Continuous variables AND glass-swap candidates are sieved together.";
+                }
             }
             else
             {
@@ -192,6 +213,57 @@ public partial class MultistartDialogViewModel : ObservableObject
             IsGpuToggleEnabled = false;
             UseGpuPreScreen = false;
             GpuStatusText = $"GPU detection failed: {ex.Message.Replace("\n", " ")}. Pre-screen disabled.";
+        }
+    }
+
+    /// <summary>
+    /// Inspect the current design's optimization variables. Returns a
+    /// human-readable description of any variable types the GPU pre-screen
+    /// kernel can't accept (aspheric coefficients, FieldY, ConfigValue), or
+    /// null if every variable is curvature/thickness/conic-compatible.
+    /// </summary>
+    /// <remarks>
+    /// Variables are enumerated via a throwaway <see cref="LocalOptimizer"/>
+    /// — the same path MultistartOptimizer takes at Optimize() entry. If
+    /// enumeration throws (rare — usually means the merit function is in a
+    /// bad state) we return null so the toggle stays usable; the engine
+    /// will report any real eligibility blocker in result.Message after the
+    /// run.
+    /// </remarks>
+    private string? CheckGpuVariableCompatibility()
+    {
+        try
+        {
+            var probe = new LensHH.Core.Optimization.LocalOptimizer(
+                _session.System, _session.MeritFunction,
+                _session.GlassCatalog, _session.ConfigEditor);
+            probe.CollectVariables();
+
+            bool hasAspheric = false, hasField = false, hasConfig = false;
+            foreach (var v in probe.Variables)
+            {
+                switch (v.Type)
+                {
+                    case LensHH.Core.Optimization.VariableType.AsphericCoefficient:
+                        hasAspheric = true; break;
+                    case LensHH.Core.Optimization.VariableType.FieldY:
+                        hasField = true; break;
+                    case LensHH.Core.Optimization.VariableType.ConfigValue:
+                        hasConfig = true; break;
+                }
+            }
+
+            if (!hasAspheric && !hasField && !hasConfig) return null;
+
+            var parts = new List<string>();
+            if (hasAspheric) parts.Add("aspheric");
+            if (hasField)    parts.Add("Field-Y");
+            if (hasConfig)   parts.Add("ConfigValue");
+            return string.Join(" + ", parts) + " variable(s)";
+        }
+        catch
+        {
+            return null;
         }
     }
 

@@ -99,7 +99,12 @@ public partial class OperandRowViewModel : ObservableObject
         && _operand.Type != OperandType.DITANF
         && _operand.Type != OperandType.DITHETAF
         && _operand.Type != OperandType.LCF
-        && _operand.Type != OperandType.CFS;
+        && _operand.Type != OperandType.CFS
+        // TTRACK is a pure sum of surface thicknesses (geometric) — no ray
+        // trace, no refractive index, no wavelength dependence. The engine's
+        // evaluate_operand_value TTRACK branch never reads `wave_index` or
+        // `indices_per_wavelength` (merit_function_eval.h). Hide the column.
+        && _operand.Type != OperandType.TTRACK;
     private bool NeedsRayCoords => GetCategory() is Category.RayIntercept;
     private bool NeedsHyOnly => _operand.Type is OperandType.ILL
         or OperandType.DITANF or OperandType.DITHETAF or OperandType.LCF
