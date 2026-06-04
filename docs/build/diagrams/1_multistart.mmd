@@ -1,0 +1,41 @@
+flowchart TD
+    Start(["User clicks Optimize"]) --> Init["Initialize variables and bounds<br>sigma = sigma_init, T = T_init"]
+    Init --> Ph1Check{"Initial LM<br>enabled?"}
+    Ph1Check -- Yes --> Ph1LM["PHASE 1: Initial LM<br>refine user start<br>single-threaded"]
+    Ph1Check -- No --> Skip1["Use raw starting merit"]
+    Ph1LM --> CaptureBest["Capture best M_star<br>center = M_star"]
+    Skip1 --> CaptureBest
+    CaptureBest --> LoopCheck{"All trials done?<br>completed >= MaxTrials"}
+    LoopCheck -- Yes --> Return(["Return best lens"])
+    LoopCheck -- No --> StartBatch["PHASE 2: spawn N_CPU trials in parallel"]
+    StartBatch --> Trial
+    subgraph Trial["Per-trial HJ-LM worker x N_CPU in parallel"]
+        direction TB
+        T1["Clone system and merit"] --> T2{"Roll dice<br>swap glass?<br>p = P_swap"}
+        T2 -- Yes --> T3a["GLASS SWAP<br>1. Pick one eligible surface<br>2. Pick random glass from its candidate list<br>3. Keep variables equal to center"]
+        T2 -- No --> T3b["CONTINUOUS PERTURB<br>x_new = center + sigma times N(0,1)<br>per active variable<br>glasses unchanged"]
+        T3a --> T5["Hooke-Jeeves<br>pattern search<br>HjStepsPerTrial"]
+        T3b --> T6["Levenberg-Marquardt<br>HJ skipped by default<br>for continuous trials<br>HjOnGlassSwapOnly true since 2026-05-31"]
+        T5 --> T6b["Levenberg-Marquardt<br>LmIterationsPerTrial<br>x glass-swap multiplier"]
+        T6 --> T7["Report trial merit"]
+        T6b --> T7
+    end
+    Trial --> Merge["Merge batch results<br>best of batch M_b"]
+    Merge --> Acc{"M_b less than best?"}
+    Acc -- Yes --> Accept["ACCEPT<br>best = M_b<br>sigma reset to sigma_init"]
+    Acc -- No --> Metro{"Metropolis on center?<br>p = exp(minus deltaM over T)"}
+    Metro -- Accept --> MetroAcc["MOVE CENTER<br>center = M_b<br>sigma held"]
+    Metro -- Reject --> Reject["REJECT<br>sigma grows by factor<br>sawtooth at sigma_cap"]
+    Accept --> LoopCheck
+    MetroAcc --> LoopCheck
+    Reject --> LoopCheck
+    classDef expensive fill:#fff4d6,stroke:#e6a23c,stroke-width:2px,color:#000
+    classDef phase fill:#cce5ff,stroke:#0066cc,stroke-width:2px,color:#000
+    classDef decision fill:#ffe4e1,stroke:#cc0066,stroke-width:2px,color:#000
+    classDef terminal fill:#d4edda,stroke:#28a745,stroke-width:3px,color:#000
+    classDef glass fill:#e1f5fe,stroke:#0277bd,stroke-width:2px,color:#000
+    class T5,T6,T6b expensive
+    class Ph1LM,StartBatch phase
+    class T2,Acc,Metro,LoopCheck,Ph1Check decision
+    class Start,Return terminal
+    class T3a glass

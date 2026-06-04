@@ -1,0 +1,37 @@
+flowchart TD
+    Enter(["Trial entry<br>perturbed start x0"]) --> Eval0["Evaluate merit M(x0)<br>GPU pre-screens this<br>for thousands of x0 at once"]
+    Eval0 --> HJDec{"Run HJ?"}
+    HJDec -- Yes --> HJ
+    HJDec -- No --> LMEnter
+    subgraph HJ["Hooke-Jeeves pattern search"]
+        direction TB
+        H1["Start step h = h0"] --> H2{"HJ budget<br>remaining?"}
+        H2 -- Yes --> H3["Exploratory move<br>try plus or minus h on each variable"]
+        H3 --> H4{"Improved?"}
+        H4 -- Yes --> H5["Pattern move<br>extrapolate"]
+        H4 -- No --> H6["Shrink h to h over 2"]
+        H5 --> H2
+        H6 --> H2
+        H2 -- "No budget done" --> HJExit["HJ done"]
+    end
+    HJ --> LMEnter
+    subgraph LM["Levenberg-Marquardt"]
+        direction TB
+        L1["Compute Jacobian J<br>analytic or FD"] --> L2["Solve (JT J + lambda I) delta = JT R"]
+        L2 --> L3["Try x = x + delta"]
+        L3 --> L4{"M improved?"}
+        L4 -- Yes --> L5["Accept step<br>lambda = lambda over 10"]
+        L4 -- No --> L6["Reject<br>lambda = lambda times 10"]
+        L5 --> L7{"Converged or<br>budget exhausted?"}
+        L6 --> L7
+        L7 -- No --> L1
+        L7 -- Yes --> LMExit["LM done"]
+    end
+    LMEnter --> LM
+    LM --> ReturnMerit(["Return final merit"])
+    classDef decision fill:#ffe4e1,stroke:#cc0066,stroke-width:2px,color:#000
+    classDef terminal fill:#d4edda,stroke:#28a745,stroke-width:3px,color:#000
+    classDef highlight fill:#e0c3ff,stroke:#7c3aed,stroke-width:3px,color:#000
+    class HJDec,H2,H4,L4,L7 decision
+    class Enter,ReturnMerit terminal
+    class Eval0 highlight

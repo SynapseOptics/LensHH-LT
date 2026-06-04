@@ -39,7 +39,10 @@ const css = `
   th { background: #e8e8e8; font-weight: 600; }
   blockquote { margin: 1em 0; padding: 0 1em; border-left: 4px solid #ccc; color: #555; font-style: italic; }
   a { color: #0a4d8c; text-decoration: none; }
-  img { display: block; max-width: 100%; height: auto; margin: 0.6em auto; page-break-inside: avoid; border: 1px solid #ddd; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+  /* max-height keeps a tall flowchart from being cut by a page break.
+     Letter content area is 7.0in × 9.4in after the 0.8/0.75in margins;
+     8.5in leaves room for a caption above and continuing prose below. */
+  img { display: block; max-width: 100%; max-height: 8.5in; height: auto; margin: 0.6em auto; page-break-inside: avoid; border: 1px solid #ddd; box-shadow: 0 1px 3px rgba(0,0,0,0.08); object-fit: contain; }
   hr.page { border: none; page-break-after: always; height: 0; margin: 0; }
   .cover { text-align: center; padding-top: 2in; page-break-after: always; }
   .cover h1 { font-size: 34pt; border: none; margin-bottom: 12pt; }

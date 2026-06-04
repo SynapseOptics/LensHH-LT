@@ -183,6 +183,34 @@ the same way Basin Hopping does (grow on rejects, reset on
 accepts, reset at cap), so a single starting Sigma covers a wide
 range of designs.
 
+### Algorithm at a glance
+
+Two phases. **Phase 1** runs one Initial LM polish from the user's
+starting design — skip it (set `Init LM = 0`) when you already
+trust the start. **Phase 2** is the actual multistart loop: each
+batch spawns `N_CPU` parallel trials, every trial perturbs around
+the **current center** (a Metropolis random walk that is allowed
+to drift away from *best*), runs HJ-LM polish, then competes for
+acceptance. Successful trials reset σ to its initial value;
+rejected ones grow σ until it hits the cap and resets — a
+sawtooth schedule that paces exploration without freezing the
+search at a single scale.
+
+![Multistart architecture](images/optimization/multistart_architecture.png)
+
+The HJ-LM atom (orange boxes in the parallel block above) is
+where each trial actually does its work. Hooke-Jeeves is a
+derivative-free pattern search that climbs gracefully across
+discontinuities (vignetting, ray-trace failures, glass-boundary
+jumps); LM is the workhorse damped-least-squares solver that
+polishes the basin once HJ has dropped you into it. By default
+HJ runs only on glass-swap trials (LM's damping handles smooth
+continuous perturbations on its own) — flip
+`HjOnGlassSwapOnly = false` in the engine settings to restore the
+pre-1.0.115 always-HJ behaviour.
+
+![HJ-LM trial detail](images/optimization/hj_lm_trial.png)
+
 | Setting | Default | Meaning |
 |---|---|---|
 | **Trials** | 2000 | Hard cap on the number of LM optimizations. Stop earlier when satisfied. |
@@ -218,6 +246,60 @@ bounded variables; unbounded aspherics use the per-order rule.
 Either way the perturbation magnitude tracks the term's natural
 scale and an unbounded aspheric is now an honest variable in
 Multistart, not a hold-current placeholder.
+
+### GPU pre-screen (Beta, new in 1.0.115)
+
+Most random perturbations produce designs that are strictly
+worse than the current best — running the full HJ-LM cycle on
+them is wasted work. The **GPU pre-screen** filter, available
+when LensHH-LT detects a CUDA-capable NVIDIA GPU, evaluates a
+much larger candidate pool than `N_CPU` in a single GPU launch
+(~60 µs per design on an RTX 4060), sorts by merit, and feeds
+only the top survivors into the parallel HJ-LM workers.
+Discarded candidates pay one merit evaluation each instead of
+the 50–300 LM iterations a full trial would cost.
+
+![GPU pre-screen architecture](images/optimization/gpu_prescreen_architecture.png)
+
+**How to enable.** In the Multistart dialog, look at the
+**Hardware acceleration** strip at the top:
+
+- If a CUDA device is detected, the **`Use GPU pre-screen (Beta)`**
+  checkbox is enabled.
+- If your design uses **aspheric, FieldY, or ConfigValue**
+  variables, the checkbox is greyed out and the status line
+  tells you which variable type is the blocker. The GPU kernel
+  takes only curvature, thickness, and conic coefficients per
+  design; aspheric-variable designs fall back to the CPU path
+  with no UI surprises.
+- With no compatible GPU, the checkbox is greyed out and the
+  status line says so.
+
+**What runs on the GPU.** Each Phase-2 batch generates
+`16 × N_CPU` candidates (continuous perturbations and, when
+glass substitution is on, single-surface glass swaps mixed in
+the same launch). The whole-merit kernel computes the merit of
+every candidate bit-equal to the CPU path; the top `N_CPU`
+survivors go to HJ-LM polish exactly as in the non-GPU flow.
+Acceptance / Metropolis / sigma schedule are unchanged.
+
+**Performance.** On real production-class merits (Tanabe,
+21-surface, 3 waves, 3 fields, 241 operands) the consumer-class
+RTX 4060 delivers ~1.7× the raw merit-evaluation throughput of
+a 16-thread laptop CPU. The pre-screen's *wall-clock* impact is
+larger because most candidates would have failed HJ-LM anyway:
+discarding them at ~60 µs each instead of running a 50–300-eval
+HJ-LM cycle compounds the 1.7× hardware win into a far bigger
+algorithm-level speedup. A100-class FP64 GPUs project to
+~10–25× over the same CPU baseline.
+
+**Result message telemetry.** When a run uses the GPU
+pre-screen, the result line at the bottom of the dialog adds
+`| GPU pre-screen: N candidates sieved across M batches`. When
+glass substitution is on, it also reports how many of the
+HJ-LM survivors were glass-swap candidates, so you can tell at
+a glance that the sieve actually evaluated the glass-swap
+variants alongside the continuous ones.
 
 ### Three Multistart cases on the same design
 

@@ -1,0 +1,41 @@
+flowchart TD
+    Start(["User clicks Optimize"]) --> Init["Initialize variables, sigma, T<br>Upload static data to GPU<br>template, operands, fields,<br>glass catalog - once per session"]
+    Init --> Ph1Check{"Initial LM<br>enabled?"}
+    Ph1Check -- Yes --> Ph1LM["PHASE 1: Initial LM<br>(single-threaded, unchanged)"]
+    Ph1Check -- No --> Skip1["Use raw starting merit"]
+    Ph1LM --> CaptureBest["Capture best M_star<br>center = M_star"]
+    Skip1 --> CaptureBest
+    CaptureBest --> LoopCheck{"All trials done?<br>completed >= MaxTrials"}
+    LoopCheck -- Yes --> Return(["Return best lens"])
+    LoopCheck -- No --> Gen["GENERATE N candidates<br>N = 1,000 to 10,000<br>random perturbation off center<br>(curv, thick, conic + optional<br>glass-swap variant)"]
+    Gen --> GPU["GPU PRE-SCREEN<br>cuda_run_merit_value(N)<br>1 launch, all N designs<br>~60 us per design on 4060"]
+    GPU --> Sort["Sort N by merit<br>keep TOP-K<br>K = N_CPU (typically 16)"]
+    Sort --> ParTrial["PHASE 2: HJ-LM on K candidates<br>(parallel, N_CPU workers)"]
+    ParTrial --> Trial
+    subgraph Trial["Per-trial HJ-LM x K (full polish)"]
+        direction TB
+        T1["Seed from pre-screened<br>candidate"] --> T2{"Glass-swap<br>candidate?"}
+        T2 -- Yes --> T5["HJ + LM"]
+        T2 -- No --> T6["LM only"]
+        T5 --> T7["Report trial merit"]
+        T6 --> T7
+    end
+    Trial --> Merge["Merge K results<br>best of batch M_b"]
+    Merge --> Acc{"M_b less than best?"}
+    Acc -- Yes --> Accept["ACCEPT<br>best = M_b<br>sigma reset to sigma_init"]
+    Acc -- No --> Metro{"Metropolis<br>on center?"}
+    Metro -- Accept --> MetroAcc["MOVE CENTER"]
+    Metro -- Reject --> Reject["REJECT<br>sigma grows by factor"]
+    Accept --> LoopCheck
+    MetroAcc --> LoopCheck
+    Reject --> LoopCheck
+    classDef expensive fill:#fff4d6,stroke:#e6a23c,stroke-width:2px,color:#000
+    classDef phase fill:#cce5ff,stroke:#0066cc,stroke-width:2px,color:#000
+    classDef decision fill:#ffe4e1,stroke:#cc0066,stroke-width:2px,color:#000
+    classDef terminal fill:#d4edda,stroke:#28a745,stroke-width:3px,color:#000
+    classDef gpu fill:#e0c3ff,stroke:#7c3aed,stroke-width:3px,color:#000
+    class T5,T6 expensive
+    class Ph1LM,ParTrial phase
+    class Ph1Check,LoopCheck,Acc,Metro,T2 decision
+    class Start,Return terminal
+    class Init,Gen,GPU,Sort gpu

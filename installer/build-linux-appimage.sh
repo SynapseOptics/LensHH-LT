@@ -63,6 +63,23 @@ if [ -z "$NATIVE_SO" ]; then
 fi
 echo "Built: $NATIVE_SO"
 
+# ── Step 2b: Stage fresh .so into engine/linux-x64/ BEFORE dotnet publish ──
+# LensHH.App.csproj, LensHH.CLI.csproj, LensHH.Mcp.csproj all reference
+# engine/linux-x64/liblenshh_native.so via <None CopyToOutputDirectory="PreserveNewest">.
+# That copy lands in each app's publish/<rid>/ root — and on Linux, .NET's
+# DllImport("lenshh_native") resolves from AppContext.BaseDirectory BEFORE
+# LD_LIBRARY_PATH, so the bundled copy is what actually loads at runtime.
+# If we skip this step, dotnet publish ships whatever .so happens to be
+# checked into engine/linux-x64/ — historically a months-old stale build,
+# which silently routes every Linux user to outdated activation gates and
+# outdated merit-eval code.
+echo
+echo "=== Staging fresh native into engine/linux-x64/ ==="
+ENGINE_LINUX_DIR="$REPO_ROOT/engine/linux-x64"
+mkdir -p "$ENGINE_LINUX_DIR"
+cp -f "$NATIVE_SO" "$ENGINE_LINUX_DIR/liblenshh_native.so"
+echo "Staged: $ENGINE_LINUX_DIR/liblenshh_native.so"
+
 # ── Step 3: Build .NET app for linux-x64 ──
 echo
 echo "=== Publishing .NET app (linux-x64) ==="
