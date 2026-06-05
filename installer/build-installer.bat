@@ -52,6 +52,23 @@ if errorlevel 1 (
 )
 
 echo.
+echo === Engine build-configuration check ===
+REM Refuse to package an engine binary built in the internal validation
+REM configuration (its lenshh_version() string carries a validation-noauth
+REM marker). Validation builds exist only for the differential test harness
+REM and must never ship. The flag behind them is a cached CMake option, so
+REM a leftover developer configure can silently propagate into bin\ trees —
+REM scan every native DLL the installer will package (each project's bin
+REM gets its copy from engine\win-x64 via PreserveNewest).
+powershell -NoProfile -Command ^
+  "$bad = @(); foreach ($f in (Get-ChildItem -Recurse -Filter 'lenshh_native.dll' 'engine','src' -ErrorAction SilentlyContinue | Where-Object { $_.FullName -match '\\(engine\\win-x64|bin\\Release)\\' })) { $t = [Text.Encoding]::ASCII.GetString([IO.File]::ReadAllBytes($f.FullName)); if ($t.Contains('validation-noauth')) { $bad += $f.FullName } }; if ($bad) { Write-Host 'FATAL: validation-configuration engine binary detected in:'; $bad | ForEach-Object { Write-Host ('  ' + $_) }; exit 1 } else { Write-Host 'Engine build-configuration check: OK' }"
+if errorlevel 1 (
+    echo Engine build-configuration check FAILED — refusing to build installer.
+    pause
+    exit /b 1
+)
+
+echo.
 echo === Compiling Installer ===
 if exist "%ProgramFiles(x86)%\Inno Setup 6\ISCC.exe" (
     "%ProgramFiles(x86)%\Inno Setup 6\ISCC.exe" installer\LensHH-LT.iss

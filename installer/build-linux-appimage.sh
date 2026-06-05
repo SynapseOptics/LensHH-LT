@@ -51,9 +51,15 @@ echo
 echo "=== Building native library (linux-x64) ==="
 NATIVE_BUILD="$NATIVE_REPO/build-linux"
 mkdir -p "$NATIVE_BUILD"
+# LENSHH_DISABLE_ACTIVATION is FORCED OFF here (2026-06-05). It is a cached
+# CMake option used only by the internal differential-validation harness; if
+# a developer ever configures build-linux/ with it ON, every later release
+# build would silently inherit the cached value. Release builds must never
+# trust the cache for this flag.
 cmake -S "$NATIVE_REPO" -B "$NATIVE_BUILD" \
     -DCMAKE_BUILD_TYPE=Release \
-    -DLENSHH_BUILD_TESTS=OFF
+    -DLENSHH_BUILD_TESTS=OFF \
+    -DLENSHH_DISABLE_ACTIVATION=OFF
 cmake --build "$NATIVE_BUILD" --config Release -j$(nproc)
 
 NATIVE_SO=$(find "$NATIVE_BUILD" -name "liblenshh_native.so*" -not -type l | head -1)
@@ -62,6 +68,15 @@ if [ -z "$NATIVE_SO" ]; then
     exit 1
 fi
 echo "Built: $NATIVE_SO"
+
+# Guard: refuse to package an engine built in the validation configuration
+# (its lenshh_version() string carries a validation-noauth marker).
+if grep -q "validation-noauth" "$NATIVE_SO"; then
+    echo "FATAL: $NATIVE_SO was built in the validation configuration."
+    echo "       Refusing to package."
+    exit 1
+fi
+echo "Engine build-configuration check: OK"
 
 # ── Step 2b: Stage fresh .so into engine/linux-x64/ BEFORE dotnet publish ──
 # LensHH.App.csproj, LensHH.CLI.csproj, LensHH.Mcp.csproj all reference
@@ -79,6 +94,20 @@ ENGINE_LINUX_DIR="$REPO_ROOT/engine/linux-x64"
 mkdir -p "$ENGINE_LINUX_DIR"
 cp -f "$NATIVE_SO" "$ENGINE_LINUX_DIR/liblenshh_native.so"
 echo "Staged: $ENGINE_LINUX_DIR/liblenshh_native.so"
+
+# Guard ALL engine/<rid>/ binaries — dotnet publish bundles every one of
+# them (PreserveNewest), so a validation-configuration win-x64 DLL or osx
+# dylib would ride inside the AppImage even though Linux never loads it.
+for f in "$REPO_ROOT/engine/win-x64/lenshh_native.dll" \
+         "$REPO_ROOT/engine/linux-x64/liblenshh_native.so" \
+         "$REPO_ROOT/engine/osx-arm64/liblenshh_native.dylib"; do
+    if [ -f "$f" ] && grep -q "validation-noauth" "$f"; then
+        echo "FATAL: $f was built in the validation configuration."
+        echo "       Refusing to package."
+        exit 1
+    fi
+done
+echo "Engine build-configuration check (engine/<rid> staging): OK"
 
 # ── Step 3: Build .NET app for linux-x64 ──
 echo

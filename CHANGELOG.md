@@ -2,6 +2,26 @@
 
 All notable changes to LensHH-LT and the LensHH-LT-Engine.
 
+## 1.0.116 — 2026-06-05
+
+Maintenance release. All 1.0.115 users should update.
+
+### Fixed
+
+- **GPU pre-screen (Beta) reliability**: fixed two device-memory layout bugs in the batched
+  merit-value dispatcher that could silently disable GPU pre-screening for the remainder of
+  the session on some lens/batch-size combinations (scratch buffer undersized for the
+  per-design glass table introduced in 1.0.115, and static-input offsets shifted when the
+  batch size changed between launches). Results were never affected — evaluation fell back
+  to the CPU path — but the GPU speedup could quietly disappear. Verified bit-equal
+  GPU-vs-CPU merit on real designs at batch sizes 256–4096 after the fix.
+- **GPU diagnostics**: the engine now records the underlying CUDA driver error code of a
+  failed GPU launch (`lenshh_gpu_last_cuda_error`), so support can distinguish
+  out-of-memory conditions from driver issues in the field.
+- **Release packaging**: the Windows installer and Linux AppImage build scripts now verify
+  that the packaged engine binaries were built in the production configuration, and the
+  engine binaries bundled with this release have been rebuilt accordingly.
+
 ## 1.0.115 — 2026-06-04
 
 **Two unrelated improvements stack to give 1.0.115 the largest end-to-end optimization speedup any LensHH-LT release has shipped.** First, the analytical Jacobian work that landed across Phase 9 ports every operand family that matters in practice — CT/CTA/CTG, CV/CVA/CVG, ET/EA/EG/DTRG (including bounded variants), arithmetic operands, RI / RE angle ops, SENS, Abso (`|x|`) op-code, and OPD in afocal mode (riflescopes / telescopes / beam expanders) — from finite-difference probes to analytic dual chains. On a representative cooke-class lens with full image-quality + boundary merit the Jacobian step drops from **54 ms (FD) to 13 ms (Analytic) — about 4× per LM iteration**. On SENS-bearing merits the per-`(field, pupil, wavelength)` dual-trace cache delivers an **11.2× speedup** on the Jacobian step alone. Second, a CPU oversubscription bug that had been hurting every multi-threaded Optimize() run was fixed: the C# optimizer used to spawn nested parallelism (outer Multistart threads, each spawning per-Jacobian-column workers in the native bridge), which on a 16-thread laptop ran `N_threads × J_columns` workers fighting for the same 16 cores and was catastrophic on a 96-core workstation. `ParallelNativeJacobian` now defaults **OFF** on every optimizer; `ParallelEvaluation` (operand-level parallelism for residual-only calls) defaults **ON** on LocalOptimizer. Measured net effect on the 16-thread reference machine: **1.8× to 5× faster** depending on merit shape; far larger on workstation-class hardware.
