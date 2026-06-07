@@ -11,6 +11,48 @@
 Sample lens files are installed under `<install>\samples\` with the
 `.lhlt` extension.
 
+## Install (macOS, Apple Silicon)
+
+macOS builds ship as a zip archive — `LensHH-LT-osx-arm64-<version>.zip`
+in the release downloads — containing the GUI, CLI, MCP server, Ollama
+bridge, and benchmarking tool, plus the full sample-lens set, the
+stock-lens catalog, and the documentation. All binaries are pre-signed;
+there is no codesign step.
+
+1. Unzip (double-click in Finder), then open Terminal in the unzipped
+   folder.
+2. Run the two first-run commands (also listed in the bundled
+   `README-macOS.txt`):
+
+   ```bash
+   xattr -dr com.apple.quarantine .
+   chmod +x app/LensHH.App cli/LensHH.CLI mcp/LensHH.Mcp \
+            renderapp/LensHH.RenderApp ollama/LensHH.OllamaBridge \
+            bench/MeritEvalBench
+   ```
+
+   The first clears the download-quarantine flag (macOS's equivalent of
+   SmartScreen "Run anyway"); the second restores the Unix execute bits,
+   which a zip archive built on Windows doesn't carry.
+3. Launch the GUI:
+
+   ```bash
+   cd app && ./LensHH.App
+   ```
+
+Samples are in `samples/`, and the User Guide PDF plus searchable HTML
+help are in `docs/`. Keep the package folder structure intact — the
+tools locate the shared stock-lens catalog relative to their own
+folders.
+
+Requirements and limits:
+
+- **Apple Silicon (M1 or later) only.** Intel Macs are not supported —
+  the native ray-trace library ships arm64-only.
+- **No GPU acceleration on macOS** — optimization runs on the CPU.
+- If macOS still refuses to open a binary: **System Settings → Privacy
+  & Security** → scroll to the blocked item → **Open Anyway**.
+
 ## License & Trial
 
 LensHH-LT is distributed under a **hybrid license**:

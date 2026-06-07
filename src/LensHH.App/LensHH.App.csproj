@@ -23,11 +23,23 @@
        built exe so packaging scripts (e.g. .app bundling on macOS, .deb /
        AppImage on Linux) can pick them up. They are not used by .NET at
        runtime; only the Avalonia avares://Assets/icon_*.png references
-       inside the .axaml files drive the in-app window/title-bar icon. -->
+       inside the .axaml files drive the in-app window/title-bar icon.
+
+       WARNING: Info.plist must NEVER reach a flat publish folder. If a file
+       named Info.plist sits next to the bare LensHH.App Mach-O executable,
+       any codesign (including ad-hoc) binds it into a bundle-style signature;
+       macOS amfid then rejects the ad-hoc "bundle" on exec (Error -423) and
+       AppleSystemPolicy SIGKILLs the process (rc=137). Worse, every denied
+       launch leaves a sticky per-path deny record in syspolicyd that survives
+       xattr -cr and re-signing. A plain Mach-O ad-hoc signature (no adjacent
+       Info.plist) is accepted. Hence CopyToPublishDirectory="Never": the file
+       stays in the repo as the source artifact for a future real
+       LensHH.App.app/Contents/ bundling step, but is excluded from flat
+       publish output. (Root-caused on macOS, 2026-06-07.) -->
   <ItemGroup>
-    <None Include="Assets\icon.icns" CopyToOutputDirectory="PreserveNewest" />
-    <None Include="Info.plist" CopyToOutputDirectory="PreserveNewest" />
-    <None Include="LensHH-LT.desktop" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="Assets\icon.icns" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Never" />
+    <None Include="Info.plist" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Never" />
+    <None Include="LensHH-LT.desktop" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Never" />
   </ItemGroup>
 
   <ItemGroup>

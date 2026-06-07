@@ -19,7 +19,10 @@ namespace LensHH.CLI;
 public static class RenderAppClient
 {
     private const string PipeName = "LensHH-RenderApp";
-    private const string ExeName = "LensHH.RenderApp.exe";
+    // Apphost is "LensHH.RenderApp.exe" on Windows but extension-less on
+    // macOS/Linux — a hardcoded ".exe" makes auto-launch fail on Unix.
+    private static readonly string ExeName =
+        OperatingSystem.IsWindows() ? "LensHH.RenderApp.exe" : "LensHH.RenderApp";
     private const int ConnectTimeoutMs = 5000;
 
     private static readonly JsonSerializerOptions JsonOpts = new()

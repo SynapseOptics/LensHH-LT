@@ -50,8 +50,9 @@ and the programmatic interfaces.
   free-optimizes with glass substitution, then walks element-by-element
   replacing each free-form singlet with the best matching catalog
   stock part. Phase 2 entry for doublet retrofits.
-- **[Building from Source](building.md)** — required on macOS (no
-  installer); also covers Linux and source-build options on Windows.
+- **[Building from Source](building.md)** — optional on every
+  platform (Windows installer, pre-signed macOS zip package, Linux
+  AppImage all ship with each release); for users tracking main.
 
 ## Scope
 

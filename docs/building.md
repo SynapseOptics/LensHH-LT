@@ -6,13 +6,10 @@ Optics and require activation to run. See `LICENSE` for the full
 terms. You can build, modify, and redistribute the source freely;
 end users still need a valid trial or paid license to compute.
 
-LensHH-LT ships a Windows installer at every release. **macOS users
-must build from source** — there's no signed `.app` to download. Linux
-users have a choice: build from source, or use the AppImage in the
-release archive.
-
-If you're on Windows and want the simplest path, just run the
-installer; this page is only for Windows users who *want* a source
+LensHH-LT ships packaged builds for every platform at each release:
+a Windows installer, a pre-signed macOS (Apple Silicon) zip package,
+and a Linux AppImage. See [Getting Started](getting-started.md) for
+the install steps. This page is only for users who *want* a source
 build (e.g., to track main).
 
 ## Prerequisites
@@ -67,13 +64,12 @@ be verified". To bypass it:
 
 You only need to do this once per fresh checkout.
 
-## macOS: Apple Silicon vs Intel
+## macOS: Apple Silicon only
 
 The shipped native ray-trace library is built for Apple Silicon
-(`arm64`). Intel Macs run it through Rosetta 2 transparently — no
-extra steps. If you have Rosetta installed for other reasons, you're
-already set; if not, macOS will offer to install it the first time
-you launch.
+(`arm64`). Intel Macs cannot run it: Rosetta 2 translates x86-64
+code *for* Apple Silicon, not the other way around, and no `osx-x64`
+build of the engine is currently shipped.
 
 ## CLI and MCP server
 

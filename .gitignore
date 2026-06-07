@@ -23,6 +23,15 @@ installer/appimagetool-*.AppImage
 # during setup if not already present).
 installer/redist/
 
+# rcodesign (apple-codesign) — Mach-O signing from Windows; auto-downloaded
+# by installer/build-mac-package.ps1 from the apple-platform-rs GitHub
+# releases (SHA256-verified). ~12 MB binary, not committed.
+installer/tools/rcodesign/
+
+# macOS package staging/output (built by installer/build-mac-package.ps1)
+installer/osx-test/
+installer/osx-dist/
+
 # Documentation PDF build — all outputs (PDF + intermediate HTML +
 # node_modules) are regenerated from docs/*.md by
 # installer/build-installer.bat on each installer build.

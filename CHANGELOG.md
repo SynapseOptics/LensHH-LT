@@ -2,6 +2,31 @@
 
 All notable changes to LensHH-LT and the LensHH-LT-Engine.
 
+## 1.0.118 — 2026-06-07
+
+### macOS (Apple Silicon)
+- **Official macOS build.** LensHH-LT now ships as a signed `LensHH-LT.app`
+  bundle for Apple Silicon (M1 or later) — download, unzip, and double-click.
+  Previous releases required building from source on macOS. The package bundles
+  the GUI plus the CLI, MCP server, Ollama bridge, and MeritEvalBench, along with
+  the full sample-lens set, the stock-lens catalog, the glass catalogs, and the
+  documentation. Optimization is CPU-only on macOS (no GPU).
+- The build is ad-hoc signed but not yet notarized, so the first launch needs a
+  one-time right-click → **Open** (Gatekeeper "unidentified developer"), the
+  macOS equivalent of the Windows SmartScreen "Run anyway". Intel Macs are not
+  supported — the native engine is arm64-only and cannot run under Rosetta.
+
+### Fixed
+- **RenderApp auto-launch on macOS/Linux.** The CLI and MCP server hardcoded the
+  Windows `.exe` name when locating the render helper, so headless PNG rendering
+  could never start the helper on non-Windows platforms. The name is now resolved
+  per platform.
+
+### Documentation
+- Getting-started, building, and README updated with macOS (Apple Silicon)
+  install instructions, and corrected the Intel-Mac guidance (the arm64 engine
+  cannot run through Rosetta 2).
+
 ## 1.0.117 — 2026-06-06
 
 ### Optimization
