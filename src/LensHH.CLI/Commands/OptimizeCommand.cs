@@ -17,9 +17,9 @@ namespace LensHH.CLI.Commands
         public string Help => @"[bold]optimize[/] - Optimization operations
   [green]optimize run [[maxiter=N]] [[tol=V]] [[damping=V]] [[broyden=true|false]] [[refresh=N]][/]  Run local optimization (auto-applies result to the system)
   [green]optimize try [[maxiter=N]] [[tol=V]] [[damping=V]] [[broyden=true|false]] [[refresh=N]][/]  Run local optimization and prompt to keep or revert
-  [green]optimize multistart [[trials=N]] [[lm=N]] [[initlm=N]] [[rand=V]] [[glass=V]] [[constrained]] [[tol=V]] [[damping=V]] [[broyden=true|false]] [[refresh=N]][/]  Multistart optimization
+  [green]optimize multistart [[trials=N]] [[lm=N]] [[initlm=N]] [[sigma=V]] [[cap=V]] [[growth=V]] [[glass=V]] [[constrained]] [[tol=V]] [[damping=V]] [[broyden=true|false]] [[refresh=N]][/]  Multistart optimization
   [green]optimize basin [[hops=N]] [[lm=N]] [[hj=N]] [[sigma=V]] [[hjstep=V]] [[hjmin=V]] [[tol=V]] [[damping=V]] [[broyden=true|false]] [[constrained]] [[glasssub=true|false]] [[onlypreferred=true|false]] [[catalog=NAME]] [[seed=N]][/]  Basin hopping (Hooke-Jeeves + LM with random kicks between hops)
-  [green]optimize split [[splits=N]] [[trials=N]] [[lm=N]] [[postlm=N]] [[preglass=N]] [[postglass=N]] [[rand=V]] [[constrained]] [[onlypreferred=true|false]] [[minglass=V]] [[maxglass=V]] [[minair=V]] [[maxair=V]] [[minedge=V]] [[skipsec=V]] [[tol=V]] [[damping=V]] [[broyden=true|false]] [[refresh=N]] [[catalog=NAME]] [[noglass]][/]  Split element synthesis. catalog: AGF name (e.g. catalog=S1_GLASS); resolved against catalogs\FilteredGlassCatalogues. noglass: skip the glass-trials phase entirely (split + LM polish only).
+  [green]optimize split [[splits=N]] [[trials=N]] [[lm=N]] [[postlm=N]] [[preglass=N]] [[postglass=N]] [[sigma=V]] [[constrained]] [[onlypreferred=true|false]] [[minglass=V]] [[maxglass=V]] [[minair=V]] [[maxair=V]] [[minedge=V]] [[skipsec=V]] [[tol=V]] [[damping=V]] [[broyden=true|false]] [[refresh=N]] [[catalog=NAME]] [[noglass]][/]  Split element synthesis. catalog: AGF name (e.g. catalog=S1_GLASS); resolved against catalogs\FilteredGlassCatalogues. noglass: skip the glass-trials phase entirely (split + LM polish only).
   [green]optimize spc [[elements=N]] [[topn=N]] [[scanmin=V]] [[scanmax=V]] [[steps=N]] [[epsilon=V]] [[glass=N]] [[lm=N]] [[postlm=N]] [[catalog=NAME]] [[archive=true|false]] [[archivedir=PATH]] [[dop=N]] [[nullglass=NAME]] [[runinitlm=true|false]] [[initlm=N]] [[onlypreferred=true|false]] [[minglass=V]] [[maxglass=V]] [[minair=V]] [[maxair=V]] [[minedge=V]] [[constraintweight=V]][/]  Synthesis by SPC. catalog is mandatory (single AGF name or comma-separated list).
   [green]optimize cancel[/]                                     Cancel running optimization
   [green]optimize variables[/]                                  List current variables";
@@ -206,7 +206,7 @@ namespace LensHH.CLI.Commands
 
             var settings = new MultistartSettings();
 
-            // Parse args: trials=N, lm=N, initlm=N, rand=V, glass=V, constrained
+            // Parse args: trials=N, lm=N, initlm=N, sigma=V, cap=V, growth=V, glass=V, constrained
             for (int i = 1; i < args.Length; i++)
             {
                 var parts = args[i].Split('=');
@@ -267,7 +267,7 @@ namespace LensHH.CLI.Commands
 
             AnsiConsole.MarkupLine($"[bold]Starting multistart optimization[/]");
             AnsiConsole.MarkupLine($"  Trials: {settings.MaxTrials}, LM/trial: {settings.LmIterationsPerTrial}");
-            AnsiConsole.MarkupLine($"  Sigma: {settings.InitialSigma:G3} → cap {settings.SigmaCap:G3} (×{settings.SigmaGrowth:G3}), Metropolis: {(settings.EnableMetropolis ? "on" : "off")}");
+            AnsiConsole.MarkupLine($"  Sigma: start {settings.InitialSigma:G3}, triangle floor {settings.SigmaMin:G3} ↔ cap {settings.SigmaCap:G3} (×{settings.SigmaGrowth:G3}), Metropolis: {(settings.EnableMetropolis ? "on" : "off")}");
             AnsiConsole.MarkupLine($"  HJ steps/trial: {settings.HjStepsPerTrial}, Glass-swap LM ×{settings.GlassSwapLmMultiplier}, Glass sub: {settings.GlassSubstitutionProbability * 100:F0}%");
             AnsiConsole.MarkupLine("");
 

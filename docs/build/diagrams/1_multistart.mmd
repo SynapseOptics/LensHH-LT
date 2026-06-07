@@ -24,8 +24,8 @@ flowchart TD
     Merge --> Acc{"M_b less than best?"}
     Acc -- Yes --> Accept["ACCEPT<br>best = M_b<br>sigma reset to sigma_init"]
     Acc -- No --> Metro{"Metropolis on center?<br>p = exp(minus deltaM over T)"}
-    Metro -- Accept --> MetroAcc["MOVE CENTER<br>center = M_b<br>sigma held"]
-    Metro -- Reject --> Reject["REJECT<br>sigma grows by factor<br>sawtooth at sigma_cap"]
+    Metro -- Accept --> MetroAcc["MOVE CENTER<br>center = M_b<br>sigma reset to sigma_init"]
+    Metro -- Reject --> Reject["REJECT<br>triangle wave: shrink to floor,<br>then grow to sigma_cap"]
     Accept --> LoopCheck
     MetroAcc --> LoopCheck
     Reject --> LoopCheck

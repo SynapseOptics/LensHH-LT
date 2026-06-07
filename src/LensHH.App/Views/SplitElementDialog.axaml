@@ -104,7 +104,7 @@
 
         <TextBlock Grid.Row="6" Grid.Column="8" Text="MS Sigma:" VerticalAlignment="Center" />
         <TextBox Grid.Row="6" Grid.Column="10" Text="{Binding MsSigma, UpdateSourceTrigger=LostFocus}" IsEnabled="{Binding !IsRunning}"
-                 Tag="Initial sigma for the Pre/Post-Glass multistart sawtooth perturbation. Sigma starts here, grows on rejection, and snaps back when it crosses the cap. Default 0.001 — gentle starting refine pass after a split."
+                 Tag="Reset point for the Pre/Post-Glass multistart perturbation. Sigma returns here on every accepted improvement; on rejection it follows a triangle wave (shrinks for finer steps, then grows toward the cap to escape once it bottoms out). Default 0.001 — gentle starting refine pass after a split."
                  PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"
                  GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
 

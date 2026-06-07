@@ -2,7 +2,24 @@
 
 All notable changes to LensHH-LT and the LensHH-LT-Engine.
 
-## 1.0.117 — 2026-06-05
+## 1.0.117 — 2026-06-06
+
+### Optimization
+- **New perturbation schedule for Multistart optimization.** Sigma now follows a
+  triangle wave: it starts at the initial value and returns there on every
+  accepted improvement; on rejection it first *shrinks* for finer local
+  refinement, and only after bottoming out does it grow back up to the cap to
+  escape a stuck basin, then bounces back down. This replaces the previous
+  grow-on-every-rejection sawtooth, which tended to wander away from
+  near-solution designs instead of refining them. New defaults: initial sigma
+  0.0003, cap 0.1 (was 0.0001 / 0.5). Basin Hopping is unchanged. The CLI
+  (`optimize multistart`/`split`) and MCP (`optimize_multistart`) parameter
+  defaults and help text were updated to match the new schedule.
+- **Simplified the GPU pre-screen controls.** Removed the single-precision
+  ("float") pre-screen toggle and the separate GPU sigma multiplier from the
+  Multistart dialog — the pre-screen always runs in full double precision at the
+  same perturbation radius as the CPU path. Behavior is unchanged from the
+  recommended defaults; the two extra knobs are simply gone.
 
 ### Added
 - **MeritEvalBench** — a merit-function timing tool (whole-merit value, residuals

@@ -54,20 +54,6 @@
                     Tag="When enabled, each Phase-2 trial batch generates enough candidate designs to fill the GPU and evaluates them all in one launch. Only the top-N survivors run the expensive HJ-LM polish."
                     PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"
                     GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
-          <TextBlock Text="pre-screen σ ×" VerticalAlignment="Center" Margin="12,0,0,0"
-                     FontSize="11" Foreground="#555" />
-          <TextBox Width="64" VerticalAlignment="Center" FontSize="11"
-                   Text="{Binding GpuPreScreenSigmaScale, UpdateSourceTrigger=LostFocus}"
-                   IsEnabled="{Binding UseGpuPreScreen}"
-                   Tag="GPU pre-screen perturbation as a fraction of the CPU sigma. The pre-screen ranks candidates by raw (un-polished) merit, which only tracks the polished result for small perturbations — so the GPU needs a tighter spread than the CPU. Lower = more aggressive (denser, nearer the center). Default 0.25."
-                   PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"
-                   GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
-          <CheckBox Content="float" Margin="12,0,0,0" VerticalAlignment="Center" FontSize="11"
-                    IsChecked="{Binding GpuPreScreenUseFloat}"
-                    IsEnabled="{Binding UseGpuPreScreen}"
-                    Tag="Run the GPU pre-screen in single precision. The float merit preserves candidate ranking (validated on-device) and is dramatically faster on consumer GPUs, where FP64 is throttled. The final HJ-LM polish always runs in full FP64. Default on."
-                    PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"
-                    GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
         </StackPanel>
         <TextBlock Text="{Binding GpuStatusText}" FontSize="11" Foreground="#555"
                    Margin="22,0,0,0" TextWrapping="Wrap" />
@@ -125,13 +111,13 @@
 
         <TextBlock Grid.Row="0" Grid.Column="12" Text="Init Sigma:" VerticalAlignment="Center" />
         <TextBox Grid.Row="0" Grid.Column="14" Text="{Binding InitialSigma, UpdateSourceTrigger=LostFocus}" IsEnabled="{Binding !IsRunning}"
-                 Tag="Initial perturbation magnitude. Sigma starts here at every batch and after every accepted improvement. Each rejected batch grows sigma by ×1.5; when sigma crosses the cap it snaps back to this value (sawtooth) — that snap-back is what lets LM mine each new basin instead of permanently flailing at large sigma. Default 0.001 (gentle), matching the BH+LM reference."
+                 Tag="Reset point of the perturbation schedule. Sigma starts here and returns here on every accepted improvement. On rejection it follows a triangle wave: each rejected batch first SHRINKS sigma (×1/1.5) for finer local steps; once it bottoms out at the floor (Sigma Min, engine default 1e-6) it reverses and GROWS sigma (×1.5) up to Sigma Cap to escape the basin, then bounces back down — until an acceptance snaps it back here. Default 0.0003."
                  PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"
                  GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
 
         <TextBlock Grid.Row="0" Grid.Column="16" Text="Sigma Cap:" VerticalAlignment="Center" />
         <TextBox Grid.Row="0" Grid.Column="18" Text="{Binding SigmaCap, UpdateSourceTrigger=LostFocus}" IsEnabled="{Binding !IsRunning}"
-                 Tag="When sigma grows past this value it snaps back to Init Sigma. Default 2.0. Higher = wider exploration before reset; lower = more frequent reset cycles."
+                 Tag="Upper bound of the perturbation triangle wave — the largest kick the escape phase will reach. After sigma has shrunk to the floor on a rejection streak, it grows ×1.5 per rejection up to this cap, then reverses back down. Higher = wider exploration when refinement stalls; lower = stays nearer the current design. Default 0.1."
                  PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"
                  GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
 
