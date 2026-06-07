@@ -259,6 +259,8 @@ header .version { font-size: 12px; opacity: 0.7; margin-left: auto; }
 .sidebar .result .r-title { font-weight: 600; color: #2b3a48; }
 .sidebar .empty { color: #888; font-style: italic; }
 .content { padding: 24px 34px 80px; max-width: 1100px; overflow-x: auto; }
+.content img { max-width: 100%; height: auto; display: block; margin: 1em 0; }
+.content td img { margin: 0; }
 .content h1 { font-size: 26px; border-bottom: 2px solid #2b3a48; padding-bottom: 6px; margin-top: 32px; }
 .content h1:first-child { margin-top: 0; }
 .content h2 { font-size: 19px; margin-top: 1.6em; border-bottom: 1px solid #d0d2d6; padding-bottom: 3px; }
