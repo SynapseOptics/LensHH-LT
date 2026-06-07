@@ -81,7 +81,10 @@ public partial class MultistartDialogViewModel : ObservableObject
     public bool InitialLmInputEnabled => !IsRunning && !SkipInitialLm;
 
     partial void OnIsRunningChanged(bool value) => OnPropertyChanged(nameof(InitialLmInputEnabled));
-    [ObservableProperty] private double _initialSigma = 0.001;
+    // 2026-06-06: default lowered 0.001 → 0.0001. 0.001 over-perturbed
+    // near-solution designs (search wandered rather than refined); the sawtooth
+    // still grows sigma on rejection to escape, so starting small is safe.
+    [ObservableProperty] private double _initialSigma = 0.0001;
     [ObservableProperty] private double _sigmaCap = 0.5;
     [ObservableProperty] private bool _enableMetropolis = true;
     // Default lowered from 50 → 10 on 2026-05-31. HJ pre-step now also
@@ -123,6 +126,16 @@ public partial class MultistartDialogViewModel : ObservableObject
     // integration arrives, this property already feeds MultistartSettings.
     // UseGpuPreScreen — no UI rewiring needed.
     [ObservableProperty] private bool _useGpuPreScreen;
+    // GPU pre-screen perturbation = this fraction of the CPU sigma. The
+    // pre-screen ranks by raw un-polished merit (only valid for small
+    // perturbations), so the GPU needs a tighter spread than the CPU. Lower =
+    // more aggressive. Default 0.25.
+    [ObservableProperty] private double _gpuPreScreenSigmaScale = 0.25;
+    // Run the GPU pre-screen in single precision. Validated ranking-equivalent,
+    // but default OFF: profiling showed the whole-merit kernel is local-memory/
+    // register bound (not FP64-bound), so float is currently ~10× slower. Kept
+    // wired for when the per-thread frame is shrunk. Route-C slice 5.
+    [ObservableProperty] private bool _gpuPreScreenUseFloat = false;
     [ObservableProperty] private string _gpuStatusText = "Detecting GPU...";
     [ObservableProperty] private bool _isGpuToggleEnabled;
 
@@ -309,6 +322,8 @@ public partial class MultistartDialogViewModel : ObservableObject
                     // MultistartOptimizer Phase-2 hook lands in 1.0.116, at
                     // which point this flag will start gating the GPU sieve.
                     UseGpuPreScreen = UseGpuPreScreen,
+                    GpuPreScreenSigmaScale = GpuPreScreenSigmaScale,
+                    GpuPreScreenUseFloat = GpuPreScreenUseFloat,
                 },
                 // Phase 10a — DEV engine selection from the dialog.
                 EngineMode = (EngineModeIndex == 1) ? EngineMode.Native : EngineMode.CSharp,

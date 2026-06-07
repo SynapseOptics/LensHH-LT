@@ -138,6 +138,15 @@ dotnet publish "$REPO_ROOT/src/LensHH.OllamaBridge/LensHH.OllamaBridge.csproj" \
     --self-contained true \
     -o "$PUBLISH_DIR/ollama"
 
+# MeritEvalBench — merit-function timing tool (value / jacobian / GPU).
+# Self-contained so it carries its own engine DLL + liblenshh_native.so +
+# catalogs; launched via the AppImage's --bench flag.
+dotnet publish "$REPO_ROOT/src/MeritEvalBench/MeritEvalBench.csproj" \
+    -c Release \
+    -r linux-x64 \
+    --self-contained true \
+    -o "$PUBLISH_DIR/bench"
+
 # ── Step 4: Assemble AppDir ──
 echo
 echo "=== Assembling AppDir ==="
@@ -153,16 +162,18 @@ mkdir -p "$APP_DIR/usr/share/lenshh-lt/samples"
 mkdir -p "$APP_DIR/usr/share/lenshh-lt/cli"
 mkdir -p "$APP_DIR/usr/share/lenshh-lt/mcp"
 mkdir -p "$APP_DIR/usr/share/lenshh-lt/ollama"
+mkdir -p "$APP_DIR/usr/share/lenshh-lt/bench"
 
 # Main app
 cp -r "$PUBLISH_DIR"/* "$APP_DIR/usr/bin/"
-# Remove CLI/MCP/OllamaBridge from main bin (they have their own dirs)
-rm -rf "$APP_DIR/usr/bin/cli" "$APP_DIR/usr/bin/mcp" "$APP_DIR/usr/bin/ollama"
+# Remove CLI/MCP/OllamaBridge/bench from main bin (they have their own dirs)
+rm -rf "$APP_DIR/usr/bin/cli" "$APP_DIR/usr/bin/mcp" "$APP_DIR/usr/bin/ollama" "$APP_DIR/usr/bin/bench"
 
-# CLI, MCP, and OllamaBridge
+# CLI, MCP, OllamaBridge, and MeritEvalBench
 cp -r "$PUBLISH_DIR/cli"/* "$APP_DIR/usr/share/lenshh-lt/cli/"
 cp -r "$PUBLISH_DIR/mcp"/* "$APP_DIR/usr/share/lenshh-lt/mcp/"
 cp -r "$PUBLISH_DIR/ollama"/* "$APP_DIR/usr/share/lenshh-lt/ollama/"
+cp -r "$PUBLISH_DIR/bench"/* "$APP_DIR/usr/share/lenshh-lt/bench/"
 
 # Native library
 cp "$NATIVE_SO" "$APP_DIR/usr/lib/liblenshh_native.so"
@@ -212,6 +223,7 @@ cp "$APP_DIR/usr/share/applications/lenshh-lt.desktop" "$APP_DIR/lenshh-lt.deskt
 #   ./LensHH-LT.AppImage --cli [args]       -> LensHH.CLI REPL / scripts
 #   ./LensHH-LT.AppImage --mcp [args]       -> MCP server (stdio)
 #   ./LensHH-LT.AppImage --ollama-bridge    -> Local-LLM bridge to MCP
+#   ./LensHH-LT.AppImage --bench [args]     -> MeritEvalBench timing tool
 #   ./LensHH-LT.AppImage --help-bundled     -> List the above
 # Each branch shares LD_LIBRARY_PATH so liblenshh_native.so resolves.
 cat > "$APP_DIR/AppRun" << 'APPRUN'
@@ -244,6 +256,10 @@ case "$1" in
         shift
         exec "$HERE/usr/share/lenshh-lt/ollama/LensHH.OllamaBridge" "$@"
         ;;
+    --bench)
+        shift
+        exec "$HERE/usr/share/lenshh-lt/bench/MeritEvalBench" "$@"
+        ;;
     --help-bundled)
         # Quoted heredoc — keeps $0 / $@ literal so the example wrapper
         # script doesn't get partially expanded on the help screen.
@@ -253,6 +269,7 @@ LensHH-LT AppImage — bundled binaries:
   --cli [args]         Launch the LensHH-LT CLI (REPL / --script)
   --mcp [args]         Run the MCP server (stdio; for Claude Desktop / Cursor)
   --ollama-bridge      Run the local-LLM bridge to the MCP server
+  --bench [args]       Run MeritEvalBench (merit-eval timing; --lens ... --csv ...)
   --help-bundled       Show this list
 
 Tip: to expose --cli / --mcp / --ollama-bridge on your PATH, drop a

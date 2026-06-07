@@ -51,7 +51,21 @@
                     IsChecked="{Binding UseGpuPreScreen}"
                     IsEnabled="{Binding IsGpuToggleEnabled}"
                     Margin="12,0,0,0" VerticalAlignment="Center"
-                    Tag="When enabled, each Phase-2 trial batch generates ~16× more candidate designs than CPU cores and evaluates them all on the GPU in one launch (60 µs per design on a 4060). Only the top-N survivors run the expensive HJ-LM polish. Currently shipping in 1.0.115 as a detection-only Beta; the inner-loop integration lands in 1.0.116."
+                    Tag="When enabled, each Phase-2 trial batch generates enough candidate designs to fill the GPU and evaluates them all in one launch. Only the top-N survivors run the expensive HJ-LM polish."
+                    PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"
+                    GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
+          <TextBlock Text="pre-screen σ ×" VerticalAlignment="Center" Margin="12,0,0,0"
+                     FontSize="11" Foreground="#555" />
+          <TextBox Width="64" VerticalAlignment="Center" FontSize="11"
+                   Text="{Binding GpuPreScreenSigmaScale, UpdateSourceTrigger=LostFocus}"
+                   IsEnabled="{Binding UseGpuPreScreen}"
+                   Tag="GPU pre-screen perturbation as a fraction of the CPU sigma. The pre-screen ranks candidates by raw (un-polished) merit, which only tracks the polished result for small perturbations — so the GPU needs a tighter spread than the CPU. Lower = more aggressive (denser, nearer the center). Default 0.25."
+                   PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"
+                   GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
+          <CheckBox Content="float" Margin="12,0,0,0" VerticalAlignment="Center" FontSize="11"
+                    IsChecked="{Binding GpuPreScreenUseFloat}"
+                    IsEnabled="{Binding UseGpuPreScreen}"
+                    Tag="Run the GPU pre-screen in single precision. The float merit preserves candidate ranking (validated on-device) and is dramatically faster on consumer GPUs, where FP64 is throttled. The final HJ-LM polish always runs in full FP64. Default on."
                     PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"
                     GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
         </StackPanel>

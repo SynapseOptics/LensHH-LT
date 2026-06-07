@@ -2,7 +2,37 @@
 
 All notable changes to LensHH-LT and the LensHH-LT-Engine.
 
-## 1.0.116 — 2026-06-05
+## 1.0.117 — 2026-06-05
+
+### Added
+- **MeritEvalBench** — a merit-function timing tool (whole-merit value, residuals
+  + Jacobian, and the GPU value kernel), reported per design so CPU and GPU
+  compare directly. Ships in the Windows installer (`tools\bench`) and the Linux
+  AppImage (`--bench`); on macOS it builds from this public repository alone.
+- **GPU pre-screen now fills the device.** The Multistart GPU pre-screen sizes its
+  per-batch candidate count to the device's occupancy (read from the CUDA driver,
+  not hardcoded) instead of a CPU-thread-count heuristic, so the GPU is used at
+  full capacity. New `GpuPreScreenFill` setting (default 1.0 = fill the device).
+
+### Changed / Fixed
+- **GPU pre-screen sampling**: each candidate's perturbation is now truncated to
+  the same maximum radius the non-GPU path would use, so the device-filling
+  candidate count samples that region *densely* rather than fattening the
+  Gaussian tails and flinging most candidates too far (where merit can't
+  recover). New `GpuPreScreenTruncate` setting (default on).
+- **Optimization throughput on the shipped engine**: disabled the obfuscator's
+  string-encryption pass, which used a lock-protected runtime cache that
+  serialized the C# engine's parallel merit evaluation. The C# parallel path is
+  now several times faster; algorithm protection (control-flow obfuscation) is
+  unchanged and the engine exposes no secret strings.
+- **GPU first launch is now instant.** The GPU merit kernel ships as precompiled
+  native code (cubin) for the supported GPU generations instead of being
+  just-in-time compiled on first use — the first GPU optimization run no longer
+  pauses for minutes while the kernel builds. (A GPU whose generation isn't in the
+  shipped set simply uses the CPU path; it never stalls.)
+- **Faster GPU merit evaluation**: cut the merit kernel's per-thread memory
+  footprint ~26× (down to the actual surface count instead of a fixed cap),
+  reducing memory-bandwidth pressure on the bandwidth-bound kernel.
 
 Maintenance release. All 1.0.115 users should update.
 

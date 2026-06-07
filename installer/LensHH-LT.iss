@@ -2,7 +2,7 @@
 ; Requires Inno Setup 6.x
 
 #define MyAppName "LensHH-LT"
-#define MyAppVersion "1.0.116"
+#define MyAppVersion "1.0.117"
 #define MyAppPublisher "Synapse Optics"
 #define MyAppExeName "LensHH.App.exe"
 #define MyAppURL "https://github.com/SynapseOptics/LensHH-LT"
@@ -16,6 +16,7 @@
 #define ConfigBin RepoRoot + "\src\ConfigureLensHHMcp\bin\Release\net8.0-windows"
 #define ConfigOllamaBin RepoRoot + "\src\ConfigureOllamaBridge\bin\Release\net8.0-windows"
 #define RenderAppBin RepoRoot + "\src\LensHH.RenderApp\bin\Release\net8.0"
+#define BenchBin RepoRoot + "\src\MeritEvalBench\bin\Release\net8.0"
 #define Catalogs RepoRoot + "\catalogs"
 #define Samples RepoRoot + "\samples"
 #define Engine RepoRoot + "\engine"
@@ -100,6 +101,12 @@ Source: "{#RenderAppBin}\runtimes\win-arm64\*"; DestDir: "{app}\renderapp\runtim
 Source: "{#OllamaBin}\LensHH.OllamaBridge.exe"; DestDir: "{app}\ollama"; Flags: ignoreversion skipifsourcedoesntexist
 Source: "{#OllamaBin}\*.dll"; DestDir: "{app}\ollama"; Flags: ignoreversion skipifsourcedoesntexist
 Source: "{#OllamaBin}\*.json"; DestDir: "{app}\ollama"; Flags: ignoreversion skipifsourcedoesntexist
+
+; MeritEvalBench — merit-function timing tool (value / jacobian / GPU). Ships
+; in tools\bench as a self-contained folder (its own LensHH.Core.dll,
+; lenshh_native.dll and catalogs\), so on any installed machine you can run:
+;   tools\bench\MeritEvalBench.exe --lens <a.lhlt> --csv out.csv
+Source: "{#BenchBin}\*"; DestDir: "{app}\tools\bench"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
 
 ; Claude MCP Configuration Utility
 Source: "{#ConfigBin}\ConfigureLensHHMcp.exe"; DestDir: "{app}\config"; Flags: ignoreversion

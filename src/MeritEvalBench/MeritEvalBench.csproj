@@ -1,0 +1,62 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <RootNamespace>MeritEvalBench</RootNamespace>
+    <AssemblyName>MeritEvalBench</AssemblyName>
+    <NoWarn>$(NoWarn);CS0168;CS8632</NoWarn>
+  </PropertyGroup>
+
+  <!-- Builds against the SHIPPED, obfuscated engine DLL (public-API names are
+       preserved by .NET Reactor — see LensHH-LT-Engine publish-obfuscated.bat).
+       No private-engine source is needed, so this project builds from the
+       public LensHH-LT checkout alone (the macOS requirement). -->
+  <ItemGroup>
+    <Reference Include="LensHH.Core">
+      <HintPath>..\..\engine\LensHH.Core.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <ProjectReference Include="..\LensHH.IO\LensHH.IO.csproj" />
+  </ItemGroup>
+
+  <!-- Mirror LensHH.Core's runtime NuGet deps: a DLL <Reference> (unlike a
+       ProjectReference) does not pull transitive packages, so name them here. -->
+  <ItemGroup>
+    <PackageReference Include="System.Text.Json" Version="8.0.5" />
+    <PackageReference Include="Microsoft.Win32.Registry" Version="5.0.0" />
+  </ItemGroup>
+
+  <!-- Native engine per platform, next to the exe. The .NET DllImport loader
+       picks the right file by OS. -->
+  <ItemGroup>
+    <Content Include="..\..\engine\win-x64\lenshh_native.dll"
+             Condition="Exists('..\..\engine\win-x64\lenshh_native.dll')">
+      <Link>lenshh_native.dll</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="..\..\engine\osx-arm64\liblenshh_native.dylib"
+             Condition="Exists('..\..\engine\osx-arm64\liblenshh_native.dylib')">
+      <Link>liblenshh_native.dylib</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="..\..\engine\linux-x64\liblenshh_native.so"
+             Condition="Exists('..\..\engine\linux-x64\liblenshh_native.so')">
+      <Link>liblenshh_native.so</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <!-- Glass catalogs next to the exe (the bench loads from BaseDirectory/catalogs). -->
+  <ItemGroup>
+    <Content Include="..\..\catalogs\Glass\*.AGF">
+      <Link>catalogs\Glass\%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="..\..\catalogs\FilteredGlassCatalogues\*.AGF">
+      <Link>catalogs\FilteredGlassCatalogues\%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+</Project>
