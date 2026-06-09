@@ -8,6 +8,12 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 NATIVE_REPO="$(cd "$REPO_ROOT/../LensHH-LT-NativeCore" && pwd)"
 
+# Ensure nvcc is on PATH so the CUDA fatbin (the GPU kernel) is built. Without
+# it, cmake silently disables the GPU backend and the package ships CPU-only.
+[ -d /usr/local/cuda/bin ] && export PATH="/usr/local/cuda/bin:$PATH"
+# .NET SDK location on the build host (if not already on PATH).
+[ -d /opt/dotnet ] && ! command -v dotnet >/dev/null && export PATH="/opt/dotnet:$PATH"
+
 # Single source of truth for the version: the Inno-Setup MyAppVersion
 # define in installer/LensHH-LT.iss. Keeps the Windows installer and
 # Linux AppImage in lockstep so a 1.0.14.exe and a
@@ -69,6 +75,17 @@ if [ -z "$NATIVE_SO" ]; then
 fi
 echo "Built: $NATIVE_SO"
 
+# GPU kernel: native SASS fatbin (sm_80/89/90/120). Required for GPU support on
+# Linux — the loader reads it as a sidecar next to liblenshh_native.so.
+NATIVE_FATBIN=$(find "$NATIVE_BUILD" -name "lenshh_kernel.fatbin" | head -1)
+if [ -z "$NATIVE_FATBIN" ]; then
+    echo "ERROR: lenshh_kernel.fatbin not found — the engine was built WITHOUT CUDA."
+    echo "       GPU support requires nvcc on PATH at build time. Install the CUDA"
+    echo "       toolkit (or add /usr/local/cuda/bin to PATH) and rebuild. Aborting."
+    exit 1
+fi
+echo "Built fatbin: $NATIVE_FATBIN"
+
 # Guard: refuse to package an engine built in the validation configuration
 # (its lenshh_version() string carries a validation-noauth marker).
 if grep -q "validation-noauth" "$NATIVE_SO"; then
@@ -94,6 +111,8 @@ ENGINE_LINUX_DIR="$REPO_ROOT/engine/linux-x64"
 mkdir -p "$ENGINE_LINUX_DIR"
 cp -f "$NATIVE_SO" "$ENGINE_LINUX_DIR/liblenshh_native.so"
 echo "Staged: $ENGINE_LINUX_DIR/liblenshh_native.so"
+cp -f "$NATIVE_FATBIN" "$ENGINE_LINUX_DIR/lenshh_kernel.fatbin"
+echo "Staged: $ENGINE_LINUX_DIR/lenshh_kernel.fatbin"
 
 # Guard ALL engine/<rid>/ binaries — dotnet publish bundles every one of
 # them (PreserveNewest), so a validation-configuration win-x64 DLL or osx
@@ -177,6 +196,17 @@ cp -r "$PUBLISH_DIR/bench"/* "$APP_DIR/usr/share/lenshh-lt/bench/"
 
 # Native library
 cp "$NATIVE_SO" "$APP_DIR/usr/lib/liblenshh_native.so"
+
+# GPU kernel sidecar. The native loader reads lenshh_kernel.fatbin from the
+# directory of whichever liblenshh_native.so actually loads. dotnet bundles a
+# copy of the .so into each app dir (GUI in usr/bin, plus cli/mcp/ollama/bench),
+# and .NET resolves DllImport from AppContext.BaseDirectory first — so place the
+# fatbin next to EVERY bundled .so, plus usr/lib as the LD_LIBRARY_PATH fallback.
+cp -f "$NATIVE_FATBIN" "$APP_DIR/usr/lib/lenshh_kernel.fatbin"
+find "$APP_DIR" -name "liblenshh_native.so" -printf '%h\n' | sort -u | while read -r d; do
+    cp -f "$NATIVE_FATBIN" "$d/lenshh_kernel.fatbin"
+done
+echo "Bundled lenshh_kernel.fatbin next to every liblenshh_native.so in the AppDir"
 
 # Glass catalogs (full Glass\*.AGF tree — picks up MISC.AGF, CORNING_*, etc.
 # automatically; plus the curated filtered subsets used by sasian_design /

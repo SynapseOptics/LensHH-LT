@@ -2,6 +2,22 @@
 
 All notable changes to LensHH-LT and the LensHH-LT-Engine.
 
+## 1.0.119 — 2026-06-09
+
+### Linux (GPU)
+- **GPU acceleration on Linux.** The Linux build now ships the native CUDA
+  kernel (`lenshh_kernel.fatbin`, native SASS for `sm_80/89/90/120`) alongside
+  `liblenshh_native.so`, so the GPU value pre-screen engages automatically when
+  an NVIDIA device is present — previously the Linux package shipped without the
+  kernel and silently ran CPU-only. No CUDA toolkit is required on the target;
+  the prebuilt cubin means no first-run JIT. Falls back to CPU when no GPU is
+  found.
+- Built against Ubuntu 22.04 (glibc 2.34) for broad compatibility — runs on
+  22.04 / 24.04+, RHEL 9 / Rocky 9, and common datacenter Linux images.
+- Validated on RTX 4060, A100, H100, and RTX PRO 6000 (Blackwell); GPU output
+  is bit-identical to the CPU path. See the case study at
+  synapseoptics.com/case-studies/.
+
 ## 1.0.118 — 2026-06-07
 
 ### macOS (Apple Silicon)

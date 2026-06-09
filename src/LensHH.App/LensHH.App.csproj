@@ -9,7 +9,7 @@
     <AssemblyName>LensHH.App</AssemblyName>
     <!-- Keep in sync with installer\LensHH-LT.iss MyAppVersion. Surfaces in
          the About dialog so users can confirm what build is installed. -->
-    <Version>1.0.115</Version>
+    <Version>1.0.119</Version>
     <!-- Windows .exe icon (used by File Explorer, taskbar pin, Start menu). -->
     <ApplicationIcon>Assets\icon.ico</ApplicationIcon>
   </PropertyGroup>
