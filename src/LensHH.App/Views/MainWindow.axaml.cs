@@ -266,13 +266,31 @@ public partial class MainWindow : Window
     private async void OpenSamples_Click(object? sender, RoutedEventArgs e)
     {
         if (!await ConfirmDiscardChangesAsync()) return;
-        // Find samples folder relative to the executable
+        // Locate the bundled samples folder. Its position relative to the
+        // executable differs per package, so search in priority order (mirrors
+        // GuiSession.LoadGlassCatalogs):
+        //   1. LENSHH_SAMPLES env var — set by the Linux AppImage AppRun.
+        //   2. samples/ next to the exe (Windows installer: {app}\samples).
+        //   3. AppImage:  usr/bin/LensHH.App -> ../share/lenshh-lt/samples
+        //   4. macOS .app: Contents/MacOS -> <package root>/samples (3 up).
+        //   5. Dev layout: walk up from bin/<cfg>/net8.0 to the repo root.
+        // Previously only #2 (+ the dev path) was checked, so the Samples menu
+        // opened the default folder on Linux and macOS.
         string exeDir = AppDomain.CurrentDomain.BaseDirectory;
-        string samplesPath = Path.Combine(exeDir, "samples");
+        var candidates = new System.Collections.Generic.List<string>();
+        var envSamples = Environment.GetEnvironmentVariable("LENSHH_SAMPLES");
+        if (!string.IsNullOrEmpty(envSamples)) candidates.Add(envSamples);
+        candidates.Add(Path.Combine(exeDir, "samples"));
+        candidates.Add(Path.Combine(exeDir, "..", "share", "lenshh-lt", "samples"));
+        candidates.Add(Path.Combine(exeDir, "..", "..", "..", "samples"));
+        candidates.Add(Path.Combine(exeDir, "..", "..", "..", "..", "..", "samples"));
 
-        // Dev layout: exe is in src/LensHH.App/bin/Debug|Release/net8.0/
-        if (!Directory.Exists(samplesPath))
-            samplesPath = Path.GetFullPath(Path.Combine(exeDir, "..", "..", "..", "..", "..", "samples"));
+        string samplesPath = "";
+        foreach (var c in candidates)
+        {
+            var full = Path.GetFullPath(c);
+            if (Directory.Exists(full)) { samplesPath = full; break; }
+        }
 
         var options = new FilePickerOpenOptions
         {
