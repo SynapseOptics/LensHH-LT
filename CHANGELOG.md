@@ -2,6 +2,47 @@
 
 All notable changes to LensHH-LT and the LensHH-LT-Engine.
 
+## 1.0.120 — 2026-06-11
+
+### Multistart (global optimization)
+- **Reverted the perturbation-sigma schedule to grow-on-rejection.** The
+  2026-06-06 "triangle-wave" schedule was a regression: on a rejection it shrank
+  sigma *below* its starting value before growing, so the search dug into the
+  current basin instead of climbing out and rarely escaped. Sigma now starts
+  small and grows on rejection (up to the cap) to escape, resetting to the small
+  start only on a new best. The historical default **Init Sigma = 0.001** is
+  restored.
+- **Fixed a sigma-reset bug.** A Metropolis center move (accepting a worse design
+  as the new search center) was resetting sigma to its small start even though it
+  isn't an improvement — so when stuck, sigma kept snapping back and never grew
+  large enough to escape. Sigma now resets only on a genuine new best.
+- **Sigma escalation with patience.** Sigma grows one step only after several
+  consecutive batches without a new best, so it climbs toward the cap gradually
+  rather than all at once.
+- Net effect: substantially more reliable global search — on real designs it now
+  finds better solutions, and faster, than before.
+
+### Glass substitution
+- **New "Rescale on Glass Swap" option.** When a glass is swapped during
+  optimization, the element's curvatures are rescaled by `(n_old−1)/(n_new−1)` so
+  its optical power is preserved — keeping the swapped design feasible instead of
+  broken, which improves the typical result. **On by default for Multistart**
+  (validated to help); **off by default for Basin Hopping** (its small-step
+  trajectory is over-perturbed by the curvature jump). No effect when glass
+  substitution is off.
+
+### Performance
+- **Removed nested-parallelism overhead in Multistart / Basin Hopping.** Those
+  modes already run one trial per core; each trial's local optimizer no longer
+  also spawns its own parallel Jacobian-column loop on top of that (it does so
+  only for a standalone single optimization, which still owns all cores).
+  Results are unchanged — the Jacobian and the optimization outcome are
+  identical; only wasted thread-scheduling work is removed.
+
+### macOS
+- **Fixed the Samples menu**, which previously could not locate the bundled
+  samples folder inside the macOS `.app` package.
+
 ## 1.0.119 — 2026-06-09
 
 ### Linux (GPU)

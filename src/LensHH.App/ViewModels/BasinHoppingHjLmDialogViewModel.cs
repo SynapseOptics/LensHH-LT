@@ -66,6 +66,10 @@ public partial class BasinHoppingHjLmDialogViewModel : ObservableObject
     [ObservableProperty] private bool _constrainedOnly = false;
     [ObservableProperty] private bool _useBroydenUpdate = true;
     [ObservableProperty] private bool _glassSubstitution = false;
+    // On a glass swap, rescale the element's curvatures by (n_old-1)/(n_new-1) to
+    // preserve power. Default OFF for basin hopping — testing showed the per-swap
+    // curvature jump over-perturbs its small-step trajectory and hurts results.
+    [ObservableProperty] private bool _rescaleOnGlassSwap = false;
     [ObservableProperty] private int _seed = 1234;
 
     // ── Advanced — engine + derivative selection (was orange DEV banner in
@@ -229,6 +233,7 @@ public partial class BasinHoppingHjLmDialogViewModel : ObservableObject
             UseBroydenUpdate = UseBroydenUpdate,
             ConstrainedOnly = ConstrainedOnly,
             GlassSubstitution = GlassSubstitution,
+            RescaleCurvatureOnGlassSwap = RescaleOnGlassSwap,
             GlassCatalogs = glassCatalogs,
             OnlyPreferred = !useFiltered && OnlyPreferred,
             Seed = Seed,

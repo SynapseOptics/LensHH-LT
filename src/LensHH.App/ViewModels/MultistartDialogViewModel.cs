@@ -81,12 +81,15 @@ public partial class MultistartDialogViewModel : ObservableObject
     public bool InitialLmInputEnabled => !IsRunning && !SkipInitialLm;
 
     partial void OnIsRunningChanged(bool value) => OnPropertyChanged(nameof(InitialLmInputEnabled));
-    // Reset point of the triangle-wave perturbation: sigma returns here on every
-    // acceptance and starts here. Rejection shrinks sigma toward SigmaMin, then
-    // climbs toward SigmaCap to escape, oscillating until something is accepted.
-    [ObservableProperty] private double _initialSigma = 0.0003;
+    // Starting/reset perturbation sigma: the search starts here and returns here
+    // on every acceptance; rejection grows sigma toward SigmaCap to escape.
+    [ObservableProperty] private double _initialSigma = 0.001;
     [ObservableProperty] private double _sigmaCap = 0.1;
     [ObservableProperty] private bool _enableMetropolis = true;
+    // On a glass swap, rescale the element's curvatures by (n_old-1)/(n_new-1) to
+    // preserve its optical power — keeps swaps feasible. Default ON since 1.0.121
+    // (validated); no-op when glass substitution is off.
+    [ObservableProperty] private bool _rescaleOnGlassSwap = true;
     // Default lowered from 50 → 10 on 2026-05-31. HJ pre-step now also
     // runs only on glass-swap trials (MultistartSettings.HjOnGlassSwapOnly
     // default = true). Previously HJ ran every trial × 50 outer iters ×
@@ -312,6 +315,9 @@ public partial class MultistartDialogViewModel : ObservableObject
                     // MultistartOptimizer Phase-2 hook lands in 1.0.116, at
                     // which point this flag will start gating the GPU sieve.
                     UseGpuPreScreen = UseGpuPreScreen,
+                    // Experimental (1.0.120): rescale an element's curvatures by
+                    // (n_old-1)/(n_new-1) on a glass swap so its power is preserved.
+                    RescaleCurvatureOnGlassSwap = RescaleOnGlassSwap,
                 },
                 // Phase 10a — DEV engine selection from the dialog.
                 EngineMode = (EngineModeIndex == 1) ? EngineMode.Native : EngineMode.CSharp,

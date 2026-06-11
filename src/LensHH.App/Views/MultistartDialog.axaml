@@ -111,13 +111,13 @@
 
         <TextBlock Grid.Row="0" Grid.Column="12" Text="Init Sigma:" VerticalAlignment="Center" />
         <TextBox Grid.Row="0" Grid.Column="14" Text="{Binding InitialSigma, UpdateSourceTrigger=LostFocus}" IsEnabled="{Binding !IsRunning}"
-                 Tag="Reset point of the perturbation schedule. Sigma starts here and returns here on every accepted improvement. On rejection it follows a triangle wave: each rejected batch first SHRINKS sigma (×1/1.5) for finer local steps; once it bottoms out at the floor (Sigma Min, engine default 1e-6) it reverses and GROWS sigma (×1.5) up to Sigma Cap to escape the basin, then bounces back down — until an acceptance snaps it back here. Default 0.0003."
+                 Tag="Starting/reset perturbation sigma. The search starts here and returns here on every accepted improvement. On rejection sigma GROWS (×1.5) up to Sigma Cap to climb out of the basin; any acceptance snaps it back to this small start. Default 0.001."
                  PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"
                  GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
 
         <TextBlock Grid.Row="0" Grid.Column="16" Text="Sigma Cap:" VerticalAlignment="Center" />
         <TextBox Grid.Row="0" Grid.Column="18" Text="{Binding SigmaCap, UpdateSourceTrigger=LostFocus}" IsEnabled="{Binding !IsRunning}"
-                 Tag="Upper bound of the perturbation triangle wave — the largest kick the escape phase will reach. After sigma has shrunk to the floor on a rejection streak, it grows ×1.5 per rejection up to this cap, then reverses back down. Higher = wider exploration when refinement stalls; lower = stays nearer the current design. Default 0.1."
+                 Tag="Upper bound on the perturbation sigma — the largest kick the escape phase will reach. On a rejection streak sigma grows ×1.5 per rejection up to this cap. Higher = wider exploration when refinement stalls; lower = stays nearer the current design. Default 0.1."
                  PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"
                  GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
 
@@ -164,6 +164,12 @@
                  Tag="Levenberg–Marquardt initial damping. 1e-3 (default) is the across-the-board default — robust on aspheric mixes and well-conditioned problems alike. Drop to 1e-6 for gauss-newton-like behavior on very smooth, well-scaled designs; raise to 1e-2 if the optimizer keeps rejecting steps early."
                  PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"
                  GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
+
+        <CheckBox Grid.Row="4" Grid.Column="8" Grid.ColumnSpan="5" Content="Rescale on Glass Swap"
+                  IsChecked="{Binding RescaleOnGlassSwap}" IsEnabled="{Binding !IsRunning}" VerticalAlignment="Center"
+                  Tag="Experimental: when a glass is swapped, rescale that element's curvatures by (n_old-1)/(n_new-1) so its optical power is preserved to first order. Keeps the swapped design feasible instead of broken, which improves the typical (median) result. Validated to help Multistart; off by default."
+                  PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"
+                  GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
       </Grid>
     </Border>
 

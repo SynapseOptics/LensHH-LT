@@ -267,7 +267,7 @@ namespace LensHH.CLI.Commands
 
             AnsiConsole.MarkupLine($"[bold]Starting multistart optimization[/]");
             AnsiConsole.MarkupLine($"  Trials: {settings.MaxTrials}, LM/trial: {settings.LmIterationsPerTrial}");
-            AnsiConsole.MarkupLine($"  Sigma: start {settings.InitialSigma:G3}, triangle floor {settings.SigmaMin:G3} ↔ cap {settings.SigmaCap:G3} (×{settings.SigmaGrowth:G3}), Metropolis: {(settings.EnableMetropolis ? "on" : "off")}");
+            AnsiConsole.MarkupLine($"  Sigma: start {settings.InitialSigma:G3} → cap {settings.SigmaCap:G3} (grow ×{settings.SigmaGrowth:G3} on reject), Metropolis: {(settings.EnableMetropolis ? "on" : "off")}");
             AnsiConsole.MarkupLine($"  HJ steps/trial: {settings.HjStepsPerTrial}, Glass-swap LM ×{settings.GlassSwapLmMultiplier}, Glass sub: {settings.GlassSubstitutionProbability * 100:F0}%");
             AnsiConsole.MarkupLine("");
 

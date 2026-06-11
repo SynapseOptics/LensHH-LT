@@ -178,10 +178,10 @@ Runs many LM optimizations from randomly perturbed starting points,
 keeps the best, and tracks accepted vs rejected counts. Glass
 substitution can be enabled — every trial may swap glasses on
 substitution-eligible surfaces with a chosen probability. The
-per-trial perturbation magnitude (`Sigma`) adapts during the run
-on a *triangle-wave* schedule — it shrinks for finer steps after a
-rejection and only grows toward the cap to escape once it bottoms
-out, resetting to its initial value on every acceptance — so a
+per-trial perturbation magnitude (`Sigma`) adapts during the run:
+it starts small, **grows when the search stalls** (after several
+consecutive non-improving batches, up to a cap) to climb out of a stuck
+basin, and resets to its small starting value on every new best — so a
 single starting Sigma covers a wide range of designs.
 
 ### Algorithm at a glance
@@ -192,11 +192,10 @@ trust the start. **Phase 2** is the actual multistart loop: each
 batch spawns `N_CPU` parallel trials, every trial perturbs around
 the **current center** (a Metropolis random walk that is allowed
 to drift away from *best*), runs HJ-LM polish, then competes for
-acceptance. Successful trials reset σ to its initial value;
-rejected ones first *shrink* σ for finer local refinement and,
-once σ bottoms out at its floor, grow it toward the cap to escape
-— a triangle-wave schedule that paces exploration without freezing
-the search at a single scale.
+acceptance. Successful trials reset σ to its small initial value;
+when the search goes several consecutive batches without a new best,
+σ **grows** one step (×1.5, up to the cap) to climb out of the current
+basin — escalating exploration gradually as the search stalls.
 
 ![Multistart architecture](images/optimization/multistart_architecture.png)
 
@@ -218,21 +217,22 @@ pre-1.0.115 always-HJ behaviour.
 | **Trials** | 2000 | Hard cap on the number of LM optimizations. Stop earlier when satisfied. |
 | **LM/Trial** | 4000 | Hard cap on LM iterations *inside* each trial. Per-trial wall-clock × Trials = total runtime budget. |
 | **Init LM** | 4000 | One LM polish from the *current* design before the first random perturbation. Set to 0 to skip. |
-| **Init Sigma** | 0.0003 | Starting value of the Gaussian-perturbation scale (relative to each variable's natural scale), and the value σ resets to on every accepted improvement. Sigma adapts during the run; 0.0003 is sufficient even for very poor starts. |
-| **Sigma Cap** | 0.1 | Upper bound of the triangle wave — the largest kick the escape phase reaches. After repeated rejections shrink σ to its floor, σ grows back up to this cap, then reverses and falls again; any acceptance resets σ to **Init Sigma**. (Basin Hopping uses a different, simpler grow-on-reject schedule.) |
+| **Init Sigma** | 0.001 | Starting (and reset) value of the Gaussian-perturbation scale, relative to each variable's natural scale. σ starts here, **grows on rejection** toward **Sigma Cap** to escape, and resets here on every accepted improvement. The small default keeps each kick within LM's capture radius — it still escapes because σ grows when the search stalls. |
+| **Sigma Cap** | 0.1 | Upper bound on σ — the largest kick the escape phase reaches. On a rejection streak σ grows ×1.5 per rejection up to this cap; any acceptance resets σ to **Init Sigma**. Raise it for wider exploration when refinement stalls. |
 | **HJ Steps** | 50 | Hooke-Jeeves probe steps per trial (derivative-free) before LM takes over. HJ is good at climbing out of merit-function discontinuities (vignetting, ray-trace failures, glass-boundary jumps) where LM gets trapped. Set 0 to disable. |
 | **Init Damp** | 1e-3 | LM initial damping for every trial's per-trial LM run. Same meaning and default as the Local Optimizer's Init Damp. |
 | **Glass Sub %** | 50 | Probability that a trial picks a fresh random glass for each substitution-eligible surface. 0 = never; 100 = every trial. The pool comes from the per-surface Glass Substitution Settings (each surface can draw from a different filtered catalog) — see [Glass Substitution During Optimization](glass-catalogs.md#glass-substitution-during-optimization). |
+| **Rescale on Glass Swap** | on | When a glass is swapped, also rescale that element's curvatures by `(n_old−1)/(n_new−1)` so its optical power is preserved to first order — keeps the swapped design feasible instead of broken, which improves the typical (median) result. **Only has any effect when glass substitution is active** (Glass Sub % > 0 with substitutable surfaces); on fixed-glass designs it is a no-op. (Basin Hopping keeps this off — its small-step trajectory is over-perturbed by the per-swap curvature jump.) |
 | **Constrained Only** | off | If on, only perturb variables that have `Min`/`Max` bounds. Useful when you want unbounded variables held fixed (e.g., a fixed-radius element). |
 | **Broyden Update** | on | Same meaning as for Local LM. Leave on. |
 | **Metropolis Acceptance** | on | When on, Multistart keeps a *current centre* state separate from *best* and may accept a worse-than-best trial as the next centre with probability `exp(−ΔM/T)` (T autotunes from early `|ΔM|` samples). Lets the search walk out of basins it has already mined. *Best* is always strict-improvement; the returned design is monotone. |
 
 Multistart's strength is variability — it's the cheapest way to
 sample several glass sets and several nearby basins with only modest
-perturbations. With **Init Sigma = 0.0003** it isn't designed to
+perturbations. With the small default **Init Sigma = 0.001** it isn't designed to
 flip a topology (a positive-power element won't become a
-negative-power element); for that, raise Sigma toward the cap, or
-use Basin Hopping.
+negative-power element) in a single kick; for that, raise Sigma
+toward the cap, or use Basin Hopping.
 
 **Aspheric coefficients are perturbed with a per-order natural
 scale** rather than a single sigma applied uniformly. The natural
@@ -366,11 +366,15 @@ Same starting state as Case 2 but with substitution enabled on
 S1 / S3 / S5 from CoreSet28. The story splits cleanly on
 **Init Sigma**.
 
-(This study was run under the previous defaults, when **Init Sigma**
-defaulted to `0.001` and the schedule grew σ on every rejection; the
-current defaults are `0.0003` with the triangle-wave schedule. The
-qualitative lesson below — small kicks refine, larger kicks escape —
-is unchanged.)
+(This study predates 1.0.120. It used **Init Sigma = 0.001** with the
+grow-on-rejection schedule — which, after the 1.0.120 revert, is again
+the default: the intervening *triangle-wave* schedule (which shrank σ
+below the start before growing) was a regression and has been removed.
+The qualitative lesson below — small kicks refine, larger kicks escape
+— holds. Note that **Rescale on Glass Swap** (new in 1.0.120) directly
+targets the glass-swap rejection seen here: by preserving element power
+across a swap it keeps the swapped design feasible, so small-Sigma runs
+with substitution escape far more readily than they did in this run.)
 
 **At Init Sigma = 0.001**: the design did not budge. Every
 glass-swap trial that LM tried produced a worse-than-best post-LM
@@ -399,7 +403,7 @@ further improvement.
 The takeaway from Cases 2 and 3 is concrete: once a design is at
 the bottom of its basin, the *floor* of the kick distribution is
 the only knob that matters for escape. A small Sigma (the default
-is 0.0003) is tuned for refining around a known-good point, not
+is 0.001) is tuned for refining around a known-good point, not
 jumping basins; raising Init Sigma toward the cap was enough to
 unlock this design *and* give glass substitution room to
 contribute. If 0.01 still locks, raise further (0.05–0.1) before
@@ -693,7 +697,7 @@ so a stuck phase doesn't block the run.
 | **Pre-Glass MS** | 4000 | Multistart trials before glass swaps. |
 | **Post-Glass MS** | 2500 | Multistart trials after the best glass pair is locked in. |
 | **Post LM** | 4000 | Final LM iteration cap after both Multistart phases. |
-| **MS Sigma** | 0.001 | Init Sigma for both Multistart phases — the same triangle-wave schedule as the standalone Multistart. |
+| **MS Sigma** | 0.001 | Init Sigma for both Multistart phases — the same grow-on-rejection schedule as the standalone Multistart. |
 | **Min Glass / Max Glass** | 1 / 25 mm | Centre-thickness bounds enforced on the split's glass halves. |
 | **Min Air / Max Air** | 0.1 / 25 mm | Bounds on the new air gap between the split halves. |
 | **Min Edge** | 0.5 mm | Minimum edge thickness on the split element. |

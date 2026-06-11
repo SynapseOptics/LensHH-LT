@@ -142,6 +142,12 @@
                  PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"
                  GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
 
+        <CheckBox Grid.Row="6" Grid.Column="8" Grid.ColumnSpan="3" Content="Rescale on glass swap"
+                  IsChecked="{Binding RescaleOnGlassSwap}" IsEnabled="{Binding !IsRunning}" VerticalAlignment="Center"
+                  Tag="Experimental: when a glass is swapped, also rescale that element's curvatures by (n_old-1)/(n_new-1) so its power is preserved. Only active with Glass substitution on. NOTE: testing showed this tends to HURT basin hopping — its small-step trajectory is over-perturbed by the per-swap curvature jump — so it's off by default here. (It helps Multistart, where it is on by default.)"
+                  PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"
+                  GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
+
         <!-- Start/Stop -->
         <StackPanel Grid.Row="0" Grid.RowSpan="5" Grid.Column="12" Orientation="Horizontal" Spacing="8"
                     VerticalAlignment="Center" HorizontalAlignment="Right">
