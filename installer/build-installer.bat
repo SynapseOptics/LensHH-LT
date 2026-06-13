@@ -69,6 +69,21 @@ if errorlevel 1 (
 )
 
 echo.
+echo === Engine obfuscation check ===
+REM Refuse to package a NON-obfuscated (dev) managed engine DLL. .NET Reactor
+REM (-suppressildasm 1) stamps the protected build with a SuppressIldasmAttribute
+REM that a plain `dotnet build` never adds; detect it as a raw string. A dev DLL
+REM in engine\ (e.g. left behind to make something compile) must never ship —
+REM the proprietary engine would otherwise go out in the clear.
+powershell -NoProfile -Command ^
+  "$dll='engine\LensHH.Core.dll'; if (-not (Test-Path $dll)) { Write-Host ('FATAL: engine DLL not found: ' + $dll); exit 1 }; $t=[Text.Encoding]::ASCII.GetString([IO.File]::ReadAllBytes($dll)); if ($t.Contains('SuppressIldasmAttribute')) { Write-Host 'Obfuscation check: OK (Reactor-protected engine DLL)' } else { Write-Host 'FATAL: engine\LensHH.Core.dll is a NON-OBFUSCATED (dev) build - refusing to package.'; Write-Host '       Restore it: run a Release build of Core (the ProtectWithReactor post-build)'; Write-Host '       or scripts\publish-obfuscated.bat, then re-run this installer build.'; exit 1 }"
+if errorlevel 1 (
+    echo Engine obfuscation check FAILED — refusing to build installer.
+    pause
+    exit /b 1
+)
+
+echo.
 echo === Compiling Installer ===
 if exist "%ProgramFiles(x86)%\Inno Setup 6\ISCC.exe" (
     "%ProgramFiles(x86)%\Inno Setup 6\ISCC.exe" installer\LensHH-LT.iss

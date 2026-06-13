@@ -1,0 +1,153 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:LensHH.App.ViewModels"
+        x:Class="LensHH.App.Views.GlobalSearchDialog"
+        x:DataType="vm:GlobalSearchDialogViewModel"
+        Title="Global Search"
+        Icon="avares://LensHH.App/Assets/icon_256.png"
+        Width="1040" Height="760"
+        WindowStartupLocation="CenterOwner"
+        CanResize="True"
+        MinWidth="860" MinHeight="600">
+
+  <DockPanel LastChildFill="True" Margin="10">
+
+    <!-- ── Settings + run controls ── -->
+    <Border DockPanel.Dock="Top" BorderBrush="#DDDDDD" BorderThickness="1"
+            CornerRadius="6" Padding="10" Margin="0,0,0,8">
+      <StackPanel Spacing="8">
+        <TextBlock Text="Global Search runs many independent searches from your original design and collects a pool of structurally-different solutions to choose from."
+                   TextWrapping="Wrap" Foreground="#555555" FontSize="12"/>
+
+        <WrapPanel Orientation="Horizontal">
+          <StackPanel Margin="0,0,16,6" Width="150">
+            <TextBlock Text="Models to keep" FontSize="11"/>
+            <NumericUpDown Value="{Binding ModelsToKeep}" Minimum="1" Maximum="200" Increment="1" FormatString="0"/>
+          </StackPanel>
+          <StackPanel Margin="0,0,16,6" Width="150">
+            <TextBlock Text="Max restarts" FontSize="11"/>
+            <NumericUpDown Value="{Binding MaxRestarts}" Minimum="1" Maximum="2000" Increment="1" FormatString="0"/>
+          </StackPanel>
+          <StackPanel Margin="0,0,16,6" Width="160">
+            <TextBlock Text="Max trials / restart" FontSize="11"/>
+            <NumericUpDown Value="{Binding MaxTrialsPerRestart}" Minimum="1" Maximum="100000" Increment="50" FormatString="0"/>
+          </StackPanel>
+          <StackPanel Margin="0,0,16,6" Width="150">
+            <TextBlock Text="LM iters / trial" FontSize="11"/>
+            <NumericUpDown Value="{Binding LmIterationsPerTrial}" Minimum="1" Maximum="100000" Increment="100" FormatString="0"/>
+          </StackPanel>
+          <StackPanel Margin="0,0,16,6" Width="150">
+            <TextBlock Text="Stall-at-cap batches" FontSize="11"/>
+            <NumericUpDown Value="{Binding StopAtCapStallBatches}" Minimum="1" Maximum="1000" Increment="1" FormatString="0"/>
+          </StackPanel>
+          <StackPanel Margin="0,0,16,6" Width="110">
+            <TextBlock Text="Base seed" FontSize="11"/>
+            <NumericUpDown Value="{Binding BaseSeed}" Minimum="0" Maximum="1000000" Increment="1" FormatString="0"/>
+          </StackPanel>
+        </WrapPanel>
+
+        <WrapPanel Orientation="Horizontal">
+          <StackPanel Margin="0,0,16,6" Width="150">
+            <TextBlock Text="Glass sub. (%)" FontSize="11"/>
+            <NumericUpDown Value="{Binding GlassSubstitutionProbability}" Minimum="0" Maximum="100" Increment="5" FormatString="0"/>
+          </StackPanel>
+          <StackPanel Margin="0,0,16,6" Width="160">
+            <TextBlock Text="Pre-polish LM (0=off)" FontSize="11"/>
+            <NumericUpDown Value="{Binding InitialLmPolish}" Minimum="0" Maximum="100000" Increment="50" FormatString="0"/>
+          </StackPanel>
+          <StackPanel Margin="0,0,16,6" Width="150">
+            <TextBlock Text="Init sigma" FontSize="11"/>
+            <NumericUpDown Value="{Binding InitialSigma}" Minimum="0.0001" Maximum="1" Increment="0.0005" FormatString="0.0000"/>
+          </StackPanel>
+          <StackPanel Margin="0,0,16,6" Width="150">
+            <TextBlock Text="Sigma cap" FontSize="11"/>
+            <NumericUpDown Value="{Binding SigmaCap}" Minimum="0.001" Maximum="1" Increment="0.01" FormatString="0.000"/>
+          </StackPanel>
+          <StackPanel Margin="0,0,16,6" Width="140">
+            <TextBlock Text="Engine" FontSize="11"/>
+            <ComboBox SelectedIndex="{Binding EngineModeIndex}" HorizontalAlignment="Stretch">
+              <ComboBoxItem>C#</ComboBoxItem>
+              <ComboBoxItem>Native</ComboBoxItem>
+            </ComboBox>
+          </StackPanel>
+          <StackPanel Margin="0,0,16,6" Width="160">
+            <TextBlock Text="Derivative" FontSize="11"/>
+            <ComboBox SelectedIndex="{Binding DerivativeModeIndex}" HorizontalAlignment="Stretch">
+              <ComboBoxItem>Finite difference</ComboBoxItem>
+              <ComboBoxItem>Analytic</ComboBoxItem>
+            </ComboBox>
+          </StackPanel>
+          <StackPanel Margin="0,0,16,6" VerticalAlignment="Bottom">
+            <CheckBox Content="Rescale on glass swap" IsChecked="{Binding RescaleOnGlassSwap}"/>
+            <CheckBox Content="GPU pre-screen" IsChecked="{Binding UseGpuPreScreen}"/>
+          </StackPanel>
+        </WrapPanel>
+
+        <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto">
+          <Button Grid.Column="0" Content="Run" Width="100"
+                  Command="{Binding RunCommand}" IsEnabled="{Binding CanRun}"
+                  Classes="accent"/>
+          <Button Grid.Column="1" Content="Stop" Width="100" Margin="8,0,0,0"
+                  Command="{Binding StopCommand}" IsEnabled="{Binding IsRunning}"/>
+          <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,12,0">
+            <TextBlock Text="Initial:" Foreground="#888888" FontSize="12"/>
+            <TextBlock Text="{Binding InitialMeritText}" Margin="4,0,12,0" FontSize="12"/>
+            <TextBlock Text="Best:" Foreground="#888888" FontSize="12"/>
+            <TextBlock Text="{Binding BestMeritText}" Margin="4,0,12,0" FontWeight="Bold" FontSize="12"/>
+            <TextBlock Text="Elapsed:" Foreground="#888888" FontSize="12"/>
+            <TextBlock Text="{Binding ElapsedText}" Margin="4,0,0,0" FontSize="12"/>
+          </StackPanel>
+        </Grid>
+
+        <ProgressBar Value="{Binding ProgressFraction}" Minimum="0" Maximum="1" Height="6"/>
+        <TextBlock Text="{Binding StatusText}" FontSize="11" Foreground="#555555" TextWrapping="Wrap"/>
+        <TextBlock Text="{Binding ProgressText}" FontSize="11" Foreground="#888888" TextWrapping="Wrap"/>
+      </StackPanel>
+    </Border>
+
+    <!-- ── Action bar ── -->
+    <Grid DockPanel.Dock="Bottom" ColumnDefinitions="Auto,*,Auto" Margin="0,8,0,0">
+      <Button Grid.Column="0" Content="Save all…" Click="SaveAll_Click" IsEnabled="{Binding CanSaveAll}"/>
+      <TextBlock Grid.Column="1" VerticalAlignment="Center" Margin="12,0" FontSize="11" Foreground="#888888"
+                 Text="Click a card's Apply button to load that design into your system."/>
+      <Button Grid.Column="2" Content="Close" Width="90" Click="Close_Click"/>
+    </Grid>
+
+    <!-- ── Gallery ── -->
+    <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+      <ItemsControl ItemsSource="{Binding Cards}">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate>
+            <WrapPanel Orientation="Horizontal"/>
+          </ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:GlobalSearchCardViewModel">
+            <Border Width="272" Margin="6" BorderBrush="#DDDDDD" BorderThickness="1"
+                    CornerRadius="6" Padding="8" Background="White">
+              <StackPanel Spacing="4">
+                <Grid ColumnDefinitions="*,Auto">
+                  <TextBlock Text="{Binding Title}" FontWeight="Bold" FontSize="14"/>
+                  <Border Grid.Column="1" Background="#FFD54F" CornerRadius="3" Padding="5,1"
+                          IsVisible="{Binding IsBest}" VerticalAlignment="Center">
+                    <TextBlock Text="★ best" FontSize="11"/>
+                  </Border>
+                </Grid>
+                <Border Background="White" BorderBrush="#EEEEEE" BorderThickness="1" CornerRadius="3">
+                  <Image Source="{Binding Thumbnail}" Height="128" Stretch="Uniform" Margin="2"/>
+                </Border>
+                <TextBlock Text="{Binding MeritText, StringFormat='Merit: {0}'}" FontSize="12" FontWeight="SemiBold"/>
+                <TextBlock Text="{Binding GlassText}" FontSize="11" Foreground="#555555" TextWrapping="Wrap"/>
+                <TextBlock Text="{Binding InfoText}" FontSize="10" Foreground="#999999" TextWrapping="Wrap"/>
+                <Button Content="Apply this design" HorizontalAlignment="Stretch" Margin="0,2,0,0"
+                        Command="{Binding DataContext.ApplyCardCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                        CommandParameter="{Binding}"/>
+              </StackPanel>
+            </Border>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </ScrollViewer>
+
+  </DockPanel>
+</Window>

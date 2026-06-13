@@ -1,13 +1,15 @@
 # Optimization
 
-LensHH-LT ships three optimizers. All of them minimize the same merit
-function (see the [Merit Function Reference](merit-function.md)) but
-differ in how they explore the variable space.
+LensHH-LT ships three core optimizers — Local, Multistart, and Basin
+Hopping — plus a **Global Search** mode built on Multistart. All of them
+minimize the same merit function (see the
+[Merit Function Reference](merit-function.md)) but differ in how they
+explore the variable space.
 
 A typical workflow stages them:
 
-1. **Search** with Multistart or Basin Hopping when you don't trust
-   the starting basin.
+1. **Search** with Multistart, Basin Hopping, or Global Search when
+   you don't trust the starting basin.
 2. **Refine** with the Local Optimizer once you're in the right
    basin.
 3. **Polish** with one more Local pass at the end so the final state
@@ -21,7 +23,8 @@ Skip step 1 if you start from a known-good design; never skip step 3.
 |---|---|---|
 | **Local (LM)** | Refining a design you already trust — polish the last 10% of merit. | Escaping a bad starting point. |
 | **Multistart** | Probing several random starts, LM from each. Cheap way to find a better basin and to vary glass choices. | Genuinely topology-changing exploration (it won't, e.g., find a Cooke triplet from a flat-plate start). |
-| **Basin Hopping** | Heavy exploration. Random perturbations + Hooke-Jeeves pattern search + LM refinement, optionally with glass substitution. | Fast iteration — it's the slowest of the three. |
+| **Global Search** | Surveying the solution space — collecting a *gallery* of distinct, locally-optimized design forms (different power patterns + glasses) to choose among, rather than one winner. | Driving a single design to its absolute lowest merit (use Local/Multistart). |
+| **Basin Hopping** | Heavy single-design exploration — the deepest one run can travel (can change topology). Random perturbations + Hooke-Jeeves pattern search + LM refinement, optionally with glass substitution. | Fast iteration — it's the slowest per run. |
 
 ## Variables
 
@@ -409,11 +412,70 @@ unlock this design *and* give glass substitution room to
 contribute. If 0.01 still locks, raise further (0.05–0.1) before
 deciding the design is converged for the chosen topology.
 
+## Global Search
+
+**Optimization → Global Search…**
+
+Where Multistart returns the *single best* design it found, Global Search
+returns a **gallery of structurally-distinct, locally-optimized designs** — so
+you can compare genuinely different solution forms (different element
+power-sign patterns, different glass sets) and choose the one that best suits
+your manufacturing and packaging constraints, not only the one with the lowest
+merit.
+
+It runs **many independent Multistart restarts** from your starting design and
+keeps a result **only if its lens *form* is new**. Designs are de-duplicated by
+a form signature — the glass set plus the per-element power-sign pattern — so
+the gallery fills with distinct forms rather than many near-copies of the same
+basin. The gallery is sorted best-merit-first.
+
+![Global Search dialog after a run — a gallery of distinct, locally-optimized design forms. Each card shows the layout, merit, power-sign form, and glass set, with **Apply this design** to load it into the workspace.](images/GlobalOptimizer.png)
+
+### Algorithm at a glance
+
+**Phase 1** runs one deterministic LM polish from your starting design (call it
+*D0*); it is computed once and seeds every restart. **Phase 2** then runs
+independent restarts: restart *i* is a full Multistart run from *D0* with seed
+`BaseSeed × 100000 + i`, so the restart batches never overlap and the whole
+search reproduces from a single base seed (base seed 1 → 100000, 100001, …;
+base seed 2 → 200000, …). After each restart converges, its best design's form
+signature is computed; if that form is already in the gallery (within a small
+merit tolerance) the restart is discarded as a duplicate, otherwise it is kept.
+The search stops when it has collected **Models** distinct forms, exhausted
+**Max Restarts**, or stalled (no new distinct form for several restarts).
+
+| Setting | Default | Meaning |
+|---|---|---|
+| **Models** | 16 | Target number of distinct designs to collect in the gallery. |
+| **Max Restarts** | 48 | Upper bound on independent restarts (default 3× Models — restarts that land on an already-seen form are discarded, so you need several per kept model). |
+| **Trials / restart** | 2000 | Multistart trial cap *within* each restart. |
+| **Base Seed** | 1 | Restart *i* uses `BaseSeed × 100000 + i`. Run base seed 1, then 2, … for genuinely independent extra batches that never re-walk the same seeds. |
+| **Dedup tolerance** | 0.02 | Two designs of the same form within this relative merit count as the same gallery entry. |
+| Sigma, Glass Sub %, LM/Trial, Rescale on Glass Swap, … | | Inherited from Multistart — each restart *is* a Multistart run. |
+
+Every gallery entry is a complete, loadable `.lhlt` design. From the CLI the
+pool is written to `out=DIR` (default `global_search_results`), one file per
+rank named by rank, seed, merit, and glass set.
+
+### When to use it
+
+Use Global Search to **survey the solution space** of a specification — "what
+triplet forms reach this f/number and field, and with which glasses?" — rather
+than to drive a single design to its lowest merit. It costs more than one
+Multistart (it is many of them), but it surfaces alternative forms a best-only
+run hides. A good staged workflow: Global Search to enumerate candidate forms →
+pick one → Local (or Basin Hopping) to refine it.
+
 ## Basin Hopping (HJ + LM)
 
 **Optimization → Basin Hopping HJ+LM…**
 
-The most exploratory of the three. Each *hop* runs:
+The deepest *single-run* explorer: one Basin Hopping run can travel far
+enough from the start to change topology (e.g. flat plates → Cooke
+triplet), where Multistart's small kicks cannot. (Global Search explores
+along a different axis — it casts the *widest net*, collecting many
+distinct forms, rather than driving one design as far as possible.)
+Each *hop* runs:
 
 1. **Random perturbation.** Every variable gets a Gaussian kick of
    standard deviation `Sigma × variable_scale`. This pulls the

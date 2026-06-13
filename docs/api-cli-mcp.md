@@ -134,7 +134,7 @@ prompt, or pass `--script <file>` to run a batch of commands.
 | `pickup`  | Surface-to-surface parameter pickups. |
 | `var`     | Mark parameters as variables with optional bounds. |
 | `merit`   | Build and evaluate the merit function. |
-| `optimize`| Run Local LM, Multistart, or Basin Hopping. |
+| `optimize`| Run Local LM, Multistart, Global Search (`optimize global`), or Basin Hopping. |
 | `analysis`| Run any analysis (spot, mtf, wavefront, seidel, etc.) and print results. |
 | `log`     | Control log verbosity and output redirection. |
 | `script`  | Execute a file of CLI commands. |
@@ -236,11 +236,12 @@ recommended host for any optimization that runs for more than a
 minute.** Specifically:
 
 - **Multistart Optimization**
+- **Global Search**
 - **Basin Hopping (HJ-LM)**
 - **Split Element**
 - **Synthesis by SPC**
 
-These four are not exposed as single blocking calls. They run as
+These five are not exposed as single blocking calls. They run as
 **background jobs**: a `*_start` tool kicks the work off on a worker
 thread and returns immediately with a `jobId`. The host then polls
 `optimize_status(jobId)` for progress (phase, current trial / hop /
@@ -251,6 +252,7 @@ every job tracked by the current session.
 | Tool | Returns | Used to … |
 |---|---|---|
 | `optimize_multistart_start` | jobId | Start the optimizer in the background |
+| `optimize_global_search_start` | jobId | Same — Global Search (gallery of distinct design forms); reproducible from `baseSeed` |
 | `optimize_basin_hopping_start` | jobId | Same — BH variant |
 | `optimize_split_element_start` | jobId | Same — Split Element variant |
 | `optimize_synthesis_by_spc_start` | jobId | Same — SPC variant |
@@ -287,7 +289,7 @@ the session. The ~123 tools group as:
 | **Surface** (`SurfaceTools`)    |  7 | `surface_add`, `surface_insert`, `surface_remove`, `surface_set`, `surface_list`, `surface_set_asphere`. |
 | **Glass** (`GlassTools`)        |  9 | `glass_load_catalogs`, `glass_list_catalogs`, `glass_search`, `glass_get_info`, `glass_get_index`, `glass_set_substitution`, `glass_generate_filtered_catalog`. |
 | **Pickup** (`PickupTools`)      |  4 | `pickup_add`, `pickup_remove`, `pickup_list`, `pickup_clear`. |
-| **Optimization** (`OptimizationTools`) | 16 | `merit_add_operand`, `merit_list`, `merit_edit_operand`, `merit_evaluate`, `variable_add`, `variable_list`, `optimize_local`, `optimize_basin_hopping`, `optimize_multistart`. |
+| **Optimization** (`OptimizationTools`) | 17 | `merit_add_operand`, `merit_list`, `merit_edit_operand`, `merit_evaluate`, `variable_add`, `variable_list`, `optimize_local`, `optimize_multistart_start`, `optimize_global_search_start`, `optimize_basin_hopping_start`, `optimize_status`. |
 | **Analysis** (`AnalysisTools`)  | 20 | `trace_ray`, `spot_diagram`, `ray_fan`, `pupil_aberration_fan`, `opd_fan`, `seidel`, `wavefront_map`, `fft_psf`, `fft_mtf_vs_freq`/`vs_field`/`through_focus`, `geo_mtf_*`, `zernike_standard`, `zernike_fringe`, `lateral_color`, `relative_illumination`, `chromatic_focal_shift`, `field_curvature_distortion`. |
 | **Rendering** (`RenderingTools`)| 42 | `render_analysis_png`, `render_layout_png`, and per-analysis text-export tools (one `analysis_name_text` tool per analysis). |
 | **License** (`LicenseTools`)    |  1 | `license_status` — shows activation/trial state. |

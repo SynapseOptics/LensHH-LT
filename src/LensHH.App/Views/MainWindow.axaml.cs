@@ -846,6 +846,19 @@ public partial class MainWindow : Window
         VM.Session.NotifySystemChanged("optimization");
     }
 
+    private async void GlobalSearch_Click(object? sender, RoutedEventArgs e)
+    {
+        // Global Search works entirely on internal clones — it never mutates the
+        // live system during the run, so no snapshot/restore is needed here. Only
+        // an explicit "Apply this design" inside the dialog changes the system.
+        var vm = new GlobalSearchDialogViewModel(VM.Session);
+        var dialog = new GlobalSearchDialog { DataContext = vm };
+        await dialog.ShowDialog(this);
+
+        if (vm.Accepted)
+            VM.Session.NotifySystemChanged("global-search");
+    }
+
     private async void SplitElement_Click(object? sender, RoutedEventArgs e)
     {
         var snapshot = VM.Session.SnapshotSystem();

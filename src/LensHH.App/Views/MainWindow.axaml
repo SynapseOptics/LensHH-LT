@@ -105,6 +105,7 @@
         <Separator />
         <MenuItem Header="_Local Optimization" Click="LocalOptimization_Click" />
         <MenuItem Header="M_ulti Start Optimization" Click="MultistartOptimization_Click" />
+        <MenuItem Header="_Global Search..." Click="GlobalSearch_Click" />
         <MenuItem Header="Basin-Hopping _HJ+LM..." Click="BasinHoppingHjLm_Click" />
         <Separator />
         <MenuItem Header="S_plit Element" Click="SplitElement_Click" />

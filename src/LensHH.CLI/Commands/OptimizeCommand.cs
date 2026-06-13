@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.Threading;
 using LensHH.Core.Configuration;
@@ -21,6 +22,8 @@ namespace LensHH.CLI.Commands
   [green]optimize basin [[hops=N]] [[lm=N]] [[hj=N]] [[sigma=V]] [[hjstep=V]] [[hjmin=V]] [[tol=V]] [[damping=V]] [[broyden=true|false]] [[constrained]] [[glasssub=true|false]] [[onlypreferred=true|false]] [[catalog=NAME]] [[seed=N]][/]  Basin hopping (Hooke-Jeeves + LM with random kicks between hops)
   [green]optimize split [[splits=N]] [[trials=N]] [[lm=N]] [[postlm=N]] [[preglass=N]] [[postglass=N]] [[sigma=V]] [[constrained]] [[onlypreferred=true|false]] [[minglass=V]] [[maxglass=V]] [[minair=V]] [[maxair=V]] [[minedge=V]] [[skipsec=V]] [[tol=V]] [[damping=V]] [[broyden=true|false]] [[refresh=N]] [[catalog=NAME]] [[noglass]][/]  Split element synthesis. catalog: AGF name (e.g. catalog=S1_GLASS); resolved against catalogs\FilteredGlassCatalogues. noglass: skip the glass-trials phase entirely (split + LM polish only).
   [green]optimize spc [[elements=N]] [[topn=N]] [[scanmin=V]] [[scanmax=V]] [[steps=N]] [[epsilon=V]] [[glass=N]] [[lm=N]] [[postlm=N]] [[catalog=NAME]] [[archive=true|false]] [[archivedir=PATH]] [[dop=N]] [[nullglass=NAME]] [[runinitlm=true|false]] [[initlm=N]] [[onlypreferred=true|false]] [[minglass=V]] [[maxglass=V]] [[minair=V]] [[maxair=V]] [[minedge=V]] [[constraintweight=V]][/]  Synthesis by SPC. catalog is mandatory (single AGF name or comma-separated list).
+  [green]optimize global [[models=N]] [[restarts=N]] [[trials=N]] [[lm=N]] [[stall=N]] [[seed=N]] [[prepolish=N]] [[sigma=V]] [[cap=V]] [[glass=V]] [[native]] [[analytic]] [[out=DIR]][/]  Global Search: many seeded restarts from the start design; writes a pool of distinct .lhlt designs to DIR (default global_search_results). seed: base seed (run 1, then 2, … for independent batches). prepolish=0 (default) perturbs the raw start.
+  [green]optimize deseed [[pop=N]] [[gens=N]] [[stall=N]] [[f=V]] [[cr=V]] [[glass=V]] [[curvlimit=V]] [[gpu]] [[seed=N]] [[emit=N]] [[refine=N]] [[out=DIR]][/]  Differential-Evolution seed generator: evolve a population from ranges (geometry + glass), then LM-refine each seed; writes refined seeds to DIR. glass = per-candidate glass-swap probability (%); curvlimit = curvature seed limit (0=auto); gpu = run the per-generation merit eval on the GPU (host DE loop). Prints a CPU/GPU timing breakdown.
   [green]optimize cancel[/]                                     Cancel running optimization
   [green]optimize variables[/]                                  List current variables";
 
@@ -53,6 +56,15 @@ namespace LensHH.CLI.Commands
                     break;
                 case "spc":
                     RunSpcSynthesis(session, args);
+                    break;
+                case "global":
+                case "global-search":
+                case "globalsearch":
+                    RunGlobalSearch(session, args);
+                    break;
+                case "deseed":
+                case "de":
+                    RunDeSeed(session, args);
                     break;
                 case "cancel":
                     CancelOptimization();
@@ -288,6 +300,202 @@ namespace LensHH.CLI.Commands
                 Console.CancelKeyPress -= OnCancelKeyPress;
                 _cts = null;
             }
+        }
+
+        private void RunDeSeed(Session session, string[] args)
+        {
+            var system = session.EnsureValidSystem();
+            var mf = session.EnsureMeritFunction();
+            var glassMgr = session.EnsureGlassCatalog();
+            session.ValidateGlass();
+
+            var s = new DeSeederSettings { FilteredCatalogSearchPaths = FindFilteredCatalogPaths() };
+            int refineIters = 200;
+            string outDir = "deseed_results";
+
+            for (int i = 1; i < args.Length; i++)
+            {
+                var parts = args[i].Split('=');
+                var key = parts[0].ToLowerInvariant();
+                var val = parts.Length > 1 ? parts[1] : "";
+                switch (key)
+                {
+                    case "pop": if (int.TryParse(val, out int p)) s.PopulationSize = p; break;
+                    case "gens": if (int.TryParse(val, out int g)) s.MaxGenerations = g; break;
+                    case "stall": if (int.TryParse(val, out int st)) s.StallGenerations = st; break;
+                    case "f": if (double.TryParse(val, NumberStyles.Float, CultureInfo.InvariantCulture, out double fv)) s.F = fv; break;
+                    case "cr": if (double.TryParse(val, NumberStyles.Float, CultureInfo.InvariantCulture, out double cr)) s.CR = cr; break;
+                    case "glass": if (double.TryParse(val, NumberStyles.Float, CultureInfo.InvariantCulture, out double gp)) s.GlassMutationProbability = gp / 100.0; break;
+                    case "curvlimit": if (double.TryParse(val, NumberStyles.Float, CultureInfo.InvariantCulture, out double cl)) s.CurvatureSeedLimit = cl; break;
+                    case "gpu": s.UseGpu = true; break;
+                    case "seed": if (int.TryParse(val, out int sd)) s.BaseSeed = sd; break;
+                    case "emit": if (int.TryParse(val, out int em)) s.SeedsToEmit = em; break;
+                    case "refine": if (int.TryParse(val, out int rf)) refineIters = rf; break;
+                    case "out": if (!string.IsNullOrEmpty(val)) outDir = val; break;
+                }
+            }
+
+            _cts = new CancellationTokenSource();
+            Console.CancelKeyPress += OnCancelKeyPress;
+
+            var svc = new DeSeederService(system, mf, glassMgr, session.ConfigEditor)
+            {
+                Settings = s,
+                OnProgress = p =>
+                {
+                    if ((p.RestartIndex % 10) == 0)
+                        AnsiConsole.MarkupLine($"  [grey]{Markup.Escape(p.StatusMessage)}[/]");
+                },
+            };
+
+            AnsiConsole.MarkupLine("[bold]Starting DE seed generator[/]");
+            AnsiConsole.MarkupLine($"  Population: {s.PopulationSize}, generations: {s.MaxGenerations}, F={s.F:G3}, CR={s.CR:G3}, glass pMut: {s.GlassMutationProbability * 100:F0}%, seed: {s.BaseSeed}");
+            AnsiConsole.MarkupLine("");
+
+            try
+            {
+                var result = svc.Run(_cts.Token);
+                AnsiConsole.MarkupLine("");
+                AnsiConsole.MarkupLine($"[bold]DE complete[/]  {Markup.Escape(result.Message)}");
+
+                // LM-refine each emitted seed and report (the A/B vs Multistart).
+                AnsiConsole.MarkupLine("[bold]Refining seeds with LM...[/]");
+                var refined = new List<(double merit, GlobalSearchModel model)>();
+                foreach (var model in result.Models)
+                {
+                    if (_cts.Token.IsCancellationRequested) break;
+                    var opt = new LocalOptimizer(model.System, mf, glassMgr, session.ConfigEditor)
+                    { MaxIterations = refineIters, ParallelEvaluation = true };
+                    var r = opt.Optimize(_cts.Token);
+                    refined.Add((r.FinalMerit, model));
+                }
+                refined.Sort((a, b) => a.merit.CompareTo(b.merit));
+
+                System.IO.Directory.CreateDirectory(outDir);
+                string title = string.IsNullOrWhiteSpace(system.Title) ? "design" : system.Title;
+                int n = 0;
+                for (int r = 0; r < refined.Count; r++)
+                {
+                    var (merit, model) = refined[r];
+                    string glassTag = model.GlassSet.Count > 0 ? string.Join("-", model.GlassSet) : "noglass";
+                    string form = string.IsNullOrEmpty(model.PowerSignSignature) ? "-" : model.PowerSignSignature;
+                    string name = SanitizeFileName($"{title}_deseed_rank{r + 1}_merit{merit:G4}_{glassTag}");
+                    string path = System.IO.Path.Combine(outDir, name + ".lhlt");
+                    try { LensHH.Core.IO.LhltWriter.Write(model.System, path, mf, session.ConfigEditor); n++; }
+                    catch (Exception ex) { AnsiConsole.MarkupLine($"  [yellow]write failed: {Markup.Escape(ex.Message)}[/]"); }
+                    AnsiConsole.MarkupLine($"  #{r + 1}  refined {merit:E4}  (DE raw {model.Merit:E4})  form {form}  [[{Markup.Escape(glassTag)}]]");
+                }
+                if (refined.Count > 0)
+                {
+                    double best = refined[0].merit;
+                    double median = refined[refined.Count / 2].merit;
+                    AnsiConsole.MarkupLine($"  [bold]Refined best {best:E4}, median {median:E4}[/]; wrote {n} seed(s) to {Markup.Escape(System.IO.Path.GetFullPath(outDir))}");
+                }
+            }
+            finally
+            {
+                Console.CancelKeyPress -= OnCancelKeyPress;
+                _cts = null;
+            }
+        }
+
+        private void RunGlobalSearch(Session session, string[] args)
+        {
+            var system = session.EnsureValidSystem();
+            var mf = session.EnsureMeritFunction();
+            var glassMgr = session.EnsureGlassCatalog();
+            session.ValidateGlass();
+
+            // Defaults mirror the GUI dialog: don't pre-polish the start, escape
+            // fast (sigma cap 0.01, stall-at-cap 1), 50% glass swaps, deep per-trial LM.
+            var gs = new GlobalSearchSettings { StopAtCapStallBatches = 1, MaxTrialsPerRestart = 2000 };
+            gs.Multistart.InitialLmIterations = 0;        // 0 = perturb the raw start (no pre-polish)
+            gs.Multistart.SigmaCap = 0.01;
+            gs.Multistart.GlassSubstitutionProbability = 0.5;
+            gs.Multistart.LmIterationsPerTrial = 4000;
+            bool useNative = false, analytic = false;
+            string outDir = "global_search_results";
+
+            for (int i = 1; i < args.Length; i++)
+            {
+                var parts = args[i].Split('=');
+                var key = parts[0].ToLowerInvariant();
+                var val = parts.Length > 1 ? parts[1] : "";
+                switch (key)
+                {
+                    case "models": if (int.TryParse(val, out int mk)) gs.ModelsToKeep = mk; break;
+                    case "restarts": if (int.TryParse(val, out int mr)) gs.MaxRestarts = mr; break;
+                    case "trials": if (int.TryParse(val, out int t)) gs.MaxTrialsPerRestart = t; break;
+                    case "lm": if (int.TryParse(val, out int l)) gs.Multistart.LmIterationsPerTrial = l; break;
+                    case "stall": if (int.TryParse(val, out int st)) gs.StopAtCapStallBatches = st; break;
+                    case "seed": if (int.TryParse(val, out int sd)) gs.BaseSeed = sd; break;
+                    case "prepolish": if (int.TryParse(val, out int pp)) gs.Multistart.InitialLmIterations = pp; break;
+                    case "sigma": if (double.TryParse(val, NumberStyles.Float, CultureInfo.InvariantCulture, out double sgv)) gs.Multistart.InitialSigma = sgv; break;
+                    case "cap": if (double.TryParse(val, NumberStyles.Float, CultureInfo.InvariantCulture, out double cpv)) gs.Multistart.SigmaCap = cpv; break;
+                    case "glass": if (double.TryParse(val, NumberStyles.Float, CultureInfo.InvariantCulture, out double gv)) gs.Multistart.GlassSubstitutionProbability = gv / 100.0; break;
+                    case "native": useNative = true; break;
+                    case "analytic": analytic = true; break;
+                    case "out": if (!string.IsNullOrEmpty(val)) outDir = val; break;
+                }
+            }
+
+            _cts = new CancellationTokenSource();
+            Console.CancelKeyPress += OnCancelKeyPress;
+
+            var svc = new GlobalSearchService(system, mf, glassMgr, session.ConfigEditor)
+            {
+                Settings = gs,
+                EngineMode = useNative
+                    ? LensHH.Core.MeritFunction.EngineMode.Native
+                    : LensHH.Core.MeritFunction.EngineMode.CSharp,
+                NativeDerivativeMode = analytic
+                    ? LensHH.Core.NativeInterop.MeritDerivativeMode.Analytic
+                    : LensHH.Core.NativeInterop.MeritDerivativeMode.FiniteDifference,
+                FilteredCatalogSearchPaths = FindFilteredCatalogPaths(),
+                OnProgress = p => AnsiConsole.MarkupLine($"  [grey]{Markup.Escape(p.StatusMessage)}[/]"),
+            };
+
+            AnsiConsole.MarkupLine("[bold]Starting Global Search[/]");
+            AnsiConsole.MarkupLine($"  Models: {gs.ModelsToKeep}, max restarts: {gs.MaxRestarts}, trials/restart: {gs.MaxTrialsPerRestart}, LM/trial: {gs.Multistart.LmIterationsPerTrial}");
+            AnsiConsole.MarkupLine($"  Base seed: {gs.BaseSeed}, stall-at-cap: {gs.StopAtCapStallBatches}, pre-polish LM: {gs.Multistart.InitialLmIterations}, glass sub: {gs.Multistart.GlassSubstitutionProbability * 100:F0}%");
+            AnsiConsole.MarkupLine("");
+
+            try
+            {
+                var result = svc.Run(_cts.Token);
+
+                AnsiConsole.MarkupLine("");
+                AnsiConsole.MarkupLine($"[bold]Global Search Complete[/]  {Markup.Escape(result.Message)}");
+
+                System.IO.Directory.CreateDirectory(outDir);
+                string title = string.IsNullOrWhiteSpace(system.Title) ? "design" : system.Title;
+                int n = 0;
+                for (int r = 0; r < result.Models.Count; r++)
+                {
+                    var mdl = result.Models[r];
+                    string glassTag = mdl.GlassSet.Count > 0 ? string.Join("-", mdl.GlassSet) : "noglass";
+                    string form = string.IsNullOrEmpty(mdl.PowerSignSignature) ? "-" : mdl.PowerSignSignature;
+                    string name = SanitizeFileName($"{title}_global_rank{r + 1}_seed{mdl.Seed}_merit{mdl.Merit:G4}_{glassTag}");
+                    string path = System.IO.Path.Combine(outDir, name + ".lhlt");
+                    try { LensHH.Core.IO.LhltWriter.Write(mdl.System, path, mf, session.ConfigEditor); n++; }
+                    catch (Exception ex) { AnsiConsole.MarkupLine($"  [yellow]write failed: {Markup.Escape(ex.Message)}[/]"); }
+                    AnsiConsole.MarkupLine($"  #{r + 1}  merit {mdl.Merit:E4}  form {form}  [[{Markup.Escape(glassTag)}]]  seed {mdl.Seed}");
+                }
+                AnsiConsole.MarkupLine($"  Wrote {n} design(s) to {Markup.Escape(System.IO.Path.GetFullPath(outDir))}");
+            }
+            finally
+            {
+                Console.CancelKeyPress -= OnCancelKeyPress;
+                _cts = null;
+            }
+        }
+
+        private static string SanitizeFileName(string s)
+        {
+            var sb = new System.Text.StringBuilder(s.Length);
+            foreach (char c in s)
+                sb.Append(char.IsLetterOrDigit(c) || c == '-' || c == '_' || c == '.' ? c : '_');
+            return sb.ToString();
         }
 
         private void RunBasinHopping(Session session, string[] args)

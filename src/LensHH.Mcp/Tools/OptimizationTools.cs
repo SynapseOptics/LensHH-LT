@@ -407,7 +407,9 @@ namespace LensHH.Mcp.Tools
             return "All variables cleared.";
         }
 
-        [McpServerTool, Description("Run adaptive multistart optimization. Each trial perturbs from the running center, runs Hooke-Jeeves pre-step (robust to merit-function discontinuities), then short LM. Sigma grows on rejection: starts at initialSigma, resets there on any accepted move, and GROWS (×sigmaGrowth) up to sigmaCap on each rejection to escape a stuck basin. Metropolis acceptance keeps a 'currentCenter' that may accept worse-than-best moves with probability exp(-dM/T) so the optimizer can walk out of local basins. Glass-swap trials get LmPerTrial × glassSwapLmMultiplier iterations to recover from the index discontinuity. Parameters: maxTrials (default 2000), lmPerTrial (default 50), initialLm (default 200), initialSigma (default 0.001), sigmaGrowth (default 1.5), sigmaCap (default 0.1), enableMetropolis (default true), metropolisTemperature (default 0 = autotune from first 10 |dM| samples), hjStepsPerTrial (default 50, 0=disable), hjInitialStep (default 0.1), glassSwapLmMultiplier (default 4), glassSubPercent (default 50), constrainedOnly (default false). Per-LocalOptimizer tunables: tolerance (default 1e-10), dampingFactor (default 1e-6), useBroyden (default true), broydenRefreshInterval (default 5). Result is auto-applied to the system.")]
+        // Blocking variant unregistered (2026-06-11): long-running optimizations
+        // are non-blocking only over MCP — use multistart_optimize_start.
+        [Description("Run adaptive multistart optimization. Each trial perturbs from the running center, runs Hooke-Jeeves pre-step (robust to merit-function discontinuities), then short LM. Sigma grows on rejection: starts at initialSigma, resets there on any accepted move, and GROWS (×sigmaGrowth) up to sigmaCap on each rejection to escape a stuck basin. Metropolis acceptance keeps a 'currentCenter' that may accept worse-than-best moves with probability exp(-dM/T) so the optimizer can walk out of local basins. Glass-swap trials get LmPerTrial × glassSwapLmMultiplier iterations to recover from the index discontinuity. Parameters: maxTrials (default 2000), lmPerTrial (default 50), initialLm (default 200), initialSigma (default 0.001), sigmaGrowth (default 1.5), sigmaCap (default 0.1), enableMetropolis (default true), metropolisTemperature (default 0 = autotune from first 10 |dM| samples), hjStepsPerTrial (default 50, 0=disable), hjInitialStep (default 0.1), glassSwapLmMultiplier (default 4), glassSubPercent (default 50), constrainedOnly (default false). Per-LocalOptimizer tunables: tolerance (default 1e-10), dampingFactor (default 1e-6), useBroyden (default true), broydenRefreshInterval (default 5). Result is auto-applied to the system.")]
         public string MultistartOptimize(int maxTrials = 2000, int lmPerTrial = 50, int initialLm = 200,
             double initialSigma = 0.001, double sigmaGrowth = 1.5, double sigmaCap = 0.1,
             bool enableMetropolis = true, double metropolisTemperature = 0.0,
@@ -460,7 +462,8 @@ namespace LensHH.Mcp.Tools
             return sb.ToString();
         }
 
-        [McpServerTool, Description(
+        // Blocking variant unregistered (2026-06-11): use split_element_start.
+        [Description(
             "Split the highest-aberration lens element into two elements with equal power, then optimize glass selection via parallel trials. " +
             "Phases per split: (1) split + add boundary constraints, (2) pre-glass multistart with the original glass, (3) parallel glass-pair trials, (4) post-glass multistart with the winning pair. " +
             "Iteration / trial counts (defaults match the GUI): maxSplits (1), glassTrials (300), lmPerTrial (4000), postSplitLm (4000), preGlassTrials (4000), postGlassTrials (2500), multistartInitialSigma (0.001 — sawtooth perturbation magnitude for the embedded multistarts). " +
@@ -547,7 +550,8 @@ namespace LensHH.Mcp.Tools
             return sb.ToString();
         }
 
-        [McpServerTool, Description(
+        // Blocking variant unregistered (2026-06-11): use basin_hopping_start.
+        [Description(
             "Basin-hopping optimization: a global-ish search that combines a Hooke-Jeeves pattern step + a Levenberg-Marquardt local refinement, with a random Gaussian kick (sigma) between hops to break out of local minima. Optionally substitutes glasses between hops, drawing from filtered or loaded catalogs (same model as Split Element). " +
             "Hop budget: maxHops (default 2000). Per-hop LM iterations: lmIterationsPerHop (default 60). Per-hop Hooke-Jeeves steps: hjStepsPerHop (default 30). " +
             "Kick magnitude: initialPerturbSigma (default 0.001 = 0.1%). HJ step bounds: hjInitialStep (default 0.25), hjMinStep (default 1e-4). " +
@@ -611,7 +615,8 @@ namespace LensHH.Mcp.Tools
             return sb.ToString();
         }
 
-        [McpServerTool, Description(
+        // Blocking variant unregistered (2026-06-11): use synthesis_by_spc_start.
+        [Description(
             "Synthesis by Saddle Point Construction (SPC). Iteratively adds elements by locating saddle points in the merit function vs a null-element curvature, branching into two local minima, and optimizing each branch (including glass trials). Runs in parallel across branches. " +
             "Required: catalogs (comma-separated AGF names). SPC needs a glass pool and will throw if catalogs resolve to zero glasses; pass at least one catalog (e.g. 'S1_GLASS' or 'SCHOTT'). " +
             "Topology: maxElements (default 2 — number of elements to insert). topN (5 — survivors kept per level). " +
@@ -805,6 +810,110 @@ namespace LensHH.Mcp.Tools
                    $"Poll optimize_status(jobId=\"{job.JobId}\") every 10-30 seconds to track progress; " +
                    $"call optimize_cancel(jobId=\"{job.JobId}\") to stop early. " +
                    $"The system will be auto-updated when the job completes.";
+        }
+
+        [McpServerTool, Description(
+            "Start a Global Search in the background and return a job-id immediately (non-blocking). " +
+            "Global Search runs many seeded Multistart restarts from the starting design and collects a pool of structurally-DISTINCT locally-optimal designs — the point is variety, not a single answer. " +
+            "Each pooled design is written as a .lhlt to outputFolder with its seed in the filename; the merit-best design is auto-applied to the current system when the job completes. " +
+            "Poll optimize_status(jobId) for progress (pool count / models-to-keep, best merit); call optimize_cancel(jobId) to stop early (the pool found so far is still written). " +
+            "Reproducibility: the same baseSeed reproduces the same pool exactly; run baseSeed=1, then 2, then 3 to accumulate independent, non-overlapping batches of designs. " +
+            "Params: modelsToKeep (16), maxRestarts (48), maxTrialsPerRestart (2000), lmPerTrial (4000), stallAtCapBatches (1 — restart ends after this many no-improvement batches at the sigma cap), baseSeed (1), glassSubPercent (50), initialSigma (0.001), sigmaCap (0.01), prePolishLm (0 = perturb the raw start design; >0 LM-polishes it once first), rescaleOnGlassSwap (true), useNativeEngine (true), analyticDerivative (true), outputFolder ('global_search_results').")]
+        public string GlobalSearchStart(
+            int modelsToKeep = 16, int maxRestarts = 48, int maxTrialsPerRestart = 2000,
+            int lmPerTrial = 4000, int stallAtCapBatches = 1, int baseSeed = 1,
+            double glassSubPercent = 50, double initialSigma = 0.001, double sigmaCap = 0.01,
+            int prePolishLm = 0, bool rescaleOnGlassSwap = true,
+            bool useNativeEngine = true, bool analyticDerivative = true,
+            string outputFolder = "global_search_results")
+        {
+            { var ge = _session.ValidateGlass(); if (ge != null) return ge; }
+            if (_session.MeritFunction == null || _session.MeritFunction.Operands.Count == 0)
+                return "No operands in merit function. Add operands first.";
+
+            string folder = string.IsNullOrWhiteSpace(outputFolder) ? "global_search_results" : outputFolder;
+            try { System.IO.Directory.CreateDirectory(folder); }
+            catch (Exception ex) { return $"Cannot create output folder '{folder}': {ex.Message}"; }
+
+            var configEditor = _session.ConfigEditor;
+            var mf = _session.MeritFunction;
+
+            var settings = new GlobalSearchSettings
+            {
+                ModelsToKeep = modelsToKeep,
+                MaxRestarts = maxRestarts,
+                MaxTrialsPerRestart = maxTrialsPerRestart,
+                StopAtCapStallBatches = stallAtCapBatches,
+                BaseSeed = baseSeed,
+                Multistart = new MultistartSettings
+                {
+                    InitialSigma = initialSigma,
+                    SigmaCap = sigmaCap,
+                    GlassSubstitutionProbability = glassSubPercent / 100.0,
+                    RescaleCurvatureOnGlassSwap = rescaleOnGlassSwap,
+                    LmIterationsPerTrial = lmPerTrial,
+                    InitialLmIterations = prePolishLm,
+                },
+                ArchiveWriter = (name, sys, m) =>
+                {
+                    try { LensHH.Core.IO.LhltWriter.Write(sys, System.IO.Path.Combine(folder, name + ".lhlt"), m, configEditor); }
+                    catch { /* best-effort archive */ }
+                },
+            };
+
+            var job = new RunningJob(kind: "global_search") { MaxTrials = modelsToKeep };
+            var svc = new GlobalSearchService(_session.System, mf, _session.GlassCatalog, configEditor)
+            {
+                Settings = settings,
+                EngineMode = useNativeEngine ? EngineMode.Native : EngineMode.CSharp,
+                NativeDerivativeMode = analyticDerivative
+                    ? LensHH.Core.NativeInterop.MeritDerivativeMode.Analytic
+                    : LensHH.Core.NativeInterop.MeritDerivativeMode.FiniteDifference,
+                FilteredCatalogSearchPaths = FindFilteredCatalogPaths(),
+                OnProgress = p =>
+                {
+                    job.Phase = p.StatusMessage;
+                    job.Trial = p.PoolCount;
+                    job.MaxTrials = p.ModelsToKeep;
+                    if (!double.IsNaN(p.BestMerit)) job.BestMerit = p.BestMerit;
+                },
+            };
+
+            job.Task = Task.Run(() =>
+            {
+                try
+                {
+                    var result = svc.Run(job.Cts.Token);
+                    job.BestMerit = result.Best?.Merit ?? double.NaN;
+                    job.Trial = result.Models.Count;
+                    // Apply the merit-best design so subsequent tools see it.
+                    if (result.Best != null) _session.System.CopyFrom(result.Best.System);
+
+                    if (result.Cancelled && result.Models.Count == 0) { job.Cancel(); return; }
+
+                    var sb = new StringBuilder();
+                    sb.AppendLine($"Global Search {(result.Cancelled ? "Stopped" : "Complete")} — {result.Models.Count} distinct design(s)");
+                    sb.AppendLine($"  {result.Message}");
+                    sb.AppendLine($"  Files written to: {System.IO.Path.GetFullPath(folder)}");
+                    for (int r = 0; r < result.Models.Count; r++)
+                    {
+                        var mdl = result.Models[r];
+                        string glassTag = mdl.GlassSet.Count > 0 ? string.Join("-", mdl.GlassSet) : "noglass";
+                        string form = string.IsNullOrEmpty(mdl.PowerSignSignature) ? "-" : mdl.PowerSignSignature;
+                        sb.AppendLine($"  #{r + 1}  merit {mdl.Merit:E4}  form {form}  [{glassTag}]  seed {mdl.Seed}");
+                    }
+                    sb.AppendLine("  Best (rank 1) applied to the current system.");
+                    job.Complete(sb.ToString());
+                }
+                catch (OperationCanceledException) { job.Cancel(); }
+                catch (Exception ex) { job.Fault(ex); }
+            });
+
+            _session.AddJob(job);
+            return $"Started global search job. jobId={job.JobId}\n" +
+                   $"Poll optimize_status(jobId=\"{job.JobId}\") every 10-30 seconds (shows pool count / best merit); " +
+                   $"call optimize_cancel(jobId=\"{job.JobId}\") to stop early. " +
+                   $"Designs are written to '{folder}'; the best is auto-applied when the job completes.";
         }
 
         [McpServerTool, Description(

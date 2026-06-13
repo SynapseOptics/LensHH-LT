@@ -128,6 +128,11 @@ for f in "$REPO_ROOT/engine/win-x64/lenshh_native.dll" \
 done
 echo "Engine build-configuration check (engine/<rid> staging): OK"
 
+# ── Guard: the managed engine DLL must be the obfuscated (Reactor) build. ──
+# The dotnet publishes below copy engine/LensHH.Core.dll via HintPath; a dev
+# (plain) DLL must never ride into a release. Fail-closed.
+bash "$SCRIPT_DIR/verify-engine-obfuscated.sh" "$REPO_ROOT/engine/LensHH.Core.dll"
+
 # ── Step 3: Build .NET app for linux-x64 ──
 echo
 echo "=== Publishing .NET app (linux-x64) ==="

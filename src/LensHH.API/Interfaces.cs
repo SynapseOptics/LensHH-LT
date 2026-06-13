@@ -176,6 +176,14 @@ namespace LensHH.API
             System.Action<SpcSynthesisProgress>? onProgress = null,
             System.Threading.CancellationToken stopToken = default,
             System.Threading.CancellationToken skipPhaseToken = default);
+
+        /// <summary>Run Global Search — many seeded restarts from the original
+        /// design, returning a pool of distinct locally-optimal designs.</summary>
+        GlobalSearchResult GlobalSearch(GlobalSearchSettings? settings = null,
+            bool useNativeEngine = false, bool analyticDerivative = false,
+            string[]? filteredCatalogPaths = null,
+            System.Action<GlobalSearchProgress>? onProgress = null,
+            System.Threading.CancellationToken cancellationToken = default);
     }
 
     /// <summary>

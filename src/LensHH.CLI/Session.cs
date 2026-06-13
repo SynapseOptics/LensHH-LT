@@ -195,14 +195,19 @@ namespace LensHH.CLI
 
                 foreach (var path in searchPaths)
                 {
-                    // Check direct path and Glass/ subdirectory
+                    // Check direct path and Glass/ subdirectory. Don't pre-filter
+                    // with a "*.agf" glob: Linux filesystems are case-sensitive, so
+                    // it silently misses shipped-uppercase "SCHOTT.AGF" / "HOYA.AGF".
+                    // LoadCatalogsFromFolder already filters by extension
+                    // case-insensitively and no-ops on a missing/empty folder, so
+                    // just hand it the directory and check whether anything loaded.
                     var glassPaths = new[] { path, Path.Combine(path, "Glass") };
                     foreach (var gp in glassPaths)
                     {
-                        if (Directory.Exists(gp) && Directory.GetFiles(gp, "*.agf").Length > 0)
+                        if (Directory.Exists(gp))
                         {
                             GlassCatalog.LoadCatalogsFromFolder(gp);
-                            break;
+                            if (GlassCatalog.LoadedCatalogs.Count > 0) break;
                         }
                     }
                     if (GlassCatalog.LoadedCatalogs.Count > 0) break;

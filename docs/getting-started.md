@@ -588,7 +588,8 @@ most room to move, which happened to be on-axis.
 
 For escaping local minima and pushing the off-axis fields harder,
 see Multistart and Basin Hopping in the
-[Optimization](optimization.md) page.
+[Optimization](optimization.md) page — or Global Search there to
+collect a gallery of distinct design forms to choose among.
 
 ## File Types
 

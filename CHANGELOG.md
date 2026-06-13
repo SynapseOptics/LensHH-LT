@@ -2,6 +2,35 @@
 
 All notable changes to LensHH-LT and the LensHH-LT-Engine.
 
+## 1.0.121 — 2026-06-13
+
+### Global Search (new optimization mode)
+- **New "Global Search" mode.** Instead of returning a single best design, it
+  runs N independent Multistart restarts from your starting point and collects a
+  browsable **gallery of structurally-distinct, locally-optimized solutions**.
+  Each restart uses a non-overlapping random seed, and results are de-duplicated
+  by lens *form* (glass set + element power-sign signature) so the gallery shows
+  genuinely different design forms — not near-copies of one. Available in the GUI
+  (Global Search dialog), the CLI (`optimize global`), the API, and the MCP server.
+
+### MCP server
+- **Long-running operations are now non-blocking.** Multistart, Basin Hopping,
+  Split-Element, SPC synthesis, and the new Global Search no longer tie up the MCP
+  connection while they run. Each exposes a `*_start` tool that launches the run
+  and returns a job id; poll `optimize_status` for progress and the final result.
+  The old blocking variants were removed.
+
+### Fixes
+- **`add_surface` no longer crashes ray tracing.** Surfaces added with the
+  `add_surface` MCP tool stored a *null* material for air surfaces, which raised a
+  `NullReferenceException` ("object reference not set") in the ray tracer — while
+  `add_singlet`-created surfaces worked. `add_surface` now uses the same empty-air
+  convention as the rest of the engine.
+- **Engine hardening against null materials.** A surface's material can no longer
+  be null (it is coerced to the empty-air convention at the data model), so a null
+  from any tool, an older or externally-authored `.lhlt`, or a missing field can't
+  crash ray tracing on any platform.
+
 ## 1.0.120 — 2026-06-11
 
 ### Multistart (global optimization)

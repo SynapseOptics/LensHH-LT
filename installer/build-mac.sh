@@ -99,6 +99,23 @@ echo "=== [4/5] Deploying LensHH.Core.dll to LT/engine/ ==="
 cp "$ENGINE/Core/bin/Release/netstandard2.0/LensHH.Core.dll" "$LT_ROOT/engine/LensHH.Core.dll"
 # Intentionally not copying .pdb — keep symbol files out of the shipped tree.
 
+# WARNING: this is a DEVELOPER build. .NET Reactor is Windows-only (the
+# ProtectWithReactor MSBuild target is gated on '$(OS)'=='Windows_NT'), so the
+# DLL just deployed is a NON-OBFUSCATED (dev) build. It is fine for local
+# `dotnet run`, but it MUST NOT ship. Release packaging guards against it
+# (installer/verify-engine-obfuscated.sh, build-installer.bat), but make the
+# state loud here so nobody packages a release straight off a mac dev build.
+if ! grep -q -a 'SuppressIldasmAttribute' "$LT_ROOT/engine/LensHH.Core.dll"; then
+    echo ""
+    echo "  ****************************************************************"
+    echo "  *  WARNING: engine/LensHH.Core.dll is now a NON-OBFUSCATED    *"
+    echo "  *  (dev) build — fine for local dotnet run, NEVER for release.*"
+    echo "  *  Before any release, restore the Windows Reactor-protected  *"
+    echo "  *  DLL (publish-obfuscated.bat) into engine/LensHH.Core.dll.   *"
+    echo "  ****************************************************************"
+    echo ""
+fi
+
 # -------------------------
 # 5. App build
 # -------------------------

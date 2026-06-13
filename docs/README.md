@@ -31,8 +31,8 @@ and the programmatic interfaces.
   interpretation tips.
 - **[Merit Function Reference](merit-function.md)** — every merit function
   operand with its inputs, meaning, and typical usage.
-- **[Optimization](optimization.md)** — the three optimizers (Local LM,
-  Multistart, Basin Hopping) plus design-shape operators
+- **[Optimization](optimization.md)** — the optimizers (Local LM,
+  Multistart, Global Search, Basin Hopping) plus design-shape operators
   (split-element, SPC synthesis), and when to use each.
 - **[Glass Catalogs](glass-catalogs.md)** — AGF format, the five shipping
   catalogs, preference order, custom catalogs via GlassCatalogGenerator,

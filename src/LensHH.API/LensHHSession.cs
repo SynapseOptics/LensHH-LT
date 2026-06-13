@@ -983,6 +983,35 @@ namespace LensHH.API
             return optimizer.Optimize(cancellationToken);
         }
 
+        /// <summary>Run Global Search — many seeded Multistart restarts from the
+        /// original design, returning a pool of distinct locally-optimal designs.
+        /// Does not mutate the session system; apply or save pooled designs from the
+        /// returned result.</summary>
+        public GlobalSearchResult GlobalSearch(
+            GlobalSearchSettings? settings = null,
+            bool useNativeEngine = false,
+            bool analyticDerivative = false,
+            string[]? filteredCatalogPaths = null,
+            Action<GlobalSearchProgress>? onProgress = null,
+            System.Threading.CancellationToken cancellationToken = default)
+        {
+            ValidateGlass();
+            if (MeritFunction == null) throw new InvalidOperationException("No merit function defined.");
+            var service = new GlobalSearchService(_system!, MeritFunction, GlassCatalog, ConfigEditor)
+            {
+                Settings = settings ?? new GlobalSearchSettings(),
+                EngineMode = useNativeEngine
+                    ? LensHH.Core.MeritFunction.EngineMode.Native
+                    : LensHH.Core.MeritFunction.EngineMode.CSharp,
+                NativeDerivativeMode = analyticDerivative
+                    ? LensHH.Core.NativeInterop.MeritDerivativeMode.Analytic
+                    : LensHH.Core.NativeInterop.MeritDerivativeMode.FiniteDifference,
+                FilteredCatalogSearchPaths = filteredCatalogPaths ?? new string[0],
+                OnProgress = onProgress,
+            };
+            return service.Run(cancellationToken);
+        }
+
         /// <summary>Run split element synthesis.</summary>
         public SplitElementResult SplitElement(SplitElementSettings settings,
             System.Threading.CancellationToken cancellationToken = default)

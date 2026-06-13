@@ -23,7 +23,15 @@ namespace LensHH.Mcp.Tools
             {
                 Radius = radius,
                 Thickness = thickness,
-                Material = string.IsNullOrWhiteSpace(material) ? null : material,
+                // Air surfaces MUST use "" (empty string), never null. The Surface
+                // model defaults Material to string.Empty and the ray tracer does
+                // `surface.Material.Equals("MIRROR", …)` (ParaxialRayTracer,
+                // RayTracerRobust, RayTracer) plus NativeMarshaling — all of which
+                // throw NullReferenceException ("object reference not set") on a
+                // null material. Mapping empty input to null (the old behavior) is
+                // what crashed ray tracing for add_surface-created surfaces while
+                // add_singlet (which sets "") worked. Matches the .lhlt convention.
+                Material = string.IsNullOrWhiteSpace(material) ? string.Empty : material,
                 Conic = conic
             };
 
