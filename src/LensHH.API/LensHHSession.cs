@@ -1012,6 +1012,42 @@ namespace LensHH.API
             return service.Run(cancellationToken);
         }
 
+        /// <summary>Run the DE starting-design pipeline (DE seed search → focus+EFL conditioner →
+        /// LM / Multistart polish of the best candidates).</summary>
+        public DePipelineResult DeStartingDesignPipeline(
+            DePipelineSettings? settings = null,
+            Action<GlobalSearchProgress>? onProgress = null,
+            System.Threading.CancellationToken cancellationToken = default)
+        {
+            ValidateGlass();
+            if (MeritFunction == null) throw new InvalidOperationException("No merit function defined.");
+            var pipeline = new DeOptimizationPipeline(_system!, MeritFunction, GlassCatalog, ConfigEditor)
+            {
+                Settings = settings ?? new DePipelineSettings(),
+                OnProgress = onProgress,
+            };
+            return pipeline.Run(cancellationToken);
+        }
+
+        /// <summary>Polish a previously-saved DE seed set (skip the DE search). Each system must
+        /// match the loaded design's structure or this throws ArgumentException naming the offender.</summary>
+        public DePipelineResult DePolishSavedSeeds(
+            System.Collections.Generic.IReadOnlyList<LensHH.Core.Models.OpticalSystem> savedSystems,
+            System.Collections.Generic.IReadOnlyList<string>? labels = null,
+            DePipelineSettings? settings = null,
+            Action<GlobalSearchProgress>? onProgress = null,
+            System.Threading.CancellationToken cancellationToken = default)
+        {
+            ValidateGlass();
+            if (MeritFunction == null) throw new InvalidOperationException("No merit function defined.");
+            var pipeline = new DeOptimizationPipeline(_system!, MeritFunction, GlassCatalog, ConfigEditor)
+            {
+                Settings = settings ?? new DePipelineSettings(),
+                OnProgress = onProgress,
+            };
+            return pipeline.PolishExisting(savedSystems, labels, cancellationToken);
+        }
+
         /// <summary>Run split element synthesis.</summary>
         public SplitElementResult SplitElement(SplitElementSettings settings,
             System.Threading.CancellationToken cancellationToken = default)

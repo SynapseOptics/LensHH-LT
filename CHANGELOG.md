@@ -2,6 +2,37 @@
 
 All notable changes to LensHH-LT and the LensHH-LT-Engine.
 
+## 1.0.122 — 2026-06-15
+
+### Global Evolutionary Optimization (new — formerly "DE Starting-Design Pipeline")
+- **New "Global Evolutionary Optimization"** — generates a diverse pool of
+  starting designs from scratch (even flat parallel plates): a Differential-
+  Evolution population search explores glass + form, with a per-member **focus +
+  EFL conditioner**, then polishes the best N seeds with **Multistart-LM (default)
+  or Local-LM** into a gallery. All pre-polish seeds are saved by default.
+- **GPU-resident DE (optional).** With a CUDA device the whole vary→condition→
+  evaluate→select loop runs on-device and the population fills the GPU; bit-
+  identical to the CPU path otherwise.
+- **Reproducible** — the whole run (DE search **and** Multistart polish) reproduces
+  from the Base seed (each candidate's polish is seeded `BaseSeed + rank`).
+- **Run logs** — each run writes a `de_run_*.log` (settings header + per-candidate
+  source / merit-before / merit-after / polish-time) outside the lens-file folders,
+  for easy run-to-run comparison.
+- **Polish a saved set** — re-polish a folder of previously-saved DE seeds without
+  re-running the search.
+- Controls: GPU on/off, generations, population, glass-sub %, the focus/EFL
+  conditioner (surfaces + EFL-adjust tolerance, default ±5%), polish method/count,
+  and the Multistart polish knobs (trials, stop@cap, σ start/cap, LM/trial).
+- Available in the GUI, CLI (`optimize deseed`), MCP (`de_pipeline_*`), and C# API.
+
+### Optimization menu
+- Renamed **"Global Search" → "Global Multi Start Optimization"** and reordered the
+  Optimization menu so the two global modes group below Basin-Hopping HJ+LM.
+
+### Linux
+- The Linux native library is now built against **glibc 2.35** (Ubuntu 22.04), so
+  it loads on 22.04 and newer (a pre-release `.so` required GLIBC_2.38).
+
 ## 1.0.121 — 2026-06-13
 
 ### Global Search (new optimization mode)

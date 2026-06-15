@@ -184,6 +184,27 @@ namespace LensHH.API
             string[]? filteredCatalogPaths = null,
             System.Action<GlobalSearchProgress>? onProgress = null,
             System.Threading.CancellationToken cancellationToken = default);
+
+        /// <summary>Run the DE starting-design pipeline — Differential-Evolution seed search
+        /// (GPU-resident when a CUDA device is present and <see cref="DePipelineSettings.UseGpu"/>
+        /// is set — population fills the device — else CPU) with the focus+EFL conditioner, then
+        /// Local-LM or Multistart-LM polish of the best candidates. Returns the pre-polish seed
+        /// pool plus the polished candidates (best-first). The caller saves the pools.</summary>
+        DePipelineResult DeStartingDesignPipeline(DePipelineSettings? settings = null,
+            System.Action<GlobalSearchProgress>? onProgress = null,
+            System.Threading.CancellationToken cancellationToken = default);
+
+        /// <summary>Polish a previously-saved DE seed set, skipping the DE search. Every system
+        /// must match the loaded design's structure (surface count + merit operands) or this
+        /// throws <see cref="System.ArgumentException"/> naming the offender. Same polish defaults
+        /// and reporting as <see cref="DeStartingDesignPipeline"/>; result timing reflects no DE
+        /// phase.</summary>
+        DePipelineResult DePolishSavedSeeds(
+            System.Collections.Generic.IReadOnlyList<LensHH.Core.Models.OpticalSystem> savedSystems,
+            System.Collections.Generic.IReadOnlyList<string>? labels = null,
+            DePipelineSettings? settings = null,
+            System.Action<GlobalSearchProgress>? onProgress = null,
+            System.Threading.CancellationToken cancellationToken = default);
     }
 
     /// <summary>

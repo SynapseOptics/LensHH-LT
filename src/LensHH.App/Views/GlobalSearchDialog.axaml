@@ -3,7 +3,7 @@
         xmlns:vm="using:LensHH.App.ViewModels"
         x:Class="LensHH.App.Views.GlobalSearchDialog"
         x:DataType="vm:GlobalSearchDialogViewModel"
-        Title="Global Search"
+        Title="Global Multi Start Optimization"
         Icon="avares://LensHH.App/Assets/icon_256.png"
         Width="1040" Height="760"
         WindowStartupLocation="CenterOwner"
@@ -22,46 +22,46 @@
         <WrapPanel Orientation="Horizontal">
           <StackPanel Margin="0,0,16,6" Width="150">
             <TextBlock Text="Models to keep" FontSize="11"/>
-            <NumericUpDown Value="{Binding ModelsToKeep}" Minimum="1" Maximum="200" Increment="1" FormatString="0"/>
+            <NumericUpDown Value="{Binding ModelsToKeep, UpdateSourceTrigger=LostFocus}" Minimum="1" Maximum="200" Increment="1" FormatString="0"/>
           </StackPanel>
           <StackPanel Margin="0,0,16,6" Width="150">
             <TextBlock Text="Max restarts" FontSize="11"/>
-            <NumericUpDown Value="{Binding MaxRestarts}" Minimum="1" Maximum="2000" Increment="1" FormatString="0"/>
+            <NumericUpDown Value="{Binding MaxRestarts, UpdateSourceTrigger=LostFocus}" Minimum="1" Maximum="2000" Increment="1" FormatString="0"/>
           </StackPanel>
           <StackPanel Margin="0,0,16,6" Width="160">
             <TextBlock Text="Max trials / restart" FontSize="11"/>
-            <NumericUpDown Value="{Binding MaxTrialsPerRestart}" Minimum="1" Maximum="100000" Increment="50" FormatString="0"/>
+            <NumericUpDown Value="{Binding MaxTrialsPerRestart, UpdateSourceTrigger=LostFocus}" Minimum="1" Maximum="100000" Increment="50" FormatString="0"/>
           </StackPanel>
           <StackPanel Margin="0,0,16,6" Width="150">
             <TextBlock Text="LM iters / trial" FontSize="11"/>
-            <NumericUpDown Value="{Binding LmIterationsPerTrial}" Minimum="1" Maximum="100000" Increment="100" FormatString="0"/>
+            <NumericUpDown Value="{Binding LmIterationsPerTrial, UpdateSourceTrigger=LostFocus}" Minimum="1" Maximum="100000" Increment="100" FormatString="0"/>
           </StackPanel>
           <StackPanel Margin="0,0,16,6" Width="150">
             <TextBlock Text="Stall-at-cap batches" FontSize="11"/>
-            <NumericUpDown Value="{Binding StopAtCapStallBatches}" Minimum="1" Maximum="1000" Increment="1" FormatString="0"/>
+            <NumericUpDown Value="{Binding StopAtCapStallBatches, UpdateSourceTrigger=LostFocus}" Minimum="1" Maximum="1000" Increment="1" FormatString="0"/>
           </StackPanel>
           <StackPanel Margin="0,0,16,6" Width="110">
             <TextBlock Text="Base seed" FontSize="11"/>
-            <NumericUpDown Value="{Binding BaseSeed}" Minimum="0" Maximum="1000000" Increment="1" FormatString="0"/>
+            <NumericUpDown Value="{Binding BaseSeed, UpdateSourceTrigger=LostFocus}" Minimum="0" Maximum="1000000" Increment="1" FormatString="0"/>
           </StackPanel>
         </WrapPanel>
 
         <WrapPanel Orientation="Horizontal">
           <StackPanel Margin="0,0,16,6" Width="150">
             <TextBlock Text="Glass sub. (%)" FontSize="11"/>
-            <NumericUpDown Value="{Binding GlassSubstitutionProbability}" Minimum="0" Maximum="100" Increment="5" FormatString="0"/>
+            <NumericUpDown Value="{Binding GlassSubstitutionProbability, UpdateSourceTrigger=LostFocus}" Minimum="0" Maximum="100" Increment="5" FormatString="0"/>
           </StackPanel>
           <StackPanel Margin="0,0,16,6" Width="160">
             <TextBlock Text="Pre-polish LM (0=off)" FontSize="11"/>
-            <NumericUpDown Value="{Binding InitialLmPolish}" Minimum="0" Maximum="100000" Increment="50" FormatString="0"/>
+            <NumericUpDown Value="{Binding InitialLmPolish, UpdateSourceTrigger=LostFocus}" Minimum="0" Maximum="100000" Increment="50" FormatString="0"/>
           </StackPanel>
           <StackPanel Margin="0,0,16,6" Width="150">
             <TextBlock Text="Init sigma" FontSize="11"/>
-            <NumericUpDown Value="{Binding InitialSigma}" Minimum="0.0001" Maximum="1" Increment="0.0005" FormatString="0.0000"/>
+            <NumericUpDown Value="{Binding InitialSigma, UpdateSourceTrigger=LostFocus}" Minimum="0.0001" Maximum="1" Increment="0.0005" FormatString="0.0000"/>
           </StackPanel>
           <StackPanel Margin="0,0,16,6" Width="150">
             <TextBlock Text="Sigma cap" FontSize="11"/>
-            <NumericUpDown Value="{Binding SigmaCap}" Minimum="0.001" Maximum="1" Increment="0.01" FormatString="0.000"/>
+            <NumericUpDown Value="{Binding SigmaCap, UpdateSourceTrigger=LostFocus}" Minimum="0.001" Maximum="1" Increment="0.01" FormatString="0.000"/>
           </StackPanel>
           <StackPanel Margin="0,0,16,6" Width="140">
             <TextBlock Text="Engine" FontSize="11"/>

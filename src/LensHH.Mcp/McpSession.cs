@@ -196,6 +196,13 @@ namespace LensHH.Mcp
         /// </summary>
         public SasianDesignService SasianDesign { get; } = new SasianDesignService();
 
+        /// <summary>
+        /// Backing store for the de_pipeline_* MCP tools — the full DE → (LM | Multistart)
+        /// starting-design pipeline (GPU flag, focus+EFL conditioner, save-pre-polish). Per-job
+        /// state keyed by jobId; persists for the life of the session.
+        /// </summary>
+        public DePipelineService DePipeline { get; } = new DePipelineService();
+
         public string? CurrentFilePath
         {
             get => _currentFilePath;

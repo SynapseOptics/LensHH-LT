@@ -1,15 +1,18 @@
 # Optimization
 
 LensHH-LT ships three core optimizers — Local, Multistart, and Basin
-Hopping — plus a **Global Search** mode built on Multistart. All of them
+Hopping — plus two global modes: **Global Multi Start Optimization**
+(many Multistart restarts) and **Global Evolutionary Optimization** (a
+GPU-capable Differential-Evolution population search). All of them
 minimize the same merit function (see the
 [Merit Function Reference](merit-function.md)) but differ in how they
 explore the variable space.
 
 A typical workflow stages them:
 
-1. **Search** with Multistart, Basin Hopping, or Global Search when
-   you don't trust the starting basin.
+1. **Search** with Multistart, Basin Hopping, Global Multi Start
+   Optimization, or Global Evolutionary Optimization when you don't
+   trust the starting basin.
 2. **Refine** with the Local Optimizer once you're in the right
    basin.
 3. **Polish** with one more Local pass at the end so the final state
@@ -23,7 +26,8 @@ Skip step 1 if you start from a known-good design; never skip step 3.
 |---|---|---|
 | **Local (LM)** | Refining a design you already trust — polish the last 10% of merit. | Escaping a bad starting point. |
 | **Multistart** | Probing several random starts, LM from each. Cheap way to find a better basin and to vary glass choices. | Genuinely topology-changing exploration (it won't, e.g., find a Cooke triplet from a flat-plate start). |
-| **Global Search** | Surveying the solution space — collecting a *gallery* of distinct, locally-optimized design forms (different power patterns + glasses) to choose among, rather than one winner. | Driving a single design to its absolute lowest merit (use Local/Multistart). |
+| **Global Multi Start Optimization** | Surveying the solution space — collecting a *gallery* of distinct, locally-optimized design forms (different power patterns + glasses) to choose among, rather than one winner. | Driving a single design to its absolute lowest merit (use Local/Multistart). |
+| **Global Evolutionary Optimization** | Building a *gallery* of polished starting designs from a poor or power-free start (e.g. parallel plates) by evolving a whole population in parallel — GPU-accelerated. The fastest "no design → many viable forms" route. | Driving a single chosen design to its absolute lowest merit. |
 | **Basin Hopping** | Heavy single-design exploration — the deepest one run can travel (can change topology). Random perturbations + Hooke-Jeeves pattern search + LM refinement, optionally with glass substitution. | Fast iteration — it's the slowest per run. |
 
 ## Variables
@@ -412,12 +416,15 @@ unlock this design *and* give glass substitution room to
 contribute. If 0.01 still locks, raise further (0.05–0.1) before
 deciding the design is converged for the chosen topology.
 
-## Global Search
+## Global Multi Start Optimization
 
-**Optimization → Global Search…**
+**Optimization → Global Multi Start Optimization…**
 
-Where Multistart returns the *single best* design it found, Global Search
-returns a **gallery of structurally-distinct, locally-optimized designs** — so
+*(Named "Global Search" before 1.0.122.)*
+
+Where Multistart returns the *single best* design it found, Global Multi Start
+Optimization returns a **gallery of structurally-distinct, locally-optimized
+designs** — so
 you can compare genuinely different solution forms (different element
 power-sign patterns, different glass sets) and choose the one that best suits
 your manufacturing and packaging constraints, not only the one with the lowest
@@ -429,7 +436,7 @@ a form signature — the glass set plus the per-element power-sign pattern — s
 the gallery fills with distinct forms rather than many near-copies of the same
 basin. The gallery is sorted best-merit-first.
 
-![Global Search dialog after a run — a gallery of distinct, locally-optimized design forms. Each card shows the layout, merit, power-sign form, and glass set, with **Apply this design** to load it into the workspace.](images/GlobalOptimizer.png)
+![Global Multi Start Optimization dialog after a run — a gallery of distinct, locally-optimized design forms. Each card shows the layout, merit, power-sign form, and glass set, with **Apply this design** to load it into the workspace.](images/GlobalOptimizer.png)
 
 ### Algorithm at a glance
 
@@ -459,12 +466,120 @@ rank named by rank, seed, merit, and glass set.
 
 ### When to use it
 
-Use Global Search to **survey the solution space** of a specification — "what
+Use Global Multi Start Optimization to **survey the solution space** of a specification — "what
 triplet forms reach this f/number and field, and with which glasses?" — rather
 than to drive a single design to its lowest merit. It costs more than one
 Multistart (it is many of them), but it surfaces alternative forms a best-only
-run hides. A good staged workflow: Global Search to enumerate candidate forms →
-pick one → Local (or Basin Hopping) to refine it.
+run hides. A good staged workflow: Global Multi Start Optimization to enumerate
+candidate forms → pick one → Local (or Basin Hopping) to refine it.
+
+## Global Evolutionary Optimization
+
+**Optimization → Global Evolutionary Optimization…**
+
+A population-based **Differential-Evolution (DE)** search that generates a pool
+of distinct starting designs from a poor — or even power-free — start (e.g.
+parallel plates), then polishes the best of them into a gallery. Where
+Multistart and Global Multi Start Optimization perturb *one* design at a time,
+DE evolves a whole **population** of candidates in parallel; and on an NVIDIA
+GPU the entire population is evaluated on-device every generation, so the search
+scales to tens of thousands of members. It is LensHH-LT's fastest route from
+"no design" to "a gallery of viable, polished starting forms."
+
+The run has three stages:
+
+1. **DE seed search.** A population of trial designs is evolved for a number of
+   generations. Each generation mutates and recombines members (DE/rand/1/bin)
+   and keeps the better of trial vs. parent. Glass substitution is part of the
+   search, so members explore both geometry and material.
+2. **Focus + EFL conditioner (§8.5).** After a member is formed, an optional
+   fast solver refocuses it (a secant solve on a compensator thickness) and,
+   when the merit has an EFL target, drives the effective focal length onto
+   target (a Newton solve on a control curvature) — so the population stays near
+   the spec instead of spending generations rediscovering focus. The surfaces it
+   touches are user inputs (auto by default).
+3. **Polish.** The best *N* distinct seeds are polished — **Multistart-LM** by
+   default (a full Multistart run per seed, like the standalone Multistart
+   Optimization) or Local-LM — and shown as a gallery, best-merit-first. **All
+   pre-polish seeds are saved automatically**, so the raw DE pool is never lost.
+
+GPU is a *flag*, not a requirement: with a CUDA device the population is sized to
+fill the GPU automatically (≈6,000 designs on an RTX 4060, ≈34,000 on an H100);
+without one, the same search runs on the CPU at a population you set. The result
+is identical either way.
+
+### Settings
+
+| Setting | Default | Meaning |
+|---|---|---|
+| **Use GPU** | on if available | Run the population on a CUDA device, sized to fill it. Off / no device → CPU at the **Population** you set. |
+| **Generations** | 10000 | DE generations — the dominant cost knob. Reduce on CPU. |
+| **Population** | GPU auto / 256 CPU | CPU population size. Ignored on GPU (auto-filled to device occupancy). |
+| **Seeds to emit** | 16 | How many distinct seeds the DE keeps for polishing. |
+| **Glass sub. %** | 50 | Probability a member draws a fresh glass per substitution-eligible surface, from the per-surface Glass Substitution Settings. |
+| **Base seed** | 1 | RNG seed — the whole run reproduces from it: the DE search **and** the Multistart polish (each candidate's polish is seeded `BaseSeed + rank`). Same Base seed → identical results. |
+| **Focus+EFL conditioner** | on | Master switch for the §8.5 per-member refocus + EFL solve. |
+| **Focus surface** | auto | Surface whose *thickness* the focus solve adjusts. Auto = the airspace before the image plane. |
+| **EFL surface** | auto | Surface whose *curvature* the EFL solve adjusts. Auto = the last powered surface. Only runs when the merit has an EFL target. |
+| **Adjust curvature for EFL** | on | Off → refocus only, never touch curvature for EFL. |
+| **EFL adjust tol** | 0.05 | Only solve EFL when the member is within this fraction of target (0.05 = ±5%); members further off are left for the merit to cull. ≤0 = always. |
+| **Polish** | Multistart LM | How the best seeds are polished: **Multistart LM** (most thorough — a full Multistart run per seed), **Local LM**, or **None** (raw seeds). |
+| **Polish best N** | 16 | How many of the best distinct seeds to polish. |
+| **LM iters** | 4000 | LM iteration cap per candidate on the Local-LM path. |
+| **Output folder** | …/de_pipeline | Pre-polish seeds are auto-saved here; the polished gallery can be saved too. |
+| **Polish previously-saved DE results** | off | Skip the search and re-polish a folder of previously-saved seeds (see below). |
+
+### Live reporting
+
+During a run the dialog reports, in order:
+
+- **DE phase** — the running best merit, **elapsed time**, and **average seconds
+  per generation** (so a long run's finish is predictable).
+- **DE complete** — the best seed merit *before* any polish, and how many
+  distinct seeds were found.
+- **Polish phase** — which candidate is being polished (**"Polishing 5 of 16"**),
+  that candidate's current best merit, and the **best merit across the whole pool
+  so far** — whether the polish runs on the CPU or with the GPU pre-screen.
+
+The same elapsed-time / seconds-per-generation figures and polish progress are
+available from the CLI (`optimize deseed`) and the MCP (`de_pipeline_status`).
+
+### Polish a previously-saved DE result set
+
+A DE search can take a while, and you don't have to repeat it to try a different
+polish. Tick **Polish previously-saved DE results**, point the folder picker at a
+saved seed folder (any folder of `.lhlt` files from a previous run — e.g. the
+auto-saved `seeds_pre_polish/`), and the run **skips the DE search** and polishes
+those designs with the current polish settings. Every file in the folder must
+share the loaded design's structure (same surface count and merit operands); if
+one doesn't, the run stops and names the offending file. From the CLI:
+`optimize deseed polish-folder=DIR`; from the MCP: `de_pipeline_start(...,
+polishFolder="DIR")`; from the API: `DePolishSavedSeeds(...)`.
+
+### When to use it
+
+Reach for Global Evolutionary Optimization when you have **no good starting
+design** — a flat-plate or rough sketch — and want a *spread* of polished, viable
+forms quickly, especially on a GPU. It overlaps Basin Hopping (both can build a
+triplet from parallel plates) and Global Multi Start Optimization (both return a
+gallery), but it gets there by evolving a large population in parallel rather
+than perturbing one design — which is exactly what makes the GPU path so
+effective. A good staged workflow: Global Evolutionary Optimization to generate +
+polish candidate forms → pick one → Local (or Basin Hopping) to refine.
+
+### Case study: parallel plates → polished triplets (GPU)
+
+![Global Evolutionary Optimization — a DE population search (sized to fill the GPU) with the focus+EFL conditioner, then Multistart-LM polish of the best seeds into a gallery of distinct, locally-optimized triplets.](images/EvolutionaryOptimization1.png)
+
+Sample:
+`samples/UserGuide/CookeTripletMultiStartParallelPlate/PPP_TRIPLET_ANY_GLASS_UC.lhlt`
+— three flat plates, 50 mm EFL target, EPD 10, three fields, three wavelengths,
+glass substitution on (CoreSet28). With **Use GPU** on, the population fills the
+device automatically; the DE evolves it for the chosen number of generations, the
+conditioner keeps every member near 50 mm EFL and in focus, and the best 16
+distinct seeds are polished with Multistart-LM. The gallery comes back as a set
+of structurally-distinct triplets, best-merit-first, with all pre-polish seeds
+auto-saved alongside.
 
 ## Basin Hopping (HJ + LM)
 
@@ -472,8 +587,9 @@ pick one → Local (or Basin Hopping) to refine it.
 
 The deepest *single-run* explorer: one Basin Hopping run can travel far
 enough from the start to change topology (e.g. flat plates → Cooke
-triplet), where Multistart's small kicks cannot. (Global Search explores
-along a different axis — it casts the *widest net*, collecting many
+triplet), where Multistart's small kicks cannot. (Global Multi Start
+Optimization explores along a different axis — it casts the *widest net*,
+collecting many
 distinct forms, rather than driving one design as far as possible.)
 Each *hop* runs:
 

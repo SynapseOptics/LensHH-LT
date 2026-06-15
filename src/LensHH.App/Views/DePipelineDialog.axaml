@@ -1,0 +1,194 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:LensHH.App.ViewModels"
+        x:Class="LensHH.App.Views.DePipelineDialog"
+        x:DataType="vm:DePipelineDialogViewModel"
+        Title="Global Evolutionary Optimization"
+        Icon="avares://LensHH.App/Assets/icon_256.png"
+        Width="1040" Height="800"
+        WindowStartupLocation="CenterOwner"
+        CanResize="True"
+        MinWidth="880" MinHeight="640">
+
+  <DockPanel LastChildFill="True" Margin="10">
+
+    <!-- ── Settings + run controls ── -->
+    <Border DockPanel.Dock="Top" BorderBrush="#DDDDDD" BorderThickness="1"
+            CornerRadius="6" Padding="10" Margin="0,0,0,8">
+      <StackPanel Spacing="8">
+        <TextBlock Text="Differential-Evolution seed search (GPU-resident when available — population fills the device — else CPU) with the focus+EFL conditioner, then Local-LM or Multistart-LM polish of the best candidates. All pre-polish seeds are saved automatically."
+                   TextWrapping="Wrap" Foreground="#555555" FontSize="12"/>
+
+        <WrapPanel Orientation="Horizontal">
+          <StackPanel Margin="0,0,16,6" VerticalAlignment="Bottom">
+            <CheckBox Content="Use GPU (fills the device)" IsChecked="{Binding UseGpu}" IsEnabled="{Binding GpuAvailable}"/>
+            <TextBlock Text="No CUDA device — CPU only" FontSize="10" Foreground="#999999" IsVisible="{Binding !GpuAvailable}"/>
+          </StackPanel>
+          <StackPanel Margin="0,0,16,6" Width="150">
+            <TextBlock Text="Generations" FontSize="11"/>
+            <NumericUpDown Value="{Binding Generations, UpdateSourceTrigger=LostFocus}" Minimum="1" Maximum="1000000" Increment="500" FormatString="0"/>
+          </StackPanel>
+          <StackPanel Margin="0,0,16,6" Width="160">
+            <TextBlock Text="Population (CPU; GPU auto)" FontSize="11"/>
+            <NumericUpDown Value="{Binding PopulationSize, UpdateSourceTrigger=LostFocus}" Minimum="4" Maximum="100000" Increment="16" FormatString="0"/>
+          </StackPanel>
+          <StackPanel Margin="0,0,16,6" Width="130">
+            <TextBlock Text="Seeds to emit" FontSize="11"/>
+            <NumericUpDown Value="{Binding SeedsToEmit, UpdateSourceTrigger=LostFocus}" Minimum="1" Maximum="200" Increment="1" FormatString="0"/>
+          </StackPanel>
+          <StackPanel Margin="0,0,16,6" Width="150">
+            <TextBlock Text="Glass sub. (%)" FontSize="11"/>
+            <NumericUpDown Value="{Binding GlassSubstitutionProbability, UpdateSourceTrigger=LostFocus}" Minimum="0" Maximum="100" Increment="5" FormatString="0"/>
+          </StackPanel>
+          <StackPanel Margin="0,0,16,6" Width="110">
+            <TextBlock Text="Base seed" FontSize="11"/>
+            <NumericUpDown Value="{Binding BaseSeed, UpdateSourceTrigger=LostFocus}" Minimum="0" Maximum="1000000" Increment="1" FormatString="0"/>
+          </StackPanel>
+        </WrapPanel>
+
+        <WrapPanel Orientation="Horizontal">
+          <StackPanel Margin="0,0,16,6" VerticalAlignment="Bottom">
+            <CheckBox Content="Adjust Focus" IsChecked="{Binding ConditionFocusEfl}"/>
+            <CheckBox Content="Adjust Curvature for EFL" IsChecked="{Binding AdjustCurvatureForEfl}"
+                      IsEnabled="{Binding ConditionFocusEfl}"/>
+          </StackPanel>
+          <StackPanel Margin="0,0,16,6" Width="170">
+            <TextBlock Text="Focus surface (-1 = auto)" FontSize="11"/>
+            <NumericUpDown Value="{Binding FocusSurface, UpdateSourceTrigger=LostFocus}" Minimum="-1" Maximum="256" Increment="1" FormatString="0"/>
+          </StackPanel>
+          <StackPanel Margin="0,0,16,6" Width="180">
+            <TextBlock Text="EFL surface (-1 = auto)" FontSize="11"/>
+            <NumericUpDown Value="{Binding EflSurface, UpdateSourceTrigger=LostFocus}" Minimum="-1" Maximum="256" Increment="1" FormatString="0"/>
+          </StackPanel>
+          <StackPanel Margin="0,0,16,6" Width="170">
+            <TextBlock Text="EFL adjust tol (≤0=always)" FontSize="11"/>
+            <NumericUpDown Value="{Binding EflAdjustTolerance, UpdateSourceTrigger=LostFocus}" Minimum="0" Maximum="10" Increment="0.05" FormatString="0.000"/>
+          </StackPanel>
+          <StackPanel Margin="0,0,16,6" Width="150">
+            <TextBlock Text="Polish" FontSize="11"/>
+            <ComboBox SelectedIndex="{Binding PolishMethodIndex}" HorizontalAlignment="Stretch">
+              <ComboBoxItem>None</ComboBoxItem>
+              <ComboBoxItem>Local LM</ComboBoxItem>
+              <ComboBoxItem>Multistart LM</ComboBoxItem>
+            </ComboBox>
+          </StackPanel>
+          <StackPanel Margin="0,0,16,6" Width="130">
+            <TextBlock Text="Polish best N" FontSize="11"/>
+            <NumericUpDown Value="{Binding PolishCount, UpdateSourceTrigger=LostFocus}" Minimum="0" Maximum="200" Increment="1" FormatString="0"/>
+          </StackPanel>
+          <StackPanel Margin="0,0,16,6" Width="130" IsEnabled="{Binding PolishIsLocalLm}">
+            <TextBlock Text="LM iters (Local LM)" FontSize="11"/>
+            <NumericUpDown Value="{Binding LmIterations, UpdateSourceTrigger=LostFocus}" Minimum="1" Maximum="100000" Increment="50" FormatString="0"/>
+          </StackPanel>
+        </WrapPanel>
+
+        <!-- Multistart-LM polish tuning (used when Polish = Multistart LM). Exits on cap-stall;
+             trials is a high backstop. -->
+        <WrapPanel Orientation="Horizontal" IsEnabled="{Binding PolishIsMultistart}">
+          <TextBlock Text="Multistart polish:" FontSize="11" VerticalAlignment="Center" Margin="0,0,12,6" Foreground="#555555"/>
+          <StackPanel Margin="0,0,16,6" Width="130">
+            <TextBlock Text="MS trials (backstop)" FontSize="11"/>
+            <NumericUpDown Value="{Binding MsTrials, UpdateSourceTrigger=LostFocus}" Minimum="1" Maximum="1000000" Increment="1000" FormatString="0"/>
+          </StackPanel>
+          <StackPanel Margin="0,0,16,6" Width="120">
+            <TextBlock Text="MS stop@cap" FontSize="11"/>
+            <NumericUpDown Value="{Binding MsStopAtCapStallBatches, UpdateSourceTrigger=LostFocus}" Minimum="0" Maximum="1000" Increment="1" FormatString="0"/>
+          </StackPanel>
+          <StackPanel Margin="0,0,16,6" Width="120">
+            <TextBlock Text="MS σ start" FontSize="11"/>
+            <NumericUpDown Value="{Binding MsInitialSigma, UpdateSourceTrigger=LostFocus}" Minimum="0.0001" Maximum="1" Increment="0.001" FormatString="0.0000"/>
+          </StackPanel>
+          <StackPanel Margin="0,0,16,6" Width="120">
+            <TextBlock Text="MS σ cap" FontSize="11"/>
+            <NumericUpDown Value="{Binding MsSigmaCap, UpdateSourceTrigger=LostFocus}" Minimum="0.001" Maximum="1" Increment="0.001" FormatString="0.000"/>
+          </StackPanel>
+          <StackPanel Margin="0,0,16,6" Width="120">
+            <TextBlock Text="MS LM/trial" FontSize="11"/>
+            <NumericUpDown Value="{Binding MsLmIterationsPerTrial, UpdateSourceTrigger=LostFocus}" Minimum="1" Maximum="100000" Increment="100" FormatString="0"/>
+          </StackPanel>
+        </WrapPanel>
+
+        <StackPanel>
+          <TextBlock Text="Output folder (pre-polish seeds auto-saved here)" FontSize="11"/>
+          <TextBox Text="{Binding OutputDir}"/>
+        </StackPanel>
+
+        <StackPanel Spacing="4">
+          <CheckBox Content="Polish previously-saved DE results (skip the search)" IsChecked="{Binding PolishSavedResults}"/>
+          <Grid ColumnDefinitions="*,Auto" IsEnabled="{Binding PolishSavedResults}">
+            <TextBox Grid.Column="0" Text="{Binding PolishFolder}" Watermark="Folder of saved DE *.lhlt to polish"/>
+            <Button Grid.Column="1" Content="Browse…" Margin="8,0,0,0" Click="BrowsePolishFolder_Click"/>
+          </Grid>
+          <TextBlock Text="Every *.lhlt in the folder must match the loaded design's structure; the polish settings above apply."
+                     FontSize="10" Foreground="#999999" TextWrapping="Wrap" IsVisible="{Binding PolishSavedResults}"/>
+        </StackPanel>
+
+        <Grid ColumnDefinitions="Auto,Auto,*,Auto">
+          <Button Grid.Column="0" Content="Run" Width="100"
+                  Command="{Binding RunCommand}" IsEnabled="{Binding CanRun}" Classes="accent"/>
+          <Button Grid.Column="1" Content="Stop" Width="100" Margin="8,0,0,0"
+                  Command="{Binding StopCommand}" IsEnabled="{Binding IsRunning}"/>
+          <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,12,0">
+            <TextBlock Text="Initial:" Foreground="#888888" FontSize="12"/>
+            <TextBlock Text="{Binding InitialMeritText}" Margin="4,0,12,0" FontSize="12"/>
+            <TextBlock Text="DE best:" Foreground="#888888" FontSize="12"/>
+            <TextBlock Text="{Binding BestMeritText}" Margin="4,0,12,0" FontWeight="Bold" FontSize="12"/>
+            <TextBlock Text="Elapsed:" Foreground="#888888" FontSize="12"/>
+            <TextBlock Text="{Binding ElapsedText}" Margin="4,0,12,0" FontSize="12"/>
+            <TextBlock Text="DE time:" Foreground="#888888" FontSize="12"/>
+            <TextBlock Text="{Binding DeTimingText}" Margin="4,0,0,0" FontSize="12"/>
+          </StackPanel>
+        </Grid>
+
+        <ProgressBar Value="{Binding ProgressFraction}" Minimum="0" Maximum="1" Height="6"/>
+        <TextBlock Text="{Binding StatusText}" FontSize="11" Foreground="#555555" TextWrapping="Wrap"/>
+        <TextBlock Text="{Binding ProgressText}" FontSize="11" Foreground="#888888" TextWrapping="Wrap"/>
+      </StackPanel>
+    </Border>
+
+    <!-- ── Action bar ── -->
+    <Grid DockPanel.Dock="Bottom" ColumnDefinitions="Auto,*,Auto" Margin="0,8,0,0">
+      <Button Grid.Column="0" Content="Save polished…" Click="SaveAll_Click" IsEnabled="{Binding CanSaveAll}"/>
+      <TextBlock Grid.Column="1" VerticalAlignment="Center" Margin="12,0" FontSize="11" Foreground="#888888"
+                 Text="Cards show the polished designs. Click Apply to load one. Pre-polish seeds were auto-saved to the output folder."/>
+      <Button Grid.Column="2" Content="Close" Width="90" Click="Close_Click"/>
+    </Grid>
+
+    <!-- ── Gallery (reuses the Global Search card) ── -->
+    <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+      <ItemsControl ItemsSource="{Binding Cards}">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate>
+            <WrapPanel Orientation="Horizontal"/>
+          </ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:GlobalSearchCardViewModel">
+            <Border Width="272" Margin="6" BorderBrush="#DDDDDD" BorderThickness="1"
+                    CornerRadius="6" Padding="8" Background="White">
+              <StackPanel Spacing="4">
+                <Grid ColumnDefinitions="*,Auto">
+                  <TextBlock Text="{Binding Title}" FontWeight="Bold" FontSize="14"/>
+                  <Border Grid.Column="1" Background="#FFD54F" CornerRadius="3" Padding="5,1"
+                          IsVisible="{Binding IsBest}" VerticalAlignment="Center">
+                    <TextBlock Text="★ best" FontSize="11"/>
+                  </Border>
+                </Grid>
+                <Border Background="White" BorderBrush="#EEEEEE" BorderThickness="1" CornerRadius="3">
+                  <Image Source="{Binding Thumbnail}" Height="128" Stretch="Uniform" Margin="2"/>
+                </Border>
+                <TextBlock Text="{Binding MeritText, StringFormat='Merit: {0}'}" FontSize="12" FontWeight="SemiBold"/>
+                <TextBlock Text="{Binding GlassText}" FontSize="11" Foreground="#555555" TextWrapping="Wrap"/>
+                <TextBlock Text="{Binding InfoText}" FontSize="10" Foreground="#999999" TextWrapping="Wrap"/>
+                <Button Content="Apply this design" HorizontalAlignment="Stretch" Margin="0,2,0,0"
+                        Command="{Binding DataContext.ApplyCardCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                        CommandParameter="{Binding}"/>
+              </StackPanel>
+            </Border>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </ScrollViewer>
+
+  </DockPanel>
+</Window>

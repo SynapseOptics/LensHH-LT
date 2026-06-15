@@ -859,6 +859,19 @@ public partial class MainWindow : Window
             VM.Session.NotifySystemChanged("global-search");
     }
 
+    private async void DePipeline_Click(object? sender, RoutedEventArgs e)
+    {
+        // The DE pipeline works on internal clones — it never mutates the live
+        // system during the run. Only an explicit "Apply this design" inside the
+        // dialog changes the system.
+        var vm = new DePipelineDialogViewModel(VM.Session);
+        var dialog = new DePipelineDialog { DataContext = vm };
+        await dialog.ShowDialog(this);
+
+        if (vm.Accepted)
+            VM.Session.NotifySystemChanged("de-pipeline");
+    }
+
     private async void SplitElement_Click(object? sender, RoutedEventArgs e)
     {
         var snapshot = VM.Session.SnapshotSystem();

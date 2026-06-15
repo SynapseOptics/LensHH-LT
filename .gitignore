@@ -73,3 +73,6 @@ catalogs/Lenses/**/*.dat
 catalogs/Lenses/**/*.DAT
 catalogs/Lenses/**/*.xlsx
 catalogs/Lenses/ThorLabs/zemaxcatalog/
+
+# Avalonia XAML compiler build cache (not source)
+**/.avalonia-build-tasks/

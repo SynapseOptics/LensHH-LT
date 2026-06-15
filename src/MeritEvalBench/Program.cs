@@ -41,12 +41,14 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using LensHH.Core.Enums;
 using LensHH.Core.Glass;
 using LensHH.Core.IO;
 using LensHH.Core.MeritFunction;
 using LensHH.Core.Models;
 using LensHH.Core.NativeInterop;
 using LensHH.Core.Optimization;
+using LensHH.Core.RayTrace;
 using MfMeritFunction = LensHH.Core.MeritFunction.MeritFunction;
 
 namespace MeritEvalBench;
@@ -81,6 +83,10 @@ internal static class Program
         string csvOut = string.Empty;
         // tracebench knobs (FP32-vs-FP64 microbench).
         int tbRays = 1 << 20, tbSurf = 6, tbIters = 200, tbRepeats = 30;
+        // defloor knobs (DE focus+EFL pre-LM floor A/B).
+        int deSeeds = 3, dePop = 48, deGens = 50;
+        bool deResGpuOnly = false;   // deresident: skip the (slow) CPU baseline
+        string deSeedsOut = @"C:\GIT\SynapseLensHH-LT\de_seeds";  // deseeds: output dir for *.lhlt
 
         for (int i = 0; i < args.Length; ++i)
         {
@@ -95,12 +101,17 @@ internal static class Program
             else if (a == "--surfaces") tbSurf = int.Parse(args[++i], CultureInfo.InvariantCulture);
             else if (a == "--iters") tbIters = int.Parse(args[++i], CultureInfo.InvariantCulture);
             else if (a == "--repeats") tbRepeats = int.Parse(args[++i], CultureInfo.InvariantCulture);
+            else if (a == "--seeds") deSeeds = int.Parse(args[++i], CultureInfo.InvariantCulture);
+            else if (a == "--pop") dePop = int.Parse(args[++i], CultureInfo.InvariantCulture);
+            else if (a == "--gens") deGens = int.Parse(args[++i], CultureInfo.InvariantCulture);
+            else if (a == "--gpu-only") deResGpuOnly = true;
+            else if (a == "--outdir") deSeedsOut = args[++i];
             else if (a == "--help" || a == "-h") { PrintUsage(); return 0; }
         }
-        if (mode is not ("value" or "jacobian" or "gpu" or "all" or "prescreen" or "tracebench"))
-        { Console.Error.WriteLine($"ERROR: --mode must be value|jacobian|gpu|all|prescreen|tracebench (was {mode})"); return 1; }
-        // tracebench is a synthetic device trace — it needs no lens.
-        if (lenses.Count == 0 && mode != "tracebench")
+        if (mode is not ("value" or "jacobian" or "gpu" or "all" or "prescreen" or "tracebench" or "defloor" or "deresident" or "deseeds" or "deseedlm" or "seedcsv"))
+        { Console.Error.WriteLine($"ERROR: --mode must be value|jacobian|gpu|all|prescreen|tracebench|defloor|deresident|deseeds|deseedlm|seedcsv (was {mode})"); return 1; }
+        // tracebench (synthetic device trace) + seedcsv (reads a folder of *.lhlt) need no --lens.
+        if (lenses.Count == 0 && mode is not ("tracebench" or "seedcsv"))
         { Console.Error.WriteLine("ERROR: no --lens specified."); PrintUsage(); return 1; }
 
         NativeEngine.EnsureInitialized();
@@ -115,16 +126,21 @@ internal static class Program
                     ? $"license token ({lic.LicenseType}, {lic.DaysUntilExpiry} days left)"
                     : "license token";
             }
-            else if (LensHH.Core.Activation.TrialClock.TryActivateTrial())
-                activation = $"trial ({LensHH.Core.Activation.TrialClock.DaysRemaining} days left)";
             else
-                activation = "⚠ NOT ACTIVATED — C++/GPU cells will fail";
+                activation = "⚠ NOT ACTIVATED — install a license/trial token first (no offline trial); C++/GPU cells will fail";
         }
 
         var catalogsRoot = Path.Combine(AppContext.BaseDirectory, "catalogs");
         var glassMgr = new GlassCatalogManager();
         glassMgr.LoadCatalogsFromFolder(Path.Combine(catalogsRoot, "Glass"));
         glassMgr.LoadCatalogsFromFolder(Path.Combine(catalogsRoot, "FilteredGlassCatalogues"));
+
+        // seedcsv: summarize a folder of *_before/_after.lhlt pairs to CSV. Runs and exits.
+        if (mode == "seedcsv")
+        {
+            RunSeedCsv(deSeedsOut, string.IsNullOrEmpty(csvOut) ? Path.Combine(deSeedsOut, "summary.csv") : csvOut, glassMgr);
+            return 0;
+        }
 
         // GPU-fill design count (driver occupancy). 0 when no GPU/kernel.
         int gpuFill = 0;
@@ -183,6 +199,10 @@ internal static class Program
                 if (mode is "jacobian" or "all") RunJacobian(lensPath, name, glassMgr, nativeOk, seconds, csv);
                 if (mode is "gpu" or "all")      RunGpu(lensPath, name, glassMgr, nativeOk, seconds, gpuFill, cpuBaseline, csv);
                 if (mode is "prescreen")         RunPreScreenCheck(lensPath, name, glassMgr, gpuFill, seconds);
+                if (mode is "defloor")           RunDeFloor(lensPath, name, glassMgr, deSeeds, dePop, deGens);
+                if (mode is "deresident")        RunDeResident(lensPath, name, glassMgr, dePop, deGens, deResGpuOnly);
+                if (mode is "deseeds")           RunDeSeeds(lensPath, name, glassMgr, dePop, deGens, deSeedsOut);
+                if (mode is "deseedlm")          RunDeSeedLm(lensPath, name, glassMgr, dePop, deGens, deSeedsOut);
             }
             catch (Exception ex) { Console.WriteLine($"⚠ {name}: {ex.GetType().Name}: {ex.Message}"); }
         }
@@ -460,6 +480,275 @@ internal static class Program
     }
 
     // ── lens info ──────────────────────────────────────────────────────────────
+    // ── defloor: DE pre-LM merit-floor A/B (focus+EFL conditioning OFF vs ON). ─────
+    //    Same BaseSeed per pair, so the ONLY difference is the per-member focus+EFL
+    //    solve. Reports the best pool merit (the pre-LM floor) each way. If there is
+    //    no material gain, the conditioner is NOT worth porting to the GPU.
+    private static void RunDeFloor(string lensPath, string name, GlassCatalogManager glassMgr,
+        int seeds, int pop, int gens)
+    {
+        Console.WriteLine($"\n── DE focus+EFL floor A/B — {name}  (pop {pop}, gens {gens}, {seeds} seed(s)) ──");
+
+        var probe = LhltReader.Read(lensPath);
+        int nVars;
+        try
+        {
+            var lo = new LocalOptimizer(probe.System, probe.MeritFunction!, glassMgr);
+            lo.CollectVariables(); nVars = lo.Variables.Count;
+        }
+        catch { nVars = -1; }
+        bool hasEfl = probe.MeritFunction!.Operands.Any(o => o.Type == OperandType.EFL && o.IsTargetActive);
+        Console.WriteLine($"   variables: {nVars}   EFL target operand: {(hasEfl ? "yes (EFL solve active)" : "no (focus-only)")}");
+        if (nVars <= 0) { Console.WriteLine("   (no variables — DE seeder cannot run)"); return; }
+
+        // Four variants, same BaseSeed per row so only the conditioning strategy differs.
+        var variants = new (string name, bool on, DeConditionMode mode)[]
+        {
+            ("OFF",        false, DeConditionMode.Always),
+            ("Always",     true,  DeConditionMode.Always),
+            ("KeepBetter", true,  DeConditionMode.KeepIfBetter),
+            ("InitOnly",   true,  DeConditionMode.InitOnly),
+        };
+        var floors = new double[variants.Length][];
+        for (int v = 0; v < variants.Length; v++) floors[v] = new double[seeds];
+
+        Console.WriteLine($"   {"seed",-5}" + string.Concat(variants.Select(x => $" {x.name,14}")));
+        for (int s = 0; s < seeds; s++)
+        {
+            var row = new double[variants.Length];
+            for (int v = 0; v < variants.Length; v++)
+            {
+                row[v] = RunDeOnce(lensPath, glassMgr, s + 1, pop, gens, variants[v].on, variants[v].mode).floor;
+                floors[v][s] = row[v];
+            }
+            Console.WriteLine($"   {s + 1,-5}" + string.Concat(row.Select(f => $" {f,14:E4}")));
+        }
+
+        // Summary vs OFF (variant 0): best-of-pool floor, median %improvement, win-rate.
+        var off = floors[0];
+        Console.WriteLine($"\n   {"variant",-11} {"best-of-pool",14} {"median impr",12} {"win-rate",10}");
+        for (int v = 0; v < variants.Length; v++)
+        {
+            double bestPool = floors[v].Where(x => !double.IsNaN(x)).DefaultIfEmpty(double.NaN).Min();
+            if (v == 0) { Console.WriteLine($"   {variants[v].name,-11} {bestPool,14:E4} {"—",12} {"—",10}"); continue; }
+            var imprs = new List<double>(); int wins = 0, cnt = 0;
+            for (int s = 0; s < seeds; s++)
+            {
+                if (double.IsNaN(off[s]) || double.IsNaN(floors[v][s]) || off[s] <= 0) continue;
+                imprs.Add((off[s] - floors[v][s]) / off[s] * 100.0);
+                if (floors[v][s] < off[s]) wins++; cnt++;
+            }
+            imprs.Sort();
+            double median = imprs.Count > 0 ? imprs[imprs.Count / 2] : double.NaN;
+            Console.WriteLine($"   {variants[v].name,-11} {bestPool,14:E4} {median,10:F1}% {wins,6}/{cnt}");
+        }
+        Console.WriteLine("   (best-of-pool = the floor a multi-seed run actually delivers; median/win-rate measure per-seed robustness)");
+    }
+
+    // ── seedcsv: summarize a folder of *_seedNN_before/_after.lhlt pairs to CSV
+    //    (glasses, merit + EFL + track length, before vs after). Reuses already-written
+    //    seeds — no DE re-run. ──
+    private static void RunSeedCsv(string indir, string csvPath, GlassCatalogManager glassMgr)
+    {
+        Console.WriteLine($"\n── seed CSV summary — {indir} ──");
+        if (!Directory.Exists(indir)) { Console.WriteLine($"   dir not found: {indir}"); return; }
+        var befores = Directory.GetFiles(indir, "*_before.lhlt").OrderBy(f => f, StringComparer.Ordinal).ToList();
+        if (befores.Count == 0) { Console.WriteLine("   no *_before.lhlt files found"); return; }
+
+        var sb = new StringBuilder();
+        sb.AppendLine("seed,glasses,merit_before,merit_after,x_lower,efl_before,efl_after,track_before,track_after");
+        foreach (var bf in befores)
+        {
+            string af = bf.Substring(0, bf.Length - "_before.lhlt".Length) + "_after.lhlt";
+            if (!File.Exists(af)) continue;
+            var rb = LhltReader.Read(bf);
+            var ra = LhltReader.Read(af);
+            double mb = SeedMerit(rb.System, rb.MeritFunction!, glassMgr);
+            double ma = SeedMerit(ra.System, ra.MeritFunction!, glassMgr);
+            double eflB = SeedEfl(rb.System, glassMgr), eflA = SeedEfl(ra.System, glassMgr);
+            double trB = SeedTrack(rb.System), trA = SeedTrack(ra.System);
+            string glasses = string.Join("/", SeedGlasses(rb.System));
+            string seed = Path.GetFileName(bf);
+            seed = seed.Substring(0, seed.Length - "_before.lhlt".Length);
+            double ratio = ma > 1e-30 ? mb / ma : 0;
+            sb.AppendLine($"{seed},{glasses},{mb:E6},{ma:E6},{ratio:F3},{eflB:F4},{eflA:F4},{trB:F4},{trA:F4}");
+            Console.WriteLine($"   {seed}  [{glasses}]  merit {mb:E3}->{ma:E3} ({ratio:F1}x)  EFL {eflA:F2}  track {trA:F2}");
+        }
+        File.WriteAllText(csvPath, sb.ToString());
+        Console.WriteLine($"   CSV written: {csvPath}");
+    }
+
+    private static double SeedMerit(OpticalSystem s, MfMeritFunction mf, GlassCatalogManager g)
+    { try { return new MeritFunctionEvaluator(s, g) { ParallelEvaluation = false }.Evaluate(mf); } catch { return double.NaN; } }
+
+    private static double SeedEfl(OpticalSystem s, GlassCatalogManager g)
+    {
+        try { var idx = g.BuildRefractiveIndexArray(s, s.Wavelengths[s.PrimaryWavelengthIndex].Value);
+              return new ParaxialRayTracer(s, idx).CalculateEfl(); } catch { return double.NaN; }
+    }
+
+    private static double SeedTrack(OpticalSystem s)
+    {
+        double t = 0;
+        for (int i = 1; i < s.Surfaces.Count - 1; i++)
+        { double th = s.Surfaces[i].Thickness; if (!double.IsInfinity(th) && !double.IsNaN(th)) t += th; }
+        return t;
+    }
+
+    private static List<string> SeedGlasses(OpticalSystem s)
+    {
+        var g = new List<string>();
+        foreach (var sf in s.Surfaces)
+        { var m = sf.Material; if (!string.IsNullOrEmpty(m) && !m.Equals("MIRROR", StringComparison.OrdinalIgnoreCase)) g.Add(m); }
+        return g;
+    }
+
+    // ── deseedlm: DE seeder (conditioner ON, GPU-resident) → LM-polish EACH distinct seed,
+    //    recording merit before (DE seed) and after (Levenberg-Marquardt). The full pipeline:
+    //    DE explores glass + form, LM polishes each seed's geometry (glass fixed). Saves the
+    //    before/after pair as *.lhlt per seed. ──
+    private static void RunDeSeedLm(string lensPath, string name, GlassCatalogManager glassMgr,
+        int pop, int gens, string outDir)
+    {
+        Console.WriteLine($"\n── DE seeds → LM polish — {name}  (pop {pop}, gens {gens}, conditioner ON) ──");
+        var read = LhltReader.Read(lensPath);
+
+        var de = new DeSeederService(read.System, read.MeritFunction!, glassMgr);
+        de.Settings.PopulationSize = pop;
+        de.Settings.MaxGenerations = gens;
+        de.Settings.StallGenerations = 0;
+        de.Settings.UseGpu = false;
+        de.Settings.ConditionFocusEfl = true;   // Always
+        de.Settings.SeedsToEmit = 16;
+        var swDe = Stopwatch.StartNew();
+        var result = GpuResidentDe.IsAvailable ? de.RunGpuResident() : de.Run();
+        swDe.Stop();
+        Console.WriteLine($"   DE: {result.Models.Count} distinct seeds in {swDe.Elapsed.TotalSeconds:F1}s  ({(GpuResidentDe.IsAvailable ? "GPU-resident" : "CPU")})");
+        Console.WriteLine();
+        Console.WriteLine($"   {"#",-3} {"glasses",-28} {"merit_before",14} {"merit_after",14} {"x lower",9}  {"LM ms",7}");
+
+        Directory.CreateDirectory(outDir);
+        string stem = Path.GetFileNameWithoutExtension(lensPath);
+        int rank = 1;
+        double sumBefore = 0, sumAfter = 0;
+        foreach (var m in result.Models)
+        {
+            var seed = m.System;
+            // before (the DE seed) — written before LM mutates the system in place
+            LhltWriter.Write(seed, Path.Combine(outDir, $"{stem}_seed{rank:00}_before.lhlt"), read.MeritFunction);
+
+            var opt = new LocalOptimizer(seed, read.MeritFunction!, glassMgr);
+            opt.CollectVariables();
+            var swLm = Stopwatch.StartNew();
+            var lm = opt.Optimize();
+            swLm.Stop();
+
+            // after (the LM-polished design)
+            LhltWriter.Write(seed, Path.Combine(outDir, $"{stem}_seed{rank:00}_after.lhlt"), read.MeritFunction);
+
+            double ratio = lm.FinalMerit > 1e-30 ? lm.InitialMerit / lm.FinalMerit : 0;
+            Console.WriteLine($"   {rank,-3} [{string.Join("/", m.GlassSet),-28}] {lm.InitialMerit,14:E4} {lm.FinalMerit,14:E4} {ratio,8:F1}x  {swLm.Elapsed.TotalMilliseconds,7:F0}");
+            sumBefore += lm.InitialMerit; sumAfter += lm.FinalMerit;
+            rank++;
+        }
+        if (result.Models.Count > 0)
+            Console.WriteLine($"   mean before {sumBefore / result.Models.Count:E4}  ->  after {sumAfter / result.Models.Count:E4}");
+        Console.WriteLine($"   before/after *.lhlt written to {outDir}");
+    }
+
+    // ── deseeds: run the DE seeder (conditioner ON) and save the distinct seed pool as
+    //    *.lhlt for manual inspection. Uses the CPU Run() (equivalent to RunGpuResident —
+    //    validated identical floor) so it needs no GPU. The merit function is written with
+    //    each seed so the inspector sees the same operands. ──
+    private static void RunDeSeeds(string lensPath, string name, GlassCatalogManager glassMgr,
+        int pop, int gens, string outDir)
+    {
+        Console.WriteLine($"\n── DE seed export — {name}  (pop {pop}, gens {gens}, conditioner ON) ──");
+        var read = LhltReader.Read(lensPath);
+        var de = new DeSeederService(read.System, read.MeritFunction!, glassMgr);
+        de.Settings.PopulationSize = pop;
+        de.Settings.MaxGenerations = gens;
+        de.Settings.StallGenerations = 0;
+        de.Settings.UseGpu = false;
+        de.Settings.ConditionFocusEfl = true;   // Always (matches the deresident runs)
+        de.Settings.SeedsToEmit = 16;
+        var result = de.Run();
+
+        Directory.CreateDirectory(outDir);
+        string stem = Path.GetFileNameWithoutExtension(lensPath);
+        int rank = 1;
+        foreach (var m in result.Models)
+        {
+            string file = Path.Combine(outDir, $"{stem}_seed{rank:00}_m{m.Merit:0.000E+0}.lhlt");
+            LhltWriter.Write(m.System, file, read.MeritFunction);
+            Console.WriteLine($"   #{rank,2}  merit {m.Merit,12:E4}  glasses [{string.Join(", ", m.GlassSet)}]  -> {Path.GetFileName(file)}");
+            rank++;
+        }
+        Console.WriteLine($"   {result.Models.Count} distinct seed(s) written to {outDir}");
+        Console.WriteLine($"   {result.Message}");
+    }
+
+    // ── deresident: GPU-RESIDENT DE (RunGpuResident) vs the CPU DE (Run), at a large
+    //    population (~6100 fills the 4060 merit kernel). Both with §8.5 conditioning ON.
+    //    Validates the on-device vary→condition→eval→select loop at scale and times it. ──
+    private static void RunDeResident(string lensPath, string name, GlassCatalogManager glassMgr,
+        int pop, int gens, bool gpuOnly)
+    {
+        Console.WriteLine($"\n── GPU-resident DE{(gpuOnly ? "" : " vs CPU DE")} — {name}  (pop {pop}, gens {gens}, conditioner ON) ──");
+
+        double cpuFloor = double.NaN, cpuMs = 0;
+        if (!gpuOnly)
+        {
+            string cpuMsg;
+            (cpuFloor, cpuMs, cpuMsg) = RunDeFull(lensPath, glassMgr, pop, gens, gpuResident: false);
+            Console.WriteLine($"   CPU  Run()           floor {cpuFloor,12:E4}   {cpuMs,9:F0} ms");
+            Console.WriteLine($"        {cpuMsg}");
+        }
+
+        var (gpuFloor, gpuMs, gpuMsg) = RunDeFull(lensPath, glassMgr, pop, gens, gpuResident: true);
+        Console.WriteLine($"   GPU  RunGpuResident  floor {gpuFloor,12:E4}   {gpuMs,9:F0} ms  ({gpuMs / Math.Max(1, gens):F1} ms/gen)");
+        Console.WriteLine($"        {gpuMsg}");
+
+        if (!gpuOnly && cpuMs > 0 && gpuMs > 0)
+            Console.WriteLine($"   => GPU-resident wall-time speedup {cpuMs / gpuMs:F2}x   (floor ratio GPU/CPU {gpuFloor / Math.Max(1e-30, cpuFloor):F2})");
+    }
+
+    private static (double floor, double ms, string msg) RunDeFull(string lensPath,
+        GlassCatalogManager glassMgr, int pop, int gens, bool gpuResident)
+    {
+        var read = LhltReader.Read(lensPath);
+        var de = new DeSeederService(read.System, read.MeritFunction!, glassMgr);
+        de.Settings.PopulationSize = pop;
+        de.Settings.MaxGenerations = gens;
+        de.Settings.StallGenerations = 0;
+        de.Settings.UseGpu = false;            // CPU path uses CPU eval (the fair host baseline)
+        de.Settings.ConditionFocusEfl = true;  // Always
+        var sw = Stopwatch.StartNew();
+        var result = gpuResident ? de.RunGpuResident() : de.Run();
+        sw.Stop();
+        double floor = result.Models.Count > 0 ? result.Models.Min(m => m.Merit) : double.NaN;
+        return (floor, sw.Elapsed.TotalMilliseconds, result.Message);
+    }
+
+    private static (double floor, double ms) RunDeOnce(string lensPath, GlassCatalogManager glassMgr,
+        int seed, int pop, int gens, bool conditioning, DeConditionMode mode)
+    {
+        var read = LhltReader.Read(lensPath);
+        var de = new DeSeederService(read.System, read.MeritFunction!, glassMgr);
+        de.Settings.BaseSeed = seed;
+        de.Settings.PopulationSize = pop;
+        de.Settings.MaxGenerations = gens;
+        de.Settings.StallGenerations = 0;   // fixed budget — fair A/B
+        de.Settings.UseGpu = false;
+        de.Settings.ConditionFocusEfl = conditioning;
+        de.Settings.ConditionMode = mode;
+        var sw = Stopwatch.StartNew();
+        var result = de.Run();
+        sw.Stop();
+        double floor = result.Models.Count > 0 ? result.Models.Min(m => m.Merit) : double.NaN;
+        return (floor, sw.Elapsed.TotalMilliseconds);
+    }
+
     private static void PrintLensInfo(string lensPath, GlassCatalogManager glassMgr)
     {
         var read = LhltReader.Read(lensPath);

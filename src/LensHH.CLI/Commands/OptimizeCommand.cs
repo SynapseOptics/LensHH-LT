@@ -1,8 +1,11 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.Threading;
 using LensHH.Core.Configuration;
+using LensHH.Core.Models;
+using LensHH.Core.NativeInterop;
 using LensHH.Core.Optimization;
 using Spectre.Console;
 
@@ -309,9 +312,10 @@ namespace LensHH.CLI.Commands
             var glassMgr = session.EnsureGlassCatalog();
             session.ValidateGlass();
 
-            var s = new DeSeederSettings { FilteredCatalogSearchPaths = FindFilteredCatalogPaths() };
-            int refineIters = 200;
+            var pset = new DePipelineSettings();
+            pset.De.FilteredCatalogSearchPaths = FindFilteredCatalogPaths();
             string outDir = "deseed_results";
+            string? polishFolder = null;   // when set: polish a saved DE result set (skip the search)
 
             for (int i = 1; i < args.Length; i++)
             {
@@ -320,76 +324,166 @@ namespace LensHH.CLI.Commands
                 var val = parts.Length > 1 ? parts[1] : "";
                 switch (key)
                 {
-                    case "pop": if (int.TryParse(val, out int p)) s.PopulationSize = p; break;
-                    case "gens": if (int.TryParse(val, out int g)) s.MaxGenerations = g; break;
-                    case "stall": if (int.TryParse(val, out int st)) s.StallGenerations = st; break;
-                    case "f": if (double.TryParse(val, NumberStyles.Float, CultureInfo.InvariantCulture, out double fv)) s.F = fv; break;
-                    case "cr": if (double.TryParse(val, NumberStyles.Float, CultureInfo.InvariantCulture, out double cr)) s.CR = cr; break;
-                    case "glass": if (double.TryParse(val, NumberStyles.Float, CultureInfo.InvariantCulture, out double gp)) s.GlassMutationProbability = gp / 100.0; break;
-                    case "curvlimit": if (double.TryParse(val, NumberStyles.Float, CultureInfo.InvariantCulture, out double cl)) s.CurvatureSeedLimit = cl; break;
-                    case "gpu": s.UseGpu = true; break;
-                    case "seed": if (int.TryParse(val, out int sd)) s.BaseSeed = sd; break;
-                    case "emit": if (int.TryParse(val, out int em)) s.SeedsToEmit = em; break;
-                    case "refine": if (int.TryParse(val, out int rf)) refineIters = rf; break;
+                    case "pop": if (int.TryParse(val, out int p)) pset.De.PopulationSize = p; break;
+                    case "gens": if (int.TryParse(val, out int g)) pset.De.MaxGenerations = g; break;
+                    case "stall": if (int.TryParse(val, out int st)) pset.De.StallGenerations = st; break;
+                    case "f": if (double.TryParse(val, NumberStyles.Float, CultureInfo.InvariantCulture, out double fv)) pset.De.F = fv; break;
+                    case "cr": if (double.TryParse(val, NumberStyles.Float, CultureInfo.InvariantCulture, out double cr)) pset.De.CR = cr; break;
+                    case "glass": if (double.TryParse(val, NumberStyles.Float, CultureInfo.InvariantCulture, out double gp)) pset.De.GlassMutationProbability = gp / 100.0; break;
+                    case "curvlimit": if (double.TryParse(val, NumberStyles.Float, CultureInfo.InvariantCulture, out double cl)) pset.De.CurvatureSeedLimit = cl; break;
+                    case "gpu": pset.UseGpu = true; break;
+                    case "seed": if (int.TryParse(val, out int sd)) pset.De.BaseSeed = sd; break;
+                    case "emit": if (int.TryParse(val, out int em)) pset.De.SeedsToEmit = em; break;
+                    // §8.5 conditioner surface inputs.
+                    case "focus-surface": if (int.TryParse(val, out int fsf)) pset.De.FocusCompensatorSurface = fsf; break;
+                    case "efl-surface": if (int.TryParse(val, out int esf)) pset.De.EflControlSurface = esf; break;
+                    case "no-efl-adjust": pset.De.AdjustCurvatureForEfl = false; break;
+                    case "efl-tol": if (double.TryParse(val, NumberStyles.Float, CultureInfo.InvariantCulture, out double et)) pset.De.EflAdjustTolerance = et; break;
+                    case "no-condition": pset.De.ConditionFocusEfl = false; break;
+                    // Post-DE polish.
+                    case "polish":
+                        pset.PolishMethod = val.ToLowerInvariant() switch
+                        {
+                            "none" => DePolishMethod.None,
+                            "multistart" or "ms" => DePolishMethod.MultistartLm,
+                            _ => DePolishMethod.LocalLm,
+                        };
+                        break;
+                    case "polish-count": if (int.TryParse(val, out int pc)) pset.PolishCandidateCount = pc; break;
+                    case "lm-iters": if (int.TryParse(val, out int li)) pset.LmIterations = li; break;
                     case "out": if (!string.IsNullOrEmpty(val)) outDir = val; break;
+                    // Polish a previously-saved DE result set (folder of *.lhlt) — skips the search.
+                    case "polish-folder": if (!string.IsNullOrEmpty(val)) polishFolder = val; break;
                 }
             }
 
             _cts = new CancellationTokenSource();
             Console.CancelKeyPress += OnCancelKeyPress;
 
-            var svc = new DeSeederService(system, mf, glassMgr, session.ConfigEditor)
+            // Time-throttle the high-frequency per-generation / per-trial updates so the console
+            // shows live status (DE gens with elapsed + s/gen, "Polishing X of N" with the
+            // candidate's running best and the pool best) without flooding. Phase-boundary
+            // events (RestartIndex == 0, i.e. DE-complete) always print.
+            var printWatch = Stopwatch.StartNew();
+            Action<GlobalSearchProgress> onProg = p =>
             {
-                Settings = s,
-                OnProgress = p =>
+                if (p.RestartIndex == 0 || printWatch.ElapsedMilliseconds >= 500)
                 {
-                    if ((p.RestartIndex % 10) == 0)
-                        AnsiConsole.MarkupLine($"  [grey]{Markup.Escape(p.StatusMessage)}[/]");
-                },
+                    AnsiConsole.MarkupLine($"  [grey]{Markup.Escape(p.StatusMessage)}[/]");
+                    printWatch.Restart();
+                }
             };
 
-            AnsiConsole.MarkupLine("[bold]Starting DE seed generator[/]");
-            AnsiConsole.MarkupLine($"  Population: {s.PopulationSize}, generations: {s.MaxGenerations}, F={s.F:G3}, CR={s.CR:G3}, glass pMut: {s.GlassMutationProbability * 100:F0}%, seed: {s.BaseSeed}");
-            AnsiConsole.MarkupLine("");
+            DeOptimizationPipeline pipeline;
+            List<OpticalSystem>? savedSystems = null;
+            List<string>? savedLabels = null;
+
+            if (!string.IsNullOrEmpty(polishFolder))
+            {
+                // ── Polish a previously-saved DE seed set (no DE search) ──
+                if (!System.IO.Directory.Exists(polishFolder))
+                { AnsiConsole.MarkupLine($"[red]Folder not found: {Markup.Escape(polishFolder)}[/]"); return; }
+                var files = System.IO.Directory.GetFiles(polishFolder, "*.lhlt");
+                Array.Sort(files, StringComparer.OrdinalIgnoreCase);
+                if (files.Length == 0)
+                { AnsiConsole.MarkupLine($"[red]No .lhlt files in {Markup.Escape(polishFolder)}[/]"); return; }
+
+                savedSystems = new List<OpticalSystem>(files.Length);
+                savedLabels = new List<string>(files.Length);
+                LensHH.Core.MeritFunction.MeritFunction refMerit = mf;
+                OpticalSystem refSys = system;
+                for (int fi = 0; fi < files.Length; fi++)
+                {
+                    var read = LensHH.Core.IO.LhltReader.Read(files[fi]);
+                    if (fi == 0) { refSys = read.System; refMerit = read.MeritFunction ?? mf; }
+                    savedSystems.Add(read.System);
+                    savedLabels.Add(System.IO.Path.GetFileName(files[fi]));
+                }
+                // The first file is the reference structure; the rest are validated against it.
+                pipeline = new DeOptimizationPipeline(refSys, refMerit, glassMgr, session.ConfigEditor)
+                { Settings = pset, OnProgress = onProg };
+                mf = refMerit;   // save polished output with the folder's own merit function
+
+                AnsiConsole.MarkupLine("[bold]DE polish — previously-saved results[/]");
+                AnsiConsole.MarkupLine($"  Folder: {Markup.Escape(System.IO.Path.GetFullPath(polishFolder))}  ({files.Length} file(s))");
+                AnsiConsole.MarkupLine($"  Polish: {pset.PolishMethod} on best {pset.PolishCandidateCount} (LM iters {pset.LmIterations})");
+                AnsiConsole.MarkupLine("");
+            }
+            else
+            {
+                pipeline = new DeOptimizationPipeline(system, mf, glassMgr, session.ConfigEditor)
+                { Settings = pset, OnProgress = onProg };
+
+                bool gpuReq = pset.UseGpu;
+                bool gpuAvail = GpuResidentDe.IsAvailable;
+                AnsiConsole.MarkupLine("[bold]DE starting-design pipeline[/]");
+                AnsiConsole.MarkupLine($"  Engine: {(gpuReq && gpuAvail ? "GPU-resident (population fills the device)" : gpuReq ? "CPU (GPU requested but unavailable)" : "CPU")}"
+                    + $", generations: {pset.De.MaxGenerations}, conditioner: {(pset.De.ConditionFocusEfl ? "on" : "off")}"
+                    + $" (focus surf {SurfLabel(pset.De.FocusCompensatorSurface)}, EFL surf {SurfLabel(pset.De.EflControlSurface)})");
+                AnsiConsole.MarkupLine($"  Polish: {pset.PolishMethod} on best {pset.PolishCandidateCount} (LM iters {pset.LmIterations}); seeds emitted: {pset.De.SeedsToEmit}");
+                AnsiConsole.MarkupLine("");
+            }
 
             try
             {
-                var result = svc.Run(_cts.Token);
+                var result = !string.IsNullOrEmpty(polishFolder)
+                    ? pipeline.PolishExisting(savedSystems!, savedLabels, _cts.Token)
+                    : pipeline.Run(_cts.Token);
                 AnsiConsole.MarkupLine("");
-                AnsiConsole.MarkupLine($"[bold]DE complete[/]  {Markup.Escape(result.Message)}");
+                if (result.DeElapsed > TimeSpan.Zero)
+                    AnsiConsole.MarkupLine($"  [grey]DE: {result.Generations} gens in {result.DeElapsed.TotalSeconds:F1}s ({result.DeSecondsPerGeneration:F3} s/gen)[/]");
+                AnsiConsole.MarkupLine($"[bold]Pipeline complete[/]  {Markup.Escape(result.Message)}");
 
-                // LM-refine each emitted seed and report (the A/B vs Multistart).
-                AnsiConsole.MarkupLine("[bold]Refining seeds with LM...[/]");
-                var refined = new List<(double merit, GlobalSearchModel model)>();
-                foreach (var model in result.Models)
+                // Run log OUTSIDE the lens-file folders (seeds_pre_polish/ + polished/ stay pure) —
+                // settings header + per-candidate source/before/after/elapsed, for easy run comparison.
+                try
                 {
-                    if (_cts.Token.IsCancellationRequested) break;
-                    var opt = new LocalOptimizer(model.System, mf, glassMgr, session.ConfigEditor)
-                    { MaxIterations = refineIters, ParallelEvaluation = true };
-                    var r = opt.Optimize(_cts.Token);
-                    refined.Add((r.FinalMerit, model));
+                    System.IO.Directory.CreateDirectory(outDir);
+                    string logStamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+                    string logMode = !string.IsNullOrEmpty(polishFolder) ? "Polish previously-saved DE results" : "DE search + polish";
+                    string logSrc = !string.IsNullOrEmpty(polishFolder) ? polishFolder! : "(DE search from loaded design)";
+                    string logPath = System.IO.Path.Combine(outDir, $"de_run_{logStamp}.log");
+                    System.IO.File.WriteAllText(logPath, DeRunLog.Build(pset, result, logMode, logSrc, DateTime.Now));
+                    AnsiConsole.MarkupLine($"  [grey]Run log: {Markup.Escape(System.IO.Path.GetFullPath(logPath))}[/]");
                 }
-                refined.Sort((a, b) => a.merit.CompareTo(b.merit));
+                catch (Exception logEx) { AnsiConsole.MarkupLine($"  [yellow]Run log not written: {Markup.Escape(logEx.Message)}[/]"); }
 
-                System.IO.Directory.CreateDirectory(outDir);
                 string title = string.IsNullOrWhiteSpace(system.Title) ? "design" : system.Title;
-                int n = 0;
-                for (int r = 0; r < refined.Count; r++)
+
+                // ── Save ALL pre-polish seeds by default (skip when polishing a saved folder —
+                //    that folder already IS the pre-polish set) ──
+                if (string.IsNullOrEmpty(polishFolder))
                 {
-                    var (merit, model) = refined[r];
-                    string glassTag = model.GlassSet.Count > 0 ? string.Join("-", model.GlassSet) : "noglass";
-                    string form = string.IsNullOrEmpty(model.PowerSignSignature) ? "-" : model.PowerSignSignature;
-                    string name = SanitizeFileName($"{title}_deseed_rank{r + 1}_merit{merit:G4}_{glassTag}");
-                    string path = System.IO.Path.Combine(outDir, name + ".lhlt");
-                    try { LensHH.Core.IO.LhltWriter.Write(model.System, path, mf, session.ConfigEditor); n++; }
-                    catch (Exception ex) { AnsiConsole.MarkupLine($"  [yellow]write failed: {Markup.Escape(ex.Message)}[/]"); }
-                    AnsiConsole.MarkupLine($"  #{r + 1}  refined {merit:E4}  (DE raw {model.Merit:E4})  form {form}  [[{Markup.Escape(glassTag)}]]");
+                string preDir = System.IO.Path.Combine(outDir, "seeds_pre_polish");
+                System.IO.Directory.CreateDirectory(preDir);
+                int nPre = 0;
+                for (int r = 0; r < result.SeedPool.Models.Count; r++)
+                {
+                    var m = result.SeedPool.Models[r];
+                    string glassTag = m.GlassSet.Count > 0 ? string.Join("-", m.GlassSet) : "noglass";
+                    string name = SanitizeFileName($"{title}_seed{r + 1:00}_merit{m.Merit:G4}_{glassTag}");
+                    try { LensHH.Core.IO.LhltWriter.Write(m.System, System.IO.Path.Combine(preDir, name + ".lhlt"), mf, session.ConfigEditor); nPre++; } catch { }
                 }
-                if (refined.Count > 0)
+                AnsiConsole.MarkupLine($"  [grey]Saved {nPre} pre-polish seed(s) to {Markup.Escape(System.IO.Path.GetFullPath(preDir))}[/]");
+                }
+
+                // ── Polished candidates (best-first) + before/after ──
+                if (result.Polished.Count > 0)
                 {
-                    double best = refined[0].merit;
-                    double median = refined[refined.Count / 2].merit;
-                    AnsiConsole.MarkupLine($"  [bold]Refined best {best:E4}, median {median:E4}[/]; wrote {n} seed(s) to {Markup.Escape(System.IO.Path.GetFullPath(outDir))}");
+                    string postDir = System.IO.Path.Combine(outDir, "polished");
+                    System.IO.Directory.CreateDirectory(postDir);
+                    AnsiConsole.MarkupLine($"[bold]Polished ({pset.PolishMethod}) — before → after[/]");
+                    int n = 0;
+                    for (int r = 0; r < result.Polished.Count; r++)
+                    {
+                        var c = result.Polished[r];
+                        string glassTag = c.GlassSet.Count > 0 ? string.Join("-", c.GlassSet) : "noglass";
+                        string name = SanitizeFileName($"{title}_polished{r + 1:00}_merit{c.MeritAfter:G4}_{glassTag}");
+                        try { LensHH.Core.IO.LhltWriter.Write(c.System, System.IO.Path.Combine(postDir, name + ".lhlt"), mf, session.ConfigEditor); n++; } catch { }
+                        double x = c.MeritAfter > 1e-30 ? c.MeritBefore / c.MeritAfter : 0;
+                        AnsiConsole.MarkupLine($"  #{r + 1,2}  {c.MeritBefore:E4} → {c.MeritAfter:E4} ({x:F1}×)  [[{Markup.Escape(glassTag)}]]");
+                    }
+                    AnsiConsole.MarkupLine($"  [bold]Wrote {n} polished design(s) to {Markup.Escape(System.IO.Path.GetFullPath(postDir))}[/]");
                 }
             }
             finally
@@ -398,6 +492,9 @@ namespace LensHH.CLI.Commands
                 _cts = null;
             }
         }
+
+        // Surface label for the conditioner inputs (-1 = auto).
+        private static string SurfLabel(int s) => s < 0 ? "auto" : s.ToString();
 
         private void RunGlobalSearch(Session session, string[] args)
         {
