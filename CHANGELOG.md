@@ -2,6 +2,15 @@
 
 All notable changes to LensHH-LT and the LensHH-LT-Engine.
 
+## 1.0.123 — 2026-06-17
+
+### Performance
+- **Optimization now runs at full speed in the background (Windows).** Differential
+  Evolution, Multistart, and local optimization no longer slow down when LensHH-LT
+  loses foreground focus — or when it runs headless via the CLI or the MCP server.
+  The app opts out of Windows 11 power throttling (EcoQoS), which otherwise parks
+  compute threads on the efficiency cores whenever the window isn't in front.
+
 ## 1.0.122 — 2026-06-15
 
 ### Global Evolutionary Optimization (new — formerly "DE Starting-Design Pipeline")
