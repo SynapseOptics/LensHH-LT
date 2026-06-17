@@ -8,6 +8,10 @@ namespace LensHH.CLI
     {
         static void Main(string[] args)
         {
+            // Keep CPU-bound optimization at full speed even when the terminal is
+            // not the foreground window (opt out of Windows 11 power throttling).
+            LensHH.IO.WindowsPerformance.DisablePowerThrottling();
+
             var dispatcher = new CommandDispatcher();
             dispatcher.Register(new FileCommand());
             dispatcher.Register(new SystemCommand());

@@ -75,6 +75,9 @@ internal static class Program
 
     private static int Main(string[] args)
     {
+        // Keep CPU-bound benchmarking at full speed: the bench is a background
+        // (non-foreground) process, so opt out of Windows 11 power throttling.
+        LensHH.IO.WindowsPerformance.DisablePowerThrottling();
         Console.OutputEncoding = Encoding.UTF8;
         var lenses = new List<string>();
         string mode = "all";

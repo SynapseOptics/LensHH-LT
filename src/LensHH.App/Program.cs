@@ -20,6 +20,12 @@ class Program
         CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
         CultureInfo.DefaultThreadCurrentUICulture = CultureInfo.InvariantCulture;
 
+        // Keep CPU-bound optimization at full speed even when the window is not in
+        // the foreground (opt out of Windows 11 power throttling / EcoQoS). Without
+        // this, switching to another app parks our worker threads on efficiency
+        // cores and the run slows to a crawl.
+        LensHH.IO.WindowsPerformance.DisablePowerThrottling();
+
         // Load existing license or start/continue 45-day trial
         ActivationManager.TryLoadExistingActivation();
 
