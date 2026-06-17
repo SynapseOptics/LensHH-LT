@@ -9,6 +9,9 @@ public partial class OptimizationDialog : Window
     public OptimizationDialog()
     {
         InitializeComponent();
+        // Cancel any running operation when the dialog is closed; otherwise its worker
+        // threads keep running (full speed) until the application exits.
+        Closing += (_, _) => (DataContext as OptimizationDialogViewModel)?.CancelRun();
     }
 
     private OptimizationDialogViewModel VM => (OptimizationDialogViewModel)DataContext!;

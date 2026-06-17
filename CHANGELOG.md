@@ -12,10 +12,12 @@ All notable changes to LensHH-LT and the LensHH-LT-Engine.
   compute threads on the efficiency cores whenever the window isn't in front.
 
 ### Fixed
-- **Closing an optimization dialog now stops the run.** Previously, closing the
-  Global Evolutionary Optimization or Global Multi Start Optimization dialog while a
-  run was in progress left its worker threads running until the whole application was
-  exited. Closing the dialog now cancels the run, exactly like the Stop button.
+- **Closing an optimization or synthesis dialog now stops its run.** Previously,
+  closing one of these dialogs while a run was in progress left its worker threads
+  running until the whole application was exited. Now closing the dialog cancels the
+  run, exactly like the Stop button. Affects Local optimization, Multistart,
+  Basin-Hopping (HJ+LM), Genetic, Search Best Asphere, Split Element, Synthesis by
+  SPC, Global Evolutionary Optimization, and Global Multi Start Optimization.
 
 ## 1.0.122 — 2026-06-15
 

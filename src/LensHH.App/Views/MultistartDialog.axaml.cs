@@ -10,6 +10,9 @@ public partial class MultistartDialog : Window
     public MultistartDialog()
     {
         InitializeComponent();
+        // Cancel any running operation when the dialog is closed; otherwise its worker
+        // threads keep running (full speed) until the application exits.
+        Closing += (_, _) => (DataContext as MultistartDialogViewModel)?.CancelRun();
     }
 
     private MultistartDialogViewModel VM => (MultistartDialogViewModel)DataContext!;

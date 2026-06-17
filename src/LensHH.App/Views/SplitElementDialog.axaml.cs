@@ -10,6 +10,9 @@ public partial class SplitElementDialog : Window
     public SplitElementDialog()
     {
         InitializeComponent();
+        // Cancel any running operation when the dialog is closed; otherwise its worker
+        // threads keep running (full speed) until the application exits.
+        Closing += (_, _) => (DataContext as SplitElementDialogViewModel)?.CancelRun();
     }
 
     private SplitElementDialogViewModel VM => (SplitElementDialogViewModel)DataContext!;

@@ -19,6 +19,9 @@ public partial class SpcSynthesisDialogViewModel : ObservableObject
     private readonly GuiSession _session;
     private CancellationTokenSource? _stopCts;
     private CancellationTokenSource? _skipPhaseCts;
+    
+    /// <summary>Cancel a running operation when the dialog closes (else worker threads run to completion).</summary>
+    public void CancelRun() { _stopCts?.Cancel(); _skipPhaseCts?.Cancel(); }
     private readonly Stopwatch _stopwatch = new();
 
     // ── Settings ──

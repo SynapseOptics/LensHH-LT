@@ -13,6 +13,9 @@ public partial class SpcSynthesisDialog : Window
     public SpcSynthesisDialog()
     {
         InitializeComponent();
+        // Cancel any running operation when the dialog is closed; otherwise its worker
+        // threads keep running (full speed) until the application exits.
+        Closing += (_, _) => (DataContext as SpcSynthesisDialogViewModel)?.CancelRun();
     }
 
     private SpcSynthesisDialogViewModel VM => (SpcSynthesisDialogViewModel)DataContext!;

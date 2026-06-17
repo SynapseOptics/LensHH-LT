@@ -42,6 +42,9 @@ public partial class OptimizationDialogViewModel : ObservableObject
 {
     private readonly GuiSession _session;
     private CancellationTokenSource? _cts;
+    
+    /// <summary>Cancel a running operation when the dialog closes (else worker threads run to completion).</summary>
+    public void CancelRun() => _cts?.Cancel();
     private readonly Stopwatch _stopwatch = new();
 
     // ── Settings ──

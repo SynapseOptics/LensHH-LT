@@ -10,6 +10,9 @@ public partial class BasinHoppingHjLmDialog : Window
     public BasinHoppingHjLmDialog()
     {
         InitializeComponent();
+        // Cancel any running operation when the dialog is closed; otherwise its worker
+        // threads keep running (full speed) until the application exits.
+        Closing += (_, _) => (DataContext as BasinHoppingHjLmDialogViewModel)?.CancelRun();
     }
 
     private BasinHoppingHjLmDialogViewModel VM => (BasinHoppingHjLmDialogViewModel)DataContext!;
