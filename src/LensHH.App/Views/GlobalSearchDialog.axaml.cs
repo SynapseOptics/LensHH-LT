@@ -12,6 +12,9 @@ namespace LensHH.App.Views
         {
             InitializeComponent();
             DataContextChanged += OnDataContextChanged;
+            // Closing the dialog must cancel a running search — otherwise its worker
+            // threads keep running until the app exits. Fires for every close path.
+            Closing += (_, _) => VM?.CancelRun();
         }
 
         private GlobalSearchDialogViewModel? VM => DataContext as GlobalSearchDialogViewModel;

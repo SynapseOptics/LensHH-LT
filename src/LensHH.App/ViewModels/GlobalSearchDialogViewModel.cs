@@ -210,6 +210,12 @@ namespace LensHH.App.ViewModels
             StatusText = "Stopping — keeping the designs found so far…";
         }
 
+        /// <summary>
+        /// Cancel a running search when the dialog is closed. Without this, closing the
+        /// window leaves the worker threads running until the app exits. No-op if idle.
+        /// </summary>
+        public void CancelRun() => _cts?.Cancel();
+
         // ─────────────────────────────────────────────────────────────────────
         //  Apply / Save
         // ─────────────────────────────────────────────────────────────────────

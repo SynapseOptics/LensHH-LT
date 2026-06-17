@@ -11,6 +11,12 @@ All notable changes to LensHH-LT and the LensHH-LT-Engine.
   The app opts out of Windows 11 power throttling (EcoQoS), which otherwise parks
   compute threads on the efficiency cores whenever the window isn't in front.
 
+### Fixed
+- **Closing an optimization dialog now stops the run.** Previously, closing the
+  Global Evolutionary Optimization or Global Multi Start Optimization dialog while a
+  run was in progress left its worker threads running until the whole application was
+  exited. Closing the dialog now cancels the run, exactly like the Stop button.
+
 ## 1.0.122 — 2026-06-15
 
 ### Global Evolutionary Optimization (new — formerly "DE Starting-Design Pipeline")

@@ -294,6 +294,14 @@ namespace LensHH.App.ViewModels
             StatusText = "Stopping — keeping the designs found so far…";
         }
 
+        /// <summary>
+        /// Cancel a running pipeline when the dialog is closed. Without this, closing
+        /// the window leaves the DE / polish worker threads running (full speed, since
+        /// we opt out of power throttling) until the whole app exits. No-op if nothing
+        /// is running.
+        /// </summary>
+        public void CancelRun() => _cts?.Cancel();
+
         [RelayCommand]
         private void ApplyCard(GlobalSearchCardViewModel? card)
         {

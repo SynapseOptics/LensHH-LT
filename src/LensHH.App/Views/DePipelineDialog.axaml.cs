@@ -12,6 +12,10 @@ namespace LensHH.App.Views
         {
             InitializeComponent();
             DataContextChanged += OnDataContextChanged;
+            // Closing the dialog (X, Close button, or accepting a card) must cancel a
+            // running DE/polish run — otherwise its worker threads keep running until
+            // the app exits. Fires for every close path.
+            Closing += (_, _) => VM?.CancelRun();
         }
 
         private DePipelineDialogViewModel? VM => DataContext as DePipelineDialogViewModel;
