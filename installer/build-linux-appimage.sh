@@ -3,13 +3,21 @@ set -e
 
 # LensHH-LT Linux AppImage Builder
 # Run from WSL: bash installer/build-linux-appimage.sh
+#
+# By DEFAULT this reuses the committed engine/linux-x64/ native (liblenshh_native.so
+# + lenshh_kernel.fatbin) — exactly like the Windows installer reuses
+# engine/win-x64/*.dll and the macOS packager reuses engine/osx-arm64/*.dylib. To
+# rebuild the Linux native from source instead, set LENSHH_REBUILD_NATIVE=1 (needs
+# nvcc + the LensHH-LT-NativeCore repo as a sibling of this one). (Task #37.)
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-NATIVE_REPO="$(cd "$REPO_ROOT/../LensHH-LT-NativeCore" && pwd)"
+# NativeCore is only needed when LENSHH_REBUILD_NATIVE=1; tolerate its absence in
+# the default reuse path (a release machine need not have the engine repo checked out).
+NATIVE_REPO="$(cd "$REPO_ROOT/../LensHH-LT-NativeCore" 2>/dev/null && pwd || echo "")"
 
-# Ensure nvcc is on PATH so the CUDA fatbin (the GPU kernel) is built. Without
-# it, cmake silently disables the GPU backend and the package ships CPU-only.
+# Only needed when rebuilding the native (LENSHH_REBUILD_NATIVE=1): nvcc on PATH so
+# the CUDA fatbin builds. Harmless no-op in the default reuse path.
 [ -d /usr/local/cuda/bin ] && export PATH="/usr/local/cuda/bin:$PATH"
 # .NET SDK location on the build host (if not already on PATH).
 [ -d /opt/dotnet ] && ! command -v dotnet >/dev/null && export PATH="/opt/dotnet:$PATH"
@@ -42,77 +50,84 @@ install_if_missing() {
     fi
 }
 
-install_if_missing cmake cmake
-install_if_missing g++ g++
-install_if_missing make make
-
-# For OpenMP support
-if ! dpkg -s libomp-dev &>/dev/null 2>&1; then
-    echo "Installing OpenMP..."
-    sudo apt-get install -y -qq libomp-dev 2>/dev/null || true
-fi
-
-# ── Step 2: Build native library ──
-echo
-echo "=== Building native library (linux-x64) ==="
-NATIVE_BUILD="$NATIVE_REPO/build-linux"
-mkdir -p "$NATIVE_BUILD"
-# LENSHH_DISABLE_ACTIVATION is FORCED OFF here (2026-06-05). It is a cached
-# CMake option used only by the internal differential-validation harness; if
-# a developer ever configures build-linux/ with it ON, every later release
-# build would silently inherit the cached value. Release builds must never
-# trust the cache for this flag.
-cmake -S "$NATIVE_REPO" -B "$NATIVE_BUILD" \
-    -DCMAKE_BUILD_TYPE=Release \
-    -DLENSHH_BUILD_TESTS=OFF \
-    -DLENSHH_DISABLE_ACTIVATION=OFF
-cmake --build "$NATIVE_BUILD" --config Release -j$(nproc)
-
-NATIVE_SO=$(find "$NATIVE_BUILD" -name "liblenshh_native.so*" -not -type l | head -1)
-if [ -z "$NATIVE_SO" ]; then
-    echo "ERROR: liblenshh_native.so not found!"
-    exit 1
-fi
-echo "Built: $NATIVE_SO"
-
-# GPU kernel: native SASS fatbin (sm_80/89/90/120). Required for GPU support on
-# Linux — the loader reads it as a sidecar next to liblenshh_native.so.
-NATIVE_FATBIN=$(find "$NATIVE_BUILD" -name "lenshh_kernel.fatbin" | head -1)
-if [ -z "$NATIVE_FATBIN" ]; then
-    echo "ERROR: lenshh_kernel.fatbin not found — the engine was built WITHOUT CUDA."
-    echo "       GPU support requires nvcc on PATH at build time. Install the CUDA"
-    echo "       toolkit (or add /usr/local/cuda/bin to PATH) and rebuild. Aborting."
-    exit 1
-fi
-echo "Built fatbin: $NATIVE_FATBIN"
-
-# Guard: refuse to package an engine built in the validation configuration
-# (its lenshh_version() string carries a validation-noauth marker).
-if grep -q "validation-noauth" "$NATIVE_SO"; then
-    echo "FATAL: $NATIVE_SO was built in the validation configuration."
-    echo "       Refusing to package."
-    exit 1
-fi
-echo "Engine build-configuration check: OK"
-
-# ── Step 2b: Stage fresh .so into engine/linux-x64/ BEFORE dotnet publish ──
-# LensHH.App.csproj, LensHH.CLI.csproj, LensHH.Mcp.csproj all reference
-# engine/linux-x64/liblenshh_native.so via <None CopyToOutputDirectory="PreserveNewest">.
-# That copy lands in each app's publish/<rid>/ root — and on Linux, .NET's
-# DllImport("lenshh_native") resolves from AppContext.BaseDirectory BEFORE
-# LD_LIBRARY_PATH, so the bundled copy is what actually loads at runtime.
-# If we skip this step, dotnet publish ships whatever .so happens to be
-# checked into engine/linux-x64/ — historically a months-old stale build,
-# which silently routes every Linux user to outdated activation gates and
-# outdated merit-eval code.
-echo
-echo "=== Staging fresh native into engine/linux-x64/ ==="
+# ── Step 2: native library (linux-x64) ──
+# DEFAULT: reuse the COMMITTED engine/linux-x64/ binaries (liblenshh_native.so +
+# lenshh_kernel.fatbin), exactly like the Windows installer reuses
+# engine/win-x64/*.dll and the macOS packager reuses engine/osx-arm64/*.dylib.
+# The native is rebuilt from NativeCore source ONLY when LENSHH_REBUILD_NATIVE=1 —
+# a deliberate engine step, never something an app-only release triggers
+# implicitly (task #37). Previously this ALWAYS rebuilt, which coupled a Linux
+# release to NativeCore's working-tree state and forced pinning NativeCore to the
+# released commit for app-only releases (see the 1.0.123 release notes).
 ENGINE_LINUX_DIR="$REPO_ROOT/engine/linux-x64"
-mkdir -p "$ENGINE_LINUX_DIR"
-cp -f "$NATIVE_SO" "$ENGINE_LINUX_DIR/liblenshh_native.so"
-echo "Staged: $ENGINE_LINUX_DIR/liblenshh_native.so"
-cp -f "$NATIVE_FATBIN" "$ENGINE_LINUX_DIR/lenshh_kernel.fatbin"
-echo "Staged: $ENGINE_LINUX_DIR/lenshh_kernel.fatbin"
+ENGINE_SO="$ENGINE_LINUX_DIR/liblenshh_native.so"
+ENGINE_FATBIN="$ENGINE_LINUX_DIR/lenshh_kernel.fatbin"
+
+if [ "${LENSHH_REBUILD_NATIVE:-0}" = "1" ]; then
+    echo
+    echo "=== Rebuilding native library from source (LENSHH_REBUILD_NATIVE=1) ==="
+    install_if_missing cmake cmake
+    install_if_missing g++ g++
+    install_if_missing make make
+    if ! dpkg -s libomp-dev &>/dev/null 2>&1; then
+        echo "Installing OpenMP..."
+        sudo apt-get install -y -qq libomp-dev 2>/dev/null || true
+    fi
+    NATIVE_BUILD="$NATIVE_REPO/build-linux"
+    mkdir -p "$NATIVE_BUILD"
+    # LENSHH_DISABLE_ACTIVATION FORCED OFF (2026-06-05): cached CMake option used
+    # only by the differential-validation harness; release builds must never
+    # inherit a cached ON value.
+    cmake -S "$NATIVE_REPO" -B "$NATIVE_BUILD" \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DLENSHH_BUILD_TESTS=OFF \
+        -DLENSHH_DISABLE_ACTIVATION=OFF
+    cmake --build "$NATIVE_BUILD" --config Release -j$(nproc)
+
+    NATIVE_SO=$(find "$NATIVE_BUILD" -name "liblenshh_native.so*" -not -type l | head -1)
+    if [ -z "$NATIVE_SO" ]; then echo "ERROR: liblenshh_native.so not found!"; exit 1; fi
+    NATIVE_FATBIN=$(find "$NATIVE_BUILD" -name "lenshh_kernel.fatbin" | head -1)
+    if [ -z "$NATIVE_FATBIN" ]; then
+        echo "ERROR: lenshh_kernel.fatbin not found — engine built WITHOUT CUDA."
+        echo "       Install nvcc (add /usr/local/cuda/bin to PATH) and retry. Aborting."
+        exit 1
+    fi
+    echo "Built: $NATIVE_SO"
+    echo "Built fatbin: $NATIVE_FATBIN"
+
+    # Stage rebuilt binaries into engine/linux-x64/ so dotnet publish bundles them
+    # (the apps reference engine/linux-x64/liblenshh_native.so via PreserveNewest;
+    # on Linux .NET resolves DllImport from AppContext.BaseDirectory first).
+    echo "=== Staging rebuilt native into engine/linux-x64/ ==="
+    mkdir -p "$ENGINE_LINUX_DIR"
+    cp -f "$NATIVE_SO" "$ENGINE_SO";        echo "Staged: $ENGINE_SO"
+    cp -f "$NATIVE_FATBIN" "$ENGINE_FATBIN"; echo "Staged: $ENGINE_FATBIN"
+else
+    echo
+    echo "=== Using COMMITTED native engine/linux-x64/ (set LENSHH_REBUILD_NATIVE=1 to rebuild) ==="
+    # Anti-staleness guard (reuse-mode equivalent of the old always-rebuild safety
+    # net): the committed binaries MUST exist — fail loudly rather than ship an
+    # AppImage with no/stale engine. They are git-tracked, so a clean checkout has
+    # them; this trips only if someone deleted them or never staged a Linux native.
+    if [ ! -f "$ENGINE_SO" ]; then
+        echo "ERROR: $ENGINE_SO is missing. Commit the released Linux native, or"
+        echo "       rebuild it with LENSHH_REBUILD_NATIVE=1. Aborting."
+        exit 1
+    fi
+    if [ ! -f "$ENGINE_FATBIN" ]; then
+        echo "ERROR: $ENGINE_FATBIN is missing — GPU support requires the fatbin."
+        echo "       Commit it, or rebuild with LENSHH_REBUILD_NATIVE=1. Aborting."
+        exit 1
+    fi
+    # Staleness hint (warn only, mirrors the macOS dylib age check): nudge if the
+    # committed binary is old, in case the engine changed but wasn't re-staged.
+    so_age_days=$(( ( $(date +%s) - $(stat -c %Y "$ENGINE_SO") ) / 86400 ))
+    echo "Committed Linux native: $ENGINE_SO (${so_age_days} day(s) old)"
+    if [ "$so_age_days" -gt 30 ]; then
+        echo "WARNING: committed Linux native is ${so_age_days} days old. If the engine"
+        echo "         changed since, rebuild with LENSHH_REBUILD_NATIVE=1. Packaging as-is."
+    fi
+fi
 
 # Guard ALL engine/<rid>/ binaries — dotnet publish bundles every one of
 # them (PreserveNewest), so a validation-configuration win-x64 DLL or osx
@@ -199,17 +214,20 @@ cp -r "$PUBLISH_DIR/mcp"/* "$APP_DIR/usr/share/lenshh-lt/mcp/"
 cp -r "$PUBLISH_DIR/ollama"/* "$APP_DIR/usr/share/lenshh-lt/ollama/"
 cp -r "$PUBLISH_DIR/bench"/* "$APP_DIR/usr/share/lenshh-lt/bench/"
 
-# Native library
-cp "$NATIVE_SO" "$APP_DIR/usr/lib/liblenshh_native.so"
+# Native library — copy the engine/linux-x64/ binaries (the committed ones in
+# reuse mode, or the freshly-staged ones when LENSHH_REBUILD_NATIVE=1). Both modes
+# leave them at $ENGINE_SO/$ENGINE_FATBIN, so use those (NOT the rebuild-only
+# $NATIVE_* vars, which are unset in reuse mode).
+cp "$ENGINE_SO" "$APP_DIR/usr/lib/liblenshh_native.so"
 
 # GPU kernel sidecar. The native loader reads lenshh_kernel.fatbin from the
 # directory of whichever liblenshh_native.so actually loads. dotnet bundles a
 # copy of the .so into each app dir (GUI in usr/bin, plus cli/mcp/ollama/bench),
 # and .NET resolves DllImport from AppContext.BaseDirectory first — so place the
 # fatbin next to EVERY bundled .so, plus usr/lib as the LD_LIBRARY_PATH fallback.
-cp -f "$NATIVE_FATBIN" "$APP_DIR/usr/lib/lenshh_kernel.fatbin"
+cp -f "$ENGINE_FATBIN" "$APP_DIR/usr/lib/lenshh_kernel.fatbin"
 find "$APP_DIR" -name "liblenshh_native.so" -printf '%h\n' | sort -u | while read -r d; do
-    cp -f "$NATIVE_FATBIN" "$d/lenshh_kernel.fatbin"
+    cp -f "$ENGINE_FATBIN" "$d/lenshh_kernel.fatbin"
 done
 echo "Bundled lenshh_kernel.fatbin next to every liblenshh_native.so in the AppDir"
 
