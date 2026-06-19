@@ -2,6 +2,31 @@
 
 All notable changes to LensHH-LT and the LensHH-LT-Engine.
 
+## 1.0.124 — 2026-06-18
+
+### Fixed
+- **Global Evolutionary Optimization seeds are now consistent.** A seed's reported
+  merit now matches the merit you see when you re-open the saved design. Previously
+  the GPU-resident search could report a different (worse) merit than the saved seed
+  actually had, because each candidate was sized against the starting design's clear
+  apertures instead of its own.
+- **Search seeds no longer have negative thicknesses.** Element and air-gap
+  thicknesses are now bounded throughout the evolutionary search by the variable's
+  own limits and by any center-thickness merit operands (CT / CTG / CTA), so the
+  search stays inside the feasible range on both CPU and GPU.
+- **The focus solve respects center-thickness constraints.** The per-member focus
+  (back-focal-distance) solve no longer drives the compensator airspace outside its
+  CT / CTA limits — the constraint takes precedence, so the solve focuses as well as
+  it can within the allowed range instead of, e.g., collapsing a constrained
+  back-focus to zero.
+- **"Penalize vignetting" is now applied consistently on the GPU.** Off-axis rays
+  that miss the aperture are penalized during GPU merit evaluation exactly as on the
+  CPU, so a design can no longer look artificially good by clipping off-axis light.
+- **Degenerate wavefront rays no longer corrupt the merit.** A ray that fails to
+  reach the exit-pupil reference sphere is now treated as a failed (vignetting) ray
+  and penalized, instead of producing an undefined (NaN) merit on the CPU or a
+  misleadingly clean value on the GPU.
+
 ## 1.0.123 — 2026-06-17
 
 ### Performance
