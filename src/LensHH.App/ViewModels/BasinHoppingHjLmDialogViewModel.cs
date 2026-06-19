@@ -56,6 +56,7 @@ public partial class BasinHoppingHjLmDialogViewModel : ObservableObject
 {
     private readonly GuiSession _session;
     private CancellationTokenSource? _cts;
+    private BasinHoppingOptimizerBatch? _batch;   // set for multi-chain runs; BestChain feeds the completion table
     
     /// <summary>Cancel a running operation when the dialog closes (else worker threads run to completion).</summary>
     public void CancelRun() => _cts?.Cancel();
@@ -74,6 +75,27 @@ public partial class BasinHoppingHjLmDialogViewModel : ObservableObject
     // curvature jump over-perturbs its small-step trajectory and hurts results.
     [ObservableProperty] private bool _rescaleOnGlassSwap = false;
     [ObservableProperty] private int _seed = 1234;
+
+    // Parallel independent chains: each a full hop walk from its own perturbation seed;
+    // the single global best is returned. 0 = auto (physical core count). 1 = the classic
+    // single chain (full live per-variable trace). >1 fills the cores and explores N basins
+    // at once — much better global search, the whole point of the parallel batch.
+    [ObservableProperty] private int _parallelChains = 0;
+
+    /// <summary>The chain count that will actually run (auto-resolves 0 → physical cores).</summary>
+    public int ResolvedChains => ParallelChains <= 0
+        ? LensHH.Core.Optimization.CpuInfo.PhysicalCoreCount() : ParallelChains;
+
+    /// <summary>Hint shown next to the chains box, e.g. "auto → 8 physical cores".</summary>
+    public string ParallelChainsHint => ParallelChains <= 0
+        ? $"auto → {LensHH.Core.Optimization.CpuInfo.PhysicalCoreCount()} physical cores"
+        : (ParallelChains == 1 ? "single chain (live per-variable trace)" : $"{ParallelChains} parallel chains");
+
+    partial void OnParallelChainsChanged(int value)
+    {
+        OnPropertyChanged(nameof(ResolvedChains));
+        OnPropertyChanged(nameof(ParallelChainsHint));
+    }
 
     // ── Advanced — engine + derivative selection (was orange DEV banner in
     //    ≤1.0.114; moved into a collapsed Advanced expander for 1.0.115).
@@ -173,6 +195,7 @@ public partial class BasinHoppingHjLmDialogViewModel : ObservableObject
         VariableRows.Clear();
         GlassRows.Clear();
         Accepted = false;
+        _batch = null;
         _stopwatch.Restart();
         _cts = new CancellationTokenSource();
 
@@ -240,6 +263,7 @@ public partial class BasinHoppingHjLmDialogViewModel : ObservableObject
             GlassCatalogs = glassCatalogs,
             OnlyPreferred = !useFiltered && OnlyPreferred,
             Seed = Seed,
+            ParallelChains = ParallelChains,
             NoImprovementTimeoutSeconds = NoImprovementEnabled ? NoImprovementTimeoutSeconds : 0.0,
         };
 
@@ -257,79 +281,105 @@ public partial class BasinHoppingHjLmDialogViewModel : ObservableObject
             PhaseText = "Starting...";
             StatusText = $"Initial merit: {initialMerit:E6}";
 
-            bool variableRowsPopulated = false;
-            bool eligibilityLogged = false;
-            BasinHoppingOptimizer? optimizer = null;
+            int resolvedChains = ResolvedChains;
+            AppendLog(resolvedChains == 1
+                ? "Single chain (live per-variable trace)."
+                : $"{resolvedChains} parallel chains" + (ParallelChains <= 0 ? " (auto = physical cores)" : "")
+                  + " — exploring " + resolvedChains + " basins at once; best design loaded at completion.");
 
-            optimizer = new BasinHoppingOptimizer(
-                _session.System, _session.MeritFunction,
-                _session.GlassCatalog, _session.ConfigEditor)
+            if (resolvedChains == 1)
             {
-                Settings = settings,
-                // Phase 10a — DEV engine selection from the dialog.
-                EngineMode = (EngineModeIndex == 1) ? EngineMode.Native : EngineMode.CSharp,
-                NativeDerivativeMode = (DerivativeModeIndex == 1)
-                    ? LensHH.Core.NativeInterop.MeritDerivativeMode.Analytic
-                    : LensHH.Core.NativeInterop.MeritDerivativeMode.FiniteDifference,
-                FilteredCatalogSearchPaths = filteredDir != null ? new[] { filteredDir } : Array.Empty<string>(),
-                OnProgress = p => Dispatcher.UIThread.Post(() =>
+                // ── Single chain: full live per-variable / per-glass trace (unchanged). ──
+                bool variableRowsPopulated = false;
+                bool eligibilityLogged = false;
+                BasinHoppingOptimizer? optimizer = null;
+
+                optimizer = new BasinHoppingOptimizer(
+                    _session.System, _session.MeritFunction,
+                    _session.GlassCatalog, _session.ConfigEditor)
                 {
-                    if (!variableRowsPopulated && optimizer!.Variables.Count > 0)
+                    Settings = settings,
+                    // Phase 10a — DEV engine selection from the dialog.
+                    EngineMode = (EngineModeIndex == 1) ? EngineMode.Native : EngineMode.CSharp,
+                    NativeDerivativeMode = (DerivativeModeIndex == 1)
+                        ? LensHH.Core.NativeInterop.MeritDerivativeMode.Analytic
+                        : LensHH.Core.NativeInterop.MeritDerivativeMode.FiniteDifference,
+                    FilteredCatalogSearchPaths = filteredDir != null ? new[] { filteredDir } : Array.Empty<string>(),
+                    OnProgress = p => Dispatcher.UIThread.Post(() =>
                     {
-                        variableRowsPopulated = true;
-                        for (int i = 0; i < optimizer.Variables.Count; i++)
-                            VariableRows.Add(new BasinHoppingVariableRow(
-                                optimizer.Variables[i].Description,
-                                optimizer.StartingValues[i]));
-                        foreach (var kv in optimizer.StartingGlasses)
-                            GlassRows.Add(new BasinHoppingGlassRow(kv.Key, kv.Value));
-                    }
+                        if (!variableRowsPopulated && optimizer!.Variables.Count > 0)
+                        {
+                            variableRowsPopulated = true;
+                            for (int i = 0; i < optimizer.Variables.Count; i++)
+                                VariableRows.Add(new BasinHoppingVariableRow(
+                                    optimizer.Variables[i].Description,
+                                    optimizer.StartingValues[i]));
+                            foreach (var kv in optimizer.StartingGlasses)
+                                GlassRows.Add(new BasinHoppingGlassRow(kv.Key, kv.Value));
+                        }
 
-                    if (!eligibilityLogged && GlassSubstitution)
+                        if (!eligibilityLogged && GlassSubstitution)
+                        {
+                            eligibilityLogged = true;
+                            LogGlassEligibility(optimizer!.ConfiguredSubstituteSurfaces, optimizer.FixedGlassSurfacesSkipped);
+                        }
+
+                        AcceptedCount = p.Accepted;
+                        RejectedCount = p.Rejected;
+                        GlassSwapsTotal += p.GlassSwaps;
+                        BestMeritText = p.BestMerit.ToString("E6");
+                        HopText = $"Hop {p.Hop + 1}/{p.MaxHops}";
+                        PhaseText = $"{p.Phase} (acc {p.Accepted} / rej {p.Rejected})";
+                        StatusText = $"merit={p.CurrentMerit:E5}  best={p.BestMerit:E5}";
+                        ProgressPercent = 100.0 * (p.Hop + 1) / Math.Max(1, p.MaxHops);
+
+                        if (p.CurrentValues.Length == VariableRows.Count)
+                            for (int i = 0; i < VariableRows.Count; i++)
+                                VariableRows[i].Update(p.CurrentValues[i], optimizer.StartingValues[i]);
+
+                        foreach (var row in GlassRows)
+                            if (p.CurrentGlasses.TryGetValue(row.SurfaceIndex, out var glass))
+                                row.CurrentGlass = glass;
+
+                        string tag = p.Phase == "Accept" ? "ACC" : "rej";
+                        string extra = p.GlassSwaps > 0 ? $"  glass-swaps={p.GlassSwaps}" : "";
+                        AppendLog($"Hop {p.Hop + 1,3} [{tag}] merit={p.CurrentMerit:E5}  best={p.BestMerit:E5}{extra}");
+                    })
+                };
+
+                result = await Task.Run(() => optimizer.Optimize(ct), ct);
+            }
+            else
+            {
+                // ── N parallel chains: aggregate live progress (best / hops / acc / rej
+                //    summed across chains). Per-variable + per-glass tables are filled once
+                //    at completion from the winning chain — live per-variable tracking is
+                //    ambiguous across N concurrent walks. ──
+                _batch = new BasinHoppingOptimizerBatch(
+                    _session.System, _session.MeritFunction,
+                    _session.GlassCatalog, _session.ConfigEditor)
+                {
+                    Settings = settings,
+                    EngineMode = (EngineModeIndex == 1) ? EngineMode.Native : EngineMode.CSharp,
+                    NativeDerivativeMode = (DerivativeModeIndex == 1)
+                        ? LensHH.Core.NativeInterop.MeritDerivativeMode.Analytic
+                        : LensHH.Core.NativeInterop.MeritDerivativeMode.FiniteDifference,
+                    FilteredCatalogSearchPaths = filteredDir != null ? new[] { filteredDir } : Array.Empty<string>(),
+                    OnProgress = p => Dispatcher.UIThread.Post(() =>
                     {
-                        eligibilityLogged = true;
-                        int eligible = optimizer!.ConfiguredSubstituteSurfaces;
-                        int skipped = optimizer.FixedGlassSurfacesSkipped;
-                        int total = eligible + skipped;
-                        if (total == 0)
-                        {
-                            AppendLog("Substitution-eligible elements: 0 (no glass surfaces in system)");
-                        }
-                        else if (skipped == 0)
-                        {
-                            AppendLog($"Substitution-eligible elements: {eligible} of {total} (every glass has ≥1 active variable)");
-                        }
-                        else
-                        {
-                            string verb = skipped == 1 ? "has" : "have";
-                            AppendLog($"Substitution-eligible elements: {eligible} of {total} ({skipped} fixed glass {verb} no active variable — not eligible)");
-                        }
-                    }
+                        AcceptedCount = p.Accepted;
+                        RejectedCount = p.Rejected;
+                        GlassSwapsTotal = p.GlassSwaps;          // already aggregated across chains
+                        BestMeritText = p.BestMerit.ToString("E6");
+                        HopText = $"Hops {p.Hop}/{p.MaxHops}";
+                        PhaseText = $"{resolvedChains} chains: {p.Phase}";
+                        StatusText = $"best={p.BestMerit:E5}  (acc {p.Accepted} / rej {p.Rejected})";
+                        ProgressPercent = 100.0 * p.Hop / Math.Max(1, p.MaxHops);
+                    })
+                };
 
-                    AcceptedCount = p.Accepted;
-                    RejectedCount = p.Rejected;
-                    GlassSwapsTotal += p.GlassSwaps;
-                    BestMeritText = p.BestMerit.ToString("E6");
-                    HopText = $"Hop {p.Hop + 1}/{p.MaxHops}";
-                    PhaseText = $"{p.Phase} (acc {p.Accepted} / rej {p.Rejected})";
-                    StatusText = $"merit={p.CurrentMerit:E5}  best={p.BestMerit:E5}";
-                    ProgressPercent = 100.0 * (p.Hop + 1) / Math.Max(1, p.MaxHops);
-
-                    if (p.CurrentValues.Length == VariableRows.Count)
-                        for (int i = 0; i < VariableRows.Count; i++)
-                            VariableRows[i].Update(p.CurrentValues[i], optimizer.StartingValues[i]);
-
-                    foreach (var row in GlassRows)
-                        if (p.CurrentGlasses.TryGetValue(row.SurfaceIndex, out var glass))
-                            row.CurrentGlass = glass;
-
-                    string tag = p.Phase == "Accept" ? "ACC" : "rej";
-                    string extra = p.GlassSwaps > 0 ? $"  glass-swaps={p.GlassSwaps}" : "";
-                    AppendLog($"Hop {p.Hop + 1,3} [{tag}] merit={p.CurrentMerit:E5}  best={p.BestMerit:E5}{extra}");
-                })
-            };
-
-            result = await Task.Run(() => optimizer.Optimize(ct), ct);
+                result = await Task.Run(() => _batch.Optimize(ct), ct);
+            }
         }
         catch (OperationCanceledException)
         {
@@ -355,10 +405,47 @@ public partial class BasinHoppingHjLmDialogViewModel : ObservableObject
                 _session.System, _session.GlassCatalog, configEditor: _session.ConfigEditor);
             double finalMerit = freshEval.Evaluate(_session.MeritFunction);
 
+            // Multi-chain: fill the variable / glass tables from the winning chain now
+            // (they weren't tracked live). _session.System already holds the global best.
+            var best = _batch?.BestChain;
+            if (best != null && VariableRows.Count == 0)
+            {
+                if (GlassSubstitution)
+                    LogGlassEligibility(best.ConfiguredSubstituteSurfaces, best.FixedGlassSurfacesSkipped);
+                for (int i = 0; i < best.Variables.Count; i++)
+                {
+                    var row = new BasinHoppingVariableRow(best.Variables[i].Description, best.StartingValues[i]);
+                    row.Update(best.Variables[i].GetValue(_session.System), best.StartingValues[i]);
+                    VariableRows.Add(row);
+                }
+                foreach (var kv in best.StartingGlasses)
+                {
+                    var gr = new BasinHoppingGlassRow(kv.Key, kv.Value);
+                    if (kv.Key >= 0 && kv.Key < _session.System.Surfaces.Count)
+                        gr.CurrentGlass = _session.System.Surfaces[kv.Key].Material ?? kv.Value;
+                    GlassRows.Add(gr);
+                }
+            }
+
             BestMeritText = finalMerit.ToString("E6");
             StatusText = result.Cancelled ? "Cancelled" : "Complete";
+            string chainNote = _batch != null ? $"{_batch.ChainsRun} chains, " : "";
             AppendLog($"Merit: {result.InitialMerit:E6} -> {finalMerit:E6} in {_stopwatch.Elapsed.TotalSeconds:F1}s " +
-                $"({result.Accepted} accepted / {result.Rejected} rejected, {result.GlassSwaps} glass swaps)");
+                $"({chainNote}{result.Accepted} accepted / {result.Rejected} rejected, {result.GlassSwaps} glass swaps)");
+        }
+    }
+
+    private void LogGlassEligibility(int eligible, int skipped)
+    {
+        int total = eligible + skipped;
+        if (total == 0)
+            AppendLog("Substitution-eligible elements: 0 (no glass surfaces in system)");
+        else if (skipped == 0)
+            AppendLog($"Substitution-eligible elements: {eligible} of {total} (every glass has ≥1 active variable)");
+        else
+        {
+            string verb = skipped == 1 ? "has" : "have";
+            AppendLog($"Substitution-eligible elements: {eligible} of {total} ({skipped} fixed glass {verb} no active variable — not eligible)");
         }
     }
 

@@ -74,7 +74,7 @@
     <Border DockPanel.Dock="Top" BorderBrush="#CCC" BorderThickness="1"
             CornerRadius="4" Padding="10,6" Margin="0,0,0,6">
       <Grid ColumnDefinitions="Auto,6,80,16,Auto,6,80,16,Auto,6,80,*,Auto"
-            RowDefinitions="Auto,6,Auto,6,Auto,6,Auto">
+            RowDefinitions="Auto,6,Auto,6,Auto,6,Auto,6,Auto">
         <!-- Row 0 -->
         <TextBlock Grid.Row="0" Grid.Column="0" Text="Hops:" VerticalAlignment="Center" />
         <TextBox Grid.Row="0" Grid.Column="2" Text="{Binding MaxHops, UpdateSourceTrigger=LostFocus}" IsEnabled="{Binding !IsRunning}"
@@ -147,6 +147,15 @@
                   Tag="Experimental: when a glass is swapped, also rescale that element's curvatures by (n_old-1)/(n_new-1) so its power is preserved. Only active with Glass substitution on. NOTE: testing showed this tends to HURT basin hopping — its small-step trajectory is over-perturbed by the per-swap curvature jump — so it's off by default here. (It helps Multistart, where it is on by default.)"
                   PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"
                   GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
+
+        <!-- Row 4: Parallel chains -->
+        <TextBlock Grid.Row="8" Grid.Column="0" Text="Chains:" VerticalAlignment="Center" />
+        <TextBox Grid.Row="8" Grid.Column="2" Text="{Binding ParallelChains, UpdateSourceTrigger=LostFocus}" IsEnabled="{Binding !IsRunning}"
+                 Tag="Number of independent basin-hopping chains run in parallel; the single global best is returned. 0 = auto (one chain per physical core). 1 = the classic single chain with a full live per-variable trace. More chains fill the cores and explore more basins at once — much better global search."
+                 PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"
+                 GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
+        <TextBlock Grid.Row="8" Grid.Column="4" Grid.ColumnSpan="7" Text="{Binding ParallelChainsHint}"
+                   VerticalAlignment="Center" Foreground="#777" FontStyle="Italic" />
 
         <!-- Start/Stop -->
         <StackPanel Grid.Row="0" Grid.RowSpan="5" Grid.Column="12" Orientation="Horizontal" Spacing="8"
