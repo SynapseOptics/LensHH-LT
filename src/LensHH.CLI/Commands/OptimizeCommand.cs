@@ -643,27 +643,44 @@ namespace LensHH.CLI.Commands
                             val.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
                         break;
                     case "seed": if (int.TryParse(val, out int sd)) settings.Seed = sd; break;
+                    // Parallel independent chains (each from its own perturbation seed); the
+                    // single global best is returned. 1 = classic single chain; 0 = auto (physical cores).
+                    case "chains": if (int.TryParse(val, out int ch)) settings.ParallelChains = ch; break;
                 }
             }
 
             _cts = new CancellationTokenSource();
             Console.CancelKeyPress += OnCancelKeyPress;
 
-            var optimizer = new BasinHoppingOptimizer(system, mf, glassMgr, session.ConfigEditor)
+            // Always use the batch orchestrator: chains==1 routes to the single-chain
+            // optimizer (identical to before), chains>1 runs N parallel walks.
+            var optimizer = new BasinHoppingOptimizerBatch(system, mf, glassMgr, session.ConfigEditor)
             {
                 Settings = settings,
                 FilteredCatalogSearchPaths = FindFilteredCatalogPaths(),
             };
 
+            // Throttle progress: with N chains, OnProgress fires from N threads on every
+            // hop — print at most ~3×/s so the console isn't flooded (and timing is clean).
+            var progressWatch = System.Diagnostics.Stopwatch.StartNew();
+            object progressLock = new object();
             optimizer.OnProgress = p =>
             {
-                if (p.Hop > 0)
+                if (p.Hop <= 0) return;
+                lock (progressLock)
+                {
+                    if (progressWatch.ElapsedMilliseconds < 333) return;
+                    progressWatch.Restart();
                     AnsiConsole.MarkupLine(
-                        $"  Hop {p.Hop}/{p.MaxHops}: {Markup.Escape(p.Phase),-15} merit={p.CurrentMerit:E6} best={p.BestMerit:E6} ({p.Accepted} acc / {p.Rejected} rej{(settings.GlassSubstitution ? $", {p.GlassSwaps} swaps" : "")})");
+                        $"  Hop {p.Hop}/{p.MaxHops}: {Markup.Escape(p.Phase),-18} best={p.BestMerit:E6} ({p.Accepted} acc / {p.Rejected} rej{(settings.GlassSubstitution ? $", {p.GlassSwaps} swaps" : "")})");
+                }
             };
 
+            int resolvedChains = settings.ParallelChains <= 0
+                ? LensHH.Core.Optimization.CpuInfo.PhysicalCoreCount() : settings.ParallelChains;
             AnsiConsole.MarkupLine("[bold]Starting basin-hopping optimization[/]");
-            AnsiConsole.MarkupLine($"  Hops: {settings.MaxHops}, LM/hop: {settings.LmIterationsPerHop}, HJ/hop: {settings.HjStepsPerHop}");
+            AnsiConsole.MarkupLine($"  Parallel chains: {resolvedChains}{(settings.ParallelChains <= 0 ? " (auto = physical cores)" : "")}");
+            AnsiConsole.MarkupLine($"  Hops/chain: {settings.MaxHops}, LM/hop: {settings.LmIterationsPerHop}, HJ/hop: {settings.HjStepsPerHop}");
             AnsiConsole.MarkupLine($"  Initial sigma: {settings.InitialPerturbSigma:G3}, HJ step: {settings.HjInitialStep:G3}");
             AnsiConsole.MarkupLine($"  Glass substitution: {(settings.GlassSubstitution ? "ON (" + string.Join(", ", settings.GlassCatalogs) + ")" : "OFF")}");
             AnsiConsole.MarkupLine("");
@@ -676,7 +693,8 @@ namespace LensHH.CLI.Commands
                 AnsiConsole.MarkupLine("[bold]Basin Hopping Complete[/]");
                 AnsiConsole.MarkupLine($"  Initial Merit: {result.InitialMerit:E6}");
                 AnsiConsole.MarkupLine($"  Final Merit:   {result.FinalMerit:E6}");
-                AnsiConsole.MarkupLine($"  Hops: {result.Hops}, Accepted: {result.Accepted}, Rejected: {result.Rejected}, Glass Swaps: {result.GlassSwaps}");
+                AnsiConsole.MarkupLine($"  Chains: {optimizer.ChainsRun}, total hops: {result.Hops}, Accepted: {result.Accepted}, Rejected: {result.Rejected}, Glass Swaps: {result.GlassSwaps}");
+                AnsiConsole.MarkupLine($"  Wall time: {result.Elapsed.TotalSeconds:F2} s");
                 if (!string.IsNullOrEmpty(result.Message))
                     AnsiConsole.MarkupLine($"  {Markup.Escape(result.Message)}");
                 if (result.Cancelled)
