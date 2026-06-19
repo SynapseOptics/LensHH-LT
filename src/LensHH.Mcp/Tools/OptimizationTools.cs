@@ -559,6 +559,7 @@ namespace LensHH.Mcp.Tools
             "Variable filtering: constrainedOnly (false) — when true, only variables with min/max are perturbed. " +
             "Glass substitution: glassSubstitution (false). When true, the catalogs string must resolve to at least one glass; an empty string with no catalogs loaded throws. onlyPreferred (true) restricts loaded catalogs to Status<=1 glasses (filtered catalogs are already curated). " +
             "Determinism: seed (default 1234). " +
+            "Parallelism: chains (default 0 = auto = one chain per physical core) runs that many independent hopping chains concurrently from different perturbation seeds and returns the single global best — much better global search and full CPU use. chains=1 is the classic single chain. " +
             "Result is auto-applied to the system; use system_save to persist.")]
         public string BasinHopping(
             int maxHops = 2000, int lmIterationsPerHop = 60, int hjStepsPerHop = 30,
@@ -566,7 +567,7 @@ namespace LensHH.Mcp.Tools
             double lmTolerance = 1e-10, double lmInitialDamping = 1e-3, bool useBroydenUpdate = true,
             bool constrainedOnly = false,
             bool glassSubstitution = false, bool onlyPreferred = true, string catalogs = "",
-            int seed = 1234)
+            int seed = 1234, int chains = 0)
         {
             { var ge = _session.ValidateGlass(); if (ge != null) return ge; }
             if (_session.MeritFunction == null || _session.MeritFunction.Operands.Count == 0)
@@ -593,7 +594,8 @@ namespace LensHH.Mcp.Tools
                 settings.GlassCatalogs = new System.Collections.Generic.List<string>(
                     catalogs.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
 
-            var optimizer = new BasinHoppingOptimizer(_session.System, _session.MeritFunction, _session.GlassCatalog, _session.ConfigEditor)
+            settings.ParallelChains = chains;   // 0 = auto (physical cores); 1 = single chain
+            var optimizer = new BasinHoppingOptimizerBatch(_session.System, _session.MeritFunction, _session.GlassCatalog, _session.ConfigEditor)
             {
                 Settings = settings,
                 FilteredCatalogSearchPaths = FindFilteredCatalogPaths(),
@@ -604,6 +606,7 @@ namespace LensHH.Mcp.Tools
 
             var sb = new StringBuilder();
             sb.AppendLine("Basin Hopping Complete");
+            sb.AppendLine($"  Chains:        {optimizer.ChainsRun}");
             sb.AppendLine($"  Initial Merit: {result.InitialMerit:E6}");
             sb.AppendLine($"  Final Merit:   {result.FinalMerit:E6}");
             sb.AppendLine($"  Hops:          {result.Hops}");
@@ -920,6 +923,7 @@ namespace LensHH.Mcp.Tools
             "Start basin-hopping optimization in the background and return a job-id immediately. " +
             "Poll optimize_status(jobId) for progress (current hop, best merit, accepted/rejected, glass swaps); call optimize_cancel to stop. " +
             "Result auto-applies to the system when the job completes. " +
+            "chains (default 0 = auto = one chain per physical core) runs that many independent hopping chains concurrently and returns the single global best (chains=1 = classic single chain). " +
             "Parameters mirror optimize_basin_hopping.")]
         public string BasinHoppingStart(
             int maxHops = 2000, int lmIterationsPerHop = 60, int hjStepsPerHop = 30,
@@ -927,7 +931,7 @@ namespace LensHH.Mcp.Tools
             double lmTolerance = 1e-10, double lmInitialDamping = 1e-3, bool useBroydenUpdate = true,
             bool constrainedOnly = false,
             bool glassSubstitution = false, bool onlyPreferred = true, string catalogs = "",
-            int seed = 1234)
+            int seed = 1234, int chains = 0)
         {
             { var ge = _session.ValidateGlass(); if (ge != null) return ge; }
             if (_session.MeritFunction == null || _session.MeritFunction.Operands.Count == 0)
@@ -953,8 +957,10 @@ namespace LensHH.Mcp.Tools
                 settings.GlassCatalogs = new System.Collections.Generic.List<string>(
                     catalogs.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
 
-            var job = new RunningJob(kind: "basin") { MaxTrials = maxHops };
-            var optimizer = new BasinHoppingOptimizer(_session.System, _session.MeritFunction, _session.GlassCatalog, _session.ConfigEditor)
+            settings.ParallelChains = chains;   // 0 = auto (physical cores); 1 = single chain
+            int resolvedChains = chains <= 0 ? LensHH.Core.Optimization.CpuInfo.PhysicalCoreCount() : chains;
+            var job = new RunningJob(kind: "basin") { MaxTrials = maxHops * Math.Max(1, resolvedChains) };
+            var optimizer = new BasinHoppingOptimizerBatch(_session.System, _session.MeritFunction, _session.GlassCatalog, _session.ConfigEditor)
             {
                 Settings = settings,
                 FilteredCatalogSearchPaths = FindFilteredCatalogPaths(),
@@ -984,6 +990,7 @@ namespace LensHH.Mcp.Tools
                     if (result.Cancelled) job.Cancel();
                     else job.Complete(
                         $"Basin Hopping Complete\n" +
+                        $"  Chains: {optimizer.ChainsRun}\n" +
                         $"  Initial Merit: {result.InitialMerit:E6}\n" +
                         $"  Final Merit:   {result.FinalMerit:E6}\n" +
                         $"  Hops: {result.Hops}, Accepted: {result.Accepted}, Rejected: {result.Rejected}, Glass Swaps: {result.GlassSwaps}");
@@ -993,7 +1000,7 @@ namespace LensHH.Mcp.Tools
             });
 
             _session.AddJob(job);
-            return $"Started basin-hopping job. jobId={job.JobId}\n" +
+            return $"Started basin-hopping job ({resolvedChains} parallel chain{(resolvedChains == 1 ? "" : "s")}). jobId={job.JobId}\n" +
                    $"Poll optimize_status(jobId=\"{job.JobId}\") every 10-30 seconds; " +
                    $"call optimize_cancel(jobId=\"{job.JobId}\") to stop early.";
         }
