@@ -2,6 +2,19 @@
 
 All notable changes to LensHH-LT and the LensHH-LT-Engine.
 
+## 1.0.125 — unreleased
+
+### Added
+- **Parallel basin-hopping.** Basin-hopping optimization can now run several
+  independent chains at once — each a full hop-walk from its own random start — and
+  returns the single best design found across all of them. A lone chain leaves most
+  cores idle; running one chain per core fills the CPU and explores many basins in
+  parallel, reaching markedly better designs for the same per-chain budget. Choose
+  the chain count in the Basin-Hopping dialog ("Chains": 0 = automatic, one per
+  physical core; 1 = the classic single chain), from the CLI
+  (`optimize basin chains=N`), or via the MCP tools (`chains` parameter). Single-chain
+  mode is unchanged and still shows the full live per-variable trace.
+
 ## 1.0.124 — 2026-06-18
 
 ### Fixed
