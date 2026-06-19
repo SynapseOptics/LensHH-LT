@@ -621,10 +621,43 @@ curvatures and thicknesses around it.
 | **HJ Steps** | 30 | Maximum Hooke-Jeeves steps per hop before handing off to LM. 30 is balanced; 0 disables HJ entirely. |
 | **Sigma** | 0.001 | *Starting* value of the Gaussian-perturbation scale. Sigma is adapted automatically during the run (see below). 0.001 is sufficient even for severe starts; you rarely need to raise it. |
 | **Seed** | 1234 | RNG seed. Change it to get a different random trajectory while keeping all other knobs identical — useful for confirming a result isn't a fluke. |
+| **Chains** | 0 (auto) | Number of independent hopping chains run in parallel; the single best design across all of them is returned. **0** = automatic, one chain per physical CPU core. **1** = the classic single chain with the full live per-variable trace. Higher values fill the CPU and explore more basins at once — see [Parallel chains](#parallel-chains). |
 | **Broyden Update** | on | Same as Local LM. |
 | **Only randomize constrained variables** | off | Limit perturbation to bounded variables. Useful for surgical exploration when most variables are already where you want them. |
 | **Glass Substitution** | off | Enable glass swaps. Pick the source from the **Glass Source** dropdown — filtered catalogs (small curated lists, cheap) or one of the loaded full catalogs (broad exploration, slower). |
 | **Glass Source** | first filtered catalog | Pool used when Glass Substitution is on. Filtered catalogs in `<install>/catalogs/Filtered/` are typically 30–100 glasses curated by status, manufacturer, refractive-index range, etc. See [Glass Catalogs](glass-catalogs.md). |
+
+### Parallel chains
+
+A single hopping chain is sequential — one perturb-optimize step at a
+time — so it leaves most of your CPU idle. Set **Chains** above 1 (or
+leave it at **0** for one chain per physical core) to run several
+independent chains at once, each from its own random perturbation. They
+don't share state; the run simply returns the **single best design found
+across all of them**. Because each chain explores a different basin, a
+parallel run typically reaches a markedly better merit than one chain in
+the same per-chain hop budget — and it actually uses the cores you paid
+for.
+
+While a parallel run is going, the **Chains** tab is the live view. Each
+row is one chain, showing its hops completed, running best merit,
+accepted/rejected counts, and a **◄ best** marker on the chain currently
+holding the global best. The headline merit at the top of the dialog is
+the global best across all chains and only ever decreases; the log
+records each new global best as it's found. The **Variables** and
+**Glasses** tabs fill in **at completion** from the winning chain —
+while many chains are exploring different designs at once there is no
+single "current" design to track live.
+
+**Chains = 1** is unchanged from earlier versions: one chain with the
+full live per-variable / per-glass trace in the Variables and Glasses
+tabs as it runs.
+
+> **Physical vs. logical cores.** Auto uses *physical* cores, leaving the
+> hyperthread siblings free so the rest of the machine (and the app's own
+> UI) stays responsive during a long run. On a dedicated machine you can
+> set Chains to your *logical* core count for ~40 % more throughput at the
+> cost of a busier system.
 
 **Sigma adapts during the run.** The value you enter in the dialog
 is just the starting value; the optimizer grows or resets it
