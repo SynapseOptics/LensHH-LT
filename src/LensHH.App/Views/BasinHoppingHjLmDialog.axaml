@@ -233,6 +233,19 @@
           <Separator DockPanel.Dock="Top" Margin="0,0,0,4" />
 
           <TabControl>
+            <TabItem Header="Chains" IsVisible="{Binding IsMultiChain}">
+              <DataGrid ItemsSource="{Binding ChainRows}" IsReadOnly="True"
+                        GridLinesVisibility="Horizontal" HeadersVisibility="Column"
+                        FontFamily="Consolas,Courier New,monospace" FontSize="11">
+                <DataGrid.Columns>
+                  <DataGridTextColumn Header="Chain"      Binding="{Binding Chain}"            Width="Auto" />
+                  <DataGridTextColumn Header="Hops"       Binding="{Binding Hops}"             Width="Auto" />
+                  <DataGridTextColumn Header="Best Merit" Binding="{Binding Best}"             Width="*" />
+                  <DataGridTextColumn Header="Acc / Rej"  Binding="{Binding AcceptedRejected}" Width="Auto" />
+                  <DataGridTextColumn Header=""           Binding="{Binding LeadMarker}"       Width="Auto" />
+                </DataGrid.Columns>
+              </DataGrid>
+            </TabItem>
             <TabItem Header="Log">
               <TextBox Text="{Binding LogText}" IsReadOnly="True" AcceptsReturn="True"
                        FontFamily="Consolas,Courier New,monospace" FontSize="11"

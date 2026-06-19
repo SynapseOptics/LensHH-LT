@@ -52,6 +52,20 @@ public partial class BasinHoppingGlassRow : ObservableObject
     }
 }
 
+public partial class BasinHoppingChainRow : ObservableObject
+{
+    public int Chain { get; }
+    [ObservableProperty] private string _hops = "0";
+    [ObservableProperty] private string _best = "—";
+    [ObservableProperty] private string _acceptedRejected = "0 / 0";
+    [ObservableProperty] private bool _leads;   // currently holds the global best
+
+    public string LeadMarker => Leads ? "◄ best" : "";
+    partial void OnLeadsChanged(bool value) => OnPropertyChanged(nameof(LeadMarker));
+
+    public BasinHoppingChainRow(int chain) => Chain = chain;
+}
+
 public partial class BasinHoppingHjLmDialogViewModel : ObservableObject
 {
     private readonly GuiSession _session;
@@ -156,6 +170,11 @@ public partial class BasinHoppingHjLmDialogViewModel : ObservableObject
     public ObservableCollection<BasinHoppingVariableRow> VariableRows { get; } = new();
     public ObservableCollection<BasinHoppingGlassRow> GlassRows { get; } = new();
 
+    // Live per-chain status for a parallel run (empty for single-chain). Drives the "Chains" tab.
+    public ObservableCollection<BasinHoppingChainRow> ChainRows { get; } = new();
+    [ObservableProperty] private bool _isMultiChain;
+    private double _bestEverLogged = double.MaxValue;   // for "new global best" log lines
+
     public bool Accepted { get; private set; }
 
     public BasinHoppingHjLmDialogViewModel(GuiSession session)
@@ -196,6 +215,9 @@ public partial class BasinHoppingHjLmDialogViewModel : ObservableObject
         GlassRows.Clear();
         Accepted = false;
         _batch = null;
+        ChainRows.Clear();
+        IsMultiChain = false;
+        _bestEverLogged = double.MaxValue;
         _stopwatch.Restart();
         _cts = new CancellationTokenSource();
 
@@ -351,10 +373,17 @@ public partial class BasinHoppingHjLmDialogViewModel : ObservableObject
             }
             else
             {
-                // ── N parallel chains: aggregate live progress (best / hops / acc / rej
-                //    summed across chains). Per-variable + per-glass tables are filled once
-                //    at completion from the winning chain — live per-variable tracking is
-                //    ambiguous across N concurrent walks. ──
+                // ── N parallel chains. The useful live view is the per-chain table (each
+                //    chain's hops + running best, leader highlighted) via OnChainsProgress;
+                //    the headline shows the global best, which only ever decreases. Per-chain
+                //    "Accept/Reject" flicker is intentionally NOT shown — across N chains it
+                //    is noise. Per-variable + per-glass tables fill at completion from the
+                //    winning chain (live per-variable tracking is ambiguous across N walks). ──
+                IsMultiChain = true;
+                PhaseText = $"{resolvedChains} chains running";
+                var headThrottle = System.Diagnostics.Stopwatch.StartNew();
+                var tableThrottle = System.Diagnostics.Stopwatch.StartNew();
+
                 _batch = new BasinHoppingOptimizerBatch(
                     _session.System, _session.MeritFunction,
                     _session.GlassCatalog, _session.ConfigEditor)
@@ -367,14 +396,37 @@ public partial class BasinHoppingHjLmDialogViewModel : ObservableObject
                     FilteredCatalogSearchPaths = filteredDir != null ? new[] { filteredDir } : Array.Empty<string>(),
                     OnProgress = p => Dispatcher.UIThread.Post(() =>
                     {
+                        // Log every genuine global-best improvement (not throttled — these are
+                        // the events the user cares about), and keep the headline merit current.
+                        if (p.BestMerit < _bestEverLogged - Math.Abs(_bestEverLogged) * 1e-9 - 1e-15)
+                        {
+                            _bestEverLogged = p.BestMerit;
+                            BestMeritText = p.BestMerit.ToString("E6");
+                            AppendLog($"new global best  {p.BestMerit:E6}   (hop {p.Hop})");
+                        }
+                        if (headThrottle.ElapsedMilliseconds < 200) return;
+                        headThrottle.Restart();
                         AcceptedCount = p.Accepted;
                         RejectedCount = p.Rejected;
                         GlassSwapsTotal = p.GlassSwaps;          // already aggregated across chains
-                        BestMeritText = p.BestMerit.ToString("E6");
-                        HopText = $"Hops {p.Hop}/{p.MaxHops}";
-                        PhaseText = $"{resolvedChains} chains: {p.Phase}";
-                        StatusText = $"best={p.BestMerit:E5}  (acc {p.Accepted} / rej {p.Rejected})";
+                        HopText = $"{p.Hop} hops / {resolvedChains} chains";
+                        StatusText = $"global best {p.BestMerit:E5}   ({p.Accepted} acc / {p.Rejected} rej)";
                         ProgressPercent = 100.0 * p.Hop / Math.Max(1, p.MaxHops);
+                    }),
+                    OnChainsProgress = snap => Dispatcher.UIThread.Post(() =>
+                    {
+                        if (ChainRows.Count == 0)
+                            for (int k = 0; k < snap.Length; k++) ChainRows.Add(new BasinHoppingChainRow(k));
+                        if (tableThrottle.ElapsedMilliseconds < 200) return;
+                        tableThrottle.Restart();
+                        for (int k = 0; k < snap.Length && k < ChainRows.Count; k++)
+                        {
+                            var r = ChainRows[k]; var s = snap[k];
+                            r.Hops = s.Hops.ToString();
+                            r.Best = double.IsNaN(s.Best) ? "—" : s.Best.ToString("E6");
+                            r.AcceptedRejected = $"{s.Accepted} / {s.Rejected}";
+                            r.Leads = s.Leads;
+                        }
                     })
                 };
 
