@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
+using System.Linq;
+using System.Text.Json;
 using System.Threading;
 using LensHH.Core.Configuration;
 using LensHH.Core.Models;
@@ -27,6 +29,7 @@ namespace LensHH.CLI.Commands
   [green]optimize spc [[elements=N]] [[topn=N]] [[scanmin=V]] [[scanmax=V]] [[steps=N]] [[epsilon=V]] [[glass=N]] [[lm=N]] [[postlm=N]] [[catalog=NAME]] [[archive=true|false]] [[archivedir=PATH]] [[dop=N]] [[nullglass=NAME]] [[runinitlm=true|false]] [[initlm=N]] [[onlypreferred=true|false]] [[minglass=V]] [[maxglass=V]] [[minair=V]] [[maxair=V]] [[minedge=V]] [[constraintweight=V]][/]  Synthesis by SPC. catalog is mandatory (single AGF name or comma-separated list).
   [green]optimize global [[models=N]] [[restarts=N]] [[trials=N]] [[lm=N]] [[stall=N]] [[seed=N]] [[prepolish=N]] [[sigma=V]] [[cap=V]] [[glass=V]] [[native]] [[analytic]] [[out=DIR]][/]  Global Search: many seeded restarts from the start design; writes a pool of distinct .lhlt designs to DIR (default global_search_results). seed: base seed (run 1, then 2, … for independent batches). prepolish=0 (default) perturbs the raw start.
   [green]optimize deseed [[pop=N]] [[gens=N]] [[stall=N]] [[f=V]] [[cr=V]] [[glass=V]] [[curvlimit=V]] [[gpu]] [[seed=N]] [[emit=N]] [[refine=N]] [[out=DIR]][/]  Differential-Evolution seed generator: evolve a population from ranges (geometry + glass), then LM-refine each seed; writes refined seeds to DIR. glass = per-candidate glass-swap probability (%); curvlimit = curvature seed limit (0=auto); gpu = run the per-generation merit eval on the GPU (host DE loop). Prints a CPU/GPU timing breakdown.
+  [green]optimize memetic [[rounds=N]] [[gens=N]] [[polish-count=N]] [[polish=lm|multistart]] [[pop=N]] [[f=V]] [[cr=V]] [[clones=N]] [[sigma=V]] [[niche=V]] [[lm-iters=N]] [[seed=N]] [[gpu]] [[out=DIR]] [[resume=DIR]][/]  EXPERIMENTAL memetic DE: interleaves DE bursts (gens) with niched-best polish + reseed for `rounds`, returning `polish-count` diverse designs. gpu = population resident on the device. out: writes best/*.lhlt + population.json (restart with resume=DIR).
   [green]optimize cancel[/]                                     Cancel running optimization
   [green]optimize variables[/]                                  List current variables";
 
@@ -68,6 +71,9 @@ namespace LensHH.CLI.Commands
                 case "deseed":
                 case "de":
                     RunDeSeed(session, args);
+                    break;
+                case "memetic":
+                    RunMemetic(session, args);
                     break;
                 case "cancel":
                     CancelOptimization();
@@ -593,6 +599,147 @@ namespace LensHH.CLI.Commands
             foreach (char c in s)
                 sb.Append(char.IsLetterOrDigit(c) || c == '-' || c == '_' || c == '.' ? c : '_');
             return sb.ToString();
+        }
+
+        // EXPERIMENTAL: memetic DE — interleave DE bursts with niched-best polish + reseed.
+        private sealed class MemeticPopulationFile
+        {
+            public int PopulationSize { get; set; }
+            public int VarCount { get; set; }
+            public int Seed { get; set; }
+            public double[][] Genes { get; set; } = Array.Empty<double[]>();
+        }
+
+        private void RunMemetic(Session session, string[] args)
+        {
+            var system = session.EnsureValidSystem();
+            var mf = session.EnsureMeritFunction();
+            var glassMgr = session.EnsureGlassCatalog();
+            session.ValidateGlass();
+
+            var mset = new MemeticDeSettings();
+            bool useGpu = false;
+            string outDir = "memetic_results";
+            string? resumeDir = null;
+
+            for (int i = 1; i < args.Length; i++)
+            {
+                var parts = args[i].Split('=');
+                var key = parts[0].ToLowerInvariant();
+                var val = parts.Length > 1 ? parts[1] : "";
+                switch (key)
+                {
+                    case "rounds": if (int.TryParse(val, out int rr)) mset.Rounds = rr; break;
+                    case "gens": if (int.TryParse(val, out int gg)) mset.GenerationsPerRound = gg; break;
+                    case "polish-count": case "zzz": if (int.TryParse(val, out int zz)) mset.PolishCount = zz; break;
+                    case "pop": if (int.TryParse(val, out int pp)) mset.PopulationSize = pp; break;
+                    case "f": if (double.TryParse(val, NumberStyles.Float, CultureInfo.InvariantCulture, out double fv)) mset.F = fv; break;
+                    case "cr": if (double.TryParse(val, NumberStyles.Float, CultureInfo.InvariantCulture, out double cv)) mset.CR = cv; break;
+                    case "clones": if (int.TryParse(val, out int cl)) mset.ClonesPerElite = cl; break;
+                    case "sigma": if (double.TryParse(val, NumberStyles.Float, CultureInfo.InvariantCulture, out double sg)) mset.InitialPerturbSigma = sg; break;
+                    case "niche": if (double.TryParse(val, NumberStyles.Float, CultureInfo.InvariantCulture, out double nd)) mset.NicheMinDistance = nd; break;
+                    case "lm-iters": if (int.TryParse(val, out int li)) mset.LmIterations = li; break;
+                    case "seed": if (int.TryParse(val, out int sd)) mset.Seed = sd; break;
+                    case "polish":
+                        mset.Polish = val.ToLowerInvariant() is "multistart" or "ms"
+                            ? MemeticPolishMethod.Multistart : MemeticPolishMethod.Lm;
+                        break;
+                    case "gpu": useGpu = true; break;
+                    case "out": if (!string.IsNullOrEmpty(val)) outDir = val; break;
+                    case "resume": if (!string.IsNullOrEmpty(val)) resumeDir = val; break;
+                }
+            }
+
+            // ── Resume: load a saved population (unbounded genes) to continue evolution. ──
+            double[][]? resumeGenes = null;
+            if (!string.IsNullOrEmpty(resumeDir))
+            {
+                string popPath = System.IO.Path.Combine(resumeDir, "population.json");
+                if (!System.IO.File.Exists(popPath))
+                { AnsiConsole.MarkupLine($"[red]No population.json in {Markup.Escape(resumeDir)}[/]"); return; }
+                try
+                {
+                    var pf = JsonSerializer.Deserialize<MemeticPopulationFile>(System.IO.File.ReadAllText(popPath));
+                    resumeGenes = pf?.Genes;
+                    if (resumeGenes != null)
+                        AnsiConsole.MarkupLine($"  [grey]Resuming from {resumeGenes.Length} saved member(s).[/]");
+                }
+                catch (Exception ex)
+                { AnsiConsole.MarkupLine($"[red]Could not read population.json: {Markup.Escape(ex.Message)}[/]"); return; }
+            }
+
+            bool gpu = useGpu && GpuMemeticDeOptimizer.IsAvailable;
+            MemeticDeOptimizer opt = gpu
+                ? new GpuMemeticDeOptimizer(system, mf, glassMgr, session.ConfigEditor) { Settings = mset, InitialPopulation = resumeGenes }
+                : new MemeticDeOptimizer(system, mf, glassMgr, session.ConfigEditor) { Settings = mset, InitialPopulation = resumeGenes };
+
+            _cts = new CancellationTokenSource();
+            Console.CancelKeyPress += OnCancelKeyPress;
+
+            var printWatch = Stopwatch.StartNew();
+            opt.OnProgress = pr =>
+            {
+                if (printWatch.ElapsedMilliseconds < 400) return;
+                printWatch.Restart();
+                AnsiConsole.MarkupLine($"  [grey]round {pr.Round + 1}/{pr.MaxRounds}  {pr.Phase,-8} gen {pr.Generation}  best={pr.BestMerit:E5}[/]");
+            };
+
+            AnsiConsole.MarkupLine("[bold]Memetic DE (experimental)[/]");
+            AnsiConsole.MarkupLine($"  Engine: {(useGpu && gpu ? "GPU-resident (population fills the device)" : useGpu ? "CPU (GPU requested but unavailable)" : "CPU")}");
+            AnsiConsole.MarkupLine($"  Rounds: {mset.Rounds}, gens/round: {mset.GenerationsPerRound}, population: {mset.PopulationSize}");
+            AnsiConsole.MarkupLine($"  Polish: {mset.Polish} on niched-best {mset.PolishCount} (LM iters {mset.LmIterations}); F={mset.F:G3}, CR={mset.CR:G3}");
+            AnsiConsole.MarkupLine("");
+
+            MemeticDeResult result;
+            try { result = opt.Run(_cts.Token); }
+            catch (Exception ex)
+            {
+                AnsiConsole.MarkupLine($"[red]Memetic DE failed: {Markup.Escape(ex.Message)}[/]");
+                (opt as IDisposable)?.Dispose();
+                Console.CancelKeyPress -= OnCancelKeyPress;
+                return;
+            }
+            (opt as IDisposable)?.Dispose();
+            Console.CancelKeyPress -= OnCancelKeyPress;
+
+            AnsiConsole.MarkupLine("");
+            AnsiConsole.MarkupLine($"[bold]Memetic DE complete[/]  {Markup.Escape(result.Message)}");
+            AnsiConsole.MarkupLine($"  {result.EvaluationCount:N0} candidate evals in {result.Elapsed.TotalSeconds:F1}s"
+                + (result.Cancelled ? "  [yellow](stopped)[/]" : ""));
+
+            // ── Save the diverse best designs + the population for restart. ──
+            try
+            {
+                System.IO.Directory.CreateDirectory(outDir);
+                string title = string.IsNullOrWhiteSpace(system.Title) ? "design" : system.Title;
+                string bestDir = System.IO.Path.Combine(outDir, "best");
+                System.IO.Directory.CreateDirectory(bestDir);
+
+                AnsiConsole.MarkupLine($"[bold]Diverse best ({result.Best.Count})[/]");
+                for (int r = 0; r < result.Best.Count; r++)
+                {
+                    var d = result.Best[r];
+                    AnsiConsole.MarkupLine($"  #{r + 1}  merit={d.Merit:E6}  form={Markup.Escape(d.FormSignature)}");
+                    string name = SanitizeFileName($"{title}_memetic{r + 1:00}_merit{d.Merit:G4}");
+                    try { LensHH.Core.IO.LhltWriter.Write(d.System, System.IO.Path.Combine(bestDir, name + ".lhlt"), mf, session.ConfigEditor); } catch { }
+                }
+                AnsiConsole.MarkupLine($"  [grey]Saved {result.Best.Count} design(s) to {Markup.Escape(System.IO.Path.GetFullPath(bestDir))}[/]");
+
+                if (result.FinalPopulation != null)
+                {
+                    var pf = new MemeticPopulationFile
+                    {
+                        PopulationSize = result.FinalPopulation.Length,
+                        VarCount = result.FinalPopulation.Length > 0 ? result.FinalPopulation[0].Length : 0,
+                        Seed = mset.Seed,
+                        Genes = result.FinalPopulation,
+                    };
+                    string popPath = System.IO.Path.Combine(outDir, "population.json");
+                    System.IO.File.WriteAllText(popPath, JsonSerializer.Serialize(pf));
+                    AnsiConsole.MarkupLine($"  [grey]Population saved to {Markup.Escape(System.IO.Path.GetFullPath(popPath))} (restart with resume={Markup.Escape(outDir)})[/]");
+                }
+            }
+            catch (Exception ex) { AnsiConsole.MarkupLine($"  [yellow]Save failed: {Markup.Escape(ex.Message)}[/]"); }
         }
 
         private void RunBasinHopping(Session session, string[] args)
