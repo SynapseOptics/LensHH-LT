@@ -357,6 +357,8 @@ namespace LensHH.CLI.Commands
                         break;
                     case "polish-count": if (int.TryParse(val, out int pc)) pset.PolishCandidateCount = pc; break;
                     case "lm-iters": if (int.TryParse(val, out int li)) pset.LmIterations = li; break;
+                    // Diverse output: polish the best of each distinct form + crowding (default on).
+                    case "no-niche": pset.NichedOutput = false; break;
                     case "out": if (!string.IsNullOrEmpty(val)) outDir = val; break;
                     // Polish a previously-saved DE result set (folder of *.lhlt) — skips the search.
                     case "polish-folder": if (!string.IsNullOrEmpty(val)) polishFolder = val; break;
