@@ -10,7 +10,9 @@ using LensHH.Core.Activation;
 
 namespace LensHH.App;
 
-class Program
+// Public so an alternate host can reuse BuildAvaloniaApp() to launch the shared app with
+// its own startup policy, instead of forking this entry point.
+public class Program
 {
     [STAThread]
     public static void Main(string[] args)
