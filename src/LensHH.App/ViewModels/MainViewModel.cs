@@ -48,7 +48,10 @@ public partial class MainViewModel : ObservableObject
         bool isTrial = TrialClock.IsTrialActive;
         bool isPaid = isActivated && !isTrial;
 
-        StartTrialVisible = !isActivated;
+        // The self-service trial start is offered only when the host supports it (default true).
+        // A token-file-only host sets AppCapabilities.TrialStartSupported = false, so the menu
+        // item never appears and that activation path is unreachable.
+        StartTrialVisible = !isActivated && AppCapabilities.TrialStartSupported;
         DeactivateLicenseEnabled = isPaid;
     }
 
