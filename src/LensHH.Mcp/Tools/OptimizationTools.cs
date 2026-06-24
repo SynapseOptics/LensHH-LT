@@ -560,6 +560,7 @@ namespace LensHH.Mcp.Tools
             "Glass substitution: glassSubstitution (false). When true, the catalogs string must resolve to at least one glass; an empty string with no catalogs loaded throws. onlyPreferred (true) restricts loaded catalogs to Status<=1 glasses (filtered catalogs are already curated). " +
             "Determinism: seed (default 1234). " +
             "Parallelism: chains (default 0 = auto = one chain per physical core) runs that many independent hopping chains concurrently from different perturbation seeds and returns the single global best — much better global search and full CPU use. chains=1 is the classic single chain. " +
+            "Chain export: saveChainsFolder (default empty) — when set, EVERY chain's final design is written as a separate .lhlt in that folder (best-merit first), not just the global best. " +
             "Result is auto-applied to the system; use system_save to persist.")]
         public string BasinHopping(
             int maxHops = 2000, int lmIterationsPerHop = 60, int hjStepsPerHop = 30,
@@ -567,7 +568,7 @@ namespace LensHH.Mcp.Tools
             double lmTolerance = 1e-10, double lmInitialDamping = 1e-3, bool useBroydenUpdate = true,
             bool constrainedOnly = false,
             bool glassSubstitution = false, bool onlyPreferred = true, string catalogs = "",
-            int seed = 1234, int chains = 0)
+            int seed = 1234, int chains = 0, string saveChainsFolder = "")
         {
             { var ge = _session.ValidateGlass(); if (ge != null) return ge; }
             if (_session.MeritFunction == null || _session.MeritFunction.Operands.Count == 0)
@@ -615,6 +616,14 @@ namespace LensHH.Mcp.Tools
             sb.AppendLine($"  Glass Swaps:   {result.GlassSwaps}");
             if (!string.IsNullOrEmpty(result.Message))
                 sb.AppendLine($"  {result.Message}");
+
+            if (!string.IsNullOrWhiteSpace(saveChainsFolder))
+            {
+                string baseName = string.IsNullOrWhiteSpace(_session.System.Title) ? "basin" : _session.System.Title;
+                var paths = LensHH.Core.IO.ChainResultWriter.SaveChains(
+                    optimizer.ChainResults, saveChainsFolder, baseName, _session.MeritFunction, _session.ConfigEditor);
+                sb.AppendLine($"  Saved {paths.Count} chain design(s) to {saveChainsFolder}");
+            }
             return sb.ToString();
         }
 
@@ -931,7 +940,7 @@ namespace LensHH.Mcp.Tools
             double lmTolerance = 1e-10, double lmInitialDamping = 1e-3, bool useBroydenUpdate = true,
             bool constrainedOnly = false,
             bool glassSubstitution = false, bool onlyPreferred = true, string catalogs = "",
-            int seed = 1234, int chains = 0)
+            int seed = 1234, int chains = 0, string saveChainsFolder = "")
         {
             { var ge = _session.ValidateGlass(); if (ge != null) return ge; }
             if (_session.MeritFunction == null || _session.MeritFunction.Operands.Count == 0)
@@ -987,13 +996,22 @@ namespace LensHH.Mcp.Tools
                     job.Accepted = result.Accepted;
                     job.Rejected = result.Rejected;
                     job.GlassSwaps = result.GlassSwaps;
+                    string chainsMsg = "";
+                    if (!result.Cancelled && !string.IsNullOrWhiteSpace(saveChainsFolder))
+                    {
+                        string baseName = string.IsNullOrWhiteSpace(_session.System.Title) ? "basin" : _session.System.Title;
+                        var paths = LensHH.Core.IO.ChainResultWriter.SaveChains(
+                            optimizer.ChainResults, saveChainsFolder, baseName, _session.MeritFunction, _session.ConfigEditor);
+                        chainsMsg = $"\n  Saved {paths.Count} chain design(s) to {saveChainsFolder}";
+                    }
                     if (result.Cancelled) job.Cancel();
                     else job.Complete(
                         $"Basin Hopping Complete\n" +
                         $"  Chains: {optimizer.ChainsRun}\n" +
                         $"  Initial Merit: {result.InitialMerit:E6}\n" +
                         $"  Final Merit:   {result.FinalMerit:E6}\n" +
-                        $"  Hops: {result.Hops}, Accepted: {result.Accepted}, Rejected: {result.Rejected}, Glass Swaps: {result.GlassSwaps}");
+                        $"  Hops: {result.Hops}, Accepted: {result.Accepted}, Rejected: {result.Rejected}, Glass Swaps: {result.GlassSwaps}" +
+                        chainsMsg);
                 }
                 catch (OperationCanceledException) { job.Cancel(); }
                 catch (Exception ex) { job.Fault(ex); }

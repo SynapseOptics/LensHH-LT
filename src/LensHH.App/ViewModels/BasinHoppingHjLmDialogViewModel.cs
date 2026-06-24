@@ -160,6 +160,10 @@ public partial class BasinHoppingHjLmDialogViewModel : ObservableObject
     [ObservableProperty] private int _rejectedCount;
     [ObservableProperty] private int _glassSwapsTotal;
 
+    /// <summary>Folder to write each chain's final design (.lhlt) into on completion.
+    /// Empty = don't export. Set via the "Browse…" folder picker in the dialog.</summary>
+    [ObservableProperty] private string _saveChainsFolder = "";
+
     private const string DefaultHelpText = "Hover over a setting for a description.";
     [ObservableProperty] private string _helpText = DefaultHelpText;
 
@@ -484,6 +488,23 @@ public partial class BasinHoppingHjLmDialogViewModel : ObservableObject
             string chainNote = _batch != null ? $"{_batch.ChainsRun} chains, " : "";
             AppendLog($"Merit: {result.InitialMerit:E6} -> {finalMerit:E6} in {_stopwatch.Elapsed.TotalSeconds:F1}s " +
                 $"({chainNote}{result.Accepted} accepted / {result.Rejected} rejected, {result.GlassSwaps} glass swaps)");
+
+            if (!string.IsNullOrWhiteSpace(SaveChainsFolder))
+            {
+                try
+                {
+                    string baseName = string.IsNullOrWhiteSpace(_session.System.Title) ? "basin" : _session.System.Title;
+                    IReadOnlyList<BasinHoppingOptimizerBatch.ChainDesign> chains =
+                        (_batch != null && _batch.ChainResults.Count > 0)
+                            ? _batch.ChainResults
+                            // Single chain: the one final design (already live in the session).
+                            : new[] { new BasinHoppingOptimizerBatch.ChainDesign(0, _session.System.DeepClone(), finalMerit, true) };
+                    var paths = LensHH.Core.IO.ChainResultWriter.SaveChains(
+                        chains, SaveChainsFolder, baseName, _session.MeritFunction, _session.ConfigEditor);
+                    AppendLog($"Saved {paths.Count} chain design(s) to {SaveChainsFolder}");
+                }
+                catch (Exception ex) { AppendLog($"Chain save failed: {ex.Message}"); }
+            }
         }
     }
 

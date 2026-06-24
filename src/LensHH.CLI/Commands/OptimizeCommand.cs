@@ -752,6 +752,7 @@ namespace LensHH.CLI.Commands
             session.ValidateGlass();
 
             var settings = new BasinHoppingSettings();
+            string? saveChainsFolder = null;
 
             for (int i = 1; i < args.Length; i++)
             {
@@ -795,6 +796,9 @@ namespace LensHH.CLI.Commands
                     // Parallel independent chains (each from its own perturbation seed); the
                     // single global best is returned. 1 = classic single chain; 0 = auto (physical cores).
                     case "chains": if (int.TryParse(val, out int ch)) settings.ParallelChains = ch; break;
+                    // Persist EVERY chain's final design as a separate .lhlt in this folder.
+                    case "savechains":
+                    case "savechainsfolder": saveChainsFolder = val; break;
                 }
             }
 
@@ -848,6 +852,15 @@ namespace LensHH.CLI.Commands
                     AnsiConsole.MarkupLine($"  {Markup.Escape(result.Message)}");
                 if (result.Cancelled)
                     AnsiConsole.MarkupLine("[yellow]Cancelled by user.[/]");
+
+                if (!string.IsNullOrWhiteSpace(saveChainsFolder))
+                {
+                    string baseName = string.IsNullOrWhiteSpace(system.Title) ? "basin" : system.Title;
+                    var paths = LensHH.Core.IO.ChainResultWriter.SaveChains(
+                        optimizer.ChainResults, saveChainsFolder!, baseName, mf, session.ConfigEditor);
+                    AnsiConsole.MarkupLine("");
+                    AnsiConsole.MarkupLine($"[green]Saved {paths.Count} chain design(s)[/] to {Markup.Escape(saveChainsFolder!)}");
+                }
             }
             finally
             {

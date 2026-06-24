@@ -1,6 +1,8 @@
+using System.Linq;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Platform.Storage;
 using LensHH.App.ViewModels;
 
 namespace LensHH.App.Views;
@@ -47,4 +49,17 @@ public partial class BasinHoppingHjLmDialog : Window
 
     private void Help_LostFocus(object? sender, RoutedEventArgs e)
         => VM.SetHelp(null);
+
+    // Folder picker for the "save chains" folder; the chosen path lands in the textbox.
+    private async void BrowseChainsFolder_Click(object? sender, RoutedEventArgs e)
+    {
+        var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
+        {
+            Title = "Select a folder for the chain designs",
+            AllowMultiple = false,
+        });
+        var path = folders.FirstOrDefault()?.TryGetLocalPath();
+        if (!string.IsNullOrEmpty(path))
+            VM.SaveChainsFolder = path;
+    }
 }

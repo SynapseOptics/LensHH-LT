@@ -177,6 +177,17 @@ namespace LensHH.API
             System.Threading.CancellationToken stopToken = default,
             System.Threading.CancellationToken skipPhaseToken = default);
 
+        /// <summary>Run parallel basin-hopping (Hooke-Jeeves + LM with random kicks). The single
+        /// global-best design is applied to the system. When <paramref name="saveChainsFolder"/>
+        /// is set, EVERY chain's final design is also written there as a separate .lhlt
+        /// (best-merit first) — not just the global best.</summary>
+        BasinHoppingResult BasinHopping(
+            BasinHoppingSettings? settings = null,
+            string? saveChainsFolder = null,
+            string[]? filteredCatalogPaths = null,
+            System.Action<BasinHoppingProgress>? onProgress = null,
+            System.Threading.CancellationToken cancellationToken = default);
+
         /// <summary>Run Global Search — many seeded restarts from the original
         /// design, returning a pool of distinct locally-optimal designs.</summary>
         GlobalSearchResult GlobalSearch(GlobalSearchSettings? settings = null,

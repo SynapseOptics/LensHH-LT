@@ -27,6 +27,16 @@
                  TextWrapping="Wrap" MinHeight="28" />
     </Border>
 
+    <!-- Save every chain's final design (one .lhlt per chain) into a folder -->
+    <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="8" Margin="0,6,0,0"
+                VerticalAlignment="Center">
+      <TextBlock Text="Save chains to:" VerticalAlignment="Center" />
+      <TextBox Text="{Binding SaveChainsFolder}" Width="470" VerticalAlignment="Center"
+               Watermark="(optional) folder — writes one .lhlt per chain, best first"
+               IsEnabled="{Binding !IsRunning}" />
+      <Button Content="Browse…" Click="BrowseChainsFolder_Click" IsEnabled="{Binding !IsRunning}" />
+    </StackPanel>
+
     <!-- ═══ Hardware acceleration (G2 / 1.0.115 Beta) ═══ -->
     <!-- BasinHopping is sequential by design — one hop at a time so each
          accept/reject decision is informed by the previous. The GPU pre-

@@ -2,7 +2,30 @@
 
 All notable changes to LensHH-LT and the LensHH-LT-Engine.
 
-## 1.0.125 — unreleased
+## 1.0.126 — unreleased
+
+### Added
+- **Save every basin-hopping chain.** Parallel basin-hopping can now write each
+  chain's final design to its own `.lhlt` file in a folder you choose (best-merit
+  first), not just the single global best — so you can compare or post-process all
+  the basins a run found. In the Basin-Hopping dialog set the folder with the new
+  "Save chains to:" box and "Browse…" button; from the CLI pass
+  `optimize basin … savechains=<folder>`; via MCP set `saveChainsFolder`; and the
+  .NET API gains `IOptimization.BasinHopping(…, saveChainsFolder)`.
+- **Deduplicate a folder of designs (CLI).** New `dedup <inputFolder> <outputFolder>`
+  command reads every `.lhlt` in a folder and writes only the structurally-unique
+  designs to an output folder (keeping the best-merit representative of each group) —
+  handy for collapsing the many near-identical results a chain export produces. Tune
+  the match strictness with `digits=N` (default 5 significant figures).
+
+### Changed
+- **DE seed output now favors diverse forms.** `optimize deseed` selects the
+  polished seeds for diversity (a representative of each distinct lens form, with
+  crowding) instead of only the lowest merit, so you get genuinely different
+  starting designs; the lowest-merit design is still included. Pass `no-niche` to
+  revert to pure lowest-merit selection.
+
+## 1.0.125 — 2026-06-19
 
 ### Added
 - **Parallel basin-hopping.** Basin-hopping optimization can now run several

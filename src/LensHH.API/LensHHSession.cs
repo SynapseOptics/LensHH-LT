@@ -987,6 +987,31 @@ namespace LensHH.API
         /// original design, returning a pool of distinct locally-optimal designs.
         /// Does not mutate the session system; apply or save pooled designs from the
         /// returned result.</summary>
+        public BasinHoppingResult BasinHopping(
+            BasinHoppingSettings? settings = null,
+            string? saveChainsFolder = null,
+            string[]? filteredCatalogPaths = null,
+            Action<BasinHoppingProgress>? onProgress = null,
+            System.Threading.CancellationToken cancellationToken = default)
+        {
+            ValidateGlass();
+            if (MeritFunction == null) throw new InvalidOperationException("No merit function defined.");
+            var optimizer = new BasinHoppingOptimizerBatch(_system!, MeritFunction, GlassCatalog, ConfigEditor)
+            {
+                Settings = settings ?? new BasinHoppingSettings(),
+                FilteredCatalogSearchPaths = filteredCatalogPaths ?? new string[0],
+                OnProgress = onProgress,
+            };
+            var result = optimizer.Optimize(cancellationToken);
+            if (!string.IsNullOrWhiteSpace(saveChainsFolder))
+            {
+                string baseName = string.IsNullOrWhiteSpace(_system!.Title) ? "basin" : _system!.Title;
+                LensHH.Core.IO.ChainResultWriter.SaveChains(
+                    optimizer.ChainResults, saveChainsFolder!, baseName, MeritFunction, ConfigEditor);
+            }
+            return result;
+        }
+
         public GlobalSearchResult GlobalSearch(
             GlobalSearchSettings? settings = null,
             bool useNativeEngine = false,

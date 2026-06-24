@@ -626,6 +626,8 @@ curvatures and thicknesses around it.
 | **Only randomize constrained variables** | off | Limit perturbation to bounded variables. Useful for surgical exploration when most variables are already where you want them. |
 | **Glass Substitution** | off | Enable glass swaps. Pick the source from the **Glass Source** dropdown — filtered catalogs (small curated lists, cheap) or one of the loaded full catalogs (broad exploration, slower). |
 | **Glass Source** | first filtered catalog | Pool used when Glass Substitution is on. Filtered catalogs in `<install>/catalogs/Filtered/` are typically 30–100 glasses curated by status, manufacturer, refractive-index range, etc. See [Glass Catalogs](glass-catalogs.md). |
+| **Stop on no improvement / Timeout (s)** | off / 600 | Per-chain watchdog. When on, a chain ends early if *its own* best merit hasn't improved within this many seconds — see [Stop on no improvement](#stop-on-no-improvement). |
+| **Save chains to** | (empty) | Folder to write every chain's final design (one `.lhlt` each) when the run finishes. Empty = keep only the global best in the workspace. See [Saving every chain's design](#saving-every-chains-design). |
 
 ### Parallel chains
 
@@ -649,6 +651,8 @@ records each new global best as it's found. The **Variables** and
 while many chains are exploring different designs at once there is no
 single "current" design to track live.
 
+![Basin-Hopping dialog mid-run: 10 chains running in parallel. The header shows the global best (3.590E-02) with cumulative accepted/rejected counts and total hops across all chains; the Chains tab lists each chain's hops, running best merit, and accepted/rejected counts, with a ◄ best marker on the chain holding the global best. The "Save chains to:" folder field and Browse… button are at the bottom.](images/BasinHoppingrunning.png)
+
 **Chains = 1** is unchanged from earlier versions: one chain with the
 full live per-variable / per-glass trace in the Variables and Glasses
 tabs as it runs.
@@ -658,6 +662,57 @@ tabs as it runs.
 > UI) stays responsive during a long run. On a dedicated machine you can
 > set Chains to your *logical* core count for ~40 % more throughput at the
 > cost of a busier system.
+
+### Stop on no improvement
+
+Long runs often plateau well before they hit the **Hops** cap. The
+**Stop on no improvement** watchdog ends a run that has gone quiet so you
+don't pay for hops that aren't buying anything. Tick the box and set
+**Timeout (s)** to the idle window you're willing to wait.
+
+The watchdog is **per chain, and each chain is independent**:
+
+- Each chain runs its own timer. The timer resets **only** when *that
+  chain's own* best merit makes a strict improvement — activity alone
+  (rejected hops, equal-merit basins) does not reset it.
+- A chain stops itself once its timer exceeds the timeout. The check
+  happens **between hops**, so an in-progress hop always finishes — a
+  long hop can overshoot the timeout by up to one hop's duration.
+- There is **no cross-chain coordination**. One chain finding a new
+  *global* best does not reset any other chain's timer; a stalled chain
+  stops and frees its core even while another chain is still improving.
+- With *N* parallel chains the whole run finishes when the **last**
+  chain stops (or any chain reaches **Hops**, or you press **Stop**).
+  Chains therefore time out at different wall-clock moments.
+
+The timeout measures wall-clock time, not hop count, so its practical
+length depends on how long each hop takes (`LM/Hop`, variable count,
+quadrature density). For `Chains = 1` the watchdog behaves identically —
+it's simply the one chain's timer.
+
+### Saving every chain's design
+
+By default a parallel run returns only the single global-best design,
+loaded into the workspace. Set **Save chains to** (type a path or use
+**Browse…**) to also persist **every** chain's final design as its own
+`.lhlt` file in that folder when the run completes. Each chain explores a
+different basin, so this captures the full spread of forms the run found —
+useful starting points for a later split, asphere search, or a fresh
+Multistart, not just the winner.
+
+Files are written best-merit-first and named so they sort that way:
+
+```
+<base>_rank01_chain07_m3.59010E-002.lhlt   ← global best
+<base>_rank02_chain03_m4.03307E-002.lhlt
+<base>_rank03_chain09_m4.15517E-002.lhlt
+…
+```
+
+`rank01` is the global best; `chainNN` records which chain produced it;
+`mNNN` is that design's merit. The shared merit-function definition is
+embedded in each file. The same folder-save is available from the CLI,
+MCP, and API so scripted runs persist their chains identically.
 
 **Sigma adapts during the run.** The value you enter in the dialog
 is just the starting value; the optimizer grows or resets it
