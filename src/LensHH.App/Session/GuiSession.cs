@@ -65,7 +65,7 @@ public class GuiSession
             var name = _filePath != null
                 ? Path.GetFileName(_filePath)
                 : (CurrentFileName != null ? CurrentFileName + " (unsaved)" : "New System");
-            return $"LensHH-LT — {dirty}{name}";
+            return $"{AppCapabilities.ProductName} — {dirty}{name}";
         }
     }
 
@@ -203,6 +203,24 @@ public class GuiSession
         FileStateChanged?.Invoke();
     }
 
+    /// <summary>
+    /// Neutral extensibility seam: a host can register additional native file formats
+    /// (keyed by lowercase extension, no dot). Empty in the standard build — only the
+    /// built-in "lhlt" format is handled. A registered handler reads into / writes from
+    /// the live session system and counts as a native save (clears the dirty flag).
+    /// </summary>
+    public static readonly Dictionary<string, NativeFormatHandler> NativeFormatHandlers =
+        new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>A reader/writer pair for a host-registered native format.</summary>
+    public sealed class NativeFormatHandler
+    {
+        /// <summary>Read a file into (system, meritFunction).</summary>
+        public Func<string, (OpticalSystem System, MeritFunction? Merit)> Read { get; set; } = null!;
+        /// <summary>Write (system, meritFunction) to a file.</summary>
+        public Action<OpticalSystem, MeritFunction?, string> Write { get; set; } = null!;
+    }
+
     public void OpenFile(string path, string format = "lhlt")
     {
         // Reset import-state carried across opens.
@@ -248,6 +266,14 @@ public class GuiSession
                 isImport = true;
                 break;
             default:
+                if (NativeFormatHandlers.TryGetValue(format, out var openHandler))
+                {
+                    var read = openHandler.Read(path);
+                    _system = read.System;
+                    _meritFunction = read.Merit;
+                    _filePath = path;
+                    break;
+                }
                 throw new ArgumentException($"Unknown format: {format}");
         }
 
@@ -324,6 +350,12 @@ public class GuiSession
                 OptilandWriter.Write(_system, path);
                 break;
             default:
+                if (NativeFormatHandlers.TryGetValue(format, out var saveHandler))
+                {
+                    saveHandler.Write(_system, _meritFunction, path);
+                    _filePath = path;
+                    break;
+                }
                 throw new ArgumentException($"Unknown format: {format}");
         }
         // Saving updates the suggested name even for foreign-format
@@ -332,7 +364,9 @@ public class GuiSession
         CurrentFileName = Path.GetFileNameWithoutExtension(path);
         // Only a native save clears dirty state; foreign exports keep
         // the dirty flag set since they aren't a round-trip save.
-        if (format.Equals("lhlt", StringComparison.OrdinalIgnoreCase))
+        bool isNativeSave = format.Equals("lhlt", StringComparison.OrdinalIgnoreCase)
+            || NativeFormatHandlers.ContainsKey(format);
+        if (isNativeSave)
             IsDirty = false;
         FileStateChanged?.Invoke();
     }

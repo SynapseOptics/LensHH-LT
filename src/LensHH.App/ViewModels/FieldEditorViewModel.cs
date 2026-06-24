@@ -23,9 +23,12 @@ public partial class FieldRowViewModel : ObservableObject
         _getFieldType = getFieldType ?? (() => FieldType.ObjectAngle);
         _onError = onError;
         IsYLockedToZero = isYLockedToZero;
-        // When Y is locked to zero (single-field design), force the
-        // stored value to 0 so display and storage agree.
-        if (IsYLockedToZero) _field.Y = 0;
+        // When locked to zero (single-field design), force the stored
+        // coordinates to 0 so display and storage agree.
+        if (IsYLockedToZero)
+        {
+            _field.Y = 0;
+        }
     }
 
     public int Number => _index + 1;

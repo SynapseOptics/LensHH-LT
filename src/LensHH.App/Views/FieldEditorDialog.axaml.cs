@@ -33,10 +33,10 @@ public partial class FieldEditorDialog : Window
         // away.
         bool hasOnAxis = false;
         foreach (var row in vm.Fields)
-            if (row.YText is string y && double.TryParse(y, System.Globalization.NumberStyles.Float,
-                System.Globalization.CultureInfo.InvariantCulture, out double v)
-                && Math.Abs(v) < 1e-9)
-            { hasOnAxis = true; break; }
+        {
+            if (!TryParseInv(row.YText, out double yv) || Math.Abs(yv) >= 1e-9) continue;
+            hasOnAxis = true; break;
+        }
 
         if (!hasOnAxis)
         {
@@ -52,4 +52,8 @@ public partial class FieldEditorDialog : Window
     }
 
     private void Cancel_Click(object? sender, RoutedEventArgs e) => Close();
+
+    private static bool TryParseInv(string? s, out double v) =>
+        double.TryParse(s, System.Globalization.NumberStyles.Float,
+            System.Globalization.CultureInfo.InvariantCulture, out v);
 }

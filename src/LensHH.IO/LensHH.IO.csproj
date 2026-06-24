@@ -9,8 +9,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- The engine DLL path may be overridden at build time via $(LensHHEngineDll)
+         (used by downstream composition); otherwise the bundled engine is used. -->
     <Reference Include="LensHH.Core">
-      <HintPath>..\..\engine\LensHH.Core.dll</HintPath>
+      <HintPath Condition="'$(LensHHEngineDll)' != ''">$(LensHHEngineDll)</HintPath>
+      <HintPath Condition="'$(LensHHEngineDll)' == ''">$(MSBuildThisFileDirectory)..\..\engine\LensHH.Core.dll</HintPath>
     </Reference>
   </ItemGroup>
 

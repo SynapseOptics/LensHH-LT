@@ -26,7 +26,8 @@
                Margin="0,4,0,0"
                IsVisible="{Binding StatusText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
 
-    <DataGrid ItemsSource="{Binding Fields}"
+    <DataGrid x:Name="FieldGrid"
+              ItemsSource="{Binding Fields}"
               SelectedItem="{Binding SelectedField}"
               AutoGenerateColumns="False"
               CanUserSortColumns="False"

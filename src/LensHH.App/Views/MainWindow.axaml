@@ -114,6 +114,9 @@
         <MenuItem Header="Synthesis by _SPC" Click="SynthesisBySpc_Click" />
         <MenuItem Header="Search _Best Asphere Surface..." Click="AsphereSearch_Click" />
       </MenuItem>
+      <!-- Optional host-contributed menu. Empty (and hidden) in the standard build;
+           a host may populate AppExtensions.MenuItems before the window loads. -->
+      <MenuItem x:Name="ExtensionsMenu" Header="E_xtensions" IsVisible="False" />
       <MenuItem Header="_Help">
         <MenuItem Header="_User Guide (PDF)" Click="UserGuide_Click" />
         <MenuItem Header="Help _Index (Searchable)" Click="HelpIndex_Click" />
@@ -122,11 +125,12 @@
                   IsVisible="{Binding StartTrialVisible}" />
         <Separator IsVisible="{Binding StartTrialVisible}" />
         <MenuItem Header="_Activate License..." Click="ActivateLicense_Click" />
+        <MenuItem Header="Activate from License _File..." Click="ActivateFromFile_Click" />
         <MenuItem Header="_Deactivate This Machine..." Click="DeactivateLicense_Click"
                   IsEnabled="{Binding DeactivateLicenseEnabled}" />
         <Separator />
         <MenuItem Header="License _Status..." Click="LicenseStatus_Click" />
-        <MenuItem Header="_About LensHH-LT" Click="About_Click" />
+        <MenuItem x:Name="AboutMenuItem" Click="About_Click" />
       </MenuItem>
     </Menu>
 

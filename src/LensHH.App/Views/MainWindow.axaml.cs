@@ -33,6 +33,30 @@ public partial class MainWindow : Window
 
         // Window close interception: prompt to save unsaved changes.
         Closing += MainWindow_Closing;
+
+        AboutMenuItem.Header = $"_About {AppCapabilities.ProductName}";
+        PopulateExtensionsMenu();
+    }
+
+    // Render any host-contributed extension menu items under the neutral "Extensions" menu.
+    // Empty in the standard build, so the menu stays hidden. Each item's Invoke runs at click
+    // time with the live session, so closures see the currently loaded design.
+    private void PopulateExtensionsMenu()
+    {
+        if (AppExtensions.MenuItems.Count == 0) return;
+        ExtensionsMenu.Header = AppExtensions.MenuHeader;
+        foreach (var ext in AppExtensions.MenuItems)
+        {
+            var captured = ext;
+            var mi = new MenuItem { Header = captured.Header };
+            mi.Click += async (_, _) =>
+            {
+                try { await captured.Invoke(this, VM.Session); }
+                catch (Exception ex) { await ShowMessageBox("Error", ex.Message); }
+            };
+            ExtensionsMenu.Items.Add(mi);
+        }
+        ExtensionsMenu.IsVisible = true;
     }
 
     private bool _confirmedClose;
@@ -60,26 +84,40 @@ public partial class MainWindow : Window
     private async void OpenLhlt_Click(object? sender, RoutedEventArgs e)
     {
         if (!await ConfirmDiscardChangesAsync()) return;
+        var patterns = AppCapabilities.NativeOpenExtensions.Select(x => "*." + x).ToArray();
         var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
             Title = "Open",
             AllowMultiple = false,
             FileTypeFilter = new[]
             {
-                new FilePickerFileType("LensHH-LT Files") { Patterns = new[] { "*.lhlt" } },
+                new FilePickerFileType($"{AppCapabilities.ProductName} Files") { Patterns = patterns },
             }
         });
         if (files.Count > 0)
         {
             var path = files[0].TryGetLocalPath();
-            if (path != null) VM.OpenFile(path, "lhlt");
+            if (path != null) VM.OpenFile(path, NativeFormatFromPath(path));
         }
+    }
+
+    // The native format key is simply the file extension (without the dot, lowercased);
+    // GuiSession maps it to a built-in or host-registered reader. Falls back to "lhlt".
+    private static string NativeFormatFromPath(string path)
+    {
+        var ext = System.IO.Path.GetExtension(path).TrimStart('.').ToLowerInvariant();
+        return string.IsNullOrEmpty(ext) ? "lhlt" : ext;
     }
 
     private void SaveLhlt_Click(object? sender, RoutedEventArgs e)
     {
-        if (VM.Session.FilePath != null)
-            VM.SaveFile(VM.Session.FilePath, "lhlt");
+        string ext = AppCapabilities.NativeFileExtension;
+        var fp = VM.Session.FilePath;
+        // Save in place only when the current file already IS the host's native format;
+        // otherwise (e.g. the file was opened in a different native extension) prompt Save
+        // As so the result lands in a new, explicitly-named file.
+        if (fp != null && Path.GetExtension(fp).TrimStart('.').Equals(ext, StringComparison.OrdinalIgnoreCase))
+            VM.SaveFile(fp, ext);
         else
             SaveAsLhlt_Click(sender, e);
     }
@@ -95,21 +133,22 @@ public partial class MainWindow : Window
     /// </summary>
     private async Task<bool> SaveAsLhltAsync()
     {
+        string ext = AppCapabilities.NativeFileExtension;
         var suggested = VM.Session.CurrentFileName;
         var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
         {
             Title = "Save As",
-            DefaultExtension = "lhlt",
-            SuggestedFileName = suggested != null ? suggested + ".lhlt" : null,
+            DefaultExtension = ext,
+            SuggestedFileName = suggested != null ? $"{suggested}.{ext}" : null,
             FileTypeChoices = new[]
             {
-                new FilePickerFileType("LensHH-LT Files") { Patterns = new[] { "*.lhlt" } }
+                new FilePickerFileType($"{AppCapabilities.ProductName} Files") { Patterns = new[] { "*." + ext } }
             }
         });
         if (file == null) return false;
         var path = file.TryGetLocalPath();
         if (path == null) return false;
-        VM.SaveFile(path, "lhlt");
+        VM.SaveFile(path, ext);
         return true;
     }
 
@@ -379,6 +418,40 @@ public partial class MainWindow : Window
         }
     }
 
+    // Offline activation from a provided, signed token file (ActivationManager.ActivateOffline).
+    // Product-neutral: any host can activate from a license file; for a token-file-only host it
+    // is the primary activation path.
+    private async void ActivateFromFile_Click(object? sender, RoutedEventArgs e)
+    {
+        if (ActivationManager.IsActivated)
+        {
+            await ShowMessageBox("License Status", "This machine is already activated.");
+            return;
+        }
+
+        var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = "Select License File",
+            AllowMultiple = false,
+            FileTypeFilter = new[]
+            {
+                new FilePickerFileType("License file") { Patterns = new[] { "*.json", "*.lic", "*.token" } },
+                new FilePickerFileType("All files") { Patterns = new[] { "*" } },
+            },
+        });
+        if (files == null || files.Count == 0) return;
+
+        string path = files[0].Path.LocalPath;
+        string? error = await Task.Run(() => ActivationManager.ActivateOffline(path));
+        if (error == null)
+        {
+            VM.RefreshLicenseMenuState();
+            await ShowMessageBox("Activation Successful", "License activated from file. Thank you!");
+        }
+        else
+            await ShowMessageBox("Activation Failed", error);
+    }
+
     private async void DeactivateLicense_Click(object? sender, RoutedEventArgs e)
     {
         if (!ActivationManager.IsActivated)
@@ -553,13 +626,19 @@ public partial class MainWindow : Window
             status = "Not activated";
 
         var asmVersion = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
-        string version = asmVersion != null
-            ? $"{asmVersion.Major}.{asmVersion.Minor}.{asmVersion.Build}"
-            : "unknown";
+        string version = AppCapabilities.ProductVersion
+            ?? (asmVersion != null
+                ? $"{asmVersion.Major}.{asmVersion.Minor}.{asmVersion.Build}"
+                : "unknown");
 
-        await ShowMessageBox("About LensHH-LT",
-            $"LensHH-LT - Optical Lens Design Tool\n" +
+        string details = string.IsNullOrWhiteSpace(AppCapabilities.AboutDetails)
+            ? ""
+            : AppCapabilities.AboutDetails.TrimEnd() + "\n\n";
+
+        await ShowMessageBox($"About {AppCapabilities.ProductName}",
+            $"{AppCapabilities.ProductName} - {AppCapabilities.ProductTagline}\n" +
             $"Synapse Optics\n\n" +
+            details +
             $"Version: {version}\n" +
             $"License status: {status}\n" +
             $"Machine ID: {ActivationManager.GetMachineFingerprint().Substring(0, 16)}...\n\n" +
@@ -621,7 +700,10 @@ public partial class MainWindow : Window
 
     private async void FieldEditor_Click(object? sender, RoutedEventArgs e)
     {
-        var dialog = new FieldEditorDialog { DataContext = new FieldEditorViewModel(VM.Session) };
+        // A host may substitute its own field editor (e.g. an edition with extra columns)
+        // via AppExtensions.FieldEditorFactory; the standard build uses the built-in dialog.
+        var dialog = AppExtensions.FieldEditorFactory?.Invoke(VM.Session)
+                     ?? new FieldEditorDialog { DataContext = new FieldEditorViewModel(VM.Session) };
         await dialog.ShowDialog(this);
     }
 
