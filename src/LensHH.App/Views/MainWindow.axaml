@@ -108,6 +108,7 @@
         <MenuItem Header="Basin-Hopping _HJ+LM..." Click="BasinHoppingHjLm_Click" />
         <Separator />
         <MenuItem Header="_Global Multi Start Optimization..." Click="GlobalSearch_Click" />
+        <MenuItem Header="Global Basin _Hopping HJ+LM..." Click="GlobalBasinHopping_Click" />
         <MenuItem Header="Global _Evolutionary Optimization..." Click="DePipeline_Click" />
         <Separator />
         <MenuItem Header="S_plit Element" Click="SplitElement_Click" />

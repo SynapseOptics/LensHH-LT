@@ -1006,6 +1006,19 @@ public partial class MainWindow : Window
         VM.Session.NotifySystemChanged("optimization");
     }
 
+    private async void GlobalBasinHopping_Click(object? sender, RoutedEventArgs e)
+    {
+        var snapshot = VM.Session.SnapshotSystem();
+        var vm = new GlobalBasinHoppingDialogViewModel(VM.Session);
+        var dialog = new GlobalBasinHoppingDialog { DataContext = vm };
+        await dialog.ShowDialog(this);
+
+        if (!vm.Accepted)
+            VM.Session.RestoreSystemSnapshot(snapshot);
+
+        VM.Session.NotifySystemChanged("optimization");
+    }
+
     private async void CreateGlassCatalogue_Click(object? sender, RoutedEventArgs e)
     {
         var vm = new GlassCatalogGeneratorViewModel();

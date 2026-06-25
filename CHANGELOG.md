@@ -2,7 +2,24 @@
 
 All notable changes to LensHH-LT and the LensHH-LT-Engine.
 
-## 1.0.126 — unreleased
+## 1.0.127 — unreleased
+
+### Added
+- **Global Basin Hopping (HJ + LM).** A new cooperative, run-until-you-stop
+  optimizer (Optimization → "Global Basin Hopping HJ+LM…"). It launches one
+  basin-hopping chain per physical core; when a chain stalls (its mandatory
+  no-improvement watchdog fires, or it exhausts its hops) it **restarts seeded
+  with the best design found by the other chains** and keeps digging, until a
+  global time limit elapses or you press Stop. Where Global Multi Start casts the
+  widest net, this drills the deepest single answer — all chains pool their best
+  basin. On completion the Chains tab is an apply-gallery of each chain's best
+  design (apply any one), and a "Save chains to" folder writes every chain's best
+  as a separate `.lhlt`. Available in the GUI, the CLI (`optimize global-basin …
+  timeout= globalmin= savechains=`), MCP (`global_basin_hopping_start`,
+  non-blocking — poll `optimize_status`), and the .NET API
+  (`IOptimization.GlobalBasinHopping`).
+
+## 1.0.126 — 2026-06-24
 
 ### Added
 - **Save every basin-hopping chain.** Parallel basin-hopping can now write each

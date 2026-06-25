@@ -1,5 +1,6 @@
 using System;
 using System.ComponentModel;
+using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -625,6 +626,107 @@ namespace LensHH.Mcp.Tools
                 sb.AppendLine($"  Saved {paths.Count} chain design(s) to {saveChainsFolder}");
             }
             return sb.ToString();
+        }
+
+        [McpServerTool, Description(
+            "Start GLOBAL Basin-Hopping HJ+LM in the background and return a job-id immediately (non-blocking). " +
+            "Runs N chains (N = physical cores, FIXED — not settable) of basin-hopping; whenever a chain's no-improvement watchdog fires or it exhausts its hops, that chain RESTARTS seeded with the best design found by the OTHER chains, until the global time limit elapses or you cancel — a cooperative deep-dive that pools the best basin across chains. " +
+            "Poll optimize_status(jobId) for progress (global best merit, restarts, hops); call optimize_cancel(jobId) to stop early. When the job completes the global-best design is auto-applied to the system. " +
+            "Per-chain HJ-LM settings: maxHops (2000), lmIterationsPerHop (60), hjStepsPerHop (30), initialPerturbSigma (0.001), useBroydenUpdate (true), constrainedOnly (false — when true, only randomize bounded variables), glassSubstitution (false), rescaleOnGlassSwap (false), onlyPreferred (true), catalogs (''), seed (1234). " +
+            "Mandatory no-improvement watchdog: noImprovementTimeoutSeconds (default 600; values <=0 are forced to 600 — it cannot be disabled). Global wall-clock budget: globalTimeoutMinutes (default 120; <=0 = run until cancelled). " +
+            "Chain export: saveChainsFolder ('') — when set, every chain's best design is written there as a separate .lhlt (best-merit first).")]
+        public string GlobalBasinHoppingStart(
+            int maxHops = 2000, int lmIterationsPerHop = 60, int hjStepsPerHop = 30,
+            double initialPerturbSigma = 0.001, bool useBroydenUpdate = true,
+            bool constrainedOnly = false, bool glassSubstitution = false,
+            bool rescaleOnGlassSwap = false, bool onlyPreferred = true, string catalogs = "",
+            int seed = 1234, double noImprovementTimeoutSeconds = 600, double globalTimeoutMinutes = 120,
+            string saveChainsFolder = "")
+        {
+            { var ge = _session.ValidateGlass(); if (ge != null) return ge; }
+            if (_session.MeritFunction == null || _session.MeritFunction.Operands.Count == 0)
+                return "No operands in merit function. Add operands first.";
+
+            var gs = new GlobalBasinHoppingSettings
+            {
+                GlobalTimeoutMinutes = globalTimeoutMinutes,
+                Chain = new BasinHoppingSettings
+                {
+                    MaxHops = maxHops,
+                    LmIterationsPerHop = lmIterationsPerHop,
+                    HjStepsPerHop = hjStepsPerHop,
+                    InitialPerturbSigma = initialPerturbSigma,
+                    UseBroydenUpdate = useBroydenUpdate,
+                    ConstrainedOnly = constrainedOnly,
+                    GlassSubstitution = glassSubstitution,
+                    RescaleCurvatureOnGlassSwap = rescaleOnGlassSwap,
+                    OnlyPreferred = onlyPreferred,
+                    Seed = seed,
+                    NoImprovementTimeoutSeconds = noImprovementTimeoutSeconds,
+                },
+            };
+            if (!string.IsNullOrWhiteSpace(catalogs))
+                gs.Chain.GlassCatalogs = new System.Collections.Generic.List<string>(
+                    catalogs.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+
+            var mf = _session.MeritFunction;
+            var configEditor = _session.ConfigEditor;
+            string folder = saveChainsFolder;
+
+            var job = new RunningJob(kind: "global_basin");
+            var optimizer = new GlobalBasinHoppingOptimizer(_session.System, mf, _session.GlassCatalog, configEditor)
+            {
+                Settings = gs,
+                FilteredCatalogSearchPaths = FindFilteredCatalogPaths(),
+                OnChainsProgress = snap =>
+                {
+                    double best = double.NaN; int bestChain = -1; long hops = 0; int restarts = 0;
+                    foreach (var c in snap)
+                    {
+                        hops += c.Hops; restarts += c.Restarts;
+                        if (!double.IsNaN(c.Best) && (double.IsNaN(best) || c.Best < best)) { best = c.Best; bestChain = c.Chain; }
+                    }
+                    if (!double.IsNaN(best)) job.BestMerit = best;
+                    job.Trial = restarts;
+                    job.MaxTrials = snap.Length;
+                    job.Phase = $"{snap.Length} chains, {restarts} restarts, {hops} hops (best chain {bestChain})";
+                },
+            };
+
+            job.Task = Task.Run(() =>
+            {
+                try
+                {
+                    var result = optimizer.Optimize(job.Cts.Token);
+                    job.InitialMerit = result.InitialMerit;
+                    job.CurrentMerit = result.FinalMerit;
+                    job.BestMerit = result.FinalMerit;
+                    job.Trial = result.TotalRestarts;
+
+                    var sb = new StringBuilder();
+                    sb.AppendLine($"Global Basin-Hopping {(result.TimedOut ? "Stopped (global time limit)" : result.Cancelled ? "Stopped (user)" : "Complete")}");
+                    sb.AppendLine($"  Chains: {result.ChainsRun}, restarts: {result.TotalRestarts}, total hops: {result.TotalHops}");
+                    sb.AppendLine($"  Initial Merit: {result.InitialMerit:E6}");
+                    sb.AppendLine($"  Final Merit:   {result.FinalMerit:E6}");
+                    sb.AppendLine($"  Wall time: {result.Elapsed.TotalSeconds:F1} s");
+                    foreach (var c in result.ChainResults.OrderBy(c => c.Merit))
+                        sb.AppendLine($"  chain {c.ChainIndex,2}: merit {c.Merit:E6}{(c.IsBest ? "  <- global best" : "")}");
+                    if (!string.IsNullOrWhiteSpace(folder) && result.ChainResults.Count > 0)
+                    {
+                        string baseName = string.IsNullOrWhiteSpace(_session.System.Title) ? "global_basin" : _session.System.Title;
+                        var paths = LensHH.Core.IO.ChainResultWriter.SaveChains(result.ChainResults, folder, baseName, mf, configEditor);
+                        sb.AppendLine($"  Saved {paths.Count} chain design(s) to {folder}");
+                    }
+                    job.Complete(sb.ToString());
+                }
+                catch (OperationCanceledException) { job.Cancel(); }
+                catch (Exception ex) { job.Fault(ex); }
+            });
+
+            _session.AddJob(job);
+            return $"Started global basin-hopping job. jobId={job.JobId}\n" +
+                   $"Chains = physical cores (fixed). Poll optimize_status(jobId=\"{job.JobId}\") every 10-30 s; " +
+                   $"call optimize_cancel(jobId=\"{job.JobId}\") to stop early. The global-best design is auto-applied when the job completes.";
         }
 
         // Blocking variant unregistered (2026-06-11): use synthesis_by_spc_start.

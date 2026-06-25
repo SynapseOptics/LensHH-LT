@@ -188,6 +188,20 @@ namespace LensHH.API
             System.Action<BasinHoppingProgress>? onProgress = null,
             System.Threading.CancellationToken cancellationToken = default);
 
+        /// <summary>Run GLOBAL basin-hopping (HJ+LM). N chains (one per physical core) each run
+        /// basin-hopping episodes; when a chain's no-improvement watchdog fires or it reaches
+        /// MaxHops it restarts, seeded with the best design found by the OTHER chains, until the
+        /// global time limit elapses or you cancel. The global-best design is applied to the
+        /// system; <paramref name="onChainsProgress"/> reports live per-chain status (incl. restarts).
+        /// When <paramref name="saveChainsFolder"/> is set, every chain's best design is written
+        /// there as a separate .lhlt (best-merit first).</summary>
+        GlobalBasinHoppingResult GlobalBasinHopping(
+            GlobalBasinHoppingSettings? settings = null,
+            string? saveChainsFolder = null,
+            string[]? filteredCatalogPaths = null,
+            System.Action<GlobalBasinHoppingOptimizer.ChainStatus[]>? onChainsProgress = null,
+            System.Threading.CancellationToken cancellationToken = default);
+
         /// <summary>Run Global Search — many seeded restarts from the original
         /// design, returning a pool of distinct locally-optimal designs.</summary>
         GlobalSearchResult GlobalSearch(GlobalSearchSettings? settings = null,

@@ -25,6 +25,7 @@ namespace LensHH.CLI.Commands
   [green]optimize try [[maxiter=N]] [[tol=V]] [[damping=V]] [[broyden=true|false]] [[refresh=N]][/]  Run local optimization and prompt to keep or revert
   [green]optimize multistart [[trials=N]] [[lm=N]] [[initlm=N]] [[sigma=V]] [[cap=V]] [[growth=V]] [[glass=V]] [[constrained]] [[tol=V]] [[damping=V]] [[broyden=true|false]] [[refresh=N]][/]  Multistart optimization
   [green]optimize basin [[hops=N]] [[lm=N]] [[hj=N]] [[sigma=V]] [[hjstep=V]] [[hjmin=V]] [[tol=V]] [[damping=V]] [[broyden=true|false]] [[constrained]] [[glasssub=true|false]] [[onlypreferred=true|false]] [[catalog=NAME]] [[seed=N]][/]  Basin hopping (Hooke-Jeeves + LM with random kicks between hops)
+  [green]optimize global-basin [[hops=N]] [[lm=N]] [[hj=N]] [[sigma=V]] [[broyden=true|false]] [[glasssub=true|false]] [[rescale=true|false]] [[constrained]] [[onlypreferred=true|false]] [[catalog=NAME]] [[seed=N]] [[timeout=SEC]] [[globalmin=MIN]] [[savechains=DIR]] [[apply=N]][/]  Global Basin Hopping HJ+LM: chains=physical cores (fixed); each chain restarts from the best of the OTHER chains when its no-improvement watchdog (timeout, default 600s) fires or hops are exhausted, until the global limit (globalmin, default 120) elapses or you cancel. savechains: write every chain's best design; apply=N: apply chain N's design instead of the global best.
   [green]optimize split [[splits=N]] [[trials=N]] [[lm=N]] [[postlm=N]] [[preglass=N]] [[postglass=N]] [[sigma=V]] [[constrained]] [[onlypreferred=true|false]] [[minglass=V]] [[maxglass=V]] [[minair=V]] [[maxair=V]] [[minedge=V]] [[skipsec=V]] [[tol=V]] [[damping=V]] [[broyden=true|false]] [[refresh=N]] [[catalog=NAME]] [[noglass]][/]  Split element synthesis. catalog: AGF name (e.g. catalog=S1_GLASS); resolved against catalogs\FilteredGlassCatalogues. noglass: skip the glass-trials phase entirely (split + LM polish only).
   [green]optimize spc [[elements=N]] [[topn=N]] [[scanmin=V]] [[scanmax=V]] [[steps=N]] [[epsilon=V]] [[glass=N]] [[lm=N]] [[postlm=N]] [[catalog=NAME]] [[archive=true|false]] [[archivedir=PATH]] [[dop=N]] [[nullglass=NAME]] [[runinitlm=true|false]] [[initlm=N]] [[onlypreferred=true|false]] [[minglass=V]] [[maxglass=V]] [[minair=V]] [[maxair=V]] [[minedge=V]] [[constraintweight=V]][/]  Synthesis by SPC. catalog is mandatory (single AGF name or comma-separated list).
   [green]optimize global [[models=N]] [[restarts=N]] [[trials=N]] [[lm=N]] [[stall=N]] [[seed=N]] [[prepolish=N]] [[sigma=V]] [[cap=V]] [[glass=V]] [[native]] [[analytic]] [[out=DIR]][/]  Global Search: many seeded restarts from the start design; writes a pool of distinct .lhlt designs to DIR (default global_search_results). seed: base seed (run 1, then 2, … for independent batches). prepolish=0 (default) perturbs the raw start.
@@ -56,6 +57,11 @@ namespace LensHH.CLI.Commands
                 case "basinhop":
                 case "basin-hopping":
                     RunBasinHopping(session, args);
+                    break;
+                case "global-basin":
+                case "globalbasin":
+                case "gbasin":
+                    RunGlobalBasinHopping(session, args);
                     break;
                 case "split":
                     RunSplitElement(session, args);
@@ -858,6 +864,153 @@ namespace LensHH.CLI.Commands
                     string baseName = string.IsNullOrWhiteSpace(system.Title) ? "basin" : system.Title;
                     var paths = LensHH.Core.IO.ChainResultWriter.SaveChains(
                         optimizer.ChainResults, saveChainsFolder!, baseName, mf, session.ConfigEditor);
+                    AnsiConsole.MarkupLine("");
+                    AnsiConsole.MarkupLine($"[green]Saved {paths.Count} chain design(s)[/] to {Markup.Escape(saveChainsFolder!)}");
+                }
+            }
+            finally
+            {
+                Console.CancelKeyPress -= OnCancelKeyPress;
+                _cts = null;
+            }
+        }
+
+        private void RunGlobalBasinHopping(Session session, string[] args)
+        {
+            var system = session.EnsureValidSystem();
+            var mf = session.EnsureMeritFunction();
+            var glassMgr = session.EnsureGlassCatalog();
+            session.ValidateGlass();
+
+            var gs = new GlobalBasinHoppingSettings();   // Chain defaults + 600s watchdog + 120min global
+            var s = gs.Chain;
+            string? saveChainsFolder = null;
+            int applyChain = -1;
+
+            for (int i = 1; i < args.Length; i++)
+            {
+                if (args[i].Equals("constrained", StringComparison.OrdinalIgnoreCase))
+                {
+                    s.ConstrainedOnly = true;   // "Only randomize constrained variables"
+                    continue;
+                }
+                var parts = args[i].Split('=', 2);
+                if (parts.Length != 2) continue;
+                var key = parts[0].ToLowerInvariant();
+                var val = parts[1];
+                switch (key)
+                {
+                    case "hops": if (int.TryParse(val, out int h)) s.MaxHops = h; break;
+                    case "lm": if (int.TryParse(val, out int l)) s.LmIterationsPerHop = l; break;
+                    case "hj": if (int.TryParse(val, out int hj)) s.HjStepsPerHop = hj; break;
+                    case "sigma": if (double.TryParse(val, NumberStyles.Float, CultureInfo.InvariantCulture, out double sg)) s.InitialPerturbSigma = sg; break;
+                    case "seed": if (int.TryParse(val, out int sd)) s.Seed = sd; break;
+                    case "broyden":
+                        var b = val.Trim().ToLowerInvariant();
+                        s.UseBroydenUpdate = b == "true" || b == "1" || b == "yes" || b == "y";
+                        break;
+                    case "glasssub":
+                        var g = val.Trim().ToLowerInvariant();
+                        s.GlassSubstitution = g == "true" || g == "1" || g == "yes" || g == "y";
+                        break;
+                    case "rescale":   // rescale curvature on glass swap
+                        var rs = val.Trim().ToLowerInvariant();
+                        s.RescaleCurvatureOnGlassSwap = rs == "true" || rs == "1" || rs == "yes" || rs == "y";
+                        break;
+                    case "onlypreferred":
+                        var op = val.Trim().ToLowerInvariant();
+                        s.OnlyPreferred = op == "true" || op == "1" || op == "yes" || op == "y";
+                        break;
+                    case "catalog":
+                    case "catalogs":
+                        s.GlassCatalogs = new System.Collections.Generic.List<string>(
+                            val.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+                        break;
+                    // No-improvement watchdog (mandatory ON) in seconds; ≤0 → engine default 600.
+                    case "timeout":
+                    case "noimprovement": if (double.TryParse(val, NumberStyles.Float, CultureInfo.InvariantCulture, out double to)) s.NoImprovementTimeoutSeconds = to; break;
+                    // Global wall-clock budget in minutes.
+                    case "globalmin":
+                    case "globaltimeout": if (double.TryParse(val, NumberStyles.Float, CultureInfo.InvariantCulture, out double gm)) gs.GlobalTimeoutMinutes = gm; break;
+                    case "savechains":
+                    case "savechainsfolder": saveChainsFolder = val; break;
+                    case "apply": int.TryParse(val, out applyChain); break;
+                }
+            }
+
+            _cts = new CancellationTokenSource();
+            Console.CancelKeyPress += OnCancelKeyPress;
+
+            var optimizer = new GlobalBasinHoppingOptimizer(system, mf, glassMgr, session.ConfigEditor)
+            {
+                Settings = gs,
+                FilteredCatalogSearchPaths = FindFilteredCatalogPaths(),
+            };
+
+            // Throttle the per-chain snapshot to ~3×/s (it fires per hop from N threads).
+            var progressWatch = System.Diagnostics.Stopwatch.StartNew();
+            object progressLock = new object();
+            optimizer.OnChainsProgress = snap =>
+            {
+                lock (progressLock)
+                {
+                    if (progressWatch.ElapsedMilliseconds < 333) return;
+                    progressWatch.Restart();
+                    double best = double.NaN; int bestChain = -1; long hops = 0; int restarts = 0;
+                    foreach (var c in snap)
+                    {
+                        hops += c.Hops; restarts += c.Restarts;
+                        if (!double.IsNaN(c.Best) && (double.IsNaN(best) || c.Best < best)) { best = c.Best; bestChain = c.Chain; }
+                    }
+                    AnsiConsole.MarkupLine($"  best={best:E6} (chain {bestChain}) | {snap.Length} chains | {restarts} restarts | {hops} hops");
+                }
+            };
+
+            int cores = LensHH.Core.Optimization.CpuInfo.PhysicalCoreCount();
+            double watchdog = s.NoImprovementTimeoutSeconds > 0 ? s.NoImprovementTimeoutSeconds : GlobalBasinHoppingSettings.DefaultChainTimeoutSeconds;
+            AnsiConsole.MarkupLine("[bold]Starting GLOBAL Basin-Hopping HJ+LM[/]");
+            AnsiConsole.MarkupLine($"  Chains: {cores} (physical cores, fixed)");
+            AnsiConsole.MarkupLine($"  Hops/episode: {s.MaxHops}, LM/hop: {s.LmIterationsPerHop}, HJ/hop: {s.HjStepsPerHop}, sigma: {s.InitialPerturbSigma:G3}");
+            AnsiConsole.MarkupLine($"  No-improvement timeout: {watchdog:F0} s (mandatory)   Global limit: {gs.GlobalTimeoutMinutes:F0} min");
+            AnsiConsole.MarkupLine($"  Glass substitution: {(s.GlassSubstitution ? "ON" : "OFF")}{(s.GlassSubstitution && s.RescaleCurvatureOnGlassSwap ? " (rescale on swap)" : "")}");
+            AnsiConsole.MarkupLine("[grey]Press Ctrl+C to stop early.[/]");
+            AnsiConsole.MarkupLine("");
+
+            try
+            {
+                var result = optimizer.Optimize(_cts.Token);
+
+                AnsiConsole.MarkupLine("");
+                AnsiConsole.MarkupLine("[bold]Global Basin-Hopping Complete[/]");
+                AnsiConsole.MarkupLine($"  Initial Merit: {result.InitialMerit:E6}");
+                AnsiConsole.MarkupLine($"  Final Merit:   {result.FinalMerit:E6}");
+                AnsiConsole.MarkupLine($"  Chains: {result.ChainsRun}, restarts: {result.TotalRestarts}, total hops: {result.TotalHops}");
+                AnsiConsole.MarkupLine($"  Wall time: {result.Elapsed.TotalSeconds:F1} s  ({(result.TimedOut ? "global time limit reached" : result.Cancelled ? "stopped by user" : "completed")})");
+                if (!string.IsNullOrEmpty(result.Message))
+                    AnsiConsole.MarkupLine($"  {Markup.Escape(result.Message)}");
+
+                if (result.ChainResults.Count > 0)
+                {
+                    AnsiConsole.MarkupLine("");
+                    AnsiConsole.MarkupLine("[bold]Per-chain best designs:[/]");
+                    foreach (var c in result.ChainResults.OrderBy(c => c.Merit))
+                        AnsiConsole.MarkupLine($"  chain {c.ChainIndex,2}: merit {c.Merit:E6}{(c.IsBest ? "   [green]<- global best[/]" : "")}");
+                }
+
+                // The engine already applied the global best to `system`. apply=N overrides
+                // with a specific chain's design (e.g. to take a runner-up form).
+                if (applyChain >= 0)
+                {
+                    var pick = result.ChainResults.FirstOrDefault(c => c.ChainIndex == applyChain);
+                    if (pick.System != null) { system.CopyFrom(pick.System); AnsiConsole.MarkupLine($"[green]Applied chain {applyChain}'s design to the system.[/]"); }
+                    else AnsiConsole.MarkupLine($"[yellow]apply={applyChain}: no such chain result; kept the global best.[/]");
+                }
+
+                if (!string.IsNullOrWhiteSpace(saveChainsFolder))
+                {
+                    string baseName = string.IsNullOrWhiteSpace(system.Title) ? "global_basin" : system.Title;
+                    var paths = LensHH.Core.IO.ChainResultWriter.SaveChains(
+                        result.ChainResults, saveChainsFolder!, baseName, mf, session.ConfigEditor);
                     AnsiConsole.MarkupLine("");
                     AnsiConsole.MarkupLine($"[green]Saved {paths.Count} chain design(s)[/] to {Markup.Escape(saveChainsFolder!)}");
                 }

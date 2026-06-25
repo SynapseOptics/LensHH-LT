@@ -1012,6 +1012,37 @@ namespace LensHH.API
             return result;
         }
 
+        /// <summary>Run GLOBAL basin-hopping (HJ+LM): N chains (one per physical core), each
+        /// restarting from the best design found by the OTHER chains when its no-improvement
+        /// watchdog fires or it reaches MaxHops, until the global time limit elapses or you
+        /// cancel. The global-best design is applied to the session system. When
+        /// <paramref name="saveChainsFolder"/> is set, every chain's best design is also written
+        /// there as a separate .lhlt (best-merit first).</summary>
+        public GlobalBasinHoppingResult GlobalBasinHopping(
+            GlobalBasinHoppingSettings? settings = null,
+            string? saveChainsFolder = null,
+            string[]? filteredCatalogPaths = null,
+            Action<GlobalBasinHoppingOptimizer.ChainStatus[]>? onChainsProgress = null,
+            System.Threading.CancellationToken cancellationToken = default)
+        {
+            ValidateGlass();
+            if (MeritFunction == null) throw new InvalidOperationException("No merit function defined.");
+            var optimizer = new GlobalBasinHoppingOptimizer(_system!, MeritFunction, GlassCatalog, ConfigEditor)
+            {
+                Settings = settings ?? new GlobalBasinHoppingSettings(),
+                FilteredCatalogSearchPaths = filteredCatalogPaths ?? new string[0],
+                OnChainsProgress = onChainsProgress,
+            };
+            var result = optimizer.Optimize(cancellationToken);
+            if (!string.IsNullOrWhiteSpace(saveChainsFolder))
+            {
+                string baseName = string.IsNullOrWhiteSpace(_system!.Title) ? "global_basin" : _system!.Title;
+                LensHH.Core.IO.ChainResultWriter.SaveChains(
+                    result.ChainResults, saveChainsFolder!, baseName, MeritFunction, ConfigEditor);
+            }
+            return result;
+        }
+
         public GlobalSearchResult GlobalSearch(
             GlobalSearchSettings? settings = null,
             bool useNativeEngine = false,

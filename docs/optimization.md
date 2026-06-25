@@ -912,6 +912,85 @@ Watch for two patterns:
 When the plateau persists for 50–100 hops with no improvement,
 stopping is usually the right call.
 
+## Global Basin Hopping (HJ + LM)
+
+**Optimization → Global Basin Hopping HJ+LM…**
+
+Global Basin Hopping is the **cooperative, run-until-you-say-stop** version of
+parallel [Basin Hopping](#basin-hopping-hj-lm). Plain parallel basin hopping
+launches one chain per core, runs each to completion once, and returns the best;
+the global version never stops a chain — when a chain **stalls** it **restarts
+from the best basin any *other* chain has found** and keeps digging, for as long
+as you give it. Where [Global Multi Start](#global-multi-start-optimization)
+casts the *widest net* (a gallery of distinct forms), Global Basin Hopping drills
+the *deepest single answer*: all the chains pool their best basin and pile effort
+into it.
+
+The loop, per chain:
+
+1. Run a basin-hopping **episode** (the same hop = perturb → Hooke-Jeeves → LM →
+   accept/reject loop described above) with your settings.
+2. The episode ends when **either** the per-chain **no-improvement watchdog**
+   fires (best merit hasn't improved within the timeout) **or** the chain reaches
+   its **Hops** cap.
+3. The chain then **restarts**, seeded with a clone of the **best design found so
+   far by all the *other* chains** (excluding its own), with its random seed
+   advanced so it doesn't retrace — and goes back to step 1.
+4. This continues until the **global time limit** elapses or you press **Stop**.
+
+This is why the watchdog is **mandatory** here (you can only edit its timeout,
+not turn it off): the restart-from-elite migration is the entire mechanism, and a
+chain has to be *allowed to stall* in order to jump to a better basin.
+
+![Global Basin Hopping HJ+LM mid-run: 10 chains (auto = physical cores, fixed); the header shows the global best, total hops / chains / restarts and elapsed time; the Chains tab lists each chain's cumulative hops, best merit, and restart count with the ◄ best marker on the chain holding the global best. The "Global (min)" field is the wall-clock budget; "Stop on no improvement" is locked on with an editable Timeout; "Save chains to" exports every chain's best design.](images/GlobalBasinHopping.png)
+
+### Settings
+
+The per-chain HJ-LM knobs are the **same as Basin Hopping** — Hops, LM/Hop, HJ
+Steps, Sigma, Seed, Broyden update, Glass substitution, Rescale on glass swap,
+Only-randomize-constrained, and the Glass Source — and behave identically *inside*
+each episode. The differences are the three controls that govern the global loop:
+
+| Setting | Default | Meaning |
+|---|---|---|
+| **Chains** | auto (physical cores) | **Fixed** — not editable. One chain per physical core; shown read-only as "auto → N physical cores". |
+| **Stop on no improvement** / **Timeout (s)** | on / 600 | **Always on.** A chain restarts (from the elite of the other chains) when its best merit hasn't improved within this many seconds. Only the timeout is editable. |
+| **Global (min)** | 120 | Total wall-clock budget. The whole run stops when this elapses (or you press Stop). 0 = run until you stop it. |
+
+`Hops` is now the **episode** cap rather than the run length — set it high (the
+default 2000 rarely caps an episode before the watchdog does) unless you
+specifically want short, frequent restarts.
+
+### Reading the dialog
+
+- **Header** (e.g. *"9503 hops / 10 chains / 43 restarts"*) — totals across the
+  whole run: every hop summed over all chains, and how many times chains have
+  reseeded from the elite.
+- **Chains tab** — one row per chain:
+  - **Hops** is that chain's **cumulative** total; it **does not reset on
+    restart** (so the per-chain Hops sum equals the header's total).
+  - **Best Merit** is the chain's best-ever design.
+  - **Restarts** counts how many times that chain has reseeded from the others.
+  - **◄ best** marks the chain currently holding the global best.
+
+A healthy run shows the per-chain *Best Merit* values converging — that's the
+elites propagating — while *Restarts* climbs as stalled chains keep jumping to the
+shared best basin.
+
+### Finishing
+
+When the run ends, the **Chains tab becomes a gallery** of each chain's best
+design (sorted best-first, the global best pre-selected). The global best is
+already applied to your system; to take a different chain instead, select its row
+and click **Apply Selected**. Set **Save chains to** to write every chain's best
+design as its own `.lhlt` (best-merit first) — feed those into a later
+[Split Element](#split-element), asphere search, or a fresh Multistart.
+
+Global Basin Hopping is available everywhere the other optimizers are: the GUI
+dialog above, the CLI (`optimize global-basin … timeout= globalmin= savechains=`),
+the MCP tool `global_basin_hopping_start` (non-blocking — poll `optimize_status`),
+and the .NET API (`IOptimization.GlobalBasinHopping`).
+
 ## Split Element
 
 **Optimization → Split Element**
