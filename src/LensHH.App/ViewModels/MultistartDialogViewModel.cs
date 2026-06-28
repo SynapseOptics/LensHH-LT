@@ -135,6 +135,17 @@ public partial class MultistartDialogViewModel : ObservableObject
     [ObservableProperty] private string _gpuStatusText = "Detecting GPU...";
     [ObservableProperty] private bool _isGpuToggleEnabled;
 
+    // GPU difference gate (1.0.128): only feed the GPU sieve designs that are
+    // STRUCTURALLY different from the running best — a glass change (|Δn_d|>0.001) or a
+    // refractive surface whose curvature moved by more than this percent. Stops the
+    // value-only sieve from collapsing into a pure refiner. 0 disables the gate.
+    [ObservableProperty] private double _gpuMinCurvatureChangePercent = 2.0;
+
+    // GPU population multiplier (1.0.128): candidates sieved per batch = this × the GPU's
+    // device-fill count. The GPU is otherwise idle, so a bigger pool is a near-free way to give
+    // the value-only sieve more shots at a good (post-LM) design. Scales GPU work/scratch ~linearly.
+    [ObservableProperty] private double _gpuPopulationMultiplier = 1.0;
+
     // ── Status ──
     [ObservableProperty] private bool _isRunning;
     [ObservableProperty] private bool _isComplete;
@@ -318,6 +329,10 @@ public partial class MultistartDialogViewModel : ObservableObject
                     // MultistartOptimizer Phase-2 hook lands in 1.0.116, at
                     // which point this flag will start gating the GPU sieve.
                     UseGpuPreScreen = UseGpuPreScreen,
+                    // 1.0.128: difference gate threshold (only effective with the GPU sieve on).
+                    GpuPreScreenMinCurvatureChangePercent = GpuMinCurvatureChangePercent,
+                    // 1.0.128: evaluate this × the GPU device-fill candidates per batch.
+                    GpuPreScreenFill = GpuPopulationMultiplier,
                     // Experimental (1.0.120): rescale an element's curvatures by
                     // (n_old-1)/(n_new-1) on a glass swap so its power is preserved.
                     RescaleCurvatureOnGlassSwap = RescaleOnGlassSwap,

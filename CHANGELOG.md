@@ -2,7 +2,39 @@
 
 All notable changes to LensHH-LT and the LensHH-LT-Engine.
 
-## 1.0.127 — unreleased
+## 1.0.128 — 2026-06-28
+
+### Added
+- **GPU pre-screen tuning knobs.** The Multistart GPU pre-screen gains two
+  controls in the Hardware-acceleration strip: **Min change (%)** and
+  **Population ×**. *Min change* is a difference gate — only designs that are
+  structurally different from the running best (a glass swap, or a refractive
+  surface whose curvature moved by more than the set percent) are evaluated, and
+  the same threshold keeps the surviving designs distinct from one another.
+  *Population ×* multiplies the device-fill candidate count per batch (e.g. 10×
+  for a much larger pool). Together they turn the value-only sieve from a refiner
+  into a basin-escape tool. The knobs are also available in the **Global Multi
+  Start Optimization** dialog (applied to every restart) and via the CLI / MCP /
+  .NET API.
+
+### Changed
+- **GPU pre-screen survivors are now selected for diversity.** A larger candidate
+  pool previously collapsed onto the lowest-merit (least-changed) designs, so a
+  bigger population gave the LM polish little to do. Survivors are still ranked by
+  merit, but near-duplicates are skipped so the pool spreads across the feasible
+  region — a larger population now improves coverage instead of concentrating.
+- **GPU pre-screen result telemetry** adds a GPU↔CPU parity figure and a survivor-
+  spread readout, so you can confirm at a glance that the sieve scored exactly the
+  design the optimizer polishes and how varied the surviving designs are.
+
+### Fixed
+- **GPU pre-screen now tracks glass substitutions correctly.** When the search had
+  walked to a different glass, the pre-screen could score candidates against the
+  original glasses while the LM polish used the current ones — feeding the
+  optimizer designs that behaved as if infeasible. The pre-screen now always
+  evaluates exactly the design the optimizer reconstructs.
+
+## 1.0.127 — 2026-06-25
 
 ### Added
 - **Global Basin Hopping (HJ + LM).** A new cooperative, run-until-you-stop

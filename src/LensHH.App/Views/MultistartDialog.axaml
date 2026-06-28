@@ -54,6 +54,20 @@
                     Tag="When enabled, each Phase-2 trial batch generates enough candidate designs to fill the GPU and evaluates them all in one launch. Only the top-N survivors run the expensive HJ-LM polish."
                     PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"
                     GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
+          <TextBlock Text="Min change (%):" VerticalAlignment="Center" Margin="12,0,0,0" />
+          <TextBox Text="{Binding GpuMinCurvatureChangePercent, UpdateSourceTrigger=LostFocus}"
+                   Width="60" VerticalAlignment="Center"
+                   IsEnabled="{Binding UseGpuPreScreen}"
+                   Tag="Difference gate (1.0.128): only feed the GPU sieve designs that are structurally different from the running BEST — a glass swap (|Δn_d| > 0.001) or a refractive surface whose curvature moved by more than this percent (a flat surface gaining any curvature counts). Without it the value-only sieve keeps the least-displaced candidates and acts as a pure refiner, never escaping the basin. Survivors are still ranked by merit. 0 disables the gate. Default 2%."
+                   PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"
+                   GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
+          <TextBlock Text="Population ×:" VerticalAlignment="Center" Margin="12,0,0,0" />
+          <TextBox Text="{Binding GpuPopulationMultiplier, UpdateSourceTrigger=LostFocus}"
+                   Width="50" VerticalAlignment="Center"
+                   IsEnabled="{Binding UseGpuPreScreen}"
+                   Tag="GPU population multiplier (1.0.128): the sieve evaluates this many TIMES the GPU's device-fill candidates per batch (default 1 = one device fill). The GPU is otherwise idle, so a bigger pool — e.g. 10× — is a near-free way to give the value-only sieve more shots at a design that polishes well under LM. Scales GPU kernel time and device scratch roughly linearly; if it runs out of GPU memory it falls back to CPU for that batch."
+                   PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"
+                   GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
         </StackPanel>
         <TextBlock Text="{Binding GpuStatusText}" FontSize="11" Foreground="#555"
                    Margin="22,0,0,0" TextWrapping="Wrap" />

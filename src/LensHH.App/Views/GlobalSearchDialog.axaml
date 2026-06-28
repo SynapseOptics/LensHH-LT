@@ -81,6 +81,20 @@
             <CheckBox Content="Rescale on glass swap" IsChecked="{Binding RescaleOnGlassSwap}"/>
             <CheckBox Content="GPU pre-screen" IsChecked="{Binding UseGpuPreScreen}"/>
           </StackPanel>
+          <StackPanel Margin="0,0,16,6" Width="150"
+                      ToolTip.Tip="Difference gate + survivor distinctness (1.0.128): only feed the GPU sieve designs structurally different from the running best — a glass swap (|Δn_d| &gt; 0.001) or a refractive surface whose curvature moved by more than this percent. Also the minimum spread between survivors, so a larger population covers the feasible region instead of collapsing onto the merit floor. Survivors are still ranked by merit. 0 disables the gate. Default 2%.">
+            <TextBlock Text="GPU min change (%)" FontSize="11"/>
+            <NumericUpDown Value="{Binding GpuMinCurvatureChangePercent, UpdateSourceTrigger=LostFocus}"
+                           Minimum="0" Maximum="100" Increment="1" FormatString="0.#"
+                           IsEnabled="{Binding UseGpuPreScreen}"/>
+          </StackPanel>
+          <StackPanel Margin="0,0,16,6" Width="150"
+                      ToolTip.Tip="GPU population multiplier (1.0.128): the sieve evaluates this many TIMES the GPU's device-fill candidates per batch (default 1 = one device fill). The GPU is otherwise idle, so a bigger pool — e.g. 10× — gives the value-only sieve more shots at a design that polishes well under LM. Scales GPU kernel time and device scratch roughly linearly.">
+            <TextBlock Text="GPU population ×" FontSize="11"/>
+            <NumericUpDown Value="{Binding GpuPopulationMultiplier, UpdateSourceTrigger=LostFocus}"
+                           Minimum="1" Maximum="100" Increment="1" FormatString="0.#"
+                           IsEnabled="{Binding UseGpuPreScreen}"/>
+          </StackPanel>
         </WrapPanel>
 
         <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto">

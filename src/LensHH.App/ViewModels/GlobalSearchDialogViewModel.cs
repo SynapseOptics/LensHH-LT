@@ -58,6 +58,11 @@ namespace LensHH.App.ViewModels
         [ObservableProperty] private int _engineModeIndex = 1;     // 0 = C#, 1 = Native
         [ObservableProperty] private int _derivativeModeIndex = 1; // 0 = FD, 1 = Analytic
         [ObservableProperty] private bool _useGpuPreScreen;
+        // GPU pre-screen tuning (1.0.128) — same knobs as the Multistart dialog. The
+        // difference gate / survivor-distinctness threshold and the population multiplier
+        // are what make the value-only sieve a basin-escape tool rather than a refiner.
+        [ObservableProperty] private double _gpuMinCurvatureChangePercent = 2.0;
+        [ObservableProperty] private double _gpuPopulationMultiplier = 1.0;
 
         // ── Run state ──
         [ObservableProperty] private bool _isRunning;
@@ -139,6 +144,8 @@ namespace LensHH.App.ViewModels
                         GlassSubstitutionProbability = GlassSubstitutionProbability / 100.0,
                         RescaleCurvatureOnGlassSwap = RescaleOnGlassSwap,
                         UseGpuPreScreen = UseGpuPreScreen,
+                        GpuPreScreenMinCurvatureChangePercent = GpuMinCurvatureChangePercent,
+                        GpuPreScreenFill = GpuPopulationMultiplier,
                         LmIterationsPerTrial = Math.Max(1, LmIterationsPerTrial),
                         // 0 = perturb the raw starting design (no pre-polish); the
                         // service skips Phase-1 entirely. >0 = polish the start once.

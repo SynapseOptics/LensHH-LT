@@ -26,9 +26,10 @@ Skip step 1 if you start from a known-good design; never skip step 3.
 |---|---|---|
 | **Local (LM)** | Refining a design you already trust — polish the last 10% of merit. | Escaping a bad starting point. |
 | **Multistart** | Probing several random starts, LM from each. Cheap way to find a better basin and to vary glass choices. | Genuinely topology-changing exploration (it won't, e.g., find a Cooke triplet from a flat-plate start). |
-| **Global Multi Start Optimization** | Surveying the solution space — collecting a *gallery* of distinct, locally-optimized design forms (different power patterns + glasses) to choose among, rather than one winner. | Driving a single design to its absolute lowest merit (use Local/Multistart). |
-| **Global Evolutionary Optimization** | Building a *gallery* of polished starting designs from a poor or power-free start (e.g. parallel plates) by evolving a whole population in parallel — GPU-accelerated. The fastest "no design → many viable forms" route. | Driving a single chosen design to its absolute lowest merit. |
 | **Basin Hopping** | Heavy single-design exploration — the deepest one run can travel (can change topology). Random perturbations + Hooke-Jeeves pattern search + LM refinement, optionally with glass substitution. | Fast iteration — it's the slowest per run. |
+| **Global Multi Start Optimization** | Surveying the solution space — collecting a *gallery* of distinct, locally-optimized design forms (different power patterns + glasses) to choose among, rather than one winner. | Driving a single design to its absolute lowest merit (use Local/Multistart). |
+| **Global Basin Hopping** | The deepest *single* answer — many parallel Basin-Hopping (HJ+LM) chains that pool their best basin and reseed each stalled chain from the others' elite, running until you stop. The most thorough escape for one design when you can spend the compute. | Surveying many forms or quick iteration — it pours all chains into one answer (use Global Multi Start for a gallery) and is the most compute-intensive. |
+| **Global Evolutionary Optimization** | Building a *gallery* of polished starting designs from a poor or power-free start (e.g. parallel plates) by evolving a whole population in parallel — GPU-accelerated. The fastest "no design → many viable forms" route. | Driving a single chosen design to its absolute lowest merit. |
 
 ## Variables
 
@@ -256,14 +257,14 @@ Either way the perturbation magnitude tracks the term's natural
 scale and an unbounded aspheric is now an honest variable in
 Multistart, not a hold-current placeholder.
 
-### GPU pre-screen (Beta, new in 1.0.115)
+### GPU pre-screen (Beta, new in 1.0.115; tuning knobs added 1.0.128)
 
 Most random perturbations produce designs that are strictly
 worse than the current best — running the full HJ-LM cycle on
 them is wasted work. The **GPU pre-screen** filter, available
 when LensHH-LT detects a CUDA-capable NVIDIA GPU, evaluates a
 much larger candidate pool than `N_CPU` in a single GPU launch
-(~60 µs per design on an RTX 4060), sorts by merit, and feeds
+(~60 µs per design on an RTX 4060), ranks by merit, and feeds
 only the top survivors into the parallel HJ-LM workers.
 Discarded candidates pay one merit evaluation each instead of
 the 50–300 LM iterations a full trial would cost.
@@ -284,13 +285,45 @@ the 50–300 LM iterations a full trial would cost.
 - With no compatible GPU, the checkbox is greyed out and the
   status line says so.
 
-**What runs on the GPU.** Each Phase-2 batch generates
-`16 × N_CPU` candidates (continuous perturbations and, when
-glass substitution is on, single-surface glass swaps mixed in
-the same launch). The whole-merit kernel computes the merit of
-every candidate bit-equal to the CPU path; the top `N_CPU`
-survivors go to HJ-LM polish exactly as in the non-GPU flow.
-Acceptance / Metropolis / sigma schedule are unchanged.
+![Multistart running with the GPU pre-screen strip — `Use GPU pre-screen (Beta)`, `Min change (%)`, and `Population ×` at the top, with the trial table updating live below.](images/MultipStartGPUSettingsRunning.png)
+
+**Tuning the sieve (1.0.128).** Two knobs sit next to the
+checkbox; they turn the pre-screen from a *refiner* into a
+*basin-escape* tool:
+
+- **`Min change (%)`** — the *difference gate* plus the
+  *survivor-distinctness* threshold. A candidate is only worth
+  GPU-evaluating if it is structurally different from the
+  running best: a glass swap (|Δn_d| > 0.001) **or** a
+  refractive surface whose curvature moved by more than this
+  percent (a previously-flat surface gaining any curvature
+  counts). The same threshold also keeps the surviving designs
+  apart from *each other*, so a bigger pool spreads across the
+  feasible region instead of collapsing onto the lowest-merit
+  point. Survivors are still ranked by merit. `0` disables the
+  gate. Default 2 %; values around 5–10 % give the most
+  aggressive escape.
+- **`Population ×`** — the sieve evaluates this many *times* the
+  GPU's device-fill candidate count per batch (default 1 = one
+  device fill, ≈6,000 designs on an RTX 4060). The GPU is
+  otherwise idle, so a larger pool — e.g. 10× — is a near-free
+  way to give the value-only sieve more shots at a design that
+  polishes well under LM. Scales GPU kernel time and device
+  scratch roughly linearly; if it runs out of GPU memory it
+  falls back to CPU for that batch.
+
+**What runs on the GPU.** Each Phase-2 batch generates a
+device-filling candidate pool (`Population ×` × device fill),
+mixing continuous perturbations and — when glass substitution
+is on — single-surface glass swaps in the same launch. The
+whole-merit kernel computes the merit of every candidate
+**bit-equal to the CPU path**; the difference gate forces each
+candidate to clear `Min change (%)`, and diversity-aware
+selection then keeps the best `N_CPU` *distinct* survivors for
+HJ-LM polish. Acceptance / Metropolis / sigma schedule are
+unchanged. The GPU base design (curvatures **and** glasses)
+tracks the Metropolis centre, so the sieve always scores
+exactly the design the LM worker reconstructs.
 
 **Performance.** On real production-class merits (Tanabe,
 21-surface, 3 waves, 3 fields, 241 operands) the consumer-class
@@ -304,11 +337,14 @@ algorithm-level speedup. A100-class FP64 GPUs project to
 
 **Result message telemetry.** When a run uses the GPU
 pre-screen, the result line at the bottom of the dialog adds
-`| GPU pre-screen: N candidates sieved across M batches`. When
-glass substitution is on, it also reports how many of the
-HJ-LM survivors were glass-swap candidates, so you can tell at
-a glance that the sieve actually evaluated the glass-swap
-variants alongside the continuous ones.
+`| GPU pre-screen: N candidates sieved across M batches`,
+followed by a **`GPU↔CPU parity gap`** (≈0 confirms the sieve
+scored exactly the design LM polishes) and a **`survivor
+spread`** (worst survivor merit + mean change from best — if
+this is near zero the survivors are hugging the merit floor and
+LM has little to do). When glass substitution is on, it also
+reports how many of the HJ-LM survivors were glass-swap
+candidates.
 
 ### Three Multistart cases on the same design
 
@@ -459,6 +495,9 @@ The search stops when it has collected **Models** distinct forms, exhausted
 | **Base Seed** | 1 | Restart *i* uses `BaseSeed × 100000 + i`. Run base seed 1, then 2, … for genuinely independent extra batches that never re-walk the same seeds. |
 | **Dedup tolerance** | 0.02 | Two designs of the same form within this relative merit count as the same gallery entry. |
 | Sigma, Glass Sub %, LM/Trial, Rescale on Glass Swap, … | | Inherited from Multistart — each restart *is* a Multistart run. |
+| **GPU pre-screen** + **GPU min change (%)** / **GPU population ×** | off / 2 % / 1× | Same GPU sieve and tuning knobs as the Multistart dialog (1.0.128). Applied to every restart, so the gallery search gets the same basin-escape pre-screen. See [GPU pre-screen](#gpu-pre-screen-beta-new-in-10115-tuning-knobs-added-10128). |
+
+![Global Multi Start Optimization dialog with the 1.0.128 GPU pre-screen controls — the `GPU pre-screen` checkbox plus `GPU min change (%)` and `GPU population ×`, which enable when the checkbox is ticked. Every restart inherits these, so the whole gallery search uses the GPU sieve.](images/GlobalMultistartGPUScreening.png)
 
 Every gallery entry is a complete, loadable `.lhlt` design. From the CLI the
 pool is written to `out=DIR` (default `global_search_results`), one file per

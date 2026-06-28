@@ -23,7 +23,7 @@ namespace LensHH.CLI.Commands
         public string Help => @"[bold]optimize[/] - Optimization operations
   [green]optimize run [[maxiter=N]] [[tol=V]] [[damping=V]] [[broyden=true|false]] [[refresh=N]][/]  Run local optimization (auto-applies result to the system)
   [green]optimize try [[maxiter=N]] [[tol=V]] [[damping=V]] [[broyden=true|false]] [[refresh=N]][/]  Run local optimization and prompt to keep or revert
-  [green]optimize multistart [[trials=N]] [[lm=N]] [[initlm=N]] [[sigma=V]] [[cap=V]] [[growth=V]] [[glass=V]] [[constrained]] [[tol=V]] [[damping=V]] [[broyden=true|false]] [[refresh=N]][/]  Multistart optimization
+  [green]optimize multistart [[trials=N]] [[lm=N]] [[initlm=N]] [[sigma=V]] [[cap=V]] [[growth=V]] [[glass=V]] [[constrained]] [[tol=V]] [[damping=V]] [[broyden=true|false]] [[refresh=N]] [[gpu]] [[mincurvchange=V]][/]  Multistart optimization. gpu = sieve candidates on the GPU. mincurvchange (default 2) = GPU difference gate: only feed designs that differ from the running best by a glass swap or this % refractive-surface curvature change (0 = off; stops the GPU sieve acting as a pure refiner).
   [green]optimize basin [[hops=N]] [[lm=N]] [[hj=N]] [[sigma=V]] [[hjstep=V]] [[hjmin=V]] [[tol=V]] [[damping=V]] [[broyden=true|false]] [[constrained]] [[glasssub=true|false]] [[onlypreferred=true|false]] [[catalog=NAME]] [[seed=N]][/]  Basin hopping (Hooke-Jeeves + LM with random kicks between hops)
   [green]optimize global-basin [[hops=N]] [[lm=N]] [[hj=N]] [[sigma=V]] [[broyden=true|false]] [[glasssub=true|false]] [[rescale=true|false]] [[constrained]] [[onlypreferred=true|false]] [[catalog=NAME]] [[seed=N]] [[timeout=SEC]] [[globalmin=MIN]] [[savechains=DIR]] [[apply=N]][/]  Global Basin Hopping HJ+LM: chains=physical cores (fixed); each chain restarts from the best of the OTHER chains when its no-improvement watchdog (timeout, default 600s) fires or hops are exhausted, until the global limit (globalmin, default 120) elapses or you cancel. savechains: write every chain's best design; apply=N: apply chain N's design instead of the global best.
   [green]optimize split [[splits=N]] [[trials=N]] [[lm=N]] [[postlm=N]] [[preglass=N]] [[postglass=N]] [[sigma=V]] [[constrained]] [[onlypreferred=true|false]] [[minglass=V]] [[maxglass=V]] [[minair=V]] [[maxair=V]] [[minedge=V]] [[skipsec=V]] [[tol=V]] [[damping=V]] [[broyden=true|false]] [[refresh=N]] [[catalog=NAME]] [[noglass]][/]  Split element synthesis. catalog: AGF name (e.g. catalog=S1_GLASS); resolved against catalogs\FilteredGlassCatalogues. noglass: skip the glass-trials phase entirely (split + LM polish only).
@@ -265,6 +265,12 @@ namespace LensHH.CLI.Commands
                         settings.UseBroydenUpdate = b == "true" || b == "1" || b == "yes" || b == "y";
                         break;
                     case "refresh": if (int.TryParse(val, out int rf)) settings.BroydenRefreshInterval = rf; break;
+                    // GPU pre-screen (sieve candidates on the GPU) + 1.0.128 difference gate.
+                    case "gpu": settings.UseGpuPreScreen = true; break;
+                    case "mincurvchange":
+                        if (double.TryParse(val, NumberStyles.Float, CultureInfo.InvariantCulture, out double mcc))
+                            settings.GpuPreScreenMinCurvatureChangePercent = mcc;
+                        break;
                 }
             }
 
@@ -278,6 +284,13 @@ namespace LensHH.CLI.Commands
                 Settings = settings,
                 FilteredCatalogSearchPaths = filteredPaths.ToArray()
             };
+            if (settings.UseGpuPreScreen)
+            {
+                string gateTxt = settings.GpuPreScreenMinCurvatureChangePercent > 0
+                    ? settings.GpuPreScreenMinCurvatureChangePercent.ToString("G3") + "%"
+                    : "off";
+                AnsiConsole.MarkupLine($"  GPU pre-screen: ON  (difference gate {gateTxt})");
+            }
 
             optimizer.OnProgress = p =>
             {
