@@ -2,6 +2,17 @@
 
 All notable changes to LensHH-LT and the LensHH-LT-Engine.
 
+## 1.0.129 — 2026-07-01
+
+### Fixed
+- **MCP 2D layout: element diameters now size to the full field.** When the MCP
+  server rendered a system whose surfaces use Auto semi-diameters, it drew the
+  elements at a 5 mm fallback instead of the true beam size, so wide-field designs
+  showed lens outlines that were too small (only the on-axis pupil was covered).
+  The MCP now solves Auto semi-diameters before rendering (and on load), matching
+  the GUI, so element outlines reflect the real aperture across all fields.
+  `get_system` reports the solved semi-diameters, and saving persists them.
+
 ## 1.0.128 — 2026-06-28
 
 ### Added

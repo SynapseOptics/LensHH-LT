@@ -20,6 +20,12 @@ namespace LensHH.Mcp.Tools
         /// <summary>Send render request and track the analysis for refresh.</summary>
         private async Task<string> RenderAndTrack(string analysis, Dictionary<string, object>? parms, string successMsg, string errorPrefix = "Render error")
         {
+            // Solve AUTO semi-diameters before rendering so element outlines size to the real
+            // beam (all fields), not the layout's 5 mm fallback for unsolved surfaces. Mirrors
+            // the GUI (GuiSession solves before it draws); the RenderApp only reads SemiDiameter.
+            // Cheap, idempotent, and keeps the drawing correct after edits.
+            try { LensHH.Core.Analysis.SemiDiameterSolver.Solve(_session.System, _session.GlassCatalog); } catch { }
+
             var response = await RenderAppClient.SendAsync(_session.System, analysis, parms);
             if (response.Success)
             {

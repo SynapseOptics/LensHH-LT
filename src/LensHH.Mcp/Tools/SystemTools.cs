@@ -27,6 +27,11 @@ namespace LensHH.Mcp.Tools
         {
             _session.LoadFromFile(filePath);
 
+            // Solve AUTO semi-diameters on load so get_system reports real apertures and a
+            // subsequent save persists them (the .lhlt stores SemiDiameter; Auto surfaces load
+            // as 0 = "compute on use"). Mirrors the GUI, which solves on load/render.
+            try { LensHH.Core.Analysis.SemiDiameterSolver.Solve(_session.System, _session.GlassCatalog); } catch { }
+
             // Clear the render window so stale analysis from the previous system is not shown
             try { await RenderAppClient.SendAsync(new OpticalSystem(), "Clear"); } catch { }
 
