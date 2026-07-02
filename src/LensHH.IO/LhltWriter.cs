@@ -221,6 +221,11 @@ namespace LensHH.Core.IO
                     var minVals = new double?[configEditor.OperandCount];
                     var maxVals = new double?[configEditor.OperandCount];
 
+                    bool hasPickups = false;
+                    var pickSrc = new int[configEditor.OperandCount];
+                    var pickScale = new double[configEditor.OperandCount];
+                    var pickOffset = new double[configEditor.OperandCount];
+
                     for (int i = 0; i < configEditor.OperandCount; i++)
                     {
                         cv.Values[i] = configEditor.GetValue(c, i);
@@ -229,6 +234,11 @@ namespace LensHH.Core.IO
                         minVals[i] = configEditor.GetMin(c, i);
                         maxVals[i] = configEditor.GetMax(c, i);
                         if (varFlags[i]) hasVariables = true;
+
+                        pickSrc[i] = configEditor.GetPickupSource(c, i);
+                        pickScale[i] = configEditor.GetPickupScale(c, i);
+                        pickOffset[i] = configEditor.GetPickupOffset(c, i);
+                        if (pickSrc[i] >= 0) hasPickups = true;
                     }
 
                     if (hasVariables)
@@ -236,6 +246,13 @@ namespace LensHH.Core.IO
                         cv.VariableFlags = varFlags;
                         cv.MinValues = minVals;
                         cv.MaxValues = maxVals;
+                    }
+
+                    if (hasPickups)
+                    {
+                        cv.PickupSource = pickSrc;
+                        cv.PickupScale = pickScale;
+                        cv.PickupOffset = pickOffset;
                     }
 
                     ce.Configurations.Add(cv);

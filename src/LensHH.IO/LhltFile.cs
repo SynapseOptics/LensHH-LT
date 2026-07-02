@@ -185,5 +185,10 @@ namespace LensHH.Core.IO
         public bool[]? VariableFlags { get; set; }
         public double?[]? MinValues { get; set; }
         public double?[]? MaxValues { get; set; }
+        // Config-pickups (M3.2): per-operand source config (−1 = none), scale, offset.
+        // Null when this config has no pickups (keeps files small and old files loadable).
+        public int[]? PickupSource { get; set; }
+        public double[]? PickupScale { get; set; }
+        public double[]? PickupOffset { get; set; }
     }
 }

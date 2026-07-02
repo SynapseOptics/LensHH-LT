@@ -250,6 +250,23 @@ namespace LensHH.Core.IO
                                 }
                             }
                         }
+
+                        // Config-pickups (M3.2). Source is always a lower config, so applying
+                        // them per-config in ascending order (this loop) satisfies SetPickup's
+                        // ordering rule.
+                        if (cv.PickupSource != null)
+                        {
+                            for (int i = 0; i < configEditor.OperandCount && i < cv.PickupSource.Length; i++)
+                            {
+                                int src = cv.PickupSource[i];
+                                if (src >= 0 && src < c)
+                                {
+                                    double scale = cv.PickupScale != null && i < cv.PickupScale.Length ? cv.PickupScale[i] : 1.0;
+                                    double offset = cv.PickupOffset != null && i < cv.PickupOffset.Length ? cv.PickupOffset[i] : 0.0;
+                                    configEditor.SetPickup(c, i, src, scale, offset);
+                                }
+                            }
+                        }
                     }
                 }
 
