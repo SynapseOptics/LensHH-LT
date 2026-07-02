@@ -2,6 +2,24 @@
 
 All notable changes to LensHH-LT and the LensHH-LT-Engine.
 
+## 1.0.131 — 2026-07-02
+
+### Fixed
+- **2D layout now draws the correct beam for F/# apertures.** When a system's
+  aperture was specified as an image-space F/number (rather than an entrance-pupil
+  diameter), the 2D layout renderer fell back to a hardcoded 5 mm pupil, so the
+  drawn ray bundle was a fixed 10 mm-wide pencil that didn't fill the elements or
+  the stop — F/#-defined objectives looked nothing like the real design. The
+  renderer now converts F/# to the entrance-pupil diameter (EPD = EFL / F#, the
+  same conversion the semi-diameter solver and every other analysis use), so the
+  drawn rays fill the correctly-sized elements. EPD-specified systems are
+  unchanged.
+- **FftMtf F/# accuracy.** Three FftMtf paths (image-side numerical aperture used
+  for the diffraction-cutoff scaling, and the annular diffraction-limited
+  obscuration ratio) used the same 5 mm fallback for F/# apertures; they now use
+  the correct EFL/(2·F#) pupil, so MTF cutoffs and obscured-pupil DL curves are
+  exact for F/#-defined systems.
+
 ## 1.0.130 — 2026-07-02
 
 ### Fixed
