@@ -300,7 +300,7 @@ public partial class BasinHoppingHjLmDialogViewModel : ObservableObject
         {
             // Initial merit display
             var evaluator = new MeritFunctionEvaluator(
-                _session.System, _session.GlassCatalog, configEditor: _session.ConfigEditor);
+                _session.System, _session.GlassCatalog);
             double initialMerit = evaluator.Evaluate(_session.MeritFunction);
             InitialMeritText = initialMerit.ToString("E6");
             BestMeritText = InitialMeritText;
@@ -322,7 +322,7 @@ public partial class BasinHoppingHjLmDialogViewModel : ObservableObject
 
                 optimizer = new BasinHoppingOptimizer(
                     _session.System, _session.MeritFunction,
-                    _session.GlassCatalog, _session.ConfigEditor)
+                    _session.GlassCatalog)
                 {
                     Settings = settings,
                     // Phase 10a — DEV engine selection from the dialog.
@@ -390,7 +390,7 @@ public partial class BasinHoppingHjLmDialogViewModel : ObservableObject
 
                 _batch = new BasinHoppingOptimizerBatch(
                     _session.System, _session.MeritFunction,
-                    _session.GlassCatalog, _session.ConfigEditor)
+                    _session.GlassCatalog)
                 {
                     Settings = settings,
                     EngineMode = (EngineModeIndex == 1) ? EngineMode.Native : EngineMode.CSharp,
@@ -458,7 +458,7 @@ public partial class BasinHoppingHjLmDialogViewModel : ObservableObject
             // Re-evaluate to match what other panels show
             LensHH.Core.Analysis.SemiDiameterSolver.Solve(_session.System, _session.GlassCatalog);
             var freshEval = new MeritFunctionEvaluator(
-                _session.System, _session.GlassCatalog, configEditor: _session.ConfigEditor);
+                _session.System, _session.GlassCatalog);
             double finalMerit = freshEval.Evaluate(_session.MeritFunction);
 
             // Multi-chain: fill the variable / glass tables from the winning chain now
@@ -500,7 +500,7 @@ public partial class BasinHoppingHjLmDialogViewModel : ObservableObject
                             // Single chain: the one final design (already live in the session).
                             : new[] { new BasinHoppingOptimizerBatch.ChainDesign(0, _session.System.DeepClone(), finalMerit, true) };
                     var paths = LensHH.Core.IO.ChainResultWriter.SaveChains(
-                        chains, SaveChainsFolder, baseName, _session.MeritFunction, _session.ConfigEditor);
+                        chains, SaveChainsFolder, baseName, _session.MeritFunction);
                     AppendLog($"Saved {paths.Count} chain design(s) to {SaveChainsFolder}");
                 }
                 catch (Exception ex) { AppendLog($"Chain save failed: {ex.Message}"); }

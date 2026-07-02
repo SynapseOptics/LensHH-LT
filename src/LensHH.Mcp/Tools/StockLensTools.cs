@@ -423,7 +423,7 @@ namespace LensHH.Mcp.Tools
             {
                 sys.Surfaces.Insert(insertAt + i, vertices[i]);
                 LensHH.Core.Models.SurfaceIndexUpdater.OnSurfaceInserted(
-                    insertAt + i, sys, _session.MeritFunction, _session.ConfigEditor);
+                    insertAt + i, sys, _session.MeritFunction);
             }
             // Re-index
             for (int i = 0; i < sys.Surfaces.Count; i++) sys.Surfaces[i].Index = i;
@@ -555,7 +555,7 @@ namespace LensHH.Mcp.Tools
             {
                 sys.Surfaces.RemoveAt(idx);
                 LensHH.Core.Models.SurfaceIndexUpdater.OnSurfaceRemoved(
-                    idx, sys, _session.MeritFunction, _session.ConfigEditor);
+                    idx, sys, _session.MeritFunction);
             }
 
             // ── Splice in the replacement parts sequentially ──────────────────
@@ -570,7 +570,7 @@ namespace LensHH.Mcp.Tools
                 {
                     sys.Surfaces.Insert(insertAt + v, vertices[v]);
                     LensHH.Core.Models.SurfaceIndexUpdater.OnSurfaceInserted(
-                        insertAt + v, sys, _session.MeritFunction, _session.ConfigEditor);
+                        insertAt + v, sys, _session.MeritFunction);
                 }
                 int partLast = insertAt + vertices.Count - 1;
                 insertedRanges.Add(($"{vendor}/{part}{(rev ? "(rev)" : "")}", partFirst, partLast));

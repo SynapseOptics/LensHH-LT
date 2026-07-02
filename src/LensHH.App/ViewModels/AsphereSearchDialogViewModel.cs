@@ -111,7 +111,7 @@ public partial class AsphereSearchDialogViewModel : ObservableObject
             {
                 var service = new AsphereSurfaceSearchService(
                     _session.System, _session.MeritFunction,
-                    _session.GlassCatalog, _session.ConfigEditor)
+                    _session.GlassCatalog)
                 {
                     Settings = settings,
                     OnProgress = p => Dispatcher.UIThread.Post(() => UpdateProgress(p))

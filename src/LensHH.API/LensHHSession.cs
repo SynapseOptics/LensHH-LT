@@ -4,7 +4,6 @@ using System.IO;
 using System.Linq;
 using LensHH.Core.Activation;
 using LensHH.Core.Analysis;
-using LensHH.Core.Configuration;
 using LensHH.Core.Enums;
 using LensHH.Core.Glass;
 using LensHH.Core.IO;
@@ -94,9 +93,6 @@ namespace LensHH.API
         /// <summary>Current merit function (null if none defined).</summary>
         public MeritFunction? MeritFunction { get; set; }
 
-        /// <summary>Multi-configuration editor (null if single-config).</summary>
-        public ConfigurationEditor? ConfigEditor { get; set; }
-
         /// <summary>Path to the currently loaded .lhlt file (null if imported/unsaved).</summary>
         public string? CurrentFilePath => _currentFilePath;
 
@@ -181,19 +177,17 @@ namespace LensHH.API
             }
 
             MeritFunction = null;
-            ConfigEditor = null;
             _currentFilePath = null;
         }
 
         // ─── File I/O: Load/Save (native .lhlt format) ─────────────────
 
-        /// <summary>Load system from a .lhlt file (includes merit function and config).</summary>
+        /// <summary>Load system from a .lhlt file (includes merit function).</summary>
         public void Load(string filePath)
         {
             var result = LhltReader.Read(filePath);
             _system = result.System;
             MeritFunction = result.MeritFunction;
-            ConfigEditor = result.ConfigEditor;
             _currentFilePath = filePath;
             UpdateSemiDiameters();
         }
@@ -209,7 +203,7 @@ namespace LensHH.API
         public void SaveAs(string filePath)
         {
             EnsureSystem();
-            LhltWriter.Write(_system!, filePath, MeritFunction, ConfigEditor);
+            LhltWriter.Write(_system!, filePath, MeritFunction);
             _currentFilePath = filePath;
         }
 
@@ -950,7 +944,7 @@ namespace LensHH.API
         {
             ValidateGlass();
             if (MeritFunction == null) throw new InvalidOperationException("No merit function defined.");
-            var evaluator = new MeritFunctionEvaluator(_system!, GlassCatalog, ConfigEditor)
+            var evaluator = new MeritFunctionEvaluator(_system!, GlassCatalog)
                 { ParallelEvaluation = parallel };
             return evaluator.Evaluate(MeritFunction);
         }
@@ -960,7 +954,7 @@ namespace LensHH.API
         {
             ValidateGlass();
             if (MeritFunction == null) throw new InvalidOperationException("No merit function defined.");
-            var optimizer = new LocalOptimizer(_system!, MeritFunction, GlassCatalog, ConfigEditor)
+            var optimizer = new LocalOptimizer(_system!, MeritFunction, GlassCatalog)
                 { ParallelEvaluation = parallel };
             return optimizer.Optimize(cancellationToken);
         }
@@ -974,7 +968,7 @@ namespace LensHH.API
         {
             ValidateGlass();
             if (MeritFunction == null) throw new InvalidOperationException("No merit function defined.");
-            var optimizer = new MultistartOptimizer(_system!, MeritFunction, GlassCatalog, ConfigEditor)
+            var optimizer = new MultistartOptimizer(_system!, MeritFunction, GlassCatalog)
             {
                 Settings = settings ?? new MultistartSettings(),
                 OnProgress = onProgress,
@@ -996,7 +990,7 @@ namespace LensHH.API
         {
             ValidateGlass();
             if (MeritFunction == null) throw new InvalidOperationException("No merit function defined.");
-            var optimizer = new BasinHoppingOptimizerBatch(_system!, MeritFunction, GlassCatalog, ConfigEditor)
+            var optimizer = new BasinHoppingOptimizerBatch(_system!, MeritFunction, GlassCatalog)
             {
                 Settings = settings ?? new BasinHoppingSettings(),
                 FilteredCatalogSearchPaths = filteredCatalogPaths ?? new string[0],
@@ -1007,7 +1001,7 @@ namespace LensHH.API
             {
                 string baseName = string.IsNullOrWhiteSpace(_system!.Title) ? "basin" : _system!.Title;
                 LensHH.Core.IO.ChainResultWriter.SaveChains(
-                    optimizer.ChainResults, saveChainsFolder!, baseName, MeritFunction, ConfigEditor);
+                    optimizer.ChainResults, saveChainsFolder!, baseName, MeritFunction);
             }
             return result;
         }
@@ -1027,7 +1021,7 @@ namespace LensHH.API
         {
             ValidateGlass();
             if (MeritFunction == null) throw new InvalidOperationException("No merit function defined.");
-            var optimizer = new GlobalBasinHoppingOptimizer(_system!, MeritFunction, GlassCatalog, ConfigEditor)
+            var optimizer = new GlobalBasinHoppingOptimizer(_system!, MeritFunction, GlassCatalog)
             {
                 Settings = settings ?? new GlobalBasinHoppingSettings(),
                 FilteredCatalogSearchPaths = filteredCatalogPaths ?? new string[0],
@@ -1038,7 +1032,7 @@ namespace LensHH.API
             {
                 string baseName = string.IsNullOrWhiteSpace(_system!.Title) ? "global_basin" : _system!.Title;
                 LensHH.Core.IO.ChainResultWriter.SaveChains(
-                    result.ChainResults, saveChainsFolder!, baseName, MeritFunction, ConfigEditor);
+                    result.ChainResults, saveChainsFolder!, baseName, MeritFunction);
             }
             return result;
         }
@@ -1053,7 +1047,7 @@ namespace LensHH.API
         {
             ValidateGlass();
             if (MeritFunction == null) throw new InvalidOperationException("No merit function defined.");
-            var service = new GlobalSearchService(_system!, MeritFunction, GlassCatalog, ConfigEditor)
+            var service = new GlobalSearchService(_system!, MeritFunction, GlassCatalog)
             {
                 Settings = settings ?? new GlobalSearchSettings(),
                 EngineMode = useNativeEngine
@@ -1077,7 +1071,7 @@ namespace LensHH.API
         {
             ValidateGlass();
             if (MeritFunction == null) throw new InvalidOperationException("No merit function defined.");
-            var pipeline = new DeOptimizationPipeline(_system!, MeritFunction, GlassCatalog, ConfigEditor)
+            var pipeline = new DeOptimizationPipeline(_system!, MeritFunction, GlassCatalog)
             {
                 Settings = settings ?? new DePipelineSettings(),
                 OnProgress = onProgress,
@@ -1096,7 +1090,7 @@ namespace LensHH.API
         {
             ValidateGlass();
             if (MeritFunction == null) throw new InvalidOperationException("No merit function defined.");
-            var pipeline = new DeOptimizationPipeline(_system!, MeritFunction, GlassCatalog, ConfigEditor)
+            var pipeline = new DeOptimizationPipeline(_system!, MeritFunction, GlassCatalog)
             {
                 Settings = settings ?? new DePipelineSettings(),
                 OnProgress = onProgress,
@@ -1110,7 +1104,7 @@ namespace LensHH.API
         {
             ValidateGlass();
             if (MeritFunction == null) throw new InvalidOperationException("No merit function defined.");
-            var service = new SplitElementService(_system!, MeritFunction, GlassCatalog, ConfigEditor)
+            var service = new SplitElementService(_system!, MeritFunction, GlassCatalog)
             {
                 Settings = settings
             };
@@ -1125,7 +1119,7 @@ namespace LensHH.API
         {
             ValidateGlass();
             if (MeritFunction == null) throw new InvalidOperationException("No merit function defined.");
-            var service = new SpcSynthesisService(_system!, MeritFunction, GlassCatalog, ConfigEditor)
+            var service = new SpcSynthesisService(_system!, MeritFunction, GlassCatalog)
             {
                 Settings = settings,
                 OnProgress = onProgress
@@ -1485,7 +1479,6 @@ namespace LensHH.API
         private void ClearMeritAndConfig()
         {
             MeritFunction = null;
-            ConfigEditor = null;
             _currentFilePath = null;
         }
     }

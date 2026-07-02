@@ -97,7 +97,7 @@ namespace LensHH.CLI.Commands
                 try
                 {
                     var glassMgr = session.EnsureGlassCatalog();
-                    var evaluator = new MeritFunctionEvaluator(session.CurrentSystem, glassMgr, session.ConfigEditor);
+                    var evaluator = new MeritFunctionEvaluator(session.CurrentSystem, glassMgr);
                     evaluator.Evaluate(mf);
                 }
                 catch { /* show stale values if evaluation fails */ }
@@ -387,7 +387,7 @@ namespace LensHH.CLI.Commands
             var mf = session.EnsureMeritFunction();
             var glassMgr = session.EnsureGlassCatalog();
 
-            var evaluator = new MeritFunctionEvaluator(system, glassMgr, session.ConfigEditor)
+            var evaluator = new MeritFunctionEvaluator(system, glassMgr)
                 { ParallelEvaluation = true };
             double merit = evaluator.Evaluate(mf);
 
@@ -402,7 +402,7 @@ namespace LensHH.CLI.Commands
             var mf = session.EnsureMeritFunction();
             var glassMgr = session.EnsureGlassCatalog();
 
-            var evaluator = new MeritFunctionEvaluator(system, glassMgr, session.ConfigEditor);
+            var evaluator = new MeritFunctionEvaluator(system, glassMgr);
             var expanded = evaluator.DebugExpandAndEvaluate(mf);
 
             string outPath = System.IO.Path.Combine(

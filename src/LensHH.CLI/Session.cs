@@ -5,7 +5,6 @@ using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using LensHH.Core.Configuration;
 using LensHH.Core.Glass;
 using LensHH.Core.IO;
 using LensHH.Core.MeritFunction;
@@ -18,7 +17,6 @@ namespace LensHH.CLI
         public OpticalSystem? CurrentSystem { get; set; }
         public string? CurrentFilePath { get; set; }
         public MeritFunction? CurrentMeritFunction { get; set; }
-        public ConfigurationEditor? ConfigEditor { get; set; }
         public GlassCatalogManager? GlassCatalog { get; set; }
 
         // Logging
@@ -117,7 +115,7 @@ namespace LensHH.CLI
         public string SnapshotSystem()
         {
             var sys = EnsureSystem();
-            var file = LhltWriter.ToLhltFile(sys, CurrentMeritFunction, ConfigEditor);
+            var file = LhltWriter.ToLhltFile(sys, CurrentMeritFunction);
             return JsonSerializer.Serialize(file, _snapshotJsonOptions);
         }
 
@@ -128,7 +126,6 @@ namespace LensHH.CLI
             var result = LhltReader.FromLhltFile(file);
             CurrentSystem = result.System;
             CurrentMeritFunction = result.MeritFunction;
-            ConfigEditor = result.ConfigEditor;
         }
 
         public MeritFunction EnsureMeritFunction()
@@ -138,15 +135,6 @@ namespace LensHH.CLI
                 CurrentMeritFunction = new MeritFunction();
             }
             return CurrentMeritFunction;
-        }
-
-        public ConfigurationEditor EnsureConfigEditor()
-        {
-            if (ConfigEditor == null)
-            {
-                ConfigEditor = new ConfigurationEditor();
-            }
-            return ConfigEditor;
         }
 
         public void ValidateGlass()

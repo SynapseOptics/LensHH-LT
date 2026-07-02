@@ -788,7 +788,7 @@ public partial class MainWindow : Window
             {
                 sys.Surfaces.Insert(insertAt + i, vertices[i]);
                 LensHH.Core.Models.SurfaceIndexUpdater.OnSurfaceInserted(
-                    insertAt + i, sys, VM.Session.MeritFunction, VM.Session.ConfigEditor);
+                    insertAt + i, sys, VM.Session.MeritFunction);
             }
             for (int i = 0; i < sys.Surfaces.Count; i++) sys.Surfaces[i].Index = i;
 

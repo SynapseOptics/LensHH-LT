@@ -404,7 +404,7 @@ public partial class SurfaceEditorViewModel : ObservableObject
 
         // Update surface references in merit function, pickups, etc.
         SurfaceIndexUpdater.OnSurfaceInserted(idx, _session.System,
-            _session.MeritFunction, null);
+            _session.MeritFunction);
 
         Refresh(); // structural change — rebuild directly
         _session.NotifySystemChanged("structure");
@@ -426,7 +426,7 @@ public partial class SurfaceEditorViewModel : ObservableObject
 
         // Update surface references in merit function, pickups, etc.
         SurfaceIndexUpdater.OnSurfaceRemoved(idx, _session.System,
-            _session.MeritFunction, null);
+            _session.MeritFunction);
 
         Refresh(); // structural change — rebuild directly
         _session.NotifySystemChanged("structure");

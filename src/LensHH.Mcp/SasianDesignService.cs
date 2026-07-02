@@ -394,7 +394,6 @@ namespace LensHH.Mcp
             var result = LhltReader.Read(path);
             session.System = result.System;
             session.MeritFunction = result.MeritFunction;
-            session.ConfigEditor = result.ConfigEditor;
         }
 
         /// <summary>Build a Cooke-triplet skeleton on the loaded template
@@ -417,7 +416,7 @@ namespace LensHH.Mcp
             sys.Surfaces.RemoveAt(oldStopIdx);
             sys.Surfaces[0].Thickness = origObjT + origDummyT;
             for (int i = 0; i < sys.Surfaces.Count; i++) sys.Surfaces[i].Index = i;
-            SurfaceIndexUpdater.OnSurfaceRemoved(oldStopIdx, sys, session.MeritFunction, session.ConfigEditor);
+            SurfaceIndexUpdater.OnSurfaceRemoved(oldStopIdx, sys, session.MeritFunction);
 
             // Insert the three singlets in sequence (no stop yet).
             var ops = new (double r1, double r2, double t, string mat, double airAfter)[]
@@ -448,10 +447,10 @@ namespace LensHH.Mcp
                 };
                 int frontIdx = afterSurface + 1;
                 sys.Surfaces.Insert(frontIdx, front);
-                SurfaceIndexUpdater.OnSurfaceInserted(frontIdx, sys, session.MeritFunction, session.ConfigEditor);
+                SurfaceIndexUpdater.OnSurfaceInserted(frontIdx, sys, session.MeritFunction);
                 int backIdx = frontIdx + 1;
                 sys.Surfaces.Insert(backIdx, back);
-                SurfaceIndexUpdater.OnSurfaceInserted(backIdx, sys, session.MeritFunction, session.ConfigEditor);
+                SurfaceIndexUpdater.OnSurfaceInserted(backIdx, sys, session.MeritFunction);
                 glassSurfaces.Add(frontIdx);
                 elementBacks.Add(backIdx);
                 afterSurface = backIdx;
@@ -488,7 +487,7 @@ namespace LensHH.Mcp
                 ThicknessVariable = true,
             };
             sys.Surfaces.Insert(stopInsertAt, stopS);
-            SurfaceIndexUpdater.OnSurfaceInserted(stopInsertAt, sys, session.MeritFunction, session.ConfigEditor);
+            SurfaceIndexUpdater.OnSurfaceInserted(stopInsertAt, sys, session.MeritFunction);
             for (int i = 0; i < sys.Surfaces.Count; i++) sys.Surfaces[i].Index = i;
 
             if (!double.IsInfinity(sys.Surfaces[prevSurfIdx].Thickness))
@@ -568,7 +567,7 @@ namespace LensHH.Mcp
             if (!string.IsNullOrWhiteSpace(resolvedCatalog))
                 settings.GlassCatalogs.Add(resolvedCatalog);
 
-            var bh = new BasinHoppingOptimizer(session.System!, session.MeritFunction!, session.GlassCatalog, session.ConfigEditor)
+            var bh = new BasinHoppingOptimizer(session.System!, session.MeritFunction!, session.GlassCatalog)
             { Settings = settings };
             bh.Optimize(ct);
         }
@@ -868,7 +867,7 @@ namespace LensHH.Mcp
             for (int i = lastSurf; i >= firstSurf; i--)
             {
                 sys.Surfaces.RemoveAt(i);
-                SurfaceIndexUpdater.OnSurfaceRemoved(i, sys, session.MeritFunction, session.ConfigEditor);
+                SurfaceIndexUpdater.OnSurfaceRemoved(i, sys, session.MeritFunction);
             }
 
             // Splice new parts
@@ -886,7 +885,7 @@ namespace LensHH.Mcp
                 for (int v = 0; v < verts.Count; v++)
                 {
                     sys.Surfaces.Insert(insertAt + v, verts[v]);
-                    SurfaceIndexUpdater.OnSurfaceInserted(insertAt + v, sys, session.MeritFunction, session.ConfigEditor);
+                    SurfaceIndexUpdater.OnSurfaceInserted(insertAt + v, sys, session.MeritFunction);
                 }
                 int partLast = insertAt + verts.Count - 1;
                 bool morePartsAfter = (pIdx + 1) < cand.Parts.Count;
@@ -900,7 +899,7 @@ namespace LensHH.Mcp
 
         private string SerializeSystem(McpSession session)
         {
-            var file = LhltWriter.ToLhltFile(session.System!, session.MeritFunction, session.ConfigEditor);
+            var file = LhltWriter.ToLhltFile(session.System!, session.MeritFunction);
             return JsonSerializer.Serialize(file, JsonOpts);
         }
 
@@ -910,13 +909,12 @@ namespace LensHH.Mcp
             var result = LhltReader.FromLhltFile(file);
             session.System = result.System;
             session.MeritFunction = result.MeritFunction;
-            session.ConfigEditor = result.ConfigEditor;
         }
 
         private static void SaveIntermediate(McpSession session, SasianJobData data, string baseName)
         {
             string path = Path.Combine(data.OutputDir, baseName + ".lhlt");
-            var file = LhltWriter.ToLhltFile(session.System!, session.MeritFunction, session.ConfigEditor);
+            var file = LhltWriter.ToLhltFile(session.System!, session.MeritFunction);
             string json = JsonSerializer.Serialize(file, new JsonSerializerOptions
             {
                 WriteIndented = true,

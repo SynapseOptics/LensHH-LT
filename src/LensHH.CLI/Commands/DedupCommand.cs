@@ -76,10 +76,10 @@ namespace LensHH.CLI.Commands
                     double merit = double.NaN;
                     if (r.MeritFunction != null)
                     {
-                        try { merit = new MeritFunctionEvaluator(r.System, glassMgr, r.ConfigEditor).Evaluate(r.MeritFunction); }
+                        try { merit = new MeritFunctionEvaluator(r.System, glassMgr).Evaluate(r.MeritFunction); }
                         catch { /* unresolved glass / bad merit → rank last, still deduped structurally */ }
                     }
-                    entries.Add(new Entry(f, r.System, r.MeritFunction, r.ConfigEditor, merit, Signature(r.System, digits)));
+                    entries.Add(new Entry(f, r.System, r.MeritFunction, merit, Signature(r.System, digits)));
                 }
                 catch (Exception ex)
                 {
@@ -102,7 +102,7 @@ namespace LensHH.CLI.Commands
             {
                 string meritStr = double.IsNaN(u.Merit) ? "na" : u.Merit.ToString("G6", CultureInfo.InvariantCulture);
                 string name = Sanitize($"unique_rank{rank:D2}_m{meritStr}.lhlt");
-                LhltWriter.Write(u.System, Path.Combine(output, name), u.MeritFunction, u.ConfigEditor);
+                LhltWriter.Write(u.System, Path.Combine(output, name), u.MeritFunction);
                 rank++;
             }
 
@@ -117,12 +117,11 @@ namespace LensHH.CLI.Commands
         private readonly struct Entry
         {
             public Entry(string path, OpticalSystem system, MeritFunction? mf,
-                LensHH.Core.Configuration.ConfigurationEditor? cfg, double merit, string sig)
-            { Path = path; System = system; MeritFunction = mf; ConfigEditor = cfg; Merit = merit; Signature = sig; }
+                double merit, string sig)
+            { Path = path; System = system; MeritFunction = mf; Merit = merit; Signature = sig; }
             public string Path { get; }
             public OpticalSystem System { get; }
             public MeritFunction? MeritFunction { get; }
-            public LensHH.Core.Configuration.ConfigurationEditor? ConfigEditor { get; }
             public double Merit { get; }
             public string Signature { get; }
         }

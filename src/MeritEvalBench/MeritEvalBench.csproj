@@ -15,7 +15,8 @@
        public LensHH-LT checkout alone (the macOS requirement). -->
   <ItemGroup>
     <Reference Include="LensHH.Core">
-      <HintPath>..\..\engine\LensHH.Core.dll</HintPath>
+      <HintPath Condition="'$(LensHHEngineDll)' != ''">$(LensHHEngineDll)</HintPath>
+      <HintPath Condition="'$(LensHHEngineDll)' == ''">..\..\engine\LensHH.Core.dll</HintPath>
       <Private>true</Private>
     </Reference>
     <ProjectReference Include="..\LensHH.IO\LensHH.IO.csproj" />

@@ -63,7 +63,7 @@ namespace LensHH.Mcp.Tools
 
             // Update surface references in merit function, config editor, pickups
             SurfaceIndexUpdater.OnSurfaceInserted(insertIndex, sys,
-                _session.MeritFunction, _session.ConfigEditor);
+                _session.MeritFunction);
 
             return $"Surface added at index {insertIndex}. System now has {sys.Surfaces.Count} surfaces.";
         }
@@ -176,10 +176,10 @@ namespace LensHH.Mcp.Tools
             int backIdx  = frontIdx + 1;
             sys.Surfaces.Insert(frontIdx, front);
             SurfaceIndexUpdater.OnSurfaceInserted(frontIdx, sys,
-                _session.MeritFunction, _session.ConfigEditor);
+                _session.MeritFunction);
             sys.Surfaces.Insert(backIdx, back);
             SurfaceIndexUpdater.OnSurfaceInserted(backIdx, sys,
-                _session.MeritFunction, _session.ConfigEditor);
+                _session.MeritFunction);
 
             // Reindex
             for (int i = 0; i < sys.Surfaces.Count; i++)
@@ -251,7 +251,7 @@ namespace LensHH.Mcp.Tools
             sys.Surfaces.RemoveAt(oldStopIdx);
             sys.Surfaces[0].Thickness = origObjT + origDummyT;
             for (int i = 0; i < sys.Surfaces.Count; i++) sys.Surfaces[i].Index = i;
-            SurfaceIndexUpdater.OnSurfaceRemoved(oldStopIdx, sys, _session.MeritFunction, _session.ConfigEditor);
+            SurfaceIndexUpdater.OnSurfaceRemoved(oldStopIdx, sys, _session.MeritFunction);
 
             var report = new StringBuilder();
             report.AppendLine($"BuildSkeleton: architecture='single-single-single (Cooke)', stopPosition={stopPosition}");
@@ -421,7 +421,7 @@ namespace LensHH.Mcp.Tools
 
             // Update surface references in merit function, config editor, pickups
             SurfaceIndexUpdater.OnSurfaceRemoved(surfaceIndex, sys,
-                _session.MeritFunction, _session.ConfigEditor);
+                _session.MeritFunction);
 
             return $"Surface {surfaceIndex} removed. System now has {sys.Surfaces.Count} surfaces.";
         }
@@ -799,7 +799,7 @@ namespace LensHH.Mcp.Tools
                     // Save candidate.
                     string fileName = $"{baseName}_gap{gapNum}_{labels[j]}.lhlt";
                     string outPath = System.IO.Path.Combine(outputDir, fileName);
-                    try { LensHH.Core.IO.LhltWriter.Write(candidate, outPath, candidateMf, src.ConfigEditor); }
+                    try { LensHH.Core.IO.LhltWriter.Write(candidate, outPath, candidateMf); }
                     catch (Exception ex)
                     {
                         sb.AppendLine($"{gapNum,-4}{labels[j],-8}{p,10:F4}    (save failed: {ex.Message})");

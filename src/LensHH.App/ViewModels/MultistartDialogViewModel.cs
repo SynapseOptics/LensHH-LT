@@ -256,7 +256,7 @@ public partial class MultistartDialogViewModel : ObservableObject
         {
             var probe = new LensHH.Core.Optimization.LocalOptimizer(
                 _session.System, _session.MeritFunction,
-                _session.GlassCatalog, _session.ConfigEditor);
+                _session.GlassCatalog);
             probe.CollectVariables();
 
             bool hasAspheric = false, hasField = false, hasConfig = false;
@@ -308,7 +308,7 @@ public partial class MultistartDialogViewModel : ObservableObject
         {
             var optimizer = new MultistartOptimizer(
                 _session.System, _session.MeritFunction,
-                _session.GlassCatalog, configEditor: _session.ConfigEditor)
+                _session.GlassCatalog)
             {
                 Settings = new MultistartSettings
                 {
@@ -348,7 +348,7 @@ public partial class MultistartDialogViewModel : ObservableObject
 
             // Get initial merit for display
             var evaluator = new MeritFunctionEvaluator(
-                _session.System, _session.GlassCatalog, configEditor: _session.ConfigEditor);
+                _session.System, _session.GlassCatalog);
             double initialMerit = evaluator.Evaluate(_session.MeritFunction);
             InitialMeritText = initialMerit.ToString("E6");
             BestMeritText = InitialMeritText;
@@ -421,7 +421,7 @@ public partial class MultistartDialogViewModel : ObservableObject
             // Re-evaluate with a fresh evaluator to match what Evaluate button shows
             LensHH.Core.Analysis.SemiDiameterSolver.Solve(_session.System, _session.GlassCatalog);
             var freshEval = new MeritFunctionEvaluator(
-                _session.System, _session.GlassCatalog, configEditor: _session.ConfigEditor);
+                _session.System, _session.GlassCatalog);
             double finalMerit = freshEval.Evaluate(_session.MeritFunction);
 
             InitialMeritText = result.InitialMerit.ToString("E6");

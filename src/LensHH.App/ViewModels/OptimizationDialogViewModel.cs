@@ -102,7 +102,7 @@ public partial class OptimizationDialogViewModel : ObservableObject
         {
             var optimizer = new LocalOptimizer(
                 _session.System, _session.MeritFunction,
-                _session.GlassCatalog, configEditor: _session.ConfigEditor)
+                _session.GlassCatalog)
             {
                 MaxIterations = MaxIterations,
                 UseBroydenUpdate = UseBroydenUpdate,
@@ -131,7 +131,7 @@ public partial class OptimizationDialogViewModel : ObservableObject
 
             // Evaluate once to get initial merit
             var evaluator = new MeritFunctionEvaluator(
-                _session.System, _session.GlassCatalog, configEditor: _session.ConfigEditor);
+                _session.System, _session.GlassCatalog);
             double initialMerit = evaluator.Evaluate(_session.MeritFunction);
             InitialMeritText = initialMerit.ToString("E6");
             BestMeritText = InitialMeritText;
@@ -170,7 +170,7 @@ public partial class OptimizationDialogViewModel : ObservableObject
             // Re-evaluate with a fresh evaluator to match what Evaluate button shows
             LensHH.Core.Analysis.SemiDiameterSolver.Solve(_session.System, _session.GlassCatalog);
             var freshEval = new MeritFunctionEvaluator(
-                _session.System, _session.GlassCatalog, configEditor: _session.ConfigEditor);
+                _session.System, _session.GlassCatalog);
             double finalMerit = freshEval.Evaluate(_session.MeritFunction);
 
             for (int i = 0; i < optimizer.Variables.Count; i++)

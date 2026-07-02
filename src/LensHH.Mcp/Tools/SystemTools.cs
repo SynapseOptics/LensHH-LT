@@ -41,8 +41,6 @@ namespace LensHH.Mcp.Tools
             sb.Append($"{sys.Wavelengths.Count} wavelengths, {sys.Fields.Count} fields.");
             if (_session.MeritFunction != null)
                 sb.Append($" Merit function: {_session.MeritFunction.Operands.Count} operands.");
-            if (_session.ConfigEditor != null)
-                sb.Append($" Config editor: {_session.ConfigEditor.ConfigurationCount} configs, {_session.ConfigEditor.OperandCount} operands.");
             return sb.ToString();
         }
 

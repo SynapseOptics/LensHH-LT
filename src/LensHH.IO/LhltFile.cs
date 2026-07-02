@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using LensHH.Core.Configuration;
 using LensHH.Core.Enums;
 using LensHH.Core.MeritFunction;
 using LensHH.Core.Models;
@@ -45,8 +44,8 @@ namespace LensHH.Core.IO
         // Merit function
         public LhltMeritFunction? MeritFunction { get; set; }
 
-        // Configuration editor
-        public LhltConfigurationEditor? ConfigurationEditor { get; set; }
+        // Multi-configuration (MCE) is an advanced-edition feature — the shared .lhlt
+        // format is single-config. The advanced edition persists configurations separately.
     }
 
     public class LhltAperture
@@ -164,31 +163,4 @@ namespace LensHH.Core.IO
         public string CatalogName { get; set; } = string.Empty;
     }
 
-    public class LhltConfigurationEditor
-    {
-        public int ActiveConfiguration { get; set; }
-        public List<LhltConfigOperand> Operands { get; set; } = new List<LhltConfigOperand>();
-        public List<LhltConfigValues> Configurations { get; set; } = new List<LhltConfigValues>();
-    }
-
-    public class LhltConfigOperand
-    {
-        public ConfigOperandType Type { get; set; }
-        public int SurfaceIndex { get; set; }
-        public int AsphericTermIndex { get; set; }
-    }
-
-    public class LhltConfigValues
-    {
-        public double[] Values { get; set; } = System.Array.Empty<double>();
-        public string?[] GlassValues { get; set; } = System.Array.Empty<string?>();
-        public bool[]? VariableFlags { get; set; }
-        public double?[]? MinValues { get; set; }
-        public double?[]? MaxValues { get; set; }
-        // Config-pickups (M3.2): per-operand source config (−1 = none), scale, offset.
-        // Null when this config has no pickups (keeps files small and old files loadable).
-        public int[]? PickupSource { get; set; }
-        public double[]? PickupScale { get; set; }
-        public double[]? PickupOffset { get; set; }
-    }
 }

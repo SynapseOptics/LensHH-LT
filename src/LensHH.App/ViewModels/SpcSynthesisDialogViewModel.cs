@@ -269,7 +269,7 @@ public partial class SpcSynthesisDialogViewModel : ObservableObject
         if (settings.ArchiveIntermediateDesigns)
         {
             settings.ArchiveWriter = (path, sys, mf) =>
-                LensHH.Core.IO.LhltWriter.Write(sys, path, mf, _session.ConfigEditor);
+                LensHH.Core.IO.LhltWriter.Write(sys, path, mf);
         }
 
         var stopToken = _stopCts.Token;
@@ -282,7 +282,7 @@ public partial class SpcSynthesisDialogViewModel : ObservableObject
             {
                 var service = new SpcSynthesisService(
                     _session.System, _session.MeritFunction,
-                    _session.GlassCatalog, _session.ConfigEditor)
+                    _session.GlassCatalog)
                 {
                     Settings = settings,
                     OnProgress = p => Dispatcher.UIThread.Post(() => UpdateProgress(p))

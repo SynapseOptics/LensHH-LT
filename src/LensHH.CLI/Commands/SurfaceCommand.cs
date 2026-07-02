@@ -151,7 +151,7 @@ namespace LensHH.CLI.Commands
 
             // Update surface references in merit function, config editor, pickups
             SurfaceIndexUpdater.OnSurfaceInserted(insertedIndex, sys,
-                session.CurrentMeritFunction, session.ConfigEditor);
+                session.CurrentMeritFunction);
 
             AnsiConsole.MarkupLine($"[green]Surface added at index {insertedIndex}[/]");
         }
@@ -177,7 +177,7 @@ namespace LensHH.CLI.Commands
 
             // Update surface references in merit function, config editor, pickups
             SurfaceIndexUpdater.OnSurfaceRemoved(idx, sys,
-                session.CurrentMeritFunction, session.ConfigEditor);
+                session.CurrentMeritFunction);
 
             AnsiConsole.MarkupLine($"[green]Surface {idx} removed.[/]");
         }

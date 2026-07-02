@@ -5,7 +5,6 @@ using System.Globalization;
 using System.Linq;
 using System.Text.Json;
 using System.Threading;
-using LensHH.Core.Configuration;
 using LensHH.Core.Models;
 using LensHH.Core.NativeInterop;
 using LensHH.Core.Optimization;
@@ -141,7 +140,7 @@ namespace LensHH.CLI.Commands
                 }
             }
 
-            var optimizer = new LocalOptimizer(system, mf, glassMgr, session.ConfigEditor)
+            var optimizer = new LocalOptimizer(system, mf, glassMgr)
             {
                 MaxIterations = maxIter,
                 Tolerance = tol,
@@ -169,7 +168,7 @@ namespace LensHH.CLI.Commands
             };
 
             AnsiConsole.MarkupLine($"[bold]Starting optimization[/]");
-            AnsiConsole.MarkupLine($"  Variables: {CountVariables(system, session.ConfigEditor)}");
+            AnsiConsole.MarkupLine($"  Variables: {CountVariables(system)}");
             AnsiConsole.MarkupLine($"  Operands: {mf.Operands.Count}");
             AnsiConsole.MarkupLine($"  Max Iterations: {maxIter}");
             AnsiConsole.MarkupLine("");
@@ -279,7 +278,7 @@ namespace LensHH.CLI.Commands
 
             var filteredPaths = new System.Collections.Generic.List<string>(FindFilteredCatalogPaths());
 
-            var optimizer = new MultistartOptimizer(system, mf, glassMgr, session.ConfigEditor)
+            var optimizer = new MultistartOptimizer(system, mf, glassMgr)
             {
                 Settings = settings,
                 FilteredCatalogSearchPaths = filteredPaths.ToArray()
@@ -427,7 +426,7 @@ namespace LensHH.CLI.Commands
                     savedLabels.Add(System.IO.Path.GetFileName(files[fi]));
                 }
                 // The first file is the reference structure; the rest are validated against it.
-                pipeline = new DeOptimizationPipeline(refSys, refMerit, glassMgr, session.ConfigEditor)
+                pipeline = new DeOptimizationPipeline(refSys, refMerit, glassMgr)
                 { Settings = pset, OnProgress = onProg };
                 mf = refMerit;   // save polished output with the folder's own merit function
 
@@ -438,7 +437,7 @@ namespace LensHH.CLI.Commands
             }
             else
             {
-                pipeline = new DeOptimizationPipeline(system, mf, glassMgr, session.ConfigEditor)
+                pipeline = new DeOptimizationPipeline(system, mf, glassMgr)
                 { Settings = pset, OnProgress = onProg };
 
                 bool gpuReq = pset.UseGpu;
@@ -489,7 +488,7 @@ namespace LensHH.CLI.Commands
                     var m = result.SeedPool.Models[r];
                     string glassTag = m.GlassSet.Count > 0 ? string.Join("-", m.GlassSet) : "noglass";
                     string name = SanitizeFileName($"{title}_seed{r + 1:00}_merit{m.Merit:G4}_{glassTag}");
-                    try { LensHH.Core.IO.LhltWriter.Write(m.System, System.IO.Path.Combine(preDir, name + ".lhlt"), mf, session.ConfigEditor); nPre++; } catch { }
+                    try { LensHH.Core.IO.LhltWriter.Write(m.System, System.IO.Path.Combine(preDir, name + ".lhlt"), mf); nPre++; } catch { }
                 }
                 AnsiConsole.MarkupLine($"  [grey]Saved {nPre} pre-polish seed(s) to {Markup.Escape(System.IO.Path.GetFullPath(preDir))}[/]");
                 }
@@ -506,7 +505,7 @@ namespace LensHH.CLI.Commands
                         var c = result.Polished[r];
                         string glassTag = c.GlassSet.Count > 0 ? string.Join("-", c.GlassSet) : "noglass";
                         string name = SanitizeFileName($"{title}_polished{r + 1:00}_merit{c.MeritAfter:G4}_{glassTag}");
-                        try { LensHH.Core.IO.LhltWriter.Write(c.System, System.IO.Path.Combine(postDir, name + ".lhlt"), mf, session.ConfigEditor); n++; } catch { }
+                        try { LensHH.Core.IO.LhltWriter.Write(c.System, System.IO.Path.Combine(postDir, name + ".lhlt"), mf); n++; } catch { }
                         double x = c.MeritAfter > 1e-30 ? c.MeritBefore / c.MeritAfter : 0;
                         AnsiConsole.MarkupLine($"  #{r + 1,2}  {c.MeritBefore:E4} → {c.MeritAfter:E4} ({x:F1}×)  [[{Markup.Escape(glassTag)}]]");
                     }
@@ -566,7 +565,7 @@ namespace LensHH.CLI.Commands
             _cts = new CancellationTokenSource();
             Console.CancelKeyPress += OnCancelKeyPress;
 
-            var svc = new GlobalSearchService(system, mf, glassMgr, session.ConfigEditor)
+            var svc = new GlobalSearchService(system, mf, glassMgr)
             {
                 Settings = gs,
                 EngineMode = useNative
@@ -601,7 +600,7 @@ namespace LensHH.CLI.Commands
                     string form = string.IsNullOrEmpty(mdl.PowerSignSignature) ? "-" : mdl.PowerSignSignature;
                     string name = SanitizeFileName($"{title}_global_rank{r + 1}_seed{mdl.Seed}_merit{mdl.Merit:G4}_{glassTag}");
                     string path = System.IO.Path.Combine(outDir, name + ".lhlt");
-                    try { LensHH.Core.IO.LhltWriter.Write(mdl.System, path, mf, session.ConfigEditor); n++; }
+                    try { LensHH.Core.IO.LhltWriter.Write(mdl.System, path, mf); n++; }
                     catch (Exception ex) { AnsiConsole.MarkupLine($"  [yellow]write failed: {Markup.Escape(ex.Message)}[/]"); }
                     AnsiConsole.MarkupLine($"  #{r + 1}  merit {mdl.Merit:E4}  form {form}  [[{Markup.Escape(glassTag)}]]  seed {mdl.Seed}");
                 }
@@ -691,8 +690,8 @@ namespace LensHH.CLI.Commands
 
             bool gpu = useGpu && GpuMemeticDeOptimizer.IsAvailable;
             MemeticDeOptimizer opt = gpu
-                ? new GpuMemeticDeOptimizer(system, mf, glassMgr, session.ConfigEditor) { Settings = mset, InitialPopulation = resumeGenes }
-                : new MemeticDeOptimizer(system, mf, glassMgr, session.ConfigEditor) { Settings = mset, InitialPopulation = resumeGenes };
+                ? new GpuMemeticDeOptimizer(system, mf, glassMgr) { Settings = mset, InitialPopulation = resumeGenes }
+                : new MemeticDeOptimizer(system, mf, glassMgr) { Settings = mset, InitialPopulation = resumeGenes };
 
             _cts = new CancellationTokenSource();
             Console.CancelKeyPress += OnCancelKeyPress;
@@ -742,7 +741,7 @@ namespace LensHH.CLI.Commands
                     var d = result.Best[r];
                     AnsiConsole.MarkupLine($"  #{r + 1}  merit={d.Merit:E6}  form={Markup.Escape(d.FormSignature)}");
                     string name = SanitizeFileName($"{title}_memetic{r + 1:00}_merit{d.Merit:G4}");
-                    try { LensHH.Core.IO.LhltWriter.Write(d.System, System.IO.Path.Combine(bestDir, name + ".lhlt"), mf, session.ConfigEditor); } catch { }
+                    try { LensHH.Core.IO.LhltWriter.Write(d.System, System.IO.Path.Combine(bestDir, name + ".lhlt"), mf); } catch { }
                 }
                 AnsiConsole.MarkupLine($"  [grey]Saved {result.Best.Count} design(s) to {Markup.Escape(System.IO.Path.GetFullPath(bestDir))}[/]");
 
@@ -826,7 +825,7 @@ namespace LensHH.CLI.Commands
 
             // Always use the batch orchestrator: chains==1 routes to the single-chain
             // optimizer (identical to before), chains>1 runs N parallel walks.
-            var optimizer = new BasinHoppingOptimizerBatch(system, mf, glassMgr, session.ConfigEditor)
+            var optimizer = new BasinHoppingOptimizerBatch(system, mf, glassMgr)
             {
                 Settings = settings,
                 FilteredCatalogSearchPaths = FindFilteredCatalogPaths(),
@@ -876,7 +875,7 @@ namespace LensHH.CLI.Commands
                 {
                     string baseName = string.IsNullOrWhiteSpace(system.Title) ? "basin" : system.Title;
                     var paths = LensHH.Core.IO.ChainResultWriter.SaveChains(
-                        optimizer.ChainResults, saveChainsFolder!, baseName, mf, session.ConfigEditor);
+                        optimizer.ChainResults, saveChainsFolder!, baseName, mf);
                     AnsiConsole.MarkupLine("");
                     AnsiConsole.MarkupLine($"[green]Saved {paths.Count} chain design(s)[/] to {Markup.Escape(saveChainsFolder!)}");
                 }
@@ -954,7 +953,7 @@ namespace LensHH.CLI.Commands
             _cts = new CancellationTokenSource();
             Console.CancelKeyPress += OnCancelKeyPress;
 
-            var optimizer = new GlobalBasinHoppingOptimizer(system, mf, glassMgr, session.ConfigEditor)
+            var optimizer = new GlobalBasinHoppingOptimizer(system, mf, glassMgr)
             {
                 Settings = gs,
                 FilteredCatalogSearchPaths = FindFilteredCatalogPaths(),
@@ -1023,7 +1022,7 @@ namespace LensHH.CLI.Commands
                 {
                     string baseName = string.IsNullOrWhiteSpace(system.Title) ? "global_basin" : system.Title;
                     var paths = LensHH.Core.IO.ChainResultWriter.SaveChains(
-                        result.ChainResults, saveChainsFolder!, baseName, mf, session.ConfigEditor);
+                        result.ChainResults, saveChainsFolder!, baseName, mf);
                     AnsiConsole.MarkupLine("");
                     AnsiConsole.MarkupLine($"[green]Saved {paths.Count} chain design(s)[/] to {Markup.Escape(saveChainsFolder!)}");
                 }
@@ -1126,7 +1125,7 @@ namespace LensHH.CLI.Commands
             {
                 var service = new SplitElementService(
                     session.EnsureValidSystem(), session.CurrentMeritFunction!,
-                    session.EnsureGlassCatalog(), session.ConfigEditor)
+                    session.EnsureGlassCatalog())
                 {
                     Settings = settings,
                     OnProgress = p =>
@@ -1218,7 +1217,7 @@ namespace LensHH.CLI.Commands
             if (settings.ArchiveIntermediateDesigns)
             {
                 settings.ArchiveWriter = (path, sys, mf) =>
-                    LensHH.Core.IO.LhltWriter.Write(sys, path, mf, session.ConfigEditor);
+                    LensHH.Core.IO.LhltWriter.Write(sys, path, mf);
             }
 
             _cts = new CancellationTokenSource();
@@ -1230,7 +1229,7 @@ namespace LensHH.CLI.Commands
             {
                 var service = new SpcSynthesisService(
                     session.EnsureValidSystem(), session.CurrentMeritFunction!,
-                    session.EnsureGlassCatalog(), session.ConfigEditor)
+                    session.EnsureGlassCatalog())
                 {
                     Settings = settings,
                     OnProgress = p =>
@@ -1349,30 +1348,6 @@ namespace LensHH.CLI.Commands
                 }
             }
 
-            // Config editor variables
-            if (session.ConfigEditor != null)
-            {
-                var ce = session.ConfigEditor;
-                for (int c = 0; c < ce.ConfigurationCount; c++)
-                {
-                    for (int o = 0; o < ce.OperandCount; o++)
-                    {
-                        if (ce.IsVariable(c, o))
-                        {
-                            var op = ce.Operands[o];
-                            string val = op.Type == Core.Configuration.ConfigOperandType.Glass
-                                ? (ce.GetGlass(c, o) ?? "---")
-                                : ce.GetValue(c, o).ToString("G6");
-                            table.AddRow($"C{c}:Op{o}", $"Config {op.Type}",
-                                val,
-                                ce.GetMin(c, o)?.ToString("G6") ?? "---",
-                                ce.GetMax(c, o)?.ToString("G6") ?? "---");
-                            count++;
-                        }
-                    }
-                }
-            }
-
             if (count == 0)
             {
                 // 2026-06-01 task #102: `system field-variable` (FieldY var) and
@@ -1410,8 +1385,7 @@ namespace LensHH.CLI.Commands
             return Array.Empty<string>();
         }
 
-        private static int CountVariables(LensHH.Core.Models.OpticalSystem system,
-            LensHH.Core.Configuration.ConfigurationEditor? configEditor = null)
+        private static int CountVariables(LensHH.Core.Models.OpticalSystem system)
         {
             int count = 0;
             foreach (var s in system.Surfaces)
@@ -1424,12 +1398,6 @@ namespace LensHH.CLI.Commands
             }
             foreach (var f in system.Fields)
                 if (f.Variable) count++;
-            if (configEditor != null)
-            {
-                for (int c = 0; c < configEditor.ConfigurationCount; c++)
-                    for (int o = 0; o < configEditor.OperandCount; o++)
-                        if (configEditor.IsVariable(c, o)) count++;
-            }
             return count;
         }
     }

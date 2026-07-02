@@ -2,7 +2,6 @@ using System;
 using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using LensHH.Core.Configuration;
 using LensHH.Core.Enums;
 using LensHH.Core.MeritFunction;
 using LensHH.Core.Models;
@@ -199,85 +198,13 @@ namespace LensHH.Core.IO
                 }
             }
 
-            // Configuration editor
-            ConfigurationEditor? configEditor = null;
-            if (file.ConfigurationEditor != null && file.ConfigurationEditor.Operands.Count > 0)
-            {
-                configEditor = new ConfigurationEditor();
-
-                // Add operands first
-                foreach (var co in file.ConfigurationEditor.Operands)
-                {
-                    configEditor.AddOperand(new ConfigOperand(co.Type, co.SurfaceIndex, co.AsphericTermIndex));
-                }
-
-                // Set number of configurations
-                int numConfigs = file.ConfigurationEditor.Configurations.Count;
-                if (numConfigs > 0)
-                {
-                    configEditor.SetNumberOfConfigurations(numConfigs);
-
-                    // Populate values
-                    for (int c = 0; c < numConfigs; c++)
-                    {
-                        var cv = file.ConfigurationEditor.Configurations[c];
-                        for (int i = 0; i < configEditor.OperandCount && i < cv.Values.Length; i++)
-                        {
-                            configEditor.SetValue(c, i, cv.Values[i]);
-                        }
-
-                        if (cv.GlassValues != null)
-                        {
-                            for (int i = 0; i < configEditor.OperandCount && i < cv.GlassValues.Length; i++)
-                            {
-                                if (cv.GlassValues[i] != null &&
-                                    configEditor.Operands[i].Type == ConfigOperandType.Glass)
-                                {
-                                    configEditor.SetGlass(c, i, cv.GlassValues[i]!);
-                                }
-                            }
-                        }
-
-                        if (cv.VariableFlags != null)
-                        {
-                            for (int i = 0; i < configEditor.OperandCount && i < cv.VariableFlags.Length; i++)
-                            {
-                                if (cv.VariableFlags[i])
-                                {
-                                    double? mn = cv.MinValues != null && i < cv.MinValues.Length ? cv.MinValues[i] : null;
-                                    double? mx = cv.MaxValues != null && i < cv.MaxValues.Length ? cv.MaxValues[i] : null;
-                                    configEditor.SetVariable(c, i, true, mn, mx);
-                                }
-                            }
-                        }
-
-                        // Config-pickups (M3.2). Source is always a lower config, so applying
-                        // them per-config in ascending order (this loop) satisfies SetPickup's
-                        // ordering rule.
-                        if (cv.PickupSource != null)
-                        {
-                            for (int i = 0; i < configEditor.OperandCount && i < cv.PickupSource.Length; i++)
-                            {
-                                int src = cv.PickupSource[i];
-                                if (src >= 0 && src < c)
-                                {
-                                    double scale = cv.PickupScale != null && i < cv.PickupScale.Length ? cv.PickupScale[i] : 1.0;
-                                    double offset = cv.PickupOffset != null && i < cv.PickupOffset.Length ? cv.PickupOffset[i] : 0.0;
-                                    configEditor.SetPickup(c, i, src, scale, offset);
-                                }
-                            }
-                        }
-                    }
-                }
-
-                configEditor.ActiveConfiguration = file.ConfigurationEditor.ActiveConfiguration;
-            }
+            // Multi-configuration (MCE) is a PRO feature — the shared .lhlt format is
+            // single-config. Any config block from a PRO/legacy file is ignored on load.
 
             return new LhltReadResult
             {
                 System = system,
-                MeritFunction = meritFunction,
-                ConfigEditor = configEditor
+                MeritFunction = meritFunction
             };
         }
     }
@@ -286,6 +213,5 @@ namespace LensHH.Core.IO
     {
         public OpticalSystem System { get; set; } = null!;
         public MeritFunction.MeritFunction? MeritFunction { get; set; }
-        public ConfigurationEditor? ConfigEditor { get; set; }
     }
 }

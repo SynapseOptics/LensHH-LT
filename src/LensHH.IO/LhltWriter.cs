@@ -4,7 +4,6 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using LensHH.Core.Configuration;
 using LensHH.Core.MeritFunction;
 using LensHH.Core.Models;
 
@@ -27,17 +26,15 @@ namespace LensHH.Core.IO
         };
 
         public static void Write(OpticalSystem system, string path,
-            MeritFunction.MeritFunction? meritFunction = null,
-            ConfigurationEditor? configEditor = null)
+            MeritFunction.MeritFunction? meritFunction = null)
         {
-            var file = ToLhltFile(system, meritFunction, configEditor);
+            var file = ToLhltFile(system, meritFunction);
             var json = JsonSerializer.Serialize(file, JsonOptions);
             File.WriteAllText(path, json);
         }
 
         public static LhltFile ToLhltFile(OpticalSystem system,
-            MeritFunction.MeritFunction? meritFunction = null,
-            ConfigurationEditor? configEditor = null)
+            MeritFunction.MeritFunction? meritFunction = null)
         {
             var file = new LhltFile
             {
@@ -189,77 +186,8 @@ namespace LensHH.Core.IO
                 }
             }
 
-            // Configuration editor
-            if (configEditor != null && configEditor.OperandCount > 0)
-            {
-                var ce = new LhltConfigurationEditor
-                {
-                    ActiveConfiguration = configEditor.ActiveConfiguration
-                };
-
-                for (int i = 0; i < configEditor.OperandCount; i++)
-                {
-                    var op = configEditor.Operands[i];
-                    ce.Operands.Add(new LhltConfigOperand
-                    {
-                        Type = op.Type,
-                        SurfaceIndex = op.SurfaceIndex,
-                        AsphericTermIndex = op.AsphericTermIndex
-                    });
-                }
-
-                for (int c = 0; c < configEditor.ConfigurationCount; c++)
-                {
-                    var cv = new LhltConfigValues
-                    {
-                        Values = new double[configEditor.OperandCount],
-                        GlassValues = new string?[configEditor.OperandCount]
-                    };
-
-                    bool hasVariables = false;
-                    var varFlags = new bool[configEditor.OperandCount];
-                    var minVals = new double?[configEditor.OperandCount];
-                    var maxVals = new double?[configEditor.OperandCount];
-
-                    bool hasPickups = false;
-                    var pickSrc = new int[configEditor.OperandCount];
-                    var pickScale = new double[configEditor.OperandCount];
-                    var pickOffset = new double[configEditor.OperandCount];
-
-                    for (int i = 0; i < configEditor.OperandCount; i++)
-                    {
-                        cv.Values[i] = configEditor.GetValue(c, i);
-                        cv.GlassValues[i] = configEditor.GetGlass(c, i);
-                        varFlags[i] = configEditor.IsVariable(c, i);
-                        minVals[i] = configEditor.GetMin(c, i);
-                        maxVals[i] = configEditor.GetMax(c, i);
-                        if (varFlags[i]) hasVariables = true;
-
-                        pickSrc[i] = configEditor.GetPickupSource(c, i);
-                        pickScale[i] = configEditor.GetPickupScale(c, i);
-                        pickOffset[i] = configEditor.GetPickupOffset(c, i);
-                        if (pickSrc[i] >= 0) hasPickups = true;
-                    }
-
-                    if (hasVariables)
-                    {
-                        cv.VariableFlags = varFlags;
-                        cv.MinValues = minVals;
-                        cv.MaxValues = maxVals;
-                    }
-
-                    if (hasPickups)
-                    {
-                        cv.PickupSource = pickSrc;
-                        cv.PickupScale = pickScale;
-                        cv.PickupOffset = pickOffset;
-                    }
-
-                    ce.Configurations.Add(cv);
-                }
-
-                file.ConfigurationEditor = ce;
-            }
+            // Multi-configuration (MCE) is an advanced-edition feature — the shared .lhlt
+            // format is single-config. The advanced edition serializes configurations separately.
 
             return file;
         }

@@ -7,7 +7,6 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
-using LensHH.Core.Configuration;
 using LensHH.Core.Glass;
 using LensHH.Core.IO;
 using LensHH.Core.MeritFunction;
@@ -63,8 +62,7 @@ namespace LensHH.Mcp
         }
 
         // ── Pending-revert snapshot for optimize_try ────────────────
-        // optimize_try captures the live system + merit + config-editor
-        // here, runs the optimization in-place, and asks the LLM to
+        // optimize_try captures the live system + merit here, runs the optimization in-place, and asks the LLM to
         // either commit (optimize_keep_result -> clear snapshot) or
         // discard (optimize_revert_result -> restore from snapshot).
         // Only one snapshot is held at a time; calling optimize_try
@@ -82,14 +80,13 @@ namespace LensHH.Mcp
         };
 
         /// <summary>
-        /// Snapshot the current system + merit + config-editor and store
-        /// it as the pending revert target. Called by optimize_try right
-        /// before running the optimizer.
+        /// Snapshot the current system + merit and store it as the pending
+        /// revert target. Called by optimize_try right before running the optimizer.
         /// </summary>
         public void CaptureOptimizeSnapshot()
         {
             if (_system == null) return;
-            var file = LhltWriter.ToLhltFile(_system, MeritFunction, ConfigEditor);
+            var file = LhltWriter.ToLhltFile(_system, MeritFunction);
             _pendingOptimizeSnapshot = JsonSerializer.Serialize(file, _snapshotJsonOptions);
         }
 
@@ -107,7 +104,6 @@ namespace LensHH.Mcp
             var result = LhltReader.FromLhltFile(file);
             _system = result.System;
             MeritFunction = result.MeritFunction;
-            ConfigEditor = result.ConfigEditor;
             return true;
         }
 
@@ -180,7 +176,6 @@ namespace LensHH.Mcp
         }
 
         public MeritFunction? MeritFunction { get; set; }
-        public ConfigurationEditor? ConfigEditor { get; set; }
 
         /// <summary>
         /// Backing store for the batch_design_search_* MCP tools. Holds
@@ -214,7 +209,6 @@ namespace LensHH.Mcp
             var result = LhltReader.Read(filePath);
             _system = result.System;
             MeritFunction = result.MeritFunction;
-            ConfigEditor = result.ConfigEditor;
             _currentFilePath = filePath;
             ClearLastRender();
         }
@@ -223,7 +217,7 @@ namespace LensHH.Mcp
         {
             if (_system == null)
                 throw new InvalidOperationException("No optical system loaded.");
-            LhltWriter.Write(_system, filePath, MeritFunction, ConfigEditor);
+            LhltWriter.Write(_system, filePath, MeritFunction);
             _currentFilePath = filePath;
         }
 
@@ -231,7 +225,6 @@ namespace LensHH.Mcp
         {
             _system = ZmxReader.Read(filePath);
             MeritFunction = null;
-            ConfigEditor = null;
             _currentFilePath = null;
             ClearLastRender();
         }
@@ -240,7 +233,6 @@ namespace LensHH.Mcp
         {
             _system = CodeVReader.Read(filePath);
             MeritFunction = null;
-            ConfigEditor = null;
             _currentFilePath = null;
             ClearLastRender();
         }
@@ -249,7 +241,6 @@ namespace LensHH.Mcp
         {
             _system = OsloReader.Read(filePath);
             MeritFunction = null;
-            ConfigEditor = null;
             _currentFilePath = null;
             ClearLastRender();
         }
@@ -258,7 +249,6 @@ namespace LensHH.Mcp
         {
             _system = OptalixReader.Read(filePath, GlassCatalog);
             MeritFunction = null;
-            ConfigEditor = null;
             _currentFilePath = null;
             ClearLastRender();
         }
@@ -267,7 +257,6 @@ namespace LensHH.Mcp
         {
             _system = OptilandReader.Read(filePath);
             MeritFunction = null;
-            ConfigEditor = null;
             _currentFilePath = null;
             ClearLastRender();
         }
@@ -337,7 +326,6 @@ namespace LensHH.Mcp
         {
             _system = new OpticalSystem();
             MeritFunction = null;
-            ConfigEditor = null;
             _currentFilePath = null;
             ClearLastRender();
         }

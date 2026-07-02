@@ -140,7 +140,7 @@ namespace LensHH.App.ViewModels
 
             try
             {
-                var ev = new MeritFunctionEvaluator(_session.System, _session.GlassCatalog, _session.ConfigEditor)
+                var ev = new MeritFunctionEvaluator(_session.System, _session.GlassCatalog)
                 { ParallelEvaluation = true };
                 InitialMeritText = ev.Evaluate(_session.MeritFunction).ToString("E4");
             }
@@ -185,7 +185,7 @@ namespace LensHH.App.ViewModels
             };
 
             var pipeline = new DeOptimizationPipeline(
-                _session.System, _session.MeritFunction, _session.GlassCatalog, _session.ConfigEditor)
+                _session.System, _session.MeritFunction, _session.GlassCatalog)
             {
                 Settings = pset,
                 OnProgress = p => Dispatcher.UIThread.Post(() =>
@@ -321,7 +321,7 @@ namespace LensHH.App.ViewModels
                 var m = card.Model;
                 string glassTag = m.GlassSet.Count > 0 ? string.Join("-", m.GlassSet) : "noglass";
                 string name = Sanitize($"{title}_polished_rank{card.Rank}_merit{m.Merit:G4}_{glassTag}");
-                try { LhltWriter.Write(m.System, Path.Combine(folder, name + ".lhlt"), _session.MeritFunction, _session.ConfigEditor); n++; }
+                try { LhltWriter.Write(m.System, Path.Combine(folder, name + ".lhlt"), _session.MeritFunction); n++; }
                 catch { }
             }
             StatusText = $"Saved {n} of {Cards.Count} polished design(s) to {folder}";
@@ -339,7 +339,7 @@ namespace LensHH.App.ViewModels
             {
                 string glassTag = glasses.Count > 0 ? string.Join("-", glasses) : "noglass";
                 string name = Sanitize($"{title}_{tag}{r++:00}_merit{merit:G4}_{glassTag}");
-                try { LhltWriter.Write(sys, Path.Combine(dir, name + ".lhlt"), _session.MeritFunction, _session.ConfigEditor); n++; }
+                try { LhltWriter.Write(sys, Path.Combine(dir, name + ".lhlt"), _session.MeritFunction); n++; }
                 catch { }
             }
             return n;

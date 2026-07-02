@@ -114,7 +114,7 @@ namespace LensHH.Mcp
                 pset.De.BaseSeed = data.BaseSeed;
                 if (data.PopulationSize > 0) pset.De.PopulationSize = data.PopulationSize;
 
-                var pipeline = new DeOptimizationPipeline(system, mf, glassMgr, session.ConfigEditor)
+                var pipeline = new DeOptimizationPipeline(system, mf, glassMgr)
                 {
                     Settings = pset,
                     OnProgress = p =>
@@ -182,7 +182,7 @@ namespace LensHH.Mcp
                     var m = result.SeedPool.Models[r];
                     string glassTag = m.GlassSet.Count > 0 ? string.Join("-", m.GlassSet) : "noglass";
                     string path = Path.Combine(preDir, Sanitize($"{title}_seed{r + 1:00}_merit{m.Merit:G4}_{glassTag}") + ".lhlt");
-                    try { LhltWriter.Write(m.System, path, mf, session.ConfigEditor); data.PreSavedFiles.Add(path); } catch { }
+                    try { LhltWriter.Write(m.System, path, mf); data.PreSavedFiles.Add(path); } catch { }
                 }
                 }
 
@@ -195,7 +195,7 @@ namespace LensHH.Mcp
                 {
                     string glassTag = c.GlassSet.Count > 0 ? string.Join("-", c.GlassSet) : "noglass";
                     string path = Path.Combine(postDir, Sanitize($"{title}_polished{pr++:00}_merit{c.MeritAfter:G4}_{glassTag}") + ".lhlt");
-                    try { LhltWriter.Write(c.System, path, mf, session.ConfigEditor); data.PolishedSavedFiles.Add(path); } catch { }
+                    try { LhltWriter.Write(c.System, path, mf); data.PolishedSavedFiles.Add(path); } catch { }
                     data.Polished.Add((c.SeedRank, glassTag, c.MeritBefore, c.MeritAfter));
                 }
                 data.BestBefore = result.SeedPool.Models.Count > 0 ? result.SeedPool.Models.Min(m => m.Merit) : double.NaN;

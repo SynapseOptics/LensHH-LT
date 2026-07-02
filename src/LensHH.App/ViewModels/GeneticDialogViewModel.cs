@@ -90,7 +90,7 @@ public partial class GeneticDialogViewModel : ObservableObject
         {
             var optimizer = new GeneticOptimizer(
                 _session.System, _session.MeritFunction,
-                _session.GlassCatalog, _session.ConfigEditor)
+                _session.GlassCatalog)
             {
                 Settings = new GeneticSettings
                 {
@@ -105,7 +105,7 @@ public partial class GeneticDialogViewModel : ObservableObject
             };
 
             var evaluator = new MeritFunctionEvaluator(
-                _session.System, _session.GlassCatalog, configEditor: _session.ConfigEditor);
+                _session.System, _session.GlassCatalog);
             double initialMerit = evaluator.Evaluate(_session.MeritFunction);
             InitialMeritText = initialMerit.ToString("E6");
             BestMeritText = InitialMeritText;
@@ -195,7 +195,7 @@ public partial class GeneticDialogViewModel : ObservableObject
             // Re-evaluate with fresh evaluator
             LensHH.Core.Analysis.SemiDiameterSolver.Solve(_session.System, _session.GlassCatalog);
             var freshEval = new MeritFunctionEvaluator(
-                _session.System, _session.GlassCatalog, configEditor: _session.ConfigEditor);
+                _session.System, _session.GlassCatalog);
             double finalMerit = freshEval.Evaluate(_session.MeritFunction);
 
             // Update variable rows

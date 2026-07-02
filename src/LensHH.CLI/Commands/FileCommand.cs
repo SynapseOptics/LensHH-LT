@@ -96,7 +96,6 @@ namespace LensHH.CLI.Commands
             session.CurrentSystem = system;
             session.CurrentFilePath = null;
             session.CurrentMeritFunction = null;
-            session.ConfigEditor = null;
 
             AnsiConsole.MarkupLine("[green]New optical system created.[/]");
         }
@@ -133,7 +132,6 @@ namespace LensHH.CLI.Commands
             session.CurrentSystem = result.System;
             session.CurrentFilePath = path;
             session.CurrentMeritFunction = result.MeritFunction;
-            session.ConfigEditor = result.ConfigEditor;
 
             var system = result.System;
 
@@ -145,8 +143,6 @@ namespace LensHH.CLI.Commands
             AnsiConsole.MarkupLine($"  Fields: {system.Fields.Count}");
             if (result.MeritFunction != null)
                 AnsiConsole.MarkupLine($"  Merit function operands: {result.MeritFunction.Operands.Count}");
-            if (result.ConfigEditor != null)
-                AnsiConsole.MarkupLine($"  Configurations: {result.ConfigEditor.ConfigurationCount}, Operands: {result.ConfigEditor.OperandCount}");
             PrintValidationWarnings(session);
         }
 
@@ -173,8 +169,7 @@ namespace LensHH.CLI.Commands
                     name += ".lhlt";
 
                 LhltWriter.Write(system, name,
-                    session.CurrentMeritFunction,
-                    session.ConfigEditor);
+                    session.CurrentMeritFunction);
 
                 session.CurrentFilePath = name;
                 AnsiConsole.MarkupLine($"[green]Saved: {Markup.Escape(name)}[/]");
@@ -196,8 +191,7 @@ namespace LensHH.CLI.Commands
                 }
 
                 LhltWriter.Write(system, session.CurrentFilePath,
-                    session.CurrentMeritFunction,
-                    session.ConfigEditor);
+                    session.CurrentMeritFunction);
 
                 AnsiConsole.MarkupLine($"[green]Saved: {Markup.Escape(session.CurrentFilePath)}[/]");
             }
@@ -219,8 +213,7 @@ namespace LensHH.CLI.Commands
                 path += ".lhlt";
 
             LhltWriter.Write(system, path,
-                session.CurrentMeritFunction,
-                session.ConfigEditor);
+                session.CurrentMeritFunction);
 
             session.CurrentFilePath = path;
             AnsiConsole.MarkupLine($"[green]Saved: {Markup.Escape(path)}[/]");
@@ -269,7 +262,6 @@ namespace LensHH.CLI.Commands
             session.CurrentSystem = system;
             session.CurrentFilePath = null;
             session.CurrentMeritFunction = null;
-            session.ConfigEditor = null;
 
             AnsiConsole.MarkupLine($"[green]Imported ({format}): {Markup.Escape(system.Title)}[/]");
             AnsiConsole.MarkupLine($"  Surfaces: {system.Surfaces.Count}");

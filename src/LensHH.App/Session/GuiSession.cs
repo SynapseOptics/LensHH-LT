@@ -4,7 +4,6 @@ using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using LensHH.Core.Activation;
-using LensHH.Core.Configuration;
 using LensHH.Core.Enums;
 using LensHH.Core.Glass;
 using LensHH.Core.IO;
@@ -53,8 +52,6 @@ public class GuiSession
         get => _meritFunction ??= new MeritFunction();
         set => _meritFunction = value;
     }
-
-    public ConfigurationEditor? ConfigEditor { get; set; }
 
     public string Title => _system?.Title ?? "Untitled";
     public string WindowTitle
@@ -506,7 +503,7 @@ public class GuiSession
     /// </summary>
     public string SnapshotSystem()
     {
-        var file = LhltWriter.ToLhltFile(_system, _meritFunction, ConfigEditor);
+        var file = LhltWriter.ToLhltFile(_system, _meritFunction);
         return JsonSerializer.Serialize(file, _snapshotJsonOptions);
     }
 
@@ -518,7 +515,6 @@ public class GuiSession
         var result = LhltReader.FromLhltFile(file);
         _system = result.System;
         _meritFunction = result.MeritFunction;
-        ConfigEditor = result.ConfigEditor;
     }
 
 }

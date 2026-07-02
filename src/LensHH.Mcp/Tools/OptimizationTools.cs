@@ -529,7 +529,7 @@ namespace LensHH.Mcp.Tools
 
             var service = new SplitElementService(
                 _session.System, _session.MeritFunction,
-                _session.GlassCatalog, _session.ConfigEditor)
+                _session.GlassCatalog)
             {
                 Settings = settings
             };
@@ -597,7 +597,7 @@ namespace LensHH.Mcp.Tools
                     catalogs.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
 
             settings.ParallelChains = chains;   // 0 = auto (physical cores); 1 = single chain
-            var optimizer = new BasinHoppingOptimizerBatch(_session.System, _session.MeritFunction, _session.GlassCatalog, _session.ConfigEditor)
+            var optimizer = new BasinHoppingOptimizerBatch(_session.System, _session.MeritFunction, _session.GlassCatalog)
             {
                 Settings = settings,
                 FilteredCatalogSearchPaths = FindFilteredCatalogPaths(),
@@ -622,7 +622,7 @@ namespace LensHH.Mcp.Tools
             {
                 string baseName = string.IsNullOrWhiteSpace(_session.System.Title) ? "basin" : _session.System.Title;
                 var paths = LensHH.Core.IO.ChainResultWriter.SaveChains(
-                    optimizer.ChainResults, saveChainsFolder, baseName, _session.MeritFunction, _session.ConfigEditor);
+                    optimizer.ChainResults, saveChainsFolder, baseName, _session.MeritFunction);
                 sb.AppendLine($"  Saved {paths.Count} chain design(s) to {saveChainsFolder}");
             }
             return sb.ToString();
@@ -670,11 +670,10 @@ namespace LensHH.Mcp.Tools
                     catalogs.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
 
             var mf = _session.MeritFunction;
-            var configEditor = _session.ConfigEditor;
             string folder = saveChainsFolder;
 
             var job = new RunningJob(kind: "global_basin");
-            var optimizer = new GlobalBasinHoppingOptimizer(_session.System, mf, _session.GlassCatalog, configEditor)
+            var optimizer = new GlobalBasinHoppingOptimizer(_session.System, mf, _session.GlassCatalog)
             {
                 Settings = gs,
                 FilteredCatalogSearchPaths = FindFilteredCatalogPaths(),
@@ -714,7 +713,7 @@ namespace LensHH.Mcp.Tools
                     if (!string.IsNullOrWhiteSpace(folder) && result.ChainResults.Count > 0)
                     {
                         string baseName = string.IsNullOrWhiteSpace(_session.System.Title) ? "global_basin" : _session.System.Title;
-                        var paths = LensHH.Core.IO.ChainResultWriter.SaveChains(result.ChainResults, folder, baseName, mf, configEditor);
+                        var paths = LensHH.Core.IO.ChainResultWriter.SaveChains(result.ChainResults, folder, baseName, mf);
                         sb.AppendLine($"  Saved {paths.Count} chain design(s) to {folder}");
                     }
                     job.Complete(sb.ToString());
@@ -804,12 +803,12 @@ namespace LensHH.Mcp.Tools
             if (settings.ArchiveIntermediateDesigns)
             {
                 settings.ArchiveWriter = (path, sys, mf) =>
-                    LensHH.Core.IO.LhltWriter.Write(sys, path, mf, _session.ConfigEditor);
+                    LensHH.Core.IO.LhltWriter.Write(sys, path, mf);
             }
 
             var service = new SpcSynthesisService(
                 _session.System, _session.MeritFunction,
-                _session.GlassCatalog, _session.ConfigEditor)
+                _session.GlassCatalog)
             {
                 Settings = settings
             };
@@ -888,7 +887,7 @@ namespace LensHH.Mcp.Tools
             };
 
             var job = new RunningJob(kind: "multistart") { MaxTrials = maxTrials };
-            var optimizer = new MultistartOptimizer(_session.System, _session.MeritFunction, _session.GlassCatalog, _session.ConfigEditor)
+            var optimizer = new MultistartOptimizer(_session.System, _session.MeritFunction, _session.GlassCatalog)
             {
                 Settings = settings,
                 FilteredCatalogSearchPaths = FindFilteredCatalogPaths(),
@@ -953,7 +952,6 @@ namespace LensHH.Mcp.Tools
             try { System.IO.Directory.CreateDirectory(folder); }
             catch (Exception ex) { return $"Cannot create output folder '{folder}': {ex.Message}"; }
 
-            var configEditor = _session.ConfigEditor;
             var mf = _session.MeritFunction;
 
             var settings = new GlobalSearchSettings
@@ -974,13 +972,13 @@ namespace LensHH.Mcp.Tools
                 },
                 ArchiveWriter = (name, sys, m) =>
                 {
-                    try { LensHH.Core.IO.LhltWriter.Write(sys, System.IO.Path.Combine(folder, name + ".lhlt"), m, configEditor); }
+                    try { LensHH.Core.IO.LhltWriter.Write(sys, System.IO.Path.Combine(folder, name + ".lhlt"), m); }
                     catch { /* best-effort archive */ }
                 },
             };
 
             var job = new RunningJob(kind: "global_search") { MaxTrials = modelsToKeep };
-            var svc = new GlobalSearchService(_session.System, mf, _session.GlassCatalog, configEditor)
+            var svc = new GlobalSearchService(_session.System, mf, _session.GlassCatalog)
             {
                 Settings = settings,
                 EngineMode = useNativeEngine ? EngineMode.Native : EngineMode.CSharp,
@@ -1075,7 +1073,7 @@ namespace LensHH.Mcp.Tools
             settings.ParallelChains = chains;   // 0 = auto (physical cores); 1 = single chain
             int resolvedChains = chains <= 0 ? LensHH.Core.Optimization.CpuInfo.PhysicalCoreCount() : chains;
             var job = new RunningJob(kind: "basin") { MaxTrials = maxHops * Math.Max(1, resolvedChains) };
-            var optimizer = new BasinHoppingOptimizerBatch(_session.System, _session.MeritFunction, _session.GlassCatalog, _session.ConfigEditor)
+            var optimizer = new BasinHoppingOptimizerBatch(_session.System, _session.MeritFunction, _session.GlassCatalog)
             {
                 Settings = settings,
                 FilteredCatalogSearchPaths = FindFilteredCatalogPaths(),
@@ -1107,7 +1105,7 @@ namespace LensHH.Mcp.Tools
                     {
                         string baseName = string.IsNullOrWhiteSpace(_session.System.Title) ? "basin" : _session.System.Title;
                         var paths = LensHH.Core.IO.ChainResultWriter.SaveChains(
-                            optimizer.ChainResults, saveChainsFolder, baseName, _session.MeritFunction, _session.ConfigEditor);
+                            optimizer.ChainResults, saveChainsFolder, baseName, _session.MeritFunction);
                         chainsMsg = $"\n  Saved {paths.Count} chain design(s) to {saveChainsFolder}";
                     }
                     if (result.Cancelled) job.Cancel();
@@ -1181,7 +1179,7 @@ namespace LensHH.Mcp.Tools
                     catalogs.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
 
             var job = new RunningJob(kind: "split") { MaxTrials = maxSplits };
-            var service = new SplitElementService(_session.System, _session.MeritFunction, _session.GlassCatalog, _session.ConfigEditor)
+            var service = new SplitElementService(_session.System, _session.MeritFunction, _session.GlassCatalog)
             {
                 Settings = settings,
                 OnProgress = p =>
@@ -1281,10 +1279,10 @@ namespace LensHH.Mcp.Tools
                     catalogs.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
             if (settings.ArchiveIntermediateDesigns)
                 settings.ArchiveWriter = (path, sys, mf) =>
-                    LensHH.Core.IO.LhltWriter.Write(sys, path, mf, _session.ConfigEditor);
+                    LensHH.Core.IO.LhltWriter.Write(sys, path, mf);
 
             var job = new RunningJob(kind: "spc") { MaxTrials = maxElements };
-            var service = new SpcSynthesisService(_session.System, _session.MeritFunction, _session.GlassCatalog, _session.ConfigEditor)
+            var service = new SpcSynthesisService(_session.System, _session.MeritFunction, _session.GlassCatalog)
             {
                 Settings = settings,
                 OnProgress = p =>

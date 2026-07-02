@@ -121,14 +121,14 @@ namespace LensHH.App.ViewModels
             // Initial merit for context.
             try
             {
-                var ev = new MeritFunctionEvaluator(_session.System, _session.GlassCatalog, _session.ConfigEditor)
+                var ev = new MeritFunctionEvaluator(_session.System, _session.GlassCatalog)
                 { ParallelEvaluation = true };
                 InitialMeritText = ev.Evaluate(_session.MeritFunction).ToString("E4");
             }
             catch { InitialMeritText = "—"; }
 
             var svc = new GlobalSearchService(
-                _session.System, _session.MeritFunction, _session.GlassCatalog, _session.ConfigEditor)
+                _session.System, _session.MeritFunction, _session.GlassCatalog)
             {
                 Settings = new GlobalSearchSettings
                 {
@@ -251,7 +251,7 @@ namespace LensHH.App.ViewModels
                 string path = Path.Combine(folder, name + ".lhlt");
                 try
                 {
-                    LhltWriter.Write(m.System, path, _session.MeritFunction, _session.ConfigEditor);
+                    LhltWriter.Write(m.System, path, _session.MeritFunction);
                     m.ArchivePath = path;
                     n++;
                 }

@@ -249,7 +249,6 @@ namespace LensHH.Mcp
                 var hostResult = LhltReader.Read(data.HostPath);
                 var system = hostResult.System;
                 var merit  = hostResult.MeritFunction;
-                var config = hostResult.ConfigEditor;
 
                 // Seed entrance pupil (S1.Thickness) for floating-stop hosts.
                 if (cand.EntrancePupil.HasValue)
@@ -325,7 +324,7 @@ namespace LensHH.Mcp
                     {
                         int at = insertAfterCurrent + 1 + i;
                         system.Surfaces.Insert(at, vertices[i]);
-                        LensHH.Core.Models.SurfaceIndexUpdater.OnSurfaceInserted(at, system, merit, config);
+                        LensHH.Core.Models.SurfaceIndexUpdater.OnSurfaceInserted(at, system, merit);
                     }
                     int lastInsertedIdx = insertAfterCurrent + vertices.Count;
                     // Override the trailing thickness with the agent's seed value, and
@@ -380,7 +379,7 @@ namespace LensHH.Mcp
                         LmIterationsPerTrial  = data.MsLmPerTrial,
                         InitialLmIterations   = data.MsInitialLm,
                     };
-                    var ms = new MultistartOptimizer(system, merit, session.GlassCatalog, config)
+                    var ms = new MultistartOptimizer(system, merit, session.GlassCatalog)
                     { Settings = msSettings };
                     var msResult = ms.Optimize(job.Cts.Token);
                     initMerit  = msResult.InitialMerit;
@@ -559,7 +558,7 @@ namespace LensHH.Mcp
                 {
                     int at = insertAfterCurrent + 1 + i;
                     session.System.Surfaces.Insert(at, vertices[i]);
-                    LensHH.Core.Models.SurfaceIndexUpdater.OnSurfaceInserted(at, session.System, session.MeritFunction, session.ConfigEditor);
+                    LensHH.Core.Models.SurfaceIndexUpdater.OnSurfaceInserted(at, session.System, session.MeritFunction);
                 }
                 int lastInsertedIdx = insertAfterCurrent + vertices.Count;
                 session.System.Surfaces[lastInsertedIdx].Thickness = ins.AirThickness;

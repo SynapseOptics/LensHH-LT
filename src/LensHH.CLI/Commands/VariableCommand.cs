@@ -269,13 +269,6 @@ namespace LensHH.CLI.Commands
             {
                 if (f.Variable) { f.Variable = false; f.Min = null; f.Max = null; count++; }
             }
-            if (session.ConfigEditor != null)
-            {
-                var ce = session.ConfigEditor;
-                for (int c = 0; c < ce.ConfigurationCount; c++)
-                    for (int o = 0; o < ce.OperandCount; o++)
-                        if (ce.IsVariable(c, o)) { ce.SetVariable(c, o, false); count++; }
-            }
 
             AnsiConsole.MarkupLine($"[green]Cleared {count} variables.[/]");
         }
@@ -399,40 +392,6 @@ namespace LensHH.CLI.Commands
                             if (clrMax) f.Max = null;
                         }
                     });
-                }
-            }
-
-            // Config editor variables
-            if (session.ConfigEditor != null)
-            {
-                var ce = session.ConfigEditor;
-                for (int c = 0; c < ce.ConfigurationCount; c++)
-                {
-                    for (int o = 0; o < ce.OperandCount; o++)
-                    {
-                        if (ce.IsVariable(c, o))
-                        {
-                            var op = ce.Operands[o];
-                            int cc = c, oo = o;
-                            string val = op.Type == Core.Configuration.ConfigOperandType.Glass
-                                ? (ce.GetGlass(cc, oo) ?? "---")
-                                : ce.GetValue(cc, oo).ToString("G6");
-                            list.Add(new VariableEntry
-                            {
-                                Source = $"Config {cc}:Op{oo}",
-                                Parameter = $"{op.Type}",
-                                Value = val,
-                                Min = ce.GetMin(cc, oo),
-                                Max = ce.GetMax(cc, oo),
-                                ApplyConstraints = (min, max, clrMin, clrMax) =>
-                                {
-                                    double? newMin = clrMin ? null : (min ?? ce.GetMin(cc, oo));
-                                    double? newMax = clrMax ? null : (max ?? ce.GetMax(cc, oo));
-                                    ce.SetVariable(cc, oo, true, newMin, newMax);
-                                }
-                            });
-                        }
-                    }
                 }
             }
 

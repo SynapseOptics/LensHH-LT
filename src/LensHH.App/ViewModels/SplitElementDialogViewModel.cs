@@ -247,7 +247,7 @@ public partial class SplitElementDialogViewModel : ObservableObject
             {
                 var service = new SplitElementService(
                     _session.System, _session.MeritFunction,
-                    _session.GlassCatalog, _session.ConfigEditor)
+                    _session.GlassCatalog)
                 {
                     Settings = settings,
                     OnProgress = p => Dispatcher.UIThread.Post(() => UpdateProgress(p)),
@@ -411,7 +411,7 @@ public partial class SplitElementDialogViewModel : ObservableObject
             string meritStr = iterMerit.ToString("G4").Replace("+", "").Replace(".", "p");
             string fileName = $"{baseName}_split{splitIndex}_merit{meritStr}.lhlt";
             string fullPath = Path.Combine(dir, fileName);
-            LhltWriter.Write(_session.System, fullPath, _session.MeritFunction, _session.ConfigEditor);
+            LhltWriter.Write(_session.System, fullPath, _session.MeritFunction);
             return fullPath;
         }
         catch
@@ -479,7 +479,7 @@ public partial class SplitElementDialogViewModel : ObservableObject
             string fileName = $"{baseName}_split_rejected_{timestamp}.lhlt";
             string fullPath = Path.Combine(dir, fileName);
 
-            LhltWriter.Write(_session.System, fullPath, _session.MeritFunction, _session.ConfigEditor);
+            LhltWriter.Write(_session.System, fullPath, _session.MeritFunction);
             return fullPath;
         }
         catch
