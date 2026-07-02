@@ -2,6 +2,18 @@
 
 All notable changes to LensHH-LT and the LensHH-LT-Engine.
 
+## 1.0.130 — 2026-07-02
+
+### Fixed
+- **Layout PNGs now honor the surface-0 start.** Saving a 2D system-layout image
+  — via the MCP `save_render_png` tool or the CLI `show layout --save` — always
+  drew the layout from surface 1, ignoring the object distance, so finite-object
+  and afocal-collimator systems could not be exported starting at surface 0 (only
+  the live render window respected the setting). `save_render_png` gains a
+  `startFromSurface1` parameter (default true) and a `numRays` parameter; the CLI
+  `show` command gains `--from-object` and `--num-rays`. The default is unchanged,
+  so infinite-conjugate layouts render exactly as before.
+
 ## 1.0.129 — 2026-07-01
 
 ### Fixed
