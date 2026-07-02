@@ -53,6 +53,13 @@ public class GuiSession
         set => _meritFunction = value;
     }
 
+    /// <summary>
+    /// Neutral extensibility slot for edition-specific per-session state. The shared app
+    /// never reads it; an advanced-edition host stashes its own state here (e.g. a
+    /// multi-configuration editor) and casts it back. Keeps the shared session edition-agnostic.
+    /// </summary>
+    public object? EditionState { get; set; }
+
     public string Title => _system?.Title ?? "Untitled";
     public string WindowTitle
     {
