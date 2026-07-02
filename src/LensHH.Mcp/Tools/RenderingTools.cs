@@ -195,7 +195,9 @@ namespace LensHH.Mcp.Tools
         public async Task<string> SaveRenderPng(
             [Description("Analysis name (e.g. spot, rayfan, fftmtf)")] string analysisName,
             [Description("Full file path for the PNG output")] string outputPath,
-            [Description("Wavelength index (0-based); -1 uses the primary wavelength.")] int wavelengthIndex = -1)
+            [Description("Wavelength index (0-based); -1 uses the primary wavelength.")] int wavelengthIndex = -1,
+            [Description("Layout only: if true, draw from surface 1 to image (omitting object distance). Default true. Pass false for finite-object / afocal-collimator systems.")] bool startFromSurface1 = true,
+            [Description("Layout only: number of rays traced per field. Default 15.")] int numRays = 15)
         {
             if (string.IsNullOrWhiteSpace(outputPath))
                 return "Error: outputPath is required.";
@@ -231,6 +233,14 @@ namespace LensHH.Mcp.Tools
 
             var parms = new Dictionary<string, object> { ["SavePngPath"] = outputPath };
             if (wavelengthIndex >= 0) parms["WavelengthIndex"] = wavelengthIndex;
+            // Layout PNG must carry the same surface-start / ray-count knobs the window render
+            // uses; otherwise the dispatcher defaults StartFromSurface1=true and the saved PNG
+            // always starts at surface 1 (can't draw finite-object / afocal systems from surface 0).
+            if (renderAnalysis == "SystemLayout")
+            {
+                parms["StartFromSurface1"] = startFromSurface1;
+                parms["NumRays"] = numRays;
+            }
             var response = await RenderAppClient.SendAsync(_session.System, renderAnalysis, parms);
             return response.Success ? $"PNG saved to: {outputPath}" : $"Render error: {response.Error}";
         }

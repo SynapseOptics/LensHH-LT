@@ -1887,7 +1887,7 @@ namespace LensHH.CLI.Commands
         {
             if (args.Length < 2)
             {
-                AnsiConsole.MarkupLine("[red]Usage: show <analysis> [--save [outfile.png]] [--wave N] [--max-freq F] [--field-pts N] [--pupil-rays N][/]");
+                AnsiConsole.MarkupLine("[red]Usage: show <analysis> [--save [outfile.png]] [--wave N] [--max-freq F] [--field-pts N] [--pupil-rays N] [--from-object] [--num-rays N][/]");
                 AnsiConsole.MarkupLine("Analyses: spot, rayfan, opdfan, seidel, layout, relillum, lateralcolor, fieldcurvature, distortion, fftmtf, fftmtf-field, fftmtf-focus, fftpsf, geomtf, geomtf-field, geomtf-focus, wavefront, chromaticfocalshift");
                 AnsiConsole.MarkupLine("Pops up the LensHH-LT Render window with the analysis. Pass --save to also write a PNG (auto-named <analysis>.png if no path given). --max-freq F (cycles/mm) caps the X axis on fftmtf; 0 (default) uses the diffraction cutoff. --field-pts / --pupil-rays control relillum smoothness (more = smoother, slower).");
                 return;
@@ -1901,6 +1901,8 @@ namespace LensHH.CLI.Commands
             string? savePath = null;
             bool saveRequested = false;
             double maxFreq = 0;
+            bool fromObject = false;   // layout: draw from surface 0 (object) instead of surface 1
+            int layoutNumRays = 15;
             var filteredArgs = new List<string>();
             for (int a = 0; a < args.Length; a++)
             {
@@ -1942,6 +1944,15 @@ namespace LensHH.CLI.Commands
                         savePath = args[a + 1];
                         a++;
                     }
+                }
+                else if (args[a] == "--from-object") fromObject = true;   // layout: start at surface 0
+                else if (args[a].StartsWith("--num-rays="))
+                {
+                    int.TryParse(args[a].Substring("--num-rays=".Length), out layoutNumRays);
+                }
+                else if (args[a] == "--num-rays" && a + 1 < args.Length)
+                {
+                    if (int.TryParse(args[a + 1], out int nr)) { layoutNumRays = nr; a++; }
                 }
                 else filteredArgs.Add(args[a]);
             }
@@ -1992,6 +2003,13 @@ namespace LensHH.CLI.Commands
             var parms = new Dictionary<string, object>();
             if (resolvedSavePath != null) parms["SavePngPath"] = resolvedSavePath;
             if (layoutWaveIdx >= 0) parms["WavelengthIndex"] = layoutWaveIdx;
+            // Layout: forward the surface-start / ray-count knobs; otherwise the dispatcher
+            // defaults StartFromSurface1=true and the PNG always starts at surface 1.
+            if (renderAnalysis == "SystemLayout")
+            {
+                parms["StartFromSurface1"] = !fromObject;
+                parms["NumRays"] = layoutNumRays;
+            }
             if (maxFreq > 0) parms["MaxFrequency"] = maxFreq;
             // Honored by the RelativeIllumination case in AnalysisDispatcher.
             int riFieldPts = ParseIntFlag(args, "--field-pts", 0);
