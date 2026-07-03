@@ -178,6 +178,14 @@ namespace LensHH.Mcp
         public MeritFunction? MeritFunction { get; set; }
 
         /// <summary>
+        /// Neutral extensibility slot for edition-specific per-session state. The shared MCP
+        /// server never reads it; an advanced-edition host (e.g. the PRO MCP) stashes its own
+        /// state here (a multi-configuration editor) and casts it back. Keeps the shared session
+        /// edition-agnostic — mirrors GuiSession.EditionState.
+        /// </summary>
+        public object? EditionState { get; set; }
+
+        /// <summary>
         /// Backing store for the batch_design_search_* MCP tools. Holds
         /// per-job structural data (candidate list, results array) keyed by
         /// the RunningJob's JobId. Persists for the life of the session.
