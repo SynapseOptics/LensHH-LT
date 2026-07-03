@@ -4,9 +4,17 @@ using Spectre.Console;
 
 namespace LensHH.CLI
 {
-    class Program
+    public class Program
     {
-        static void Main(string[] args)
+        static void Main(string[] args) => Run(args);
+
+        /// <summary>
+        /// Reusable CLI entry point. Registers the standard commands, lets a host contribute
+        /// additional commands via <paramref name="registerExtra"/> (the neutral command seam —
+        /// e.g. an advanced-edition CLI adds its multi-configuration command), then runs the
+        /// script (args) or the interactive REPL.
+        /// </summary>
+        public static void Run(string[] args, Action<CommandDispatcher>? registerExtra = null)
         {
             // Keep CPU-bound optimization at full speed even when the terminal is
             // not the foreground window (opt out of Windows 11 power throttling).
@@ -28,6 +36,9 @@ namespace LensHH.CLI
             dispatcher.Register(new LogCommand());
             dispatcher.Register(new ScriptCommand(dispatcher));
             dispatcher.Register(new LicenseCommand());
+
+            // Neutral command seam: a host edition contributes extra commands here (no PRO types).
+            registerExtra?.Invoke(dispatcher);
 
             var session = new Session();
 

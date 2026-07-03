@@ -19,6 +19,14 @@ namespace LensHH.CLI
         public MeritFunction? CurrentMeritFunction { get; set; }
         public GlassCatalogManager? GlassCatalog { get; set; }
 
+        /// <summary>
+        /// Neutral extensibility slot for edition-specific per-session state. The shared CLI
+        /// never reads it; an advanced-edition host (e.g. the PRO CLI) stashes its own state
+        /// here (a multi-configuration editor) and casts it back. Mirrors GuiSession/McpSession
+        /// EditionState — keeps the shared session edition-agnostic.
+        /// </summary>
+        public object? EditionState { get; set; }
+
         // Logging
         private StreamWriter? _logWriter;
         private TeeTextWriter? _teeWriter;
