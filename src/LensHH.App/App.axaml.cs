@@ -25,6 +25,10 @@ public partial class App : Application
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             var session = new GuiSession();
+            // Neutral session-created hook: an advanced-edition host binds its per-session
+            // providers (e.g. the multi-config navigator + cell ownership) here, before the
+            // main window is constructed so its ctor picks them up. No-op in the standard build.
+            AppExtensions.SessionCreated?.Invoke(session);
             var vm = new MainViewModel(session);
             desktop.MainWindow = new MainWindow
             {

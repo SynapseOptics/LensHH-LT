@@ -40,6 +40,14 @@ namespace LensHH.App
         public static Func<GuiSession, Window>? FieldEditorFactory { get; set; }
 
         /// <summary>
+        /// Invoked once, right after the <see cref="GuiSession"/> is created and before the main
+        /// window is constructed. An advanced-edition host binds its per-session providers here
+        /// (e.g. sets <see cref="ConfigNavigator"/> / <see cref="CellOwnership"/> bound to this
+        /// session). Null in the standard build.
+        /// </summary>
+        public static Action<GuiSession>? SessionCreated { get; set; }
+
+        /// <summary>
         /// Optional multi-configuration navigator. When set (an advanced-edition host has a
         /// multi-config design), the main window shows a Prev/Next Config control bound to it;
         /// when null (standard build) there is no config control. The interface is neutral — it
