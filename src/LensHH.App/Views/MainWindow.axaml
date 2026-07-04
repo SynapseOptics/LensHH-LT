@@ -135,6 +135,20 @@
       </MenuItem>
     </Menu>
 
+    <!-- Configuration navigator (advanced edition only; hidden unless a host registers
+         AppExtensions.ConfigNavigator with more than one configuration). Populated + refreshed
+         entirely from code-behind against the neutral IConfigNavigator seam. -->
+    <Border x:Name="ConfigNavBar" DockPanel.Dock="Top" Background="#EAF2FB" Padding="8,3"
+            BorderBrush="#C0D4EC" BorderThickness="0,0,0,1" IsVisible="False">
+      <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+        <TextBlock Text="Configuration" VerticalAlignment="Center" FontWeight="SemiBold" />
+        <Button x:Name="PrevConfigButton" Content="◀ Prev" Padding="8,2" Click="PrevConfig_Click" />
+        <TextBlock x:Name="ConfigLabel" Text="1 of 1" VerticalAlignment="Center"
+                   MinWidth="64" TextAlignment="Center" />
+        <Button x:Name="NextConfigButton" Content="Next ▶" Padding="8,2" Click="NextConfig_Click" />
+      </StackPanel>
+    </Border>
+
     <!-- Status Bar -->
     <Border DockPanel.Dock="Bottom" Background="#F0F0F0" Padding="8,4">
       <DockPanel>

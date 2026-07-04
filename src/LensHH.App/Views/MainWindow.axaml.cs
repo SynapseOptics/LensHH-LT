@@ -36,7 +36,36 @@ public partial class MainWindow : Window
 
         AboutMenuItem.Header = $"_About {AppCapabilities.ProductName}";
         PopulateExtensionsMenu();
+        WireConfigNavigator();
     }
+
+    // Bind the config-nav strip to the neutral IConfigNavigator seam. Null in the standard
+    // build → the strip stays hidden and no multi-config code is touched. The host raises
+    // Changed once per config switch / operand add-remove, so we refresh with a single pass.
+    private void WireConfigNavigator()
+    {
+        var nav = AppExtensions.ConfigNavigator;
+        if (nav != null) nav.Changed += RefreshConfigNav;
+        RefreshConfigNav();
+    }
+
+    private void RefreshConfigNav()
+    {
+        // Changed may arrive off the UI thread (e.g. after an async load); marshal + guard.
+        Dispatcher.UIThread.Post(() =>
+        {
+            var nav = AppExtensions.ConfigNavigator;
+            bool show = nav != null && nav.Count > 1;
+            ConfigNavBar.IsVisible = show;
+            if (!show) return;
+            ConfigLabel.Text = $"{nav!.Current} of {nav.Count}";
+            PrevConfigButton.IsEnabled = nav.Current > 1;
+            NextConfigButton.IsEnabled = nav.Current < nav.Count;
+        });
+    }
+
+    private void PrevConfig_Click(object? sender, RoutedEventArgs e) => AppExtensions.ConfigNavigator?.Prev();
+    private void NextConfig_Click(object? sender, RoutedEventArgs e) => AppExtensions.ConfigNavigator?.Next();
 
     // Render any host-contributed extension menu items under the neutral "Extensions" menu.
     // Empty in the standard build, so the menu stays hidden. Each item's Invoke runs at click
