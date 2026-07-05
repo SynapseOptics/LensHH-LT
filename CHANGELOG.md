@@ -2,6 +2,20 @@
 
 All notable changes to LensHH-LT and the LensHH-LT-Engine.
 
+## 1.0.132 — 2026-07-05
+
+### Fixed
+- **Auto element diameters no longer shrink when a later element is capped.** The
+  automatic semi-diameter solver sized each element only from rays that reach the
+  image, so putting a smaller Fixed aperture on a rear element would make corner
+  rays vignette there and — because those rays were then dropped — retroactively
+  shrink the *front* Auto elements too. On retrofocus wide-angle designs this made
+  the large front negative element too small to admit the full field. The solver
+  now sizes each surface to the rays actually incident on it, so a downstream Fixed
+  cap only vignettes (as intended) without deflating upstream Auto elements.
+  Applied in both the C# and native engines (drawing, analysis, and optimization).
+  All-Auto systems are unchanged.
+
 ## 1.0.131 — 2026-07-02
 
 ### Fixed
