@@ -3,6 +3,9 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Avalonia.Controls;
 using LensHH.App.Session;
+using LensHH.Core.Glass;
+using LensHH.Core.Models;
+using LensHH.Core.Optimization;
 
 namespace LensHH.App
 {
@@ -61,6 +64,22 @@ namespace LensHH.App
         /// build) nothing is owned and every cell is editable.
         /// </summary>
         public static ICellOwnershipProvider? CellOwnership { get; set; }
+
+        /// <summary>
+        /// Optional optimizer factory. When set (an advanced-edition host with multi-configuration
+        /// designs), the shared optimize dialogs build their <see cref="LocalOptimizer"/> through it
+        /// so the host can pass its multi-configuration editor at CONSTRUCTION (the merit evaluator
+        /// binds the editor there — it cannot be attached afterwards). Null in the standard build →
+        /// the plain three-argument constructor is used. The signature exposes no edition-specific
+        /// types, so the shared app carries zero multi-config code.
+        /// </summary>
+        public static Func<OpticalSystem, LensHH.Core.MeritFunction.MeritFunction, GlassCatalogManager, LocalOptimizer>? LocalOptimizerFactory { get; set; }
+
+        /// <summary>Construct a LocalOptimizer via <see cref="LocalOptimizerFactory"/> when set, else the plain constructor.</summary>
+        internal static LocalOptimizer CreateLocalOptimizer(OpticalSystem system,
+            LensHH.Core.MeritFunction.MeritFunction meritFunction, GlassCatalogManager glassMgr)
+            => LocalOptimizerFactory?.Invoke(system, meritFunction, glassMgr)
+               ?? new LocalOptimizer(system, meritFunction, glassMgr);
     }
 
     /// <summary>

@@ -100,15 +100,14 @@ public partial class OptimizationDialogViewModel : ObservableObject
 
         try
         {
-            var optimizer = new LocalOptimizer(
-                _session.System, _session.MeritFunction,
-                _session.GlassCatalog)
-            {
-                MaxIterations = MaxIterations,
-                UseBroydenUpdate = UseBroydenUpdate,
-                InitialDamping = InitialDamping,
-                ParallelEvaluation = true
-            };
+            // Build via the neutral factory so an advanced-edition host can inject its
+            // multi-configuration editor at construction (null in the standard build).
+            var optimizer = AppExtensions.CreateLocalOptimizer(
+                _session.System, _session.MeritFunction, _session.GlassCatalog);
+            optimizer.MaxIterations = MaxIterations;
+            optimizer.UseBroydenUpdate = UseBroydenUpdate;
+            optimizer.InitialDamping = InitialDamping;
+            optimizer.ParallelEvaluation = true;
 
             optimizer.CollectVariables();
 
