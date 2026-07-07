@@ -306,11 +306,9 @@ public partial class MultistartDialogViewModel : ObservableObject
 
         try
         {
-            var optimizer = new MultistartOptimizer(
-                _session.System, _session.MeritFunction,
-                _session.GlassCatalog)
-            {
-                Settings = new MultistartSettings
+            var optimizer = AppExtensions.CreateMultistartOptimizer(
+                _session.System, _session.MeritFunction, _session.GlassCatalog);
+            optimizer.Settings = new MultistartSettings
                 {
                     MaxTrials = MaxTrials,
                     LmIterationsPerTrial = LmIterationsPerTrial,
@@ -336,15 +334,14 @@ public partial class MultistartDialogViewModel : ObservableObject
                     // Experimental (1.0.120): rescale an element's curvatures by
                     // (n_old-1)/(n_new-1) on a glass swap so its power is preserved.
                     RescaleCurvatureOnGlassSwap = RescaleOnGlassSwap,
-                },
-                // Phase 10a — DEV engine selection from the dialog.
-                EngineMode = (EngineModeIndex == 1) ? EngineMode.Native : EngineMode.CSharp,
-                NativeDerivativeMode = (DerivativeModeIndex == 1)
-                    ? LensHH.Core.NativeInterop.MeritDerivativeMode.Analytic
-                    : LensHH.Core.NativeInterop.MeritDerivativeMode.FiniteDifference,
-                FilteredCatalogSearchPaths = GlassSubstitutionViewModel.FindFilteredCatalogFolder() is string dir
-                    ? new[] { dir } : Array.Empty<string>()
-            };
+                };
+            // Phase 10a — DEV engine selection from the dialog.
+            optimizer.EngineMode = (EngineModeIndex == 1) ? EngineMode.Native : EngineMode.CSharp;
+            optimizer.NativeDerivativeMode = (DerivativeModeIndex == 1)
+                ? LensHH.Core.NativeInterop.MeritDerivativeMode.Analytic
+                : LensHH.Core.NativeInterop.MeritDerivativeMode.FiniteDifference;
+            optimizer.FilteredCatalogSearchPaths = GlassSubstitutionViewModel.FindFilteredCatalogFolder() is string dir
+                ? new[] { dir } : Array.Empty<string>();
 
             // Get initial merit for display
             var evaluator = new MeritFunctionEvaluator(

@@ -213,16 +213,15 @@ public partial class GlobalBasinHoppingDialogViewModel : ObservableObject
             AppendLog($"{cores} chains (physical cores). No-improvement timeout {NoImprovementTimeoutSeconds:F0}s, global limit {GlobalTimeoutMinutes:F0} min.");
             AppendLog("Chains restart from the best of the OTHER chains when they stall — cooperative deep dive.");
 
-            var optimizer = new GlobalBasinHoppingOptimizer(
-                _session.System, _session.MeritFunction, _session.GlassCatalog)
-            {
-                Settings = gs,
-                EngineMode = (EngineModeIndex == 1) ? EngineMode.Native : EngineMode.CSharp,
-                NativeDerivativeMode = (DerivativeModeIndex == 1)
-                    ? LensHH.Core.NativeInterop.MeritDerivativeMode.Analytic
-                    : LensHH.Core.NativeInterop.MeritDerivativeMode.FiniteDifference,
-                FilteredCatalogSearchPaths = filteredDir != null ? new[] { filteredDir } : Array.Empty<string>(),
-                OnChainsProgress = snap => Dispatcher.UIThread.Post(() =>
+            var optimizer = AppExtensions.CreateGlobalBasinHoppingOptimizer(
+                _session.System, _session.MeritFunction, _session.GlassCatalog);
+            optimizer.Settings = gs;
+            optimizer.EngineMode = (EngineModeIndex == 1) ? EngineMode.Native : EngineMode.CSharp;
+            optimizer.NativeDerivativeMode = (DerivativeModeIndex == 1)
+                ? LensHH.Core.NativeInterop.MeritDerivativeMode.Analytic
+                : LensHH.Core.NativeInterop.MeritDerivativeMode.FiniteDifference;
+            optimizer.FilteredCatalogSearchPaths = filteredDir != null ? new[] { filteredDir } : Array.Empty<string>();
+            optimizer.OnChainsProgress = snap => Dispatcher.UIThread.Post(() =>
                 {
                     if (ChainRows.Count == 0)
                         for (int k = 0; k < snap.Length; k++) ChainRows.Add(new GlobalBasinHoppingChainRow(k));
@@ -251,8 +250,7 @@ public partial class GlobalBasinHoppingDialogViewModel : ObservableObject
                         r.Restarts = s.Restarts.ToString();
                         r.Leads = s.Leads;
                     }
-                }),
-            };
+                });
 
             result = await Task.Run(() => optimizer.Optimize(ct), ct);
         }

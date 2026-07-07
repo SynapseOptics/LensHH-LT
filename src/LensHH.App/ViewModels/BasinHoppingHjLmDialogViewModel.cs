@@ -320,18 +320,16 @@ public partial class BasinHoppingHjLmDialogViewModel : ObservableObject
                 bool eligibilityLogged = false;
                 BasinHoppingOptimizer? optimizer = null;
 
-                optimizer = new BasinHoppingOptimizer(
-                    _session.System, _session.MeritFunction,
-                    _session.GlassCatalog)
-                {
-                    Settings = settings,
-                    // Phase 10a — DEV engine selection from the dialog.
-                    EngineMode = (EngineModeIndex == 1) ? EngineMode.Native : EngineMode.CSharp,
-                    NativeDerivativeMode = (DerivativeModeIndex == 1)
-                        ? LensHH.Core.NativeInterop.MeritDerivativeMode.Analytic
-                        : LensHH.Core.NativeInterop.MeritDerivativeMode.FiniteDifference,
-                    FilteredCatalogSearchPaths = filteredDir != null ? new[] { filteredDir } : Array.Empty<string>(),
-                    OnProgress = p => Dispatcher.UIThread.Post(() =>
+                optimizer = AppExtensions.CreateBasinHoppingOptimizer(
+                    _session.System, _session.MeritFunction, _session.GlassCatalog);
+                optimizer.Settings = settings;
+                // Phase 10a — DEV engine selection from the dialog.
+                optimizer.EngineMode = (EngineModeIndex == 1) ? EngineMode.Native : EngineMode.CSharp;
+                optimizer.NativeDerivativeMode = (DerivativeModeIndex == 1)
+                    ? LensHH.Core.NativeInterop.MeritDerivativeMode.Analytic
+                    : LensHH.Core.NativeInterop.MeritDerivativeMode.FiniteDifference;
+                optimizer.FilteredCatalogSearchPaths = filteredDir != null ? new[] { filteredDir } : Array.Empty<string>();
+                optimizer.OnProgress = p => Dispatcher.UIThread.Post(() =>
                     {
                         if (!variableRowsPopulated && optimizer!.Variables.Count > 0)
                         {
@@ -370,8 +368,7 @@ public partial class BasinHoppingHjLmDialogViewModel : ObservableObject
                         string tag = p.Phase == "Accept" ? "ACC" : "rej";
                         string extra = p.GlassSwaps > 0 ? $"  glass-swaps={p.GlassSwaps}" : "";
                         AppendLog($"Hop {p.Hop + 1,3} [{tag}] merit={p.CurrentMerit:E5}  best={p.BestMerit:E5}{extra}");
-                    })
-                };
+                    });
 
                 result = await Task.Run(() => optimizer.Optimize(ct), ct);
             }
@@ -388,17 +385,15 @@ public partial class BasinHoppingHjLmDialogViewModel : ObservableObject
                 var headThrottle = System.Diagnostics.Stopwatch.StartNew();
                 var tableThrottle = System.Diagnostics.Stopwatch.StartNew();
 
-                _batch = new BasinHoppingOptimizerBatch(
-                    _session.System, _session.MeritFunction,
-                    _session.GlassCatalog)
-                {
-                    Settings = settings,
-                    EngineMode = (EngineModeIndex == 1) ? EngineMode.Native : EngineMode.CSharp,
-                    NativeDerivativeMode = (DerivativeModeIndex == 1)
-                        ? LensHH.Core.NativeInterop.MeritDerivativeMode.Analytic
-                        : LensHH.Core.NativeInterop.MeritDerivativeMode.FiniteDifference,
-                    FilteredCatalogSearchPaths = filteredDir != null ? new[] { filteredDir } : Array.Empty<string>(),
-                    OnProgress = p => Dispatcher.UIThread.Post(() =>
+                _batch = AppExtensions.CreateBasinHoppingOptimizerBatch(
+                    _session.System, _session.MeritFunction, _session.GlassCatalog);
+                _batch.Settings = settings;
+                _batch.EngineMode = (EngineModeIndex == 1) ? EngineMode.Native : EngineMode.CSharp;
+                _batch.NativeDerivativeMode = (DerivativeModeIndex == 1)
+                    ? LensHH.Core.NativeInterop.MeritDerivativeMode.Analytic
+                    : LensHH.Core.NativeInterop.MeritDerivativeMode.FiniteDifference;
+                _batch.FilteredCatalogSearchPaths = filteredDir != null ? new[] { filteredDir } : Array.Empty<string>();
+                _batch.OnProgress = p => Dispatcher.UIThread.Post(() =>
                     {
                         // Log every genuine global-best improvement (not throttled — these are
                         // the events the user cares about), and keep the headline merit current.
@@ -416,8 +411,8 @@ public partial class BasinHoppingHjLmDialogViewModel : ObservableObject
                         HopText = $"{p.Hop} hops / {resolvedChains} chains";
                         StatusText = $"global best {p.BestMerit:E5}   ({p.Accepted} acc / {p.Rejected} rej)";
                         ProgressPercent = 100.0 * p.Hop / Math.Max(1, p.MaxHops);
-                    }),
-                    OnChainsProgress = snap => Dispatcher.UIThread.Post(() =>
+                    });
+                _batch.OnChainsProgress = snap => Dispatcher.UIThread.Post(() =>
                     {
                         if (ChainRows.Count == 0)
                             for (int k = 0; k < snap.Length; k++) ChainRows.Add(new BasinHoppingChainRow(k));
@@ -431,8 +426,7 @@ public partial class BasinHoppingHjLmDialogViewModel : ObservableObject
                             r.AcceptedRejected = $"{s.Accepted} / {s.Rejected}";
                             r.Leads = s.Leads;
                         }
-                    })
-                };
+                    });
 
                 result = await Task.Run(() => _batch.Optimize(ct), ct);
             }

@@ -80,6 +80,30 @@ namespace LensHH.App
             LensHH.Core.MeritFunction.MeritFunction meritFunction, GlassCatalogManager glassMgr)
             => LocalOptimizerFactory?.Invoke(system, meritFunction, glassMgr)
                ?? new LocalOptimizer(system, meritFunction, glassMgr);
+
+        // Sibling factories for the global-search optimizers, same contract as LocalOptimizerFactory:
+        // null in the standard build; an advanced-edition host injects its multi-configuration editor
+        // at construction. The optimizers themselves already accept it; these seams route it through.
+        public static Func<OpticalSystem, LensHH.Core.MeritFunction.MeritFunction, GlassCatalogManager, MultistartOptimizer>? MultistartOptimizerFactory { get; set; }
+        public static Func<OpticalSystem, LensHH.Core.MeritFunction.MeritFunction, GlassCatalogManager, BasinHoppingOptimizer>? BasinHoppingOptimizerFactory { get; set; }
+        public static Func<OpticalSystem, LensHH.Core.MeritFunction.MeritFunction, GlassCatalogManager, BasinHoppingOptimizerBatch>? BasinHoppingOptimizerBatchFactory { get; set; }
+        public static Func<OpticalSystem, LensHH.Core.MeritFunction.MeritFunction, GlassCatalogManager, GlobalBasinHoppingOptimizer>? GlobalBasinHoppingOptimizerFactory { get; set; }
+
+        internal static MultistartOptimizer CreateMultistartOptimizer(OpticalSystem system,
+            LensHH.Core.MeritFunction.MeritFunction mf, GlassCatalogManager glass)
+            => MultistartOptimizerFactory?.Invoke(system, mf, glass) ?? new MultistartOptimizer(system, mf, glass);
+
+        internal static BasinHoppingOptimizer CreateBasinHoppingOptimizer(OpticalSystem system,
+            LensHH.Core.MeritFunction.MeritFunction mf, GlassCatalogManager glass)
+            => BasinHoppingOptimizerFactory?.Invoke(system, mf, glass) ?? new BasinHoppingOptimizer(system, mf, glass);
+
+        internal static BasinHoppingOptimizerBatch CreateBasinHoppingOptimizerBatch(OpticalSystem system,
+            LensHH.Core.MeritFunction.MeritFunction mf, GlassCatalogManager glass)
+            => BasinHoppingOptimizerBatchFactory?.Invoke(system, mf, glass) ?? new BasinHoppingOptimizerBatch(system, mf, glass);
+
+        internal static GlobalBasinHoppingOptimizer CreateGlobalBasinHoppingOptimizer(OpticalSystem system,
+            LensHH.Core.MeritFunction.MeritFunction mf, GlassCatalogManager glass)
+            => GlobalBasinHoppingOptimizerFactory?.Invoke(system, mf, glass) ?? new GlobalBasinHoppingOptimizer(system, mf, glass);
     }
 
     /// <summary>
