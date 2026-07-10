@@ -2,6 +2,24 @@
 
 All notable changes to LensHH-LT and the LensHH-LT-Engine.
 
+## 1.0.134 — 2026-07-10
+
+### Fixed
+- **macOS machine fingerprint is now stable across network changes.** On macOS the
+  machine fingerprint that validates a license could fall back to the computer's
+  hostname when the hardware identifier was momentarily unavailable — for example, when
+  the app or the MCP server ran with a restricted environment. Because macOS can change
+  the hostname when switching Wi‑Fi, docks, or Ethernet, the fingerprint could change
+  across a network reconnect, so a previously validated license stopped validating (first‑order
+  analyses then returned zeros while ray tracing kept working). The fingerprint now reads
+  the stable hardware identifier directly — using an absolute tool path so it resolves
+  even under a restricted environment — and, if that is ever unavailable, falls back to a
+  persistent per‑machine identifier instead of the hostname. Windows and Linux are
+  unaffected.
+
+  Note: a macOS machine affected by the old behavior may need to re‑activate once after
+  updating; the identifier is stable from then on.
+
 ## 1.0.133 — 2026-07-09
 
 ### Fixed
