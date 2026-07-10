@@ -757,3 +757,31 @@ ED 6.000000E+000 7.100000E+000 3.520000E+000 -3.000000E-004 0 0
 CD 2.5859898E+000 -1.1940432E-002 1.3995502E-002 4.8974502E-004 -3.9120717E-005 2.2611915E-006
 TD 1.986760E-006 0.000000E+000 0.000000E+000 0.000000E+000 0.000000E+000 0.000000E+000 2.300000E+001
 LD 3.650100E-001 1.529600E+000
+CC
+CC ---------------------------------------------------------------------------
+CC OKP4  (Osaka Gas Chemicals OKP-4 optical polyester; high-index, low-Abbe)
+CC ---------------------------------------------------------------------------
+CC Source: Osaka Gas Chemicals OKP datasheet handbook values nd=1.6074,
+CC         Vd=27.0. No vendor Sellmeier is published. Single-term Sellmeier
+CC         synthesized in the same style as PMMA / POLYCARB / E48R in this
+CC         file, calibrated to (nd, Vd) at the d / F / C lines:
+CC   n^2 - 1 = 1.4834 * L^2 / (L^2 - 0.0219)   (L in micrometers)
+CC AGF Sellmeier 1 (formula type 2): K1 = 1.4834, L1 = 0.0219 um^2.
+CC
+CC Reference values (computed from Sellmeier above):
+CC    @ 486.1 nm (F-line): n approx 1.62319
+CC    @ 587.6 nm (d-line): n approx 1.60744   <-- catalog table value
+CC    @ 656.3 nm (C-line): n approx 1.60088
+CC Vd (computed F/d/C) approx 27.1
+CC
+CC Added for ingestion of US11536962 (BOE near-eye AR eyepiece): the negative
+CC second lens is OKP4. Single-term fit reproduces nd well; treat dispersion
+CC as approximate (no published vendor Sellmeier). For precision design, refit
+CC from the Osaka Gas tabulated n(L).
+CC ---------------------------------------------------------------------------
+NM OKP4 2 0 1.60740 27.0 0 0 1
+GC Osaka Gas OKP-4 optical polyester; synthesized 1-term Sellmeier to nd/Vd
+ED 6.000000E+001 6.000000E+001 1.270000E+000 0.000000E+000 0 0
+CD 1.4834000E+000 2.1900000E-002 0.0000000E+000 0.0000000E+000 0.0000000E+000 0.0000000E+000
+TD 0.000000E+000 0.000000E+000 0.000000E+000 0.000000E+000 0.000000E+000 0.000000E+000 2.000000E+001
+LD 4.000000E-001 7.000000E-001

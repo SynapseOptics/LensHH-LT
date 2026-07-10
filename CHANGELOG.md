@@ -2,6 +2,31 @@
 
 All notable changes to LensHH-LT and the LensHH-LT-Engine.
 
+## 1.0.133 — 2026-07-09
+
+### Fixed
+- **HYLD tolerance-sensitivity (SENS) operand now correct in the C++/GPU engine.**
+  For the first optical surface the engine computed the ray direction from a trace
+  of the whole system instead of the collimated launch ray, which skewed SENS
+  values (the effect is largest near normal incidence, where SENS is most
+  sensitive). The C++/GPU result now matches the reference engine exactly. Only
+  affects merit functions that use the SENS operand.
+- **Front Focal Length now correct for infinite-conjugate systems.** The paraxial
+  Front Focal Length traced the angle ray through the object distance; for an object
+  at infinity that distance is stored as a large sentinel, which was propagated
+  instead of skipped, so FFL was reported as an astronomically large number. It now
+  treats the object as infinite and reports the true front focal length. Effective and
+  back focal lengths, layouts, spot diagrams, and MTF were unaffected.
+- **Total Track now correct for stop-first systems and infinite gaps.** When the first
+  surface is the aperture stop, the airspace to the first lens is now **included** when
+  it is a real front stop (positive gap) and excluded only when the stop sits behind the
+  first surface (negative gap) — previously that gap was always dropped, understating the
+  track. An afocal / infinite spacer between elements is also no longer summed into the
+  track. The correction is applied consistently everywhere total track is computed —
+  the paraxial report, the 2D layout, the TTRACK merit operand, and the optimizer's
+  Jacobian — in both the C# and native engines (CPU and GPU), which now share a single
+  total-track routine so the value can never diverge between views again.
+
 ## 1.0.132 — 2026-07-05
 
 ### Fixed
