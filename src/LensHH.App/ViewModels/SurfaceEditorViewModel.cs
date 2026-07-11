@@ -97,6 +97,7 @@ public partial class SurfaceRowViewModel : ObservableObject
         get
         {
             string val = double.IsPositiveInfinity(_surface.Radius) ? "Infinity" : _surface.Radius.ToString("G8", CultureInfo.InvariantCulture);
+            if (IsRadiusOwned) return val;   // MCE-owned: base variable is inert; V/P shown per-config in the MCE
             if (_surface.CurvatureVariable) val += " V";
             else if (HasPickup(_surface.Index, PickupParameter.Radius)) val += " P";
             return val;
@@ -127,6 +128,7 @@ public partial class SurfaceRowViewModel : ObservableObject
         get
         {
             string val = double.IsPositiveInfinity(_surface.Thickness) ? "Infinity" : _surface.Thickness.ToString("G8", CultureInfo.InvariantCulture);
+            if (IsThicknessOwned) return val;   // MCE-owned: base variable is inert; V/P shown per-config in the MCE
             if (_surface.ThicknessVariable) val += " V";
             else if (HasPickup(_surface.Index, PickupParameter.Thickness)) val += " P";
             return val;
@@ -144,6 +146,7 @@ public partial class SurfaceRowViewModel : ObservableObject
         get
         {
             string val = _surface.Conic.ToString("G8", CultureInfo.InvariantCulture);
+            if (IsConicOwned) return val;   // MCE-owned: base variable is inert; V/P shown per-config in the MCE
             if (_surface.ConicVariable) val += " V";
             else if (HasPickup(_surface.Index, PickupParameter.Conic)) val += " P";
             return val;

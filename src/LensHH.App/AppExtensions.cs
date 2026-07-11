@@ -66,6 +66,13 @@ namespace LensHH.App
         public static ICellOwnershipProvider? CellOwnership { get; set; }
 
         /// <summary>
+        /// Optional provider of config-specific optimization variables (advanced edition). When set,
+        /// the shared Variable Editor lists them (with editable bounds) alongside the base surface
+        /// variables; null (standard build) → only base variables are shown.
+        /// </summary>
+        public static IConfigVariableProvider? ConfigVariables { get; set; }
+
+        /// <summary>
         /// Optional optimizer factory. When set (an advanced-edition host with multi-configuration
         /// designs), the shared optimize dialogs build their <see cref="LocalOptimizer"/> through it
         /// so the host can pass its multi-configuration editor at CONSTRUCTION (the merit evaluator
@@ -142,5 +149,28 @@ namespace LensHH.App
     {
         /// <summary>True if this surface parameter varies across configurations (MCE-owned).</summary>
         bool IsVariedAcrossConfigs(int surfaceIndex, SurfaceConfigParam param);
+    }
+
+    /// <summary>
+    /// A config-specific optimization variable surfaced to the shared Variable Editor (advanced
+    /// edition). Bounds are read/written through delegates, so the editor needs no knowledge of the
+    /// multi-configuration model — it just shows a row and edits Min/Max like any other variable.
+    /// </summary>
+    public sealed class ConfigVariableInfo
+    {
+        public string Description { get; init; } = "";     // e.g. "S6 Thickness [Config 2]"
+        public int SurfaceIndex { get; init; }
+        public System.Func<double?> GetMin { get; init; } = () => null;
+        public System.Func<double?> GetMax { get; init; } = () => null;
+        public System.Action<double?> SetMin { get; init; } = _ => { };
+        public System.Action<double?> SetMax { get; init; } = _ => { };
+    }
+
+    /// <summary>Neutral seam: an advanced-edition host enumerates its config-specific optimization
+    /// variables (with bound accessors) so the shared Variable Editor can list + edit them. Null in
+    /// the standard build → the editor shows only base surface variables.</summary>
+    public interface IConfigVariableProvider
+    {
+        System.Collections.Generic.IReadOnlyList<ConfigVariableInfo> GetConfigVariables();
     }
 }

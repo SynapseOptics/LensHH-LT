@@ -13,25 +13,25 @@ public enum ConstraintType { Unconstrained, MinMax, MaxOnly, MinOnly }
 
 public partial class VariableRowViewModel : ObservableObject
 {
-    private readonly Surface _surface;
-    private readonly string _param; // "Curvature", "Thickness", "Conic", "Aspheric"
-    private readonly int _asphericIndex; // -1 if not aspheric
+    private readonly Func<double?> _getMin;
+    private readonly Func<double?> _getMax;
+    private readonly Action<double?> _setMin;
+    private readonly Action<double?> _setMax;
 
-    public VariableRowViewModel(int number, Surface surface, string param, int asphericIndex = -1)
+    // Bound accessors are delegates so a row can represent a base surface variable OR a
+    // config-specific variable (whose bounds live in the multi-configuration editor) uniformly.
+    public VariableRowViewModel(int number, string description, int surfaceIndex,
+        Func<double?> getMin, Func<double?> getMax, Action<double?> setMin, Action<double?> setMax)
     {
         Number = number;
-        _surface = surface;
-        _param = param;
-        _asphericIndex = asphericIndex;
+        Description = description;
+        SurfaceIndex = surfaceIndex;
+        _getMin = getMin; _getMax = getMax; _setMin = setMin; _setMax = setMax;
     }
 
     public int Number { get; }
-
-    public string Description => _param == "Aspheric"
-        ? $"Asphere A{(_asphericIndex + 1) * 2}" // A2, A4, A6, ... A16
-        : _param;
-
-    public int SurfaceIndex => _surface.Index;
+    public string Description { get; }
+    public int SurfaceIndex { get; }
 
     // ── Constraint Type ──
 
@@ -130,45 +130,10 @@ public partial class VariableRowViewModel : ObservableObject
 
     // ── Accessors ──
 
-    private double? GetMin() => _param switch
-    {
-        "Curvature" => _surface.CurvatureMin,
-        "Thickness" => _surface.ThicknessMin,
-        "Conic" => _surface.ConicMin,
-        "Aspheric" => _surface.AsphericMin[_asphericIndex],
-        _ => null
-    };
-
-    private double? GetMax() => _param switch
-    {
-        "Curvature" => _surface.CurvatureMax,
-        "Thickness" => _surface.ThicknessMax,
-        "Conic" => _surface.ConicMax,
-        "Aspheric" => _surface.AsphericMax[_asphericIndex],
-        _ => null
-    };
-
-    private void SetMin(double? v)
-    {
-        switch (_param)
-        {
-            case "Curvature": _surface.CurvatureMin = v; break;
-            case "Thickness": _surface.ThicknessMin = v; break;
-            case "Conic": _surface.ConicMin = v; break;
-            case "Aspheric": _surface.AsphericMin[_asphericIndex] = v; break;
-        }
-    }
-
-    private void SetMax(double? v)
-    {
-        switch (_param)
-        {
-            case "Curvature": _surface.CurvatureMax = v; break;
-            case "Thickness": _surface.ThicknessMax = v; break;
-            case "Conic": _surface.ConicMax = v; break;
-            case "Aspheric": _surface.AsphericMax[_asphericIndex] = v; break;
-        }
-    }
+    private double? GetMin() => _getMin();
+    private double? GetMax() => _getMax();
+    private void SetMin(double? v) => _setMin(v);
+    private void SetMax(double? v) => _setMax(v);
 }
 
 public partial class VariableEditorViewModel : ObservableObject
@@ -191,21 +156,47 @@ public partial class VariableEditorViewModel : ObservableObject
         int num = 1;
         foreach (var surf in _session.System.Surfaces)
         {
-            if (surf.CurvatureVariable)
-                Variables.Add(new VariableRowViewModel(num++, surf, "Curvature"));
-            if (surf.ThicknessVariable)
-                Variables.Add(new VariableRowViewModel(num++, surf, "Thickness"));
-            if (surf.ConicVariable)
-                Variables.Add(new VariableRowViewModel(num++, surf, "Conic"));
-            for (int j = 0; j < surf.AsphericVariable.Length; j++)
+            var s = surf;   // per-iteration capture for the bound delegates
+            // Skip base variables that are owned by the multi-configuration editor: their
+            // variability + bounds live per configuration (shown as separate config rows below).
+            if (s.CurvatureVariable && !Owned(s.Index, SurfaceConfigParam.Curvature))
+                Variables.Add(new VariableRowViewModel(num++, "Curvature", s.Index,
+                    () => s.CurvatureMin, () => s.CurvatureMax,
+                    v => s.CurvatureMin = v, v => s.CurvatureMax = v));
+            if (s.ThicknessVariable && !Owned(s.Index, SurfaceConfigParam.Thickness))
+                Variables.Add(new VariableRowViewModel(num++, "Thickness", s.Index,
+                    () => s.ThicknessMin, () => s.ThicknessMax,
+                    v => s.ThicknessMin = v, v => s.ThicknessMax = v));
+            if (s.ConicVariable && !Owned(s.Index, SurfaceConfigParam.Conic))
+                Variables.Add(new VariableRowViewModel(num++, "Conic", s.Index,
+                    () => s.ConicMin, () => s.ConicMax,
+                    v => s.ConicMin = v, v => s.ConicMax = v));
+            for (int j = 0; j < s.AsphericVariable.Length; j++)
             {
-                if (surf.AsphericVariable[j])
-                    Variables.Add(new VariableRowViewModel(num++, surf, "Aspheric", j));
+                if (s.AsphericVariable[j])
+                {
+                    int jj = j;
+                    Variables.Add(new VariableRowViewModel(num++, $"Asphere A{(jj + 1) * 2}", s.Index,
+                        () => s.AsphericMin[jj], () => s.AsphericMax[jj],
+                        v => s.AsphericMin[jj] = v, v => s.AsphericMax[jj] = v));
+                }
             }
         }
+
+        // Config-specific variables (advanced edition): shown here with editable bounds. The Solve
+        // dialog only sets the solve type; bounds are owned by this editor. Null seam → nothing added.
+        var cfgVars = AppExtensions.ConfigVariables?.GetConfigVariables();
+        if (cfgVars != null)
+            foreach (var cv in cfgVars)
+                Variables.Add(new VariableRowViewModel(num++, cv.Description, cv.SurfaceIndex,
+                    cv.GetMin, cv.GetMax, cv.SetMin, cv.SetMax));
+
         OnPropertyChanged(nameof(HasVariables));
         OnPropertyChanged(nameof(NoVariablesMessage));
     }
+
+    private static bool Owned(int surfaceIndex, SurfaceConfigParam param)
+        => AppExtensions.CellOwnership?.IsVariedAcrossConfigs(surfaceIndex, param) ?? false;
 
     public GuiSession Session => _session;
 }

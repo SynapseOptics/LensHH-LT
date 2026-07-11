@@ -123,7 +123,7 @@ public partial class OptimizationDialogViewModel : ObservableObject
             // Populate variable table with starting values
             for (int i = 0; i < optimizer.Variables.Count; i++)
             {
-                double startVal = GetCurrentVariableValue(optimizer.Variables[i]);
+                double startVal = optimizer.GetCurrentValue(optimizer.Variables[i]);
                 VariableRows.Add(new VariableProgressRow(
                     optimizer.Variables[i].Description, startVal));
             }
@@ -174,7 +174,7 @@ public partial class OptimizationDialogViewModel : ObservableObject
 
             for (int i = 0; i < optimizer.Variables.Count; i++)
             {
-                double finalVal = GetCurrentVariableValue(optimizer.Variables[i]);
+                double finalVal = optimizer.GetCurrentValue(optimizer.Variables[i]);
                 if (i < VariableRows.Count)
                     VariableRows[i].Update(finalVal, optimizer.StartingValues[i]);
             }
