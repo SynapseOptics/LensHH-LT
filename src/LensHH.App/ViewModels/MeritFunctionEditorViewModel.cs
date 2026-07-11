@@ -303,6 +303,32 @@ public partial class OperandRowViewModel : ObservableObject
         set { if (TryParse(value, out double v)) { _operand.Weight = v; OnPropertyChanged(); } }
     }
 
+    /// <summary>
+    /// Configuration this operand is evaluated in (advanced edition): "All" (evaluated in the
+    /// active configuration only — the default) or a 1-based configuration number. Multi-config
+    /// optimization needs the metric present in each configuration, so assign one operand per
+    /// config (e.g. a WAVEX on Config 1 and another on Config 2). The merit editor hides this
+    /// column in the single-configuration (standard) build.
+    /// </summary>
+    public string ConfigText
+    {
+        get => _operand.ConfigurationNo < 0
+            ? "All"
+            : (_operand.ConfigurationNo + 1).ToString(CultureInfo.InvariantCulture);
+        set
+        {
+            string s = (value ?? "").Trim();
+            int cfg;
+            if (s.Length == 0 || s.Equals("All", StringComparison.OrdinalIgnoreCase) || s == "0")
+                cfg = -1;   // all / active-config
+            else if (int.TryParse(s, NumberStyles.Integer, CultureInfo.InvariantCulture, out int n) && n >= 1)
+                cfg = n - 1;   // 1-based UI → 0-based config index
+            else { OnPropertyChanged(); return; }   // reject unparseable; snap back
+            if (_operand.ConfigurationNo != cfg) _operand.ConfigurationNo = cfg;
+            OnPropertyChanged();
+        }
+    }
+
     // ── Constraint mode (Target / Min / Max / Min+Max) ──
 
     public static List<string> ModeOptions { get; } = new() { "Target", "Min", "Max", "Min/Max" };

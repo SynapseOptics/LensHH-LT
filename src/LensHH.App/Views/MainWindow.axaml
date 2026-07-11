@@ -424,7 +424,8 @@
           </Border>
 
           <!-- Merit Function DataGrid -->
-          <DataGrid ItemsSource="{Binding MeritFunctionEditor.Operands}"
+          <DataGrid x:Name="MeritGrid"
+                    ItemsSource="{Binding MeritFunctionEditor.Operands}"
                     SelectedItem="{Binding MeritFunctionEditor.SelectedOperand}"
                     AutoGenerateColumns="False"
                     CanUserReorderColumns="False"
@@ -511,6 +512,16 @@
                 <DataGridTemplateColumn.CellTemplate>
                   <DataTemplate>
                     <TextBox Text="{Binding WeightText}" TextAlignment="Center" HorizontalContentAlignment="Center" Margin="1,0" Padding="2" BorderThickness="0" />
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+
+              <!-- Configuration (multi-config only; hidden in the single-config build via
+                   RefreshConfigNav). "All" or a 1-based config number. -->
+              <DataGridTemplateColumn Header="Config" Width="70" IsVisible="False">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate>
+                    <TextBox Text="{Binding ConfigText}" TextAlignment="Center" HorizontalContentAlignment="Center" Margin="1,0" Padding="2" BorderThickness="0" />
                   </DataTemplate>
                 </DataGridTemplateColumn.CellTemplate>
               </DataGridTemplateColumn>
