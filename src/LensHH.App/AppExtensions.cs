@@ -149,6 +149,11 @@ namespace LensHH.App
     {
         /// <summary>True if this surface parameter varies across configurations (MCE-owned).</summary>
         bool IsVariedAcrossConfigs(int surfaceIndex, SurfaceConfigParam param);
+
+        /// <summary>Solve marker for an owned parameter in the ACTIVE configuration: " V" (variable),
+        /// " P" (pickup), or "" (fixed / not owned). The Lens Editor appends it to the owned cell so
+        /// the user sees the solve of the value currently shown.</summary>
+        string ConfigSolveMarker(int surfaceIndex, SurfaceConfigParam param);
     }
 
     /// <summary>

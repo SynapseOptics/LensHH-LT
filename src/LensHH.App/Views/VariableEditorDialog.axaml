@@ -5,7 +5,7 @@
         x:DataType="vm:VariableEditorViewModel"
         Title="Variable Editor"
         Icon="avares://LensHH.App/Assets/icon_256.png"
-        Width="700" Height="450"
+        Width="900" Height="480"
         WindowStartupLocation="CenterOwner"
         CanResize="True">
 
@@ -44,7 +44,7 @@
       </DataGrid.Styles>
       <DataGrid.Columns>
         <DataGridTextColumn Header="#" Binding="{Binding Number}" IsReadOnly="True" Width="40" />
-        <DataGridTextColumn Header="Description" Binding="{Binding Description}" IsReadOnly="True" Width="130" />
+        <DataGridTextColumn Header="Description" Binding="{Binding Description}" IsReadOnly="True" Width="290" />
         <DataGridTextColumn Header="Surface" Binding="{Binding SurfaceIndex}" IsReadOnly="True" Width="70" />
 
         <!-- Constraint Type: ComboBox -->

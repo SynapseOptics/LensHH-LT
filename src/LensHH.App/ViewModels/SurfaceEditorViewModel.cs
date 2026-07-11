@@ -97,7 +97,7 @@ public partial class SurfaceRowViewModel : ObservableObject
         get
         {
             string val = double.IsPositiveInfinity(_surface.Radius) ? "Infinity" : _surface.Radius.ToString("G8", CultureInfo.InvariantCulture);
-            if (IsRadiusOwned) return val;   // MCE-owned: base variable is inert; V/P shown per-config in the MCE
+            if (IsRadiusOwned) return val + Marker(LensHH.App.SurfaceConfigParam.Curvature);   // owned: show active-config solve
             if (_surface.CurvatureVariable) val += " V";
             else if (HasPickup(_surface.Index, PickupParameter.Radius)) val += " P";
             return val;
@@ -128,7 +128,7 @@ public partial class SurfaceRowViewModel : ObservableObject
         get
         {
             string val = double.IsPositiveInfinity(_surface.Thickness) ? "Infinity" : _surface.Thickness.ToString("G8", CultureInfo.InvariantCulture);
-            if (IsThicknessOwned) return val;   // MCE-owned: base variable is inert; V/P shown per-config in the MCE
+            if (IsThicknessOwned) return val + Marker(LensHH.App.SurfaceConfigParam.Thickness);   // owned: show active-config solve
             if (_surface.ThicknessVariable) val += " V";
             else if (HasPickup(_surface.Index, PickupParameter.Thickness)) val += " P";
             return val;
@@ -146,7 +146,7 @@ public partial class SurfaceRowViewModel : ObservableObject
         get
         {
             string val = _surface.Conic.ToString("G8", CultureInfo.InvariantCulture);
-            if (IsConicOwned) return val;   // MCE-owned: base variable is inert; V/P shown per-config in the MCE
+            if (IsConicOwned) return val + Marker(LensHH.App.SurfaceConfigParam.Conic);   // owned: show active-config solve
             if (_surface.ConicVariable) val += " V";
             else if (HasPickup(_surface.Index, PickupParameter.Conic)) val += " P";
             return val;
@@ -266,6 +266,11 @@ public partial class SurfaceRowViewModel : ObservableObject
     // the neutral cell-ownership seam — null in the standard build → never owned (LT unchanged).
     private bool Owned(LensHH.App.SurfaceConfigParam p)
         => LensHH.App.AppExtensions.CellOwnership?.IsVariedAcrossConfigs(_surface.Index, p) ?? false;
+
+    // Active-configuration solve marker (" V" / " P" / "") for an owned parameter, appended to the
+    // (italic, read-only) cell so the user sees the solve of the value currently shown.
+    private string Marker(LensHH.App.SurfaceConfigParam p)
+        => LensHH.App.AppExtensions.CellOwnership?.ConfigSolveMarker(_surface.Index, p) ?? "";
 
     public bool IsRadiusOwned    => Owned(LensHH.App.SurfaceConfigParam.Curvature);
     public bool IsThicknessOwned => Owned(LensHH.App.SurfaceConfigParam.Thickness);
