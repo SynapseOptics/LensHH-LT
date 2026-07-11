@@ -25,6 +25,12 @@
     <Style Selector="TextBlock.unresolved-glass">
       <Setter Property="Foreground" Value="Red" />
     </Style>
+    <!-- Italic + grey for surface parameters owned by the multi-configuration editor: their
+         per-config values live in the MCE, so the single base cell is read-only here. -->
+    <Style Selector="TextBlock.config-owned">
+      <Setter Property="FontStyle" Value="Italic" />
+      <Setter Property="Foreground" Value="Gray" />
+    </Style>
   </Window.Styles>
 
   <DockPanel>
@@ -238,6 +244,7 @@
                   <DataTemplate>
                     <Grid>
                       <TextBlock Text="{Binding RadiusDisplay}"
+                                 Classes.config-owned="{Binding IsRadiusOwned}"
                                  HorizontalAlignment="Center"
                                  VerticalAlignment="Center" />
                     </Grid>
@@ -245,7 +252,7 @@
                 </DataGridTemplateColumn.CellTemplate>
                 <DataGridTemplateColumn.CellEditingTemplate>
                   <DataTemplate>
-                    <TextBox Text="{Binding Radius, Converter={StaticResource InfConv}, UpdateSourceTrigger=LostFocus}" TextAlignment="Center" />
+                    <TextBox Text="{Binding Radius, Converter={StaticResource InfConv}, UpdateSourceTrigger=LostFocus}" IsReadOnly="{Binding IsRadiusOwned}" TextAlignment="Center" />
                   </DataTemplate>
                 </DataGridTemplateColumn.CellEditingTemplate>
               </DataGridTemplateColumn>
@@ -256,6 +263,7 @@
                   <DataTemplate>
                     <Grid>
                       <TextBlock Text="{Binding ThicknessDisplay}"
+                                 Classes.config-owned="{Binding IsThicknessOwned}"
                                  HorizontalAlignment="Center"
                                  VerticalAlignment="Center" />
                     </Grid>
@@ -263,7 +271,7 @@
                 </DataGridTemplateColumn.CellTemplate>
                 <DataGridTemplateColumn.CellEditingTemplate>
                   <DataTemplate>
-                    <TextBox Text="{Binding Thickness, Converter={StaticResource InfConv}, UpdateSourceTrigger=LostFocus}" TextAlignment="Center" />
+                    <TextBox Text="{Binding Thickness, Converter={StaticResource InfConv}, UpdateSourceTrigger=LostFocus}" IsReadOnly="{Binding IsThicknessOwned}" TextAlignment="Center" />
                   </DataTemplate>
                 </DataGridTemplateColumn.CellEditingTemplate>
               </DataGridTemplateColumn>
@@ -281,6 +289,7 @@
                          strings like "0 V" in the middle of the cell. -->
                     <Grid>
                       <TextBlock Text="{Binding ConicDisplay}"
+                                 Classes.config-owned="{Binding IsConicOwned}"
                                  HorizontalAlignment="Center"
                                  VerticalAlignment="Center" />
                     </Grid>
@@ -288,7 +297,7 @@
                 </DataGridTemplateColumn.CellTemplate>
                 <DataGridTemplateColumn.CellEditingTemplate>
                   <DataTemplate>
-                    <TextBox Text="{Binding Conic, Converter={StaticResource InfConv}, UpdateSourceTrigger=LostFocus}" TextAlignment="Center" />
+                    <TextBox Text="{Binding Conic, Converter={StaticResource InfConv}, UpdateSourceTrigger=LostFocus}" IsReadOnly="{Binding IsConicOwned}" TextAlignment="Center" />
                   </DataTemplate>
                 </DataGridTemplateColumn.CellEditingTemplate>
               </DataGridTemplateColumn>
@@ -299,12 +308,13 @@
                   <DataTemplate>
                     <TextBlock Text="{Binding Material}"
                                Classes.unresolved-glass="{Binding IsGlassUnresolved}"
+                               Classes.config-owned="{Binding IsGlassOwned}"
                                VerticalAlignment="Center" TextAlignment="Center" Margin="4,0" />
                   </DataTemplate>
                 </DataGridTemplateColumn.CellTemplate>
                 <DataGridTemplateColumn.CellEditingTemplate>
                   <DataTemplate>
-                    <TextBox Text="{Binding Material, UpdateSourceTrigger=LostFocus}" TextAlignment="Center" />
+                    <TextBox Text="{Binding Material, UpdateSourceTrigger=LostFocus}" IsReadOnly="{Binding IsGlassOwned}" TextAlignment="Center" />
                   </DataTemplate>
                 </DataGridTemplateColumn.CellEditingTemplate>
               </DataGridTemplateColumn>

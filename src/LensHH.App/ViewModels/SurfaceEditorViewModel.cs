@@ -256,6 +256,19 @@ public partial class SurfaceRowViewModel : ObservableObject
         && _surface.Index != 0
         && !IsImage;
 
+    // ── Multi-configuration ownership (advanced edition) ──────────────────────
+    // A surface parameter that varies across configurations is OWNED by the multi-configuration
+    // editor: the Lens Editor renders it read-only + italic, because its per-config values live
+    // in that editor and editing the single base value here would silently desync. Derived from
+    // the neutral cell-ownership seam — null in the standard build → never owned (LT unchanged).
+    private bool Owned(LensHH.App.SurfaceConfigParam p)
+        => LensHH.App.AppExtensions.CellOwnership?.IsVariedAcrossConfigs(_surface.Index, p) ?? false;
+
+    public bool IsRadiusOwned    => Owned(LensHH.App.SurfaceConfigParam.Curvature);
+    public bool IsThicknessOwned => Owned(LensHH.App.SurfaceConfigParam.Thickness);
+    public bool IsConicOwned     => Owned(LensHH.App.SurfaceConfigParam.Conic);
+    public bool IsGlassOwned     => Owned(LensHH.App.SurfaceConfigParam.Glass);
+
     public bool IsFixedSemiDiameter
     {
         get => _surface.SemiDiameterMode == SemiDiameterMode.Fixed;
@@ -310,6 +323,12 @@ public partial class SurfaceRowViewModel : ObservableObject
         OnPropertyChanged(nameof(IsCaEditable));
         OnPropertyChanged(nameof(IsSemiDiameterEditable));
         OnPropertyChanged(nameof(CanSetFixed));
+        // Multi-config ownership (read-only + italic) can change when an operand is
+        // added/removed or the config count crosses 1.
+        OnPropertyChanged(nameof(IsRadiusOwned));
+        OnPropertyChanged(nameof(IsThicknessOwned));
+        OnPropertyChanged(nameof(IsConicOwned));
+        OnPropertyChanged(nameof(IsGlassOwned));
         // Stop checkbox: when the stop moves to another surface, the
         // previously-stop row's underlying _surface.IsStop has been
         // flipped false outside this VM. Without this notification the
