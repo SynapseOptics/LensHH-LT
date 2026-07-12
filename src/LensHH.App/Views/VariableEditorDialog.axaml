@@ -45,7 +45,7 @@
       <DataGrid.Columns>
         <DataGridTextColumn Header="#" Binding="{Binding Number}" IsReadOnly="True" Width="40" />
         <DataGridTextColumn Header="Description" Binding="{Binding Description}" IsReadOnly="True" Width="290" />
-        <DataGridTextColumn Header="Surface" Binding="{Binding SurfaceIndex}" IsReadOnly="True" Width="70" />
+        <DataGridTextColumn Header="Surface" Binding="{Binding SurfaceIndex}" IsReadOnly="True" Width="90" />
 
         <!-- Constraint Type: ComboBox -->
         <DataGridTemplateColumn Header="Constraint" Width="140">

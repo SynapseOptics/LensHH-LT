@@ -643,9 +643,10 @@ public partial class MeritFunctionEditorViewModel : ObservableObject
         try
         {
             var mf = _session.MeritFunction;
-            var evaluator = new MeritFunctionEvaluator(
-                _session.System, _session.GlassCatalog)
-            { ParallelEvaluation = true };
+            // Config-aware in the advanced edition: evaluates every configuration (each operand in
+            // its assigned config), so the merit is the same regardless of the active config.
+            var evaluator = AppExtensions.CreateMeritEvaluator(_session.System, _session.GlassCatalog);
+            evaluator.ParallelEvaluation = true;
             double merit = evaluator.Evaluate(mf);
             MeritValueText = $"Merit: {merit:E6}";
 

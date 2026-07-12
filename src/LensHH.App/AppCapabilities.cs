@@ -18,6 +18,10 @@ namespace LensHH.App
         /// <summary>Product name shown in the title bar and About box. Default "LensHH-LT".</summary>
         public static string ProductName { get; set; } = "LensHH-LT";
 
+        /// <summary>True when the edition supports sagittal (Hx) fields — shows the Hx column in the
+        /// merit editor. Default false (LT); the advanced-edition host sets it true.</summary>
+        public static bool SagittalFieldSupported { get; set; } = false;
+
         /// <summary>
         /// Version string shown in the About box. When null (default) the About box falls back
         /// to this assembly's version. A host whose own assembly carries the product version

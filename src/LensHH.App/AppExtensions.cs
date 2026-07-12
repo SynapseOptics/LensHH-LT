@@ -88,6 +88,16 @@ namespace LensHH.App
             => LocalOptimizerFactory?.Invoke(system, meritFunction, glassMgr)
                ?? new LocalOptimizer(system, meritFunction, glassMgr);
 
+        /// <summary>Merit evaluator factory: an advanced-edition host injects its multi-configuration
+        /// editor so the Merit tab's Evaluate/Value sums every configuration (each operand in its own
+        /// config). Null in the standard build → the plain single-config evaluator.</summary>
+        public static Func<OpticalSystem, GlassCatalogManager, LensHH.Core.MeritFunction.MeritFunctionEvaluator>? MeritEvaluatorFactory { get; set; }
+
+        /// <summary>Construct a MeritFunctionEvaluator via <see cref="MeritEvaluatorFactory"/> when set, else the plain constructor.</summary>
+        internal static LensHH.Core.MeritFunction.MeritFunctionEvaluator CreateMeritEvaluator(OpticalSystem system, GlassCatalogManager glassMgr)
+            => MeritEvaluatorFactory?.Invoke(system, glassMgr)
+               ?? new LensHH.Core.MeritFunction.MeritFunctionEvaluator(system, glassMgr);
+
         // Sibling factories for the global-search optimizers, same contract as LocalOptimizerFactory:
         // null in the standard build; an advanced-edition host injects its multi-configuration editor
         // at construction. The optimizers themselves already accept it; these seams route it through.

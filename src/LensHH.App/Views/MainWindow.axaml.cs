@@ -57,11 +57,14 @@ public partial class MainWindow : Window
             var nav = AppExtensions.ConfigNavigator;
             bool show = nav != null && nav.Count > 1;
             ConfigNavBar.IsVisible = show;
-            // Per-operand Configuration column in the merit editor is meaningful only with
-            // multiple configurations — hidden otherwise (LT single-config unchanged). Avalonia
-            // doesn't generate a field for a DataGridColumn x:Name, so find it by header.
+            // Merit-editor columns gated by edition (Avalonia doesn't field-generate a DataGridColumn
+            // x:Name, so find by header): Config only with >1 configuration; Hx only when the advanced
+            // edition supports sagittal fields. LT single-config leaves both hidden.
             foreach (var col in MeritGrid.Columns)
+            {
                 if (col.Header as string == "Config") col.IsVisible = show;
+                if (col.Header as string == "Hx") col.IsVisible = AppCapabilities.SagittalFieldSupported;
+            }
             if (!show) return;
             ConfigLabel.Text = $"{nav!.Current} of {nav.Count}";
             PrevConfigButton.IsEnabled = nav.Current > 1;
