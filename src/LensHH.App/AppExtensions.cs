@@ -172,6 +172,11 @@ namespace LensHH.App
         /// field/wavelength index) is owned by the multi-configuration editor — rendered read-only +
         /// italic in the Field / Wavelength editors.</summary>
         bool IsSystemCellVaried(SystemConfigCell cell, int index);
+
+        /// <summary>Solve marker for an owned system cell in the ACTIVE configuration: " V" (variable),
+        /// " P" (pickup), or "" (fixed / not owned). Field Y / X cells can be variable or pickup;
+        /// weight cells are fixed-only and always return "".</summary>
+        string SystemConfigMarker(SystemConfigCell cell, int index);
     }
 
     /// <summary>
