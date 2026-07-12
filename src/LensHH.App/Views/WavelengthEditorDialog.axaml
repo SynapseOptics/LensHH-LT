@@ -14,6 +14,11 @@
       <Setter Property="Foreground" Value="Red" />
       <Setter Property="FontWeight" Value="Bold" />
     </Style>
+    <!-- MCE-owned (varied across configurations): read-only, shown italic + greyed. -->
+    <Style Selector="TextBlock.config-owned">
+      <Setter Property="FontStyle" Value="Italic" />
+      <Setter Property="Foreground" Value="Gray" />
+    </Style>
   </Window.Styles>
 
   <DockPanel Margin="8">
@@ -39,16 +44,29 @@
             <DataTemplate>
               <TextBlock Text="{Binding ValueText}" Margin="4,0" VerticalAlignment="Center"
                          Classes.out-of-range="{Binding IsOutOfRange}"
+                         Classes.config-owned="{Binding IsValueOwned}"
                          ToolTip.Tip="{Binding RangeWarning}" />
             </DataTemplate>
           </DataGridTemplateColumn.CellTemplate>
           <DataGridTemplateColumn.CellEditingTemplate>
             <DataTemplate>
-              <TextBox Text="{Binding ValueText, Mode=TwoWay}" />
+              <TextBox Text="{Binding ValueText, Mode=TwoWay}" IsReadOnly="{Binding IsValueOwned}" />
             </DataTemplate>
           </DataGridTemplateColumn.CellEditingTemplate>
         </DataGridTemplateColumn>
-        <DataGridTextColumn Header="Weight" Binding="{Binding WeightText}" Width="80" />
+        <DataGridTemplateColumn Header="Weight" Width="80">
+          <DataGridTemplateColumn.CellTemplate>
+            <DataTemplate>
+              <TextBlock Text="{Binding WeightText}" Margin="4,0" VerticalAlignment="Center"
+                         Classes.config-owned="{Binding IsWeightOwned}" />
+            </DataTemplate>
+          </DataGridTemplateColumn.CellTemplate>
+          <DataGridTemplateColumn.CellEditingTemplate>
+            <DataTemplate>
+              <TextBox Text="{Binding WeightText, Mode=TwoWay}" IsReadOnly="{Binding IsWeightOwned}" />
+            </DataTemplate>
+          </DataGridTemplateColumn.CellEditingTemplate>
+        </DataGridTemplateColumn>
         <DataGridCheckBoxColumn Header="Primary" Binding="{Binding IsPrimary}" Width="70" />
         <DataGridTextColumn Header="Material range" Binding="{Binding RangeWarning}"
                             IsReadOnly="True" Width="*" />

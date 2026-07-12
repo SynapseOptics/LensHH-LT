@@ -150,6 +150,9 @@ namespace LensHH.App
     /// <summary>Surface parameters that can be varied across configurations.</summary>
     public enum SurfaceConfigParam { Curvature, Thickness, Glass, Conic, SemiDiameter }
 
+    /// <summary>Non-surface (system) config cells addressed by a field / wavelength index.</summary>
+    public enum SystemConfigCell { WavelengthValue, WavelengthWeight, FieldYValue, FieldXValue, FieldWeight }
+
     /// <summary>
     /// Neutral cell-ownership seam. An advanced-edition host implements it over its
     /// multi-configuration editor; the shared surface grid renders owned cells read-only +
@@ -164,6 +167,11 @@ namespace LensHH.App
         /// " P" (pickup), or "" (fixed / not owned). The Lens Editor appends it to the owned cell so
         /// the user sees the solve of the value currently shown.</summary>
         string ConfigSolveMarker(int surfaceIndex, SurfaceConfigParam param);
+
+        /// <summary>True if a non-surface config cell (field/wavelength value or weight, at the given
+        /// field/wavelength index) is owned by the multi-configuration editor — rendered read-only +
+        /// italic in the Field / Wavelength editors.</summary>
+        bool IsSystemCellVaried(SystemConfigCell cell, int index);
     }
 
     /// <summary>

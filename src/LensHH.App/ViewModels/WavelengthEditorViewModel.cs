@@ -28,6 +28,16 @@ public partial class WavelengthRowViewModel : ObservableObject
 
     public int Number => _index + 1;
 
+    /// <summary>True when the wavelength value is varied across configurations by the multi-configuration
+    /// editor (advanced edition). The cell is then read-only + italic and its value is owned by the MCE —
+    /// editing here would silently desync from the per-config table, so writes are also rejected.</summary>
+    public bool IsValueOwned =>
+        AppExtensions.CellOwnership?.IsSystemCellVaried(SystemConfigCell.WavelengthValue, _index) ?? false;
+
+    /// <summary>True when the wavelength weight is MCE-owned (read-only + italic).</summary>
+    public bool IsWeightOwned =>
+        AppExtensions.CellOwnership?.IsSystemCellVaried(SystemConfigCell.WavelengthWeight, _index) ?? false;
+
     public string ValueText
     {
         // G10: up to 10 significant figures, no trailing zeros, no scientific
@@ -36,6 +46,7 @@ public partial class WavelengthRowViewModel : ObservableObject
         get => _wl.Value.ToString("G10", CultureInfo.InvariantCulture);
         set
         {
+            if (IsValueOwned) return;   // MCE-owned: reject writes so the base value can't desync
             if (double.TryParse(value, NumberStyles.Float | NumberStyles.AllowExponent, CultureInfo.InvariantCulture, out double v))
             {
                 _wl.Value = v;
@@ -48,7 +59,7 @@ public partial class WavelengthRowViewModel : ObservableObject
     public string WeightText
     {
         get => _wl.Weight.ToString("F2", CultureInfo.InvariantCulture);
-        set { if (double.TryParse(value, NumberStyles.Float | NumberStyles.AllowExponent, CultureInfo.InvariantCulture, out double v)) { _wl.Weight = v; OnPropertyChanged(); } }
+        set { if (IsWeightOwned) return; if (double.TryParse(value, NumberStyles.Float | NumberStyles.AllowExponent, CultureInfo.InvariantCulture, out double v)) { _wl.Weight = v; OnPropertyChanged(); } }
     }
 
     public bool IsPrimary
