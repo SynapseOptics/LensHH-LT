@@ -75,6 +75,23 @@ public partial class MainWindow : Window
     private void PrevConfig_Click(object? sender, RoutedEventArgs e) => AppExtensions.ConfigNavigator?.Prev();
     private void NextConfig_Click(object? sender, RoutedEventArgs e) => AppExtensions.ConfigNavigator?.Next();
 
+    /// <summary>Block editing of MCE-owned lens cells outright — cancelling the edit before it begins
+    /// is clearer than a read-only TextBox the user can still type into. Owned cells stay italic/greyed
+    /// (and show their active-config " V"/" P" solve marker). Standard build: nothing owned, no-op.</summary>
+    private void LensGrid_BeginningEdit(object? sender, DataGridBeginningEditEventArgs e)
+    {
+        if (e.Row?.DataContext is not ViewModels.SurfaceRowViewModel row) return;
+        bool owned = e.Column.Header switch
+        {
+            "Radius (mm)"    => row.IsRadiusOwned,
+            "Thickness (mm)" => row.IsThicknessOwned,
+            "Conic Constant" => row.IsConicOwned,
+            "Glass"          => row.IsGlassOwned,
+            _ => false,
+        };
+        if (owned) e.Cancel = true;
+    }
+
     // Render any host-contributed extension menu items under the neutral "Extensions" menu.
     // Empty in the standard build, so the menu stays hidden. Each item's Invoke runs at click
     // time with the live session, so closures see the currently loaded design.

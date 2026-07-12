@@ -201,6 +201,7 @@
                     CanUserSortColumns="False"
                     GridLinesVisibility="All"
                     IsReadOnly="False"
+                    BeginningEdit="LensGrid_BeginningEdit"
                     Margin="4"
                     FontSize="13">
             <!-- Scoped to this DataGrid only: center every column header. Other
