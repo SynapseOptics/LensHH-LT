@@ -191,6 +191,14 @@ public partial class VariableEditorViewModel : ObservableObject
                 Variables.Add(new VariableRowViewModel(num++, cv.Description, cv.SurfaceIndex,
                     cv.GetMin, cv.GetMax, cv.SetMin, cv.SetMax));
 
+        // Field-value variables (advanced edition): Field Y / X marked Variable in the field solve
+        // dialog show here with editable bounds. Same seam contract as config variables.
+        var fieldVars = AppExtensions.FieldVariables?.GetConfigVariables();
+        if (fieldVars != null)
+            foreach (var fv in fieldVars)
+                Variables.Add(new VariableRowViewModel(num++, fv.Description, fv.SurfaceIndex,
+                    fv.GetMin, fv.GetMax, fv.SetMin, fv.SetMax));
+
         OnPropertyChanged(nameof(HasVariables));
         OnPropertyChanged(nameof(NoVariablesMessage));
     }

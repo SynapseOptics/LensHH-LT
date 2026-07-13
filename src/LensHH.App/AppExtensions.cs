@@ -73,6 +73,14 @@ namespace LensHH.App
         public static IConfigVariableProvider? ConfigVariables { get; set; }
 
         /// <summary>
+        /// Optional provider of field-value optimization variables (advanced edition: Field Y / X
+        /// solves). Same contract as <see cref="ConfigVariables"/> — the shared Variable Editor lists
+        /// them with editable Min/Max; the field solve dialog only picks the solve type. Null in the
+        /// standard build → no field variables shown.
+        /// </summary>
+        public static IConfigVariableProvider? FieldVariables { get; set; }
+
+        /// <summary>
         /// Optional optimizer factory. When set (an advanced-edition host with multi-configuration
         /// designs), the shared optimize dialogs build their <see cref="LocalOptimizer"/> through it
         /// so the host can pass its multi-configuration editor at CONSTRUCTION (the merit evaluator
