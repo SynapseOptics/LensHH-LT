@@ -33,6 +33,13 @@ public partial class VariableRowViewModel : ObservableObject
     public string Description { get; }
     public int SurfaceIndex { get; }
 
+    /// <summary>Surface column text: the surface index, or "-" for variables not tied to a surface
+    /// (e.g. field-value variables, whose 1-based field index is already shown in the description).
+    /// A negative <see cref="SurfaceIndex"/> is the sentinel for "not surface-scoped".</summary>
+    public string SurfaceDisplay => SurfaceIndex < 0
+        ? "-"
+        : SurfaceIndex.ToString(CultureInfo.InvariantCulture);
+
     // ── Constraint Type ──
 
     public static List<string> ConstraintOptions { get; } = new()
