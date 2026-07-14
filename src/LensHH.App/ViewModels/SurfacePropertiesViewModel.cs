@@ -143,6 +143,25 @@ public partial class SurfacePropertiesViewModel : ObservableObject
     public ParameterStateViewModel ThicknessState { get; }
     public ParameterStateViewModel ConicState { get; }
 
+    // Aperture solve: which quantity is the free parameter depends on the aperture mode.
+    // Auto -> Clear Aperture %; Fixed -> Semi-Diameter. Only the relevant group is shown.
+    public ParameterStateViewModel SemiDiameterState { get; }
+    public ParameterStateViewModel ClearApertureState { get; }
+    public bool IsAutoAperture  => _surface.SemiDiameterMode == SemiDiameterMode.Auto;
+    public bool IsFixedAperture => _surface.SemiDiameterMode == SemiDiameterMode.Fixed;
+
+    public double SemiDiameterValue
+    {
+        get => _surface.SemiDiameter;
+        set { _surface.SemiDiameter = value; OnPropertyChanged(); }
+    }
+
+    public double ClearAperturePercentValue
+    {
+        get => _surface.ClearAperturePercent;
+        set { _surface.ClearAperturePercent = value; OnPropertyChanged(); }
+    }
+
     public double Curvature
     {
         get => _surface.Curvature;
@@ -229,6 +248,10 @@ public partial class SurfacePropertiesViewModel : ObservableObject
         ConicState = new ParameterStateViewModel("Conic", surface, session,
             PickupParameter.Conic, () => surface.ConicVariable, v => surface.ConicVariable = v);
 
+        SemiDiameterState = new ParameterStateViewModel("Semi-Diameter", surface, session,
+            PickupParameter.SemiDiameter, () => surface.SemiDiameterVariable, v => surface.SemiDiameterVariable = v);
+        ClearApertureState = new ParameterStateViewModel("Clear Aperture %", surface, session,
+            PickupParameter.ClearAperturePercent, () => surface.ClearAperturePercentVariable, v => surface.ClearAperturePercentVariable = v);
     }
 
     public void Apply()
@@ -236,6 +259,8 @@ public partial class SurfacePropertiesViewModel : ObservableObject
         CurvatureState.SavePickup();
         ThicknessState.SavePickup();
         ConicState.SavePickup();
+        SemiDiameterState.SavePickup();
+        ClearApertureState.SavePickup();
         _session.NotifySystemChanged("properties");
     }
 }

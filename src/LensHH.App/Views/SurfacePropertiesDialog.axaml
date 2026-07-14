@@ -110,6 +110,60 @@
               </StackPanel>
             </Border>
 
+            <!-- Aperture solve: Semi-Diameter when the aperture is Fixed, Clear Aperture % when Auto.
+                 Only the group matching the surface's aperture mode is shown. -->
+            <Border BorderBrush="#CCC" BorderThickness="1" CornerRadius="4" Padding="12,8"
+                    IsVisible="{Binding IsFixedAperture}">
+              <StackPanel Spacing="6">
+                <TextBlock Text="Semi-Diameter (Fixed aperture)" FontWeight="SemiBold" FontSize="14" />
+                <DockPanel>
+                  <TextBlock Text="Value:" Width="70" VerticalAlignment="Center" />
+                  <TextBox Text="{Binding SemiDiameterValue, UpdateSourceTrigger=LostFocus}" Width="180" />
+                </DockPanel>
+                <StackPanel Orientation="Horizontal" Spacing="20">
+                  <RadioButton Content="Fixed" IsChecked="{Binding SemiDiameterState.IsFixed}" GroupName="SemiDia" />
+                  <RadioButton Content="Variable" IsChecked="{Binding SemiDiameterState.IsVariable}" GroupName="SemiDia" />
+                  <RadioButton Content="Pickup" IsChecked="{Binding SemiDiameterState.IsPickupSelected}" GroupName="SemiDia" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Spacing="8"
+                            IsVisible="{Binding SemiDiameterState.IsPickup}">
+                  <TextBlock Text="Source Surf:" VerticalAlignment="Center" />
+                  <ComboBox ItemsSource="{Binding SemiDiameterState.AvailablePickupSurfaces}"
+                            SelectedItem="{Binding SemiDiameterState.PickupSourceSurface}" Width="70" />
+                  <TextBlock Text="Scale:" VerticalAlignment="Center" />
+                  <TextBox Text="{Binding SemiDiameterState.PickupScale, UpdateSourceTrigger=LostFocus}" Width="70" />
+                  <TextBlock Text="Offset:" VerticalAlignment="Center" />
+                  <TextBox Text="{Binding SemiDiameterState.PickupOffset, UpdateSourceTrigger=LostFocus}" Width="70" />
+                </StackPanel>
+              </StackPanel>
+            </Border>
+
+            <Border BorderBrush="#CCC" BorderThickness="1" CornerRadius="4" Padding="12,8"
+                    IsVisible="{Binding IsAutoAperture}">
+              <StackPanel Spacing="6">
+                <TextBlock Text="Clear Aperture % (Auto aperture)" FontWeight="SemiBold" FontSize="14" />
+                <DockPanel>
+                  <TextBlock Text="Value:" Width="70" VerticalAlignment="Center" />
+                  <TextBox Text="{Binding ClearAperturePercentValue, UpdateSourceTrigger=LostFocus}" Width="180" />
+                </DockPanel>
+                <StackPanel Orientation="Horizontal" Spacing="20">
+                  <RadioButton Content="Fixed" IsChecked="{Binding ClearApertureState.IsFixed}" GroupName="ClearAp" />
+                  <RadioButton Content="Variable" IsChecked="{Binding ClearApertureState.IsVariable}" GroupName="ClearAp" />
+                  <RadioButton Content="Pickup" IsChecked="{Binding ClearApertureState.IsPickupSelected}" GroupName="ClearAp" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Spacing="8"
+                            IsVisible="{Binding ClearApertureState.IsPickup}">
+                  <TextBlock Text="Source Surf:" VerticalAlignment="Center" />
+                  <ComboBox ItemsSource="{Binding ClearApertureState.AvailablePickupSurfaces}"
+                            SelectedItem="{Binding ClearApertureState.PickupSourceSurface}" Width="70" />
+                  <TextBlock Text="Scale:" VerticalAlignment="Center" />
+                  <TextBox Text="{Binding ClearApertureState.PickupScale, UpdateSourceTrigger=LostFocus}" Width="70" />
+                  <TextBlock Text="Offset:" VerticalAlignment="Center" />
+                  <TextBox Text="{Binding ClearApertureState.PickupOffset, UpdateSourceTrigger=LostFocus}" Width="70" />
+                </StackPanel>
+              </StackPanel>
+            </Border>
+
           </StackPanel>
         </ScrollViewer>
       </TabItem>

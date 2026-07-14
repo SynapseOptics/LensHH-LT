@@ -88,7 +88,13 @@ namespace LensHH.Core.IO
                     ThicknessMin = ls.ThicknessMin,
                     ThicknessMax = ls.ThicknessMax,
                     ConicMin = ls.ConicMin,
-                    ConicMax = ls.ConicMax
+                    ConicMax = ls.ConicMax,
+                    SemiDiameterVariable = ls.SemiDiameterVariable,
+                    ClearAperturePercentVariable = ls.ClearAperturePercentVariable,
+                    SemiDiameterMin = ls.SemiDiameterMin,
+                    SemiDiameterMax = ls.SemiDiameterMax,
+                    ClearAperturePercentMin = ls.ClearAperturePercentMin,
+                    ClearAperturePercentMax = ls.ClearAperturePercentMax
                 };
 
                 if (ls.AsphericCoefficients != null)

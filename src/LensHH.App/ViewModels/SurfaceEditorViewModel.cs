@@ -233,6 +233,23 @@ public partial class SurfaceRowViewModel : ObservableObject
         }
     }
 
+    // Aperture solve marker (" V" variable / " P" pickup / "") shown beside the value. The marker
+    // sits on the free quantity for the aperture mode: Fixed -> Semi-Diameter; Auto -> Clear Aperture %.
+    private string ApertureMarker(bool isCA)
+    {
+        bool variable = isCA ? _surface.ClearAperturePercentVariable : _surface.SemiDiameterVariable;
+        var param = isCA ? Core.Enums.PickupParameter.ClearAperturePercent : Core.Enums.PickupParameter.SemiDiameter;
+        bool pickup = _session.System.Pickups.Any(p => p.TargetSurfaceIndex == _surface.Index && p.Parameter == param);
+        if (pickup) return " P";
+        if (variable) return " V";
+        return "";
+    }
+
+    public string SemiDiameterMarker =>
+        _surface.SemiDiameterMode == SemiDiameterMode.Fixed ? ApertureMarker(isCA: false) : "";
+    public string ClearAperturePercentMarker =>
+        _surface.SemiDiameterMode == SemiDiameterMode.Auto ? ApertureMarker(isCA: true) : "";
+
     /// <summary>True iff this row represents the image surface (last surface).</summary>
     private bool IsImage => _surface.Index == _session.System.Surfaces.Count - 1;
 

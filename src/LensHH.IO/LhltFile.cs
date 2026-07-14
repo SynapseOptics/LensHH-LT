@@ -81,6 +81,9 @@ namespace LensHH.Core.IO
         public bool ThicknessVariable { get; set; }
         public bool ConicVariable { get; set; }
         public bool[]? AsphericVariable { get; set; }
+        // Aperture solve flags: SemiDiameter (Fixed surfaces) / ClearAperturePercent (Auto surfaces).
+        public bool SemiDiameterVariable { get; set; }
+        public bool ClearAperturePercentVariable { get; set; }
 
         /// <summary>OSLO CALLBACK 1 marginal-ray-height solve marker.</summary>
         public bool HasMarginalRaySolve { get; set; }
@@ -94,6 +97,10 @@ namespace LensHH.Core.IO
         public double? ConicMax { get; set; }
         public double?[]? AsphericMin { get; set; }
         public double?[]? AsphericMax { get; set; }
+        public double? SemiDiameterMin { get; set; }
+        public double? SemiDiameterMax { get; set; }
+        public double? ClearAperturePercentMin { get; set; }
+        public double? ClearAperturePercentMax { get; set; }
     }
 
     public class LhltWavelength
