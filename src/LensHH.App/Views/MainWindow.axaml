@@ -321,37 +321,42 @@
               </DataGridTemplateColumn>
 
               <!-- Semi-diameter (editable in Fixed mode except stop, auto-computed otherwise).
-                   " V"/" P" marker beside the value when the SD is a variable/pickup (Fixed mode). -->
+                   " V"/" P" appended to the display when the SD is a variable/pickup (Fixed mode).
+                   Same display/edit split as Radius so the cell stays centered. -->
               <DataGridTemplateColumn Header="Semi-Diameter" Width="130">
                 <DataGridTemplateColumn.CellTemplate>
                   <DataTemplate>
-                    <Grid ColumnDefinitions="*,Auto">
-                      <TextBox Grid.Column="0" Text="{Binding SemiDiameterDisplay, UpdateSourceTrigger=LostFocus}"
-                               IsReadOnly="{Binding !IsSemiDiameterEditable}"
-                               TextAlignment="Center"
-                               Margin="1,0" Padding="2" BorderThickness="0" />
-                      <TextBlock Grid.Column="1" Text="{Binding SemiDiameterMarker}"
-                                 Foreground="#1565C0" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,3,0" />
+                    <Grid>
+                      <TextBlock Text="{Binding SemiDiameterWithMarker}"
+                                 HorizontalAlignment="Center" VerticalAlignment="Center" />
                     </Grid>
                   </DataTemplate>
                 </DataGridTemplateColumn.CellTemplate>
+                <DataGridTemplateColumn.CellEditingTemplate>
+                  <DataTemplate>
+                    <TextBox Text="{Binding SemiDiameterDisplay, UpdateSourceTrigger=LostFocus}"
+                             IsReadOnly="{Binding !IsSemiDiameterEditable}" TextAlignment="Center" />
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellEditingTemplate>
               </DataGridTemplateColumn>
 
-              <!-- Clear Aperture % (not editable on stop surface). " V"/" P" marker when CA% is a
+              <!-- Clear Aperture % (not editable on stop surface). " V"/" P" appended when CA% is a
                    variable/pickup (Auto mode). -->
               <DataGridTemplateColumn Header="CA %" Width="80">
                 <DataGridTemplateColumn.CellTemplate>
                   <DataTemplate>
-                    <Grid ColumnDefinitions="*,Auto">
-                      <TextBox Grid.Column="0" Text="{Binding ClearAperturePercentText, UpdateSourceTrigger=LostFocus}"
-                               IsEnabled="{Binding IsCaEditable}"
-                               TextAlignment="Center"
-                               Margin="1,0" Padding="2" BorderThickness="0" />
-                      <TextBlock Grid.Column="1" Text="{Binding ClearAperturePercentMarker}"
-                                 Foreground="#1565C0" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,3,0" />
+                    <Grid>
+                      <TextBlock Text="{Binding ClearAperturePercentWithMarker}"
+                                 HorizontalAlignment="Center" VerticalAlignment="Center" />
                     </Grid>
                   </DataTemplate>
                 </DataGridTemplateColumn.CellTemplate>
+                <DataGridTemplateColumn.CellEditingTemplate>
+                  <DataTemplate>
+                    <TextBox Text="{Binding ClearAperturePercentText, UpdateSourceTrigger=LostFocus}"
+                             IsReadOnly="{Binding !IsCaEditable}" TextAlignment="Center" />
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellEditingTemplate>
               </DataGridTemplateColumn>
 
               <!-- Fixed SD checkbox (disabled on stop surface, hidden on OBJ) -->

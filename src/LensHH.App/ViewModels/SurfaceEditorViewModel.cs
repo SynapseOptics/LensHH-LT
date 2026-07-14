@@ -250,6 +250,11 @@ public partial class SurfaceRowViewModel : ObservableObject
     public string ClearAperturePercentMarker =>
         _surface.SemiDiameterMode == SemiDiameterMode.Auto ? ApertureMarker(isCA: true) : "";
 
+    // Value + marker for the read-only display cell (edit cells bind the raw value). Keeps the
+    // Semi-Diameter / CA% cells centered and aligned like Radius/Thickness/Conic.
+    public string SemiDiameterWithMarker => SemiDiameterDisplay + SemiDiameterMarker;
+    public string ClearAperturePercentWithMarker => ClearAperturePercentText + ClearAperturePercentMarker;
+
     /// <summary>True iff this row represents the image surface (last surface).</summary>
     private bool IsImage => _surface.Index == _session.System.Surfaces.Count - 1;
 
@@ -345,6 +350,8 @@ public partial class SurfaceRowViewModel : ObservableObject
         OnPropertyChanged(nameof(ClearAperturePercentText));
         OnPropertyChanged(nameof(SemiDiameterMarker));
         OnPropertyChanged(nameof(ClearAperturePercentMarker));
+        OnPropertyChanged(nameof(SemiDiameterWithMarker));
+        OnPropertyChanged(nameof(ClearAperturePercentWithMarker));
         OnPropertyChanged(nameof(IsGlassUnresolved));
         OnPropertyChanged(nameof(IsFixedSemiDiameter));
         OnPropertyChanged(nameof(IsCaEditable));
