@@ -5,10 +5,10 @@
         x:DataType="vm:SurfacePropertiesViewModel"
         Title="{Binding Title}"
         Icon="avares://LensHH.App/Assets/icon_256.png"
-        Width="620" Height="580"
+        Width="620" Height="760"
         WindowStartupLocation="CenterOwner"
         CanResize="True"
-        MinWidth="550" MinHeight="500">
+        MinWidth="550" MinHeight="560">
 
   <Window.Styles>
     <!-- Match the main-window content tabs (Lens Editor, 2D Layout, …): the Fluent default

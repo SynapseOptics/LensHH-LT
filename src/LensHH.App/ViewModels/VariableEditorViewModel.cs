@@ -5,6 +5,7 @@ using System.Globalization;
 using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using LensHH.App.Session;
+using LensHH.Core.Enums;
 using LensHH.Core.Models;
 
 namespace LensHH.App.ViewModels;
@@ -188,6 +189,17 @@ public partial class VariableEditorViewModel : ObservableObject
                         v => s.AsphericMin[jj] = v, v => s.AsphericMax[jj] = v));
                 }
             }
+
+            // Aperture solve variables (mode-gated, matching the optimizer): Fixed -> Semi-Diameter,
+            // Auto -> Clear Aperture %. Bounds are editable here.
+            if (s.SemiDiameterMode == SemiDiameterMode.Fixed && s.SemiDiameterVariable)
+                Variables.Add(new VariableRowViewModel(num++, "Semi-Diameter", s.Index,
+                    () => s.SemiDiameterMin, () => s.SemiDiameterMax,
+                    v => s.SemiDiameterMin = v, v => s.SemiDiameterMax = v));
+            if (s.SemiDiameterMode == SemiDiameterMode.Auto && s.ClearAperturePercentVariable)
+                Variables.Add(new VariableRowViewModel(num++, "Clear Aperture %", s.Index,
+                    () => s.ClearAperturePercentMin, () => s.ClearAperturePercentMax,
+                    v => s.ClearAperturePercentMin = v, v => s.ClearAperturePercentMax = v));
         }
 
         // Config-specific variables (advanced edition): shown here with editable bounds. The Solve

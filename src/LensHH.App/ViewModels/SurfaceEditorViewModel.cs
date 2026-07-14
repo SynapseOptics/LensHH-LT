@@ -343,6 +343,8 @@ public partial class SurfaceRowViewModel : ObservableObject
         OnPropertyChanged(nameof(ConicDisplay));
         OnPropertyChanged(nameof(SemiDiameterDisplay));
         OnPropertyChanged(nameof(ClearAperturePercentText));
+        OnPropertyChanged(nameof(SemiDiameterMarker));
+        OnPropertyChanged(nameof(ClearAperturePercentMarker));
         OnPropertyChanged(nameof(IsGlassUnresolved));
         OnPropertyChanged(nameof(IsFixedSemiDiameter));
         OnPropertyChanged(nameof(IsCaEditable));
