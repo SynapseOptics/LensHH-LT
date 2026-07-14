@@ -10,6 +10,14 @@
         CanResize="True"
         MinWidth="550" MinHeight="500">
 
+  <Window.Styles>
+    <!-- Match the main-window content tabs (Lens Editor, 2D Layout, …): the Fluent default
+         TabItem header font is oversized for this dialog. -->
+    <Style Selector="TabItem">
+      <Setter Property="FontSize" Value="13" />
+    </Style>
+  </Window.Styles>
+
   <DockPanel Margin="10">
     <!-- Buttons -->
     <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal"
