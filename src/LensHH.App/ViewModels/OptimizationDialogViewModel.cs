@@ -128,8 +128,8 @@ public partial class OptimizationDialogViewModel : ObservableObject
                     optimizer.Variables[i].Description, startVal));
             }
 
-            // Evaluate once to get initial merit
-            var evaluator = new MeritFunctionEvaluator(
+            // Evaluate once to get initial merit (config-aware in PRO via the factory)
+            var evaluator = AppExtensions.CreateMeritEvaluator(
                 _session.System, _session.GlassCatalog);
             double initialMerit = evaluator.Evaluate(_session.MeritFunction);
             InitialMeritText = initialMerit.ToString("E6");
@@ -167,8 +167,9 @@ public partial class OptimizationDialogViewModel : ObservableObject
             ElapsedText = $"{_stopwatch.Elapsed.TotalSeconds:F1} s";
 
             // Re-evaluate with a fresh evaluator to match what Evaluate button shows
+            // (config-aware in PRO via the factory).
             LensHH.Core.Analysis.SemiDiameterSolver.Solve(_session.System, _session.GlassCatalog);
-            var freshEval = new MeritFunctionEvaluator(
+            var freshEval = AppExtensions.CreateMeritEvaluator(
                 _session.System, _session.GlassCatalog);
             double finalMerit = freshEval.Evaluate(_session.MeritFunction);
 

@@ -203,7 +203,7 @@ public partial class GlobalBasinHoppingDialogViewModel : ObservableObject
 
         try
         {
-            var evaluator = new MeritFunctionEvaluator(_session.System, _session.GlassCatalog);
+            var evaluator = AppExtensions.CreateMeritEvaluator(_session.System, _session.GlassCatalog);
             double initialMerit = evaluator.Evaluate(_session.MeritFunction);
             InitialMeritText = initialMerit.ToString("E6");
             BestMeritText = InitialMeritText;
@@ -266,7 +266,7 @@ public partial class GlobalBasinHoppingDialogViewModel : ObservableObject
         {
             _lastResult = result;
             LensHH.Core.Analysis.SemiDiameterSolver.Solve(_session.System, _session.GlassCatalog);
-            var freshEval = new MeritFunctionEvaluator(_session.System, _session.GlassCatalog);
+            var freshEval = AppExtensions.CreateMeritEvaluator(_session.System, _session.GlassCatalog);
             double finalMerit = freshEval.Evaluate(_session.MeritFunction);
             BestMeritText = finalMerit.ToString("E6");
             StatusText = result.TimedOut ? "Global time limit reached" : result.Cancelled ? "Stopped by user" : "Complete";
@@ -301,7 +301,7 @@ public partial class GlobalBasinHoppingDialogViewModel : ObservableObject
         if (pick.System == null) return;
         _session.System.CopyFrom(pick.System);
         LensHH.Core.Analysis.SemiDiameterSolver.Solve(_session.System, _session.GlassCatalog);
-        var eval = new MeritFunctionEvaluator(_session.System, _session.GlassCatalog);
+        var eval = AppExtensions.CreateMeritEvaluator(_session.System, _session.GlassCatalog);
         double m = eval.Evaluate(_session.MeritFunction);
         BestMeritText = m.ToString("E6");
         AppendLog($"Applied chain {SelectedChain.Chain}'s design (merit {m:E6}).");

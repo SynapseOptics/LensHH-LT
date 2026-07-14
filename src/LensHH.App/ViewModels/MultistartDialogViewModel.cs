@@ -343,8 +343,11 @@ public partial class MultistartDialogViewModel : ObservableObject
             optimizer.FilteredCatalogSearchPaths = GlassSubstitutionViewModel.FindFilteredCatalogFolder() is string dir
                 ? new[] { dir } : Array.Empty<string>();
 
-            // Get initial merit for display
-            var evaluator = new MeritFunctionEvaluator(
+            // Get initial merit for display. Route through the factory so PRO's
+            // config-aware evaluator sums ALL configurations — a plain 2-arg
+            // MeritFunctionEvaluator is config-blind and collapses a multi-config
+            // merit to a single configuration (wrong initial/best merit).
+            var evaluator = AppExtensions.CreateMeritEvaluator(
                 _session.System, _session.GlassCatalog);
             double initialMerit = evaluator.Evaluate(_session.MeritFunction);
             InitialMeritText = initialMerit.ToString("E6");
@@ -415,9 +418,11 @@ public partial class MultistartDialogViewModel : ObservableObject
             timer.Stop();
             ElapsedText = $"{_stopwatch.Elapsed.TotalSeconds:F1} s";
 
-            // Re-evaluate with a fresh evaluator to match what Evaluate button shows
+            // Re-evaluate with a fresh evaluator to match what Evaluate button shows.
+            // Route through the factory so PRO stays config-aware (a plain 2-arg
+            // evaluator collapses a multi-config merit to a single configuration).
             LensHH.Core.Analysis.SemiDiameterSolver.Solve(_session.System, _session.GlassCatalog);
-            var freshEval = new MeritFunctionEvaluator(
+            var freshEval = AppExtensions.CreateMeritEvaluator(
                 _session.System, _session.GlassCatalog);
             double finalMerit = freshEval.Evaluate(_session.MeritFunction);
 

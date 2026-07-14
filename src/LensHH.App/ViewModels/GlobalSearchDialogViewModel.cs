@@ -121,8 +121,8 @@ namespace LensHH.App.ViewModels
             // Initial merit for context.
             try
             {
-                var ev = new MeritFunctionEvaluator(_session.System, _session.GlassCatalog)
-                { ParallelEvaluation = true };
+                var ev = AppExtensions.CreateMeritEvaluator(_session.System, _session.GlassCatalog);
+                ev.ParallelEvaluation = true;
                 InitialMeritText = ev.Evaluate(_session.MeritFunction).ToString("E4");
             }
             catch { InitialMeritText = "—"; }

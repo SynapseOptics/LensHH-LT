@@ -104,7 +104,7 @@ public partial class GeneticDialogViewModel : ObservableObject
                 }
             };
 
-            var evaluator = new MeritFunctionEvaluator(
+            var evaluator = AppExtensions.CreateMeritEvaluator(
                 _session.System, _session.GlassCatalog);
             double initialMerit = evaluator.Evaluate(_session.MeritFunction);
             InitialMeritText = initialMerit.ToString("E6");
@@ -192,9 +192,9 @@ public partial class GeneticDialogViewModel : ObservableObject
             timer.Stop();
             ElapsedText = $"{_stopwatch.Elapsed.TotalSeconds:F1} s";
 
-            // Re-evaluate with fresh evaluator
+            // Re-evaluate with fresh evaluator (config-aware in PRO via the factory)
             LensHH.Core.Analysis.SemiDiameterSolver.Solve(_session.System, _session.GlassCatalog);
-            var freshEval = new MeritFunctionEvaluator(
+            var freshEval = AppExtensions.CreateMeritEvaluator(
                 _session.System, _session.GlassCatalog);
             double finalMerit = freshEval.Evaluate(_session.MeritFunction);
 

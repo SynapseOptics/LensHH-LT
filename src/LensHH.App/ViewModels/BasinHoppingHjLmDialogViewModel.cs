@@ -298,8 +298,8 @@ public partial class BasinHoppingHjLmDialogViewModel : ObservableObject
 
         try
         {
-            // Initial merit display
-            var evaluator = new MeritFunctionEvaluator(
+            // Initial merit display (config-aware in PRO via the factory)
+            var evaluator = AppExtensions.CreateMeritEvaluator(
                 _session.System, _session.GlassCatalog);
             double initialMerit = evaluator.Evaluate(_session.MeritFunction);
             InitialMeritText = initialMerit.ToString("E6");
@@ -449,9 +449,9 @@ public partial class BasinHoppingHjLmDialogViewModel : ObservableObject
 
         if (result != null)
         {
-            // Re-evaluate to match what other panels show
+            // Re-evaluate to match what other panels show (config-aware in PRO via the factory)
             LensHH.Core.Analysis.SemiDiameterSolver.Solve(_session.System, _session.GlassCatalog);
-            var freshEval = new MeritFunctionEvaluator(
+            var freshEval = AppExtensions.CreateMeritEvaluator(
                 _session.System, _session.GlassCatalog);
             double finalMerit = freshEval.Evaluate(_session.MeritFunction);
 
