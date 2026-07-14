@@ -27,7 +27,10 @@
     <!-- Aperture Value -->
     <DockPanel>
       <TextBlock Text="Aperture Value:" Width="120" VerticalAlignment="Center" />
-      <TextBox Text="{Binding ApertureValue, UpdateSourceTrigger=LostFocus}" HorizontalAlignment="Stretch" />
+      <!-- Disabled when a host reports the aperture value as varied-across-configs (advanced edition);
+           always enabled in the standard build (IsApertureOwned is always false). -->
+      <TextBox Text="{Binding ApertureValue, UpdateSourceTrigger=LostFocus}" HorizontalAlignment="Stretch"
+               IsEnabled="{Binding !IsApertureOwned}" />
     </DockPanel>
 
     <!-- Field Type -->

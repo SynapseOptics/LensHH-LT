@@ -158,8 +158,9 @@ namespace LensHH.App
     /// <summary>Surface parameters that can be varied across configurations.</summary>
     public enum SurfaceConfigParam { Curvature, Thickness, Glass, Conic, SemiDiameter }
 
-    /// <summary>Non-surface (system) config cells addressed by a field / wavelength index.</summary>
-    public enum SystemConfigCell { WavelengthValue, WavelengthWeight, FieldYValue, FieldXValue, FieldWeight }
+    /// <summary>Non-surface (system) config cells. Field / wavelength cells are addressed by their
+    /// index; <see cref="ApertureValue"/> is a single system-level scalar (its index is ignored).</summary>
+    public enum SystemConfigCell { WavelengthValue, WavelengthWeight, FieldYValue, FieldXValue, FieldWeight, ApertureValue }
 
     /// <summary>
     /// Neutral cell-ownership seam. An advanced-edition host implements it over its

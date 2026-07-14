@@ -32,8 +32,19 @@ public partial class SystemEditorViewModel : ObservableObject
     public double ApertureValue
     {
         get => _session.System.Aperture.Value;
-        set { _session.System.Aperture = new Core.Models.Aperture(ApertureType, value); OnPropertyChanged(); }
+        set
+        {
+            if (IsApertureOwned) return;   // MCE-owned: value varies per configuration, reject edits
+            _session.System.Aperture = new Core.Models.Aperture(ApertureType, value);
+            OnPropertyChanged();
+        }
     }
+
+    /// <summary>True when the aperture value is varied across configurations by the multi-configuration
+    /// editor. The value field is then disabled (its value belongs to the active config). The aperture
+    /// TYPE stays shared across configs, so it remains editable.</summary>
+    public bool IsApertureOwned =>
+        AppExtensions.CellOwnership?.IsSystemCellVaried(SystemConfigCell.ApertureValue, 0) ?? false;
 
     public FieldType FieldType
     {
