@@ -148,9 +148,15 @@ the polar-uniform Andersen scheme are required, and a uniform
 Cartesian grid needs roughly 500 rays for the same accuracy. In an
 optimizer that evaluates the merit thousands of times per run, that
 40× ray-count ratio dominates wall-clock time. Defaults of `Rings = 6`,
-`Arms = 12` (72 rays per field per wavelength) sit comfortably
-inside the regime where the residual quadrature error is well below
-the visible aberration content.
+`Arms = 12` generate **36 rays per off-axis field** (`Rings × Arms/2`,
+the Forbes half-arm convention — X-symmetry covers the rest) and just
+**6 rays on-axis** (one per ring, by rotational symmetry) per
+wavelength; both sit comfortably inside the regime where the residual
+quadrature error is well below the visible aberration content. For
+reference, a default 3-field (one on-axis) × 3-wavelength spot merit
+expands to only ≈ (6 + 36 + 36) × 2 × 3 ≈ **470 operands** — a small
+fraction of what a dense rectangular grid costs (below), which is why
+Forbes is the fast default.
 
 There are, however, cases where the rectangular operands (`SPOTR`,
 `SPOTMR`, `WAVEXR`, etc.) are the right tool:
@@ -169,6 +175,46 @@ There are, however, cases where the rectangular operands (`SPOTR`,
   in §3 of the 1988 paper: "for cases in which the effects of pupil
   distortion and vignetting need to be determined… simultaneously
   with the integration, pure Gaussian schemes are not possible."
+
+- **Aperture-defining variables (semi-diameter or CA %).** When a
+  surface's **semi-diameter** (Fixed mode) or **clear-aperture percent
+  (CA %)** (Auto mode) is itself an optimization variable — for
+  example, to trade image quality against vignetting (see *Aperture
+  variables* in [getting-started.md](getting-started.md)) — the
+  transmitted pupil edge *moves* as the optimizer runs. With only a
+  handful of Forbes rings, a boundary that sweeps across ring
+  positions makes the merit respond to the aperture variable in
+  coarse, quantized steps, and the Jacobian column for that variable
+  turns noisy. A **dense rectangular grid (`GridSize ≥ 64`)** samples
+  the pupil edge finely enough that the merit — and its gradient with
+  respect to the aperture variable — varies smoothly, so the LM step
+  direction stays reliable.
+
+  The maximum `GridSize` is **256** (any value you enter is clamped to
+  the 4–256 range — the same ceiling as the spot-diagram analysis). The
+  only real cost of a dense grid is that it traces more rays: a
+  rectangular operand expands to **two residuals (x and y) per in-pupil
+  ray, for every field and every wavelength**,
+
+  > `operands ≈ 2 × 0.785 · GridSize² × N_fields × N_wavelengths`
+  > `          ≈ 1.57 · GridSize² · N_fields · N_wavelengths`
+
+  so a `GridSize = 64` grid over 3 fields × 3 wavelengths is ~58,000
+  rays per merit evaluation. **Every optimizer path handles this** —
+  the default LM (finite-difference *or* analytic derivatives), the C#
+  evaluator, and all the analyses evaluate grids up to the full 256
+  with no operand limit and no truncation. A denser grid simply takes
+  proportionally longer; choose the density from the accuracy you need,
+  not from any cap.
+
+  On derivatives: with the **analytic** Jacobian (the optimizer
+  default), a dense chief-referenced grid (`SPOTR`, `WAVEXR`) evaluates
+  about **1.8× faster** than finite differences, while a dense
+  **centroid** grid (`SPOTMR`) is roughly break-even (the centroid
+  subtraction adds a second derivative pass). In absolute terms the
+  analytic path evaluates a ~4,000-ray dense grid in tens of
+  milliseconds — there is no dense-grid penalty beyond the ray count
+  itself.
 
 - **Non-polynomial wavefronts.** Strong aspheres, freeforms, or
   diffractive surfaces can produce wavefronts that aren't well

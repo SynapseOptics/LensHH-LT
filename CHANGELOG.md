@@ -2,6 +2,62 @@
 
 All notable changes to LensHH-LT and the LensHH-LT-Engine.
 
+## 1.0.135 — 2026-07-18
+
+### Added
+- **Object Space NA aperture.** The system aperture can now be specified by its
+  object-space numerical aperture (`NA = n·sin u`) instead of an entrance-pupil
+  diameter or F-number. This is the natural aperture spec for finite-conjugate work —
+  metrology, machine-vision, microscope, and relay optics with the object at a finite
+  distance. It applies when the field type is Object Height at a finite conjugate,
+  round-trips with ZEMAX (the `OBNA` line), and is available in the GUI System dialog,
+  the CLI (`system set-aperture na`), the MCP, and the C# API.
+- **Object-space telecentric.** A new System option places the entrance pupil at
+  infinity, so the chief ray is parallel to the axis in object space and image
+  magnification stays constant with object defocus — as gauging and metrology systems
+  require. It is enabled together with the Object Space NA aperture and ray aiming Off,
+  round-trips with ZEMAX, and is exposed in the GUI, CLI (`system set-telecentric`),
+  MCP, and API. System Data reports the entrance pupil at infinity and computes the
+  exit-pupil position, image-space NA, and Seidel sums consistently for this case.
+- **Clear aperture as an optimization variable.** A surface's clear aperture can be
+  optimized directly — a handle for trading image quality against vignetting and
+  relative illumination. On Auto surfaces the **Clear Aperture % (CA %)** can be marked
+  variable; on Fixed surfaces the **semi-diameter** can. They are set like any other
+  variable (Properties → Variable/Pickup) and bounded in the Variable Editor. The stop
+  surface is excluded — its aperture is the system aperture — so its Variable option is
+  disabled and the flag is ignored even if a loaded file sets it.
+
+### Changed
+- **Rectangular merit grids can now be much denser.** The maximum `GridSize` for the
+  `SPOTR` / `SPOTMR` / `WAVEXR` operands is raised from 100 to 256 (matching the
+  spot-diagram analysis), and the default analytic-derivative optimizer now evaluates
+  dense centroid and wavefront grids that previously fell back to a coarser path —
+  useful when an aperture variable needs a smooth vignetting gradient at the pupil edge.
+
+### Fixed
+- **Clear Aperture % now actually vignettes on Auto surfaces.** Setting a surface's
+  CA % below 100 % previously had no effect on **Auto** surfaces — only surfaces with a
+  **Fixed** semi-diameter clipped rays, so the clear-aperture margin was silently
+  ignored by the 2D layout, every analysis, and the optimizer. Auto surfaces are now
+  clipped at their CA %-scaled semi-diameter, so a CA % below 100 stops the surface down
+  as intended: the reduced aperture is drawn in the 2D layout, vignettes rays in the
+  analyses (spot diagram, relative illumination, and the rest), and is seen by the merit
+  function during optimization. Fixed-semi-diameter surfaces already clipped and are
+  unchanged.
+- **Seidel coefficients now correct for finite-conjugate Object-Height systems.** The
+  Seidel aberration sums used infinite-conjugate marginal- and chief-ray slopes even
+  for a finite object distance, skewing the per-surface coefficients (most visibly the
+  distortion sum). They now use the correct finite-conjugate object-space slopes, with
+  the chief ray crossing the axis at the entrance pupil. Infinite-conjugate systems are
+  unaffected.
+
+### Documentation
+- New **"Reading the prescription table"** section (the Lens Editor columns —
+  Semi-Diameter, CA %, the Fixed SD checkbox — and how Auto/Fixed apertures work) and a
+  new **"Aperture variables"** section on vignetting optimization and bounds. Expanded
+  and corrected the rectangular-vs-Forbes sampling guidance in the Merit Function
+  reference.
+
 ## 1.0.134 — 2026-07-10
 
 ### Fixed

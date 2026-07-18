@@ -122,7 +122,8 @@
                 </DockPanel>
                 <StackPanel Orientation="Horizontal" Spacing="20">
                   <RadioButton Content="Fixed" IsChecked="{Binding SemiDiameterState.IsFixed}" GroupName="SemiDia" />
-                  <RadioButton Content="Variable" IsChecked="{Binding SemiDiameterState.IsVariable}" GroupName="SemiDia" />
+                  <RadioButton Content="Variable" IsChecked="{Binding SemiDiameterState.IsVariable}"
+                               IsEnabled="{Binding SemiDiameterState.CanVary}" GroupName="SemiDia" />
                   <RadioButton Content="Pickup" IsChecked="{Binding SemiDiameterState.IsPickupSelected}" GroupName="SemiDia" />
                 </StackPanel>
                 <StackPanel Orientation="Horizontal" Spacing="8"
@@ -148,7 +149,8 @@
                 </DockPanel>
                 <StackPanel Orientation="Horizontal" Spacing="20">
                   <RadioButton Content="Fixed" IsChecked="{Binding ClearApertureState.IsFixed}" GroupName="ClearAp" />
-                  <RadioButton Content="Variable" IsChecked="{Binding ClearApertureState.IsVariable}" GroupName="ClearAp" />
+                  <RadioButton Content="Variable" IsChecked="{Binding ClearApertureState.IsVariable}"
+                               IsEnabled="{Binding ClearApertureState.CanVary}" GroupName="ClearAp" />
                   <RadioButton Content="Pickup" IsChecked="{Binding ClearApertureState.IsPickupSelected}" GroupName="ClearAp" />
                 </StackPanel>
                 <StackPanel Orientation="Horizontal" Spacing="8"

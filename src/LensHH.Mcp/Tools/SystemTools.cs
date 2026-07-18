@@ -153,6 +153,7 @@ namespace LensHH.Mcp.Tools
             sb.AppendLine($"Field Type: {sys.FieldType}");
             sb.AppendLine($"Ray Aiming: {sys.RayAiming}");
             sb.AppendLine($"Afocal: {sys.IsAfocal}");
+            sb.AppendLine($"Telecentric Object Space: {sys.TelecentricObjectSpace}");
             sb.AppendLine($"Penalize Vignetting: {sys.PenalizeVignetting}");
             sb.AppendLine($"Stop Surface: {sys.StopSurfaceIndex}");
             sb.AppendLine();
@@ -233,7 +234,7 @@ namespace LensHH.Mcp.Tools
             return sb.ToString();
         }
 
-        [McpServerTool, Description("Set the system aperture. type must be 'EPD' or 'FNumber'. value is the numeric value.")]
+        [McpServerTool, Description("Set the system aperture. type must be 'EPD', 'FNumber', or 'ObjectSpaceNA'. value is the numeric value: EPD in lens units, F-number, or object-space numerical aperture (NA = n0·sin(u)). ObjectSpaceNA is only valid for a finite-conjugate system with Object Height fields.")]
         public string SetAperture(string type, double value)
         {
             var sys = _session.System;
@@ -241,10 +242,22 @@ namespace LensHH.Mcp.Tools
                 sys.Aperture = new Aperture(Core.Enums.ApertureType.EPD, value);
             else if (type.Equals("FNumber", StringComparison.OrdinalIgnoreCase) || type.Equals("F/#", StringComparison.OrdinalIgnoreCase))
                 sys.Aperture = new Aperture(Core.Enums.ApertureType.FNumber, value);
+            else if (type.Equals("ObjectSpaceNA", StringComparison.OrdinalIgnoreCase) || type.Equals("NA", StringComparison.OrdinalIgnoreCase) || type.Equals("ObjectNA", StringComparison.OrdinalIgnoreCase))
+                sys.Aperture = new Aperture(Core.Enums.ApertureType.ObjectSpaceNA, value);
             else
-                return $"Unknown aperture type '{type}'. Use 'EPD' or 'FNumber'.";
+                return $"Unknown aperture type '{type}'. Use 'EPD', 'FNumber', or 'ObjectSpaceNA'.";
 
-            return $"Aperture set to {sys.Aperture.Type} = {sys.Aperture.Value}.";
+            // Telecentric object space is only meaningful with Object Space NA — clear it otherwise.
+            if (sys.Aperture.Type != Core.Enums.ApertureType.ObjectSpaceNA && sys.TelecentricObjectSpace)
+                sys.TelecentricObjectSpace = false;
+
+            string note = "";
+            if (sys.Aperture.Type == Core.Enums.ApertureType.ObjectSpaceNA)
+            {
+                var err = Core.RayTrace.ApertureRadius.ObjectSpaceNaError(sys);
+                if (err != null) note = " WARNING: " + err;
+            }
+            return $"Aperture set to {sys.Aperture.Type} = {sys.Aperture.Value}.{note}";
         }
 
         [McpServerTool, Description("Set wavelengths for the system. Provide wavelengths in micrometers as comma-separated values (e.g. '0.4861,0.5876,0.6563'). Optional: primaryIndex (0-based, default 1 for middle).")]
@@ -321,6 +334,21 @@ namespace LensHH.Mcp.Tools
         {
             _session.System.IsAfocal = afocal;
             return $"Afocal mode set to {(afocal ? "On" : "Off")}.";
+        }
+
+        [McpServerTool, Description("Set object-space telecentric mode on or off. When on, the entrance pupil is at infinity so the chief ray is parallel to the axis in object space (metrology / machine-vision optics). Only valid with the Object Space NA aperture AND ray aiming Off. telecentric=true to enable.")]
+        public string SetTelecentricObjectSpace(bool telecentric)
+        {
+            var sys = _session.System;
+            if (telecentric)
+            {
+                if (sys.Aperture.Type != Core.Enums.ApertureType.ObjectSpaceNA)
+                    return "Telecentric Object Space requires the Object Space NA aperture. Set the aperture to ObjectSpaceNA first.";
+                if (sys.RayAiming != Core.Enums.RayAimingMode.Off)
+                    return "Telecentric Object Space requires Ray Aiming to be Off. Turn ray aiming off first.";
+            }
+            sys.TelecentricObjectSpace = telecentric;
+            return $"Telecentric Object Space set to {(telecentric ? "On" : "Off")}.";
         }
 
         [McpServerTool, Description("Toggle the system's PenalizeVignetting flag. When true, the merit-function evaluator emits a stiff per-ray penalty for EVERY vignetted ray, including off-axis. Default (false) preserves the legacy 'off-axis vignetting is free' behavior. Turn this on for stock-lens designs where apertures are fixed by the catalog and the optimizer must not 'buy' aberration relief by clipping pupil rays. Persisted in .lhlt.")]

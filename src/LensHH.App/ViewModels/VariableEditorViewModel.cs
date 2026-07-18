@@ -191,12 +191,14 @@ public partial class VariableEditorViewModel : ObservableObject
             }
 
             // Aperture solve variables (mode-gated, matching the optimizer): Fixed -> Semi-Diameter,
-            // Auto -> Clear Aperture %. Bounds are editable here.
-            if (s.SemiDiameterMode == SemiDiameterMode.Fixed && s.SemiDiameterVariable)
+            // Auto -> Clear Aperture %. Bounds are editable here. The stop is excluded — its
+            // semi-diameter IS the aperture, so it can't be an optimization variable (matches
+            // LocalOptimizer's collection gate).
+            if (!s.IsStop && s.SemiDiameterMode == SemiDiameterMode.Fixed && s.SemiDiameterVariable)
                 Variables.Add(new VariableRowViewModel(num++, "Semi-Diameter", s.Index,
                     () => s.SemiDiameterMin, () => s.SemiDiameterMax,
                     v => s.SemiDiameterMin = v, v => s.SemiDiameterMax = v));
-            if (s.SemiDiameterMode == SemiDiameterMode.Auto && s.ClearAperturePercentVariable)
+            if (!s.IsStop && s.SemiDiameterMode == SemiDiameterMode.Auto && s.ClearAperturePercentVariable)
                 Variables.Add(new VariableRowViewModel(num++, "Clear Aperture %", s.Index,
                     () => s.ClearAperturePercentMin, () => s.ClearAperturePercentMax,
                     v => s.ClearAperturePercentMin = v, v => s.ClearAperturePercentMax = v));

@@ -48,6 +48,14 @@ Console.WriteLine($"Merit: {result.InitialMerit:E4} → {result.FinalMerit:E4}")
 session.SaveAs(@"C:\lenses\triplet-optimized.lhlt");
 ```
 
+Object Space NA and object-space telecentric are set the same way (finite
+conjugate, Object Height fields):
+
+```csharp
+session.SetAperture(ApertureType.ObjectSpaceNA, 0.025);  // NA = n0·sin(u)
+session.SetTelecentricObjectSpace(true);                 // EP at infinity; needs NA + ray aiming Off
+```
+
 ### Segregated Interfaces
 
 `LensHHSession` implements seven interfaces; you can narrow a
@@ -128,7 +136,7 @@ prompt, or pass `--script <file>` to run a batch of commands.
 | Command   | Purpose |
 |-----------|---------|
 | `file`    | Open, save, import (`.zmx`, `.seq`, `.len`, `.otx`), export. |
-| `system`  | System-level edits — aperture, field type, wavelengths, ray aiming, afocal flag. |
+| `system`  | System-level edits — aperture (EPD / FNumber / Object Space NA), field type, wavelengths, ray aiming, afocal & object-space-telecentric flags. |
 | `surface` | Add, remove, insert, edit surfaces; manage aspheric coefficients. |
 | `glass`   | Search, load catalogs, show glass properties, generate filtered catalogs. |
 | `pickup`  | Surface-to-surface parameter pickups. |
@@ -170,6 +178,18 @@ Run with:
 ```bash
 LensHH.CLI --script triplet-opt.lhscript
 ```
+
+**Object Space NA & object-space telecentric** (finite-conjugate, Object Height):
+
+```bash
+system set-aperture na 0.025        # NA = n0·sin(u); also 'epd' / 'fno'
+system set-telecentric on           # requires the NA aperture + ray aiming Off
+system info                         # shows Aperture, Field Type, Telecentric Object Space
+```
+
+`system set-telecentric on` is rejected (with a message) unless the aperture is
+Object Space NA and ray aiming is Off. See
+[System Aperture & Object-Space Telecentric](getting-started.md#system-aperture--object-space-telecentric).
 
 ### Exit Codes
 
@@ -285,7 +305,7 @@ the session. The ~123 tools group as:
 
 | Category               | Tool count | Examples |
 |------------------------|-----------:|----------|
-| **System** (`SystemTools`)      | 24 | `system_new`, `system_load`, `system_save`, `system_import_zmx`, `system_set_aperture`, `system_set_wavelengths`, `system_set_fields`, `system_get_info`. |
+| **System** (`SystemTools`)      | 25 | `system_new`, `system_load`, `system_save`, `system_import_zmx`, `system_set_aperture` (type `EPD` / `FNumber` / `ObjectSpaceNA`), `system_set_telecentric_object_space`, `system_set_wavelengths`, `system_set_fields`, `system_get_info`. |
 | **Surface** (`SurfaceTools`)    |  7 | `surface_add`, `surface_insert`, `surface_remove`, `surface_set`, `surface_list`, `surface_set_asphere`. |
 | **Glass** (`GlassTools`)        |  9 | `glass_load_catalogs`, `glass_list_catalogs`, `glass_search`, `glass_get_info`, `glass_get_index`, `glass_set_substitution`, `glass_generate_filtered_catalog`. |
 | **Pickup** (`PickupTools`)      |  4 | `pickup_add`, `pickup_remove`, `pickup_list`, `pickup_clear`. |

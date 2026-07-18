@@ -271,11 +271,15 @@ namespace LensHH.API
         /// <summary>Set system title.</summary>
         public void SetTitle(string title) { EnsureSystem(); _system!.Title = title; }
 
-        /// <summary>Set aperture (EPD or F-number).</summary>
+        /// <summary>Set aperture (EPD, F-number, or ObjectSpaceNA). ObjectSpaceNA (NA = n0·sin(u)) is only
+        /// valid for a finite-conjugate system with Object Height fields.</summary>
         public void SetAperture(ApertureType type, double value)
         {
             EnsureSystem();
             _system!.Aperture = new Aperture(type, value);
+            // Telecentric object space is only meaningful with Object Space NA — clear it otherwise.
+            if (type != ApertureType.ObjectSpaceNA && _system.TelecentricObjectSpace)
+                _system.TelecentricObjectSpace = false;
         }
 
         /// <summary>Set field type (ObjectAngle or ObjectHeight).</summary>
@@ -297,6 +301,15 @@ namespace LensHH.API
         {
             EnsureSystem();
             _system!.IsAfocal = afocal;
+        }
+
+        /// <summary>Set object-space telecentric mode. Only meaningful with the ObjectSpaceNA aperture and
+        /// ray aiming Off: the entrance pupil is at infinity so the chief ray is parallel to the axis in
+        /// object space (metrology / machine-vision optics).</summary>
+        public void SetTelecentricObjectSpace(bool telecentric)
+        {
+            EnsureSystem();
+            _system!.TelecentricObjectSpace = telecentric;
         }
 
         /// <summary>

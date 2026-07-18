@@ -21,9 +21,10 @@ public partial class ParameterStateViewModel : ObservableObject
     private readonly PickupParameter _pickupParam;
     private readonly Func<bool> _getVar;
     private readonly Action<bool> _setVar;
+    private readonly bool _canVary;
 
     public ParameterStateViewModel(string label, Surface surface, GuiSession session,
-        PickupParameter pickupParam, Func<bool> getVar, Action<bool> setVar)
+        PickupParameter pickupParam, Func<bool> getVar, Action<bool> setVar, bool canVary = true)
     {
         Label = label;
         _surface = surface;
@@ -31,6 +32,7 @@ public partial class ParameterStateViewModel : ObservableObject
         _pickupParam = pickupParam;
         _getVar = getVar;
         _setVar = setVar;
+        _canVary = canVary;
 
         // Find existing pickup
         var pickup = session.System.Pickups.FirstOrDefault(
@@ -56,11 +58,21 @@ public partial class ParameterStateViewModel : ObservableObject
         }
     }
 
+    /// <summary>
+    /// False disables the Variable option — used for the semi-diameter / CA %
+    /// on the STOP surface, whose aperture IS the system aperture and therefore
+    /// can't be an optimization variable.
+    /// </summary>
+    public bool CanVary => _canVary;
+
     public bool IsVariable
     {
         get => _getVar() && !IsPickup;
         set
         {
+            // Guard: the stop's aperture can't be a variable (matches the
+            // optimizer's collection gate). Snap the radio back to Fixed.
+            if (value && !_canVary) { OnPropertyChanged(); return; }
             if (value) { _setVar(true); IsPickup = false; RemovePickup(); }
             else _setVar(false);
             OnPropertyChanged(); OnPropertyChanged(nameof(IsFixed)); OnPropertyChanged(nameof(IsPickup));
@@ -248,10 +260,14 @@ public partial class SurfacePropertiesViewModel : ObservableObject
         ConicState = new ParameterStateViewModel("Conic", surface, session,
             PickupParameter.Conic, () => surface.ConicVariable, v => surface.ConicVariable = v);
 
+        // The stop surface's aperture IS the system aperture (EPD/F#/NA), so its
+        // semi-diameter and CA % can never be optimization variables — disable that option.
         SemiDiameterState = new ParameterStateViewModel("Semi-Diameter", surface, session,
-            PickupParameter.SemiDiameter, () => surface.SemiDiameterVariable, v => surface.SemiDiameterVariable = v);
+            PickupParameter.SemiDiameter, () => surface.SemiDiameterVariable, v => surface.SemiDiameterVariable = v,
+            canVary: !surface.IsStop);
         ClearApertureState = new ParameterStateViewModel("Clear Aperture %", surface, session,
-            PickupParameter.ClearAperturePercent, () => surface.ClearAperturePercentVariable, v => surface.ClearAperturePercentVariable = v);
+            PickupParameter.ClearAperturePercent, () => surface.ClearAperturePercentVariable, v => surface.ClearAperturePercentVariable = v,
+            canVary: !surface.IsStop);
     }
 
     public void Apply()

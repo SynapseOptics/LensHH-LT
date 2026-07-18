@@ -20,6 +20,8 @@ namespace LensHH.Core.IO
             system.FieldType = ReadFieldType(lines);
             system.IsAfocal = ReadAfocalMode(lines);
             system.Aperture = ReadAperture(lines);
+            system.TelecentricObjectSpace = system.Aperture.Type == ApertureType.ObjectSpaceNA
+                                            && ReadTelecentricObjectSpace(lines);
             system.Wavelengths = ReadWavelengths(lines);
             system.Fields = ReadFields(lines);
             FieldValidation.FilterImportedFields(system);
@@ -341,8 +343,37 @@ namespace LensHH.Core.IO
                     if (parts.Length > 1 && TryParseDouble(parts[1], out double val))
                         return new Aperture(ApertureType.FNumber, val);
                 }
+                else if (line.StartsWith("OBNA"))
+                {
+                    // OBNA <object-space NA> <0>. The trailing field is NOT the telecentric flag —
+                    // ZEMAX carries object-space telecentric in the FTYP line's 2nd field
+                    // (see ReadTelecentricObjectSpace). Aperture carries only type+value.
+                    var parts = SplitLine(line);
+                    if (parts.Length > 1 && TryParseDouble(parts[1], out double val))
+                        return new Aperture(ApertureType.ObjectSpaceNA, val);
+                }
             }
             return new Aperture(ApertureType.EPD, 10.0);
+        }
+
+        /// <summary>
+        /// Reads the object-space telecentric flag from the FTYP line's 2nd field
+        /// (FTYP &lt;field-type&gt; &lt;telecentric&gt; &lt;num-fields&gt; &lt;num-waves&gt; ...).
+        /// Only meaningful when the aperture is Object Space NA; the caller gates on that.
+        /// </summary>
+        private static bool ReadTelecentricObjectSpace(string[] lines)
+        {
+            foreach (var line in lines)
+            {
+                if (line.StartsWith("FTYP"))
+                {
+                    var parts = SplitLine(line);
+                    if (parts.Length > 2 && int.TryParse(parts[2], out int tele))
+                        return tele != 0;
+                    return false;
+                }
+            }
+            return false;
         }
 
         private static List<Wavelength> ReadWavelengths(string[] lines)

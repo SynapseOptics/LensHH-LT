@@ -26,7 +26,17 @@ public partial class SystemEditorViewModel : ObservableObject
     public ApertureType ApertureType
     {
         get => _session.System.Aperture.Type;
-        set { _session.System.Aperture = new Core.Models.Aperture(value, ApertureValue); OnPropertyChanged(); }
+        set
+        {
+            _session.System.Aperture = new Core.Models.Aperture(value, ApertureValue);
+            // Telecentric object space is only meaningful with Object-Space NA — clear it otherwise.
+            if (value != ApertureType.ObjectSpaceNA && _session.System.TelecentricObjectSpace)
+                _session.System.TelecentricObjectSpace = false;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(TelecentricObjectSpace));
+            OnPropertyChanged(nameof(IsTelecentricEnabled));
+            Validate();
+        }
     }
 
     public double ApertureValue
@@ -58,8 +68,8 @@ public partial class SystemEditorViewModel : ObservableObject
                 return;
             }
             _session.System.FieldType = value;
-            ValidationMessage = "";
             OnPropertyChanged();
+            Validate();
         }
     }
 
@@ -68,6 +78,27 @@ public partial class SystemEditorViewModel : ObservableObject
         get => _session.System.IsAfocal;
         set { _session.System.IsAfocal = value; OnPropertyChanged(); }
     }
+
+    /// <summary>
+    /// Object-space telecentric: entrance pupil at infinity, chief ray parallel to axis in object
+    /// space. Only available (checkbox enabled) when the aperture is Object-Space NA.
+    /// </summary>
+    public bool TelecentricObjectSpace
+    {
+        get => _session.System.TelecentricObjectSpace;
+        set
+        {
+            _session.System.TelecentricObjectSpace = value && IsTelecentricEnabled;
+            OnPropertyChanged();
+            Validate();
+        }
+    }
+
+    /// <summary>The Telecentric Object Space checkbox is enabled only for the Object-Space NA aperture
+    /// AND with ray aiming Off — telecentric launch sets the chief-ray direction directly and cannot
+    /// coexist with real ray aiming.</summary>
+    public bool IsTelecentricEnabled =>
+        ApertureType == ApertureType.ObjectSpaceNA && _session.System.RayAiming == RayAimingMode.Off;
 
     public bool PenalizeVignetting
     {
@@ -86,8 +117,14 @@ public partial class SystemEditorViewModel : ObservableObject
                 _session.System.RayAiming = RayAimingMode.Robust;
             else
                 _session.System.RayAiming = RayAimingMode.Real;
+            // Telecentric Object Space is only supported with ray aiming Off — clear it when aiming turns on.
+            if (_session.System.RayAiming != RayAimingMode.Off && _session.System.TelecentricObjectSpace)
+                _session.System.TelecentricObjectSpace = false;
             OnPropertyChanged();
             OnPropertyChanged(nameof(RobustRayAiming));
+            OnPropertyChanged(nameof(TelecentricObjectSpace));
+            OnPropertyChanged(nameof(IsTelecentricEnabled));
+            Validate();
         }
     }
 
@@ -105,7 +142,7 @@ public partial class SystemEditorViewModel : ObservableObject
         }
     }
 
-    public ApertureType[] ApertureTypes => new[] { ApertureType.EPD, ApertureType.FNumber };
+    public ApertureType[] ApertureTypes => new[] { ApertureType.EPD, ApertureType.FNumber, ApertureType.ObjectSpaceNA };
     public FieldType[] FieldTypes => new[] { FieldType.ObjectAngle, FieldType.ObjectHeight };
 
     private bool IsInfiniteConjugate
@@ -122,6 +159,13 @@ public partial class SystemEditorViewModel : ObservableObject
     {
         if (_session.System.FieldType == FieldType.ObjectHeight && IsInfiniteConjugate)
             ValidationMessage = "Object Height is not valid for infinite conjugate systems.";
+        else if (ApertureType == ApertureType.ObjectSpaceNA && IsInfiniteConjugate)
+            ValidationMessage = "Object Space NA requires a finite-conjugate system (a finite object distance). "
+                              + "Analyses and optimization are disabled until the object is at a finite distance.";
+        else if (ApertureType == ApertureType.ObjectSpaceNA && _session.System.FieldType != FieldType.ObjectHeight)
+            ValidationMessage = "Object Space NA requires Object Height fields.";
+        else if (_session.System.TelecentricObjectSpace && _session.System.RayAiming != RayAimingMode.Off)
+            ValidationMessage = "Telecentric Object Space requires Ray Aiming to be Off.";
         else
             ValidationMessage = "";
     }

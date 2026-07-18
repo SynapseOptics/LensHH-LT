@@ -53,6 +53,11 @@ namespace LensHH.Core.IO
                 case ApertureType.FNumber:
                     sb.AppendLine(FormatDouble("FNUM", system.Aperture.Value));
                     break;
+                case ApertureType.ObjectSpaceNA:
+                    // OBNA <object-space NA> <0>. The trailing field is not the telecentric flag —
+                    // ZEMAX carries object-space telecentric in the FTYP line's 2nd field (see WriteFieldType).
+                    sb.AppendLine(FormatDouble("OBNA", system.Aperture.Value) + " 0");
+                    break;
             }
         }
 
@@ -60,7 +65,9 @@ namespace LensHH.Core.IO
         {
             int ftype = system.FieldType == FieldType.ObjectAngle ? 0 : 1;
             int afocal = system.IsAfocal ? 1 : 0;
-            sb.AppendLine($"FTYP {ftype} 0 {system.Fields.Count} {system.Wavelengths.Count} 0 0 {afocal} 0 0");
+            // FTYP field 2 (after the field-type) is the object-space telecentric flag.
+            int telecentric = system.TelecentricObjectSpace ? 1 : 0;
+            sb.AppendLine($"FTYP {ftype} {telecentric} {system.Fields.Count} {system.Wavelengths.Count} 0 0 {afocal} 0 0");
             // RAIM format:
             //   RAIM 0 <mode> 1 1 0 <robust> 0 0 0 1
             //

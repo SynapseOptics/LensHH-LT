@@ -176,6 +176,43 @@ work with zero network access on the target machine.
 5. Open a wavefront map: **Analysis → Wavefront Map**.
 6. Close both and try optimization — read on.
 
+### Reading the prescription table
+
+Each row in the Lens Editor is one surface, ordered object → image:
+
+| Column | What it is |
+|---|---|
+| **Surf** | Surface number (`OBJ`, then `1, 2, …`, `IMG`). |
+| **Surface Type** | Standard (spherical) or an aspheric type. |
+| **Stop** | Checkbox marking the aperture stop. |
+| **Radius (mm)** | Radius of curvature (`Infinity` for a flat surface). |
+| **Thickness (mm)** | Axial distance to the next surface. |
+| **Conic Constant** | Conic *k* (`0` = sphere). |
+| **Glass** | Material of the space *after* the surface (blank = air). |
+| **Semi-Diameter** | Clear-aperture radius — how it's set depends on **Fixed SD**. |
+| **CA %** | Clear-aperture percent, on Auto surfaces (see below). |
+| **Fixed SD** | Checkbox choosing how the semi-diameter is set. |
+| **Properties** | The `…` button — per-surface variable / pickup, aspheric, and aperture settings. |
+
+**Apertures — the Semi-Diameter, CA %, and Fixed SD columns.** These
+three work together to set each surface's clear aperture:
+
+- **Fixed SD unchecked (Auto — the default):** LensHH re-solves the
+  semi-diameter from the traced ray bundle every time the design
+  changes, then scales it by that row's **CA %** (`100 %` = the full
+  bundle; a lower value stops the surface down, deliberately vignetting
+  the margin). The **Semi-Diameter** cell is read-only in this mode —
+  edit **CA %** instead.
+- **Fixed SD checked (Fixed):** you type the **Semi-Diameter** value
+  directly and it's held regardless of the rays.
+
+The **stop** is always Auto at `100 %`, and the object row has no
+aperture. The **Set CA %** button above the table applies a CA % — and
+the Auto/Fixed mode — across a range of surfaces at once. Both the
+semi-diameter (Fixed) and the CA % (Auto) can also be *optimization
+variables* — see **Aperture variables** under *Your First
+Optimization*, below.
+
 ## Your First Optimization
 
 The optimizer moves any parameter you've tagged **Variable**. Picking
@@ -232,6 +269,45 @@ Choose **Variable** to mark the parameter as free.
 On surfaces with aspheric type, the Properties dialog's **Aspheric**
 tab lists every coefficient (`A2` through `A16`) with a per-row
 **Var** checkbox. Tick the ones you want optimized.
+
+#### 4. Aperture variables: semi-diameter and clear-aperture %
+
+Recall from *Reading the prescription table* (above) that each
+surface's aperture is either **Auto** — a ray-traced semi-diameter
+scaled by its **CA %** — or **Fixed** — an explicit semi-diameter —
+chosen by the **Fixed SD** checkbox. Either of those quantities can be
+handed to the optimizer as a variable.
+
+**Making the aperture a variable — to adjust vignetting.** The clear
+aperture is exactly what clips off-axis rays, so it *is* the knob that
+controls vignetting and relative illumination. You can hand that knob
+to the optimizer:
+
+- in **Auto** mode, mark the surface's **CA %** as a variable;
+- in **Fixed** mode, mark its **semi-diameter** as a variable.
+
+Both are set on the Properties dialog's **Variable / Pickup** tab, the
+same way as curvature or thickness (a `V` marker then appears next to
+the value in the Lens Editor). The **stop** surface is the one
+exception: its semi-diameter *is* the system aperture (fixed by the
+EPD / F‑number / NA), so it can never be an aperture variable — the
+**Variable** option is disabled for it, and the optimizer ignores the
+flag even if a loaded file sets it. The optimizer can now open or stop
+down each *non-stop* surface's aperture to trade image quality against
+vignetting —
+for instance widening an aperture that was clipping the off-axis
+bundle. Pair an aperture variable with a **dense rectangular
+spot/wavefront grid** (see [Rectangular operands in
+merit-function.md](merit-function.md)) so the merit's response to the
+moving pupil edge stays smooth.
+
+> **Always bound an aperture variable.** Unlike a curvature, a CA % or
+> semi-diameter has no natural restoring force — left unconstrained,
+> the optimizer will happily drive it to zero (closing the surface) or
+> to an absurd value if that shaves the merit. Give it a **Min/Max**
+> constraint in the Variable Editor (next section) — for example hold
+> CA % between ~85 % and 100 %, or keep a Fixed semi-diameter inside
+> the element's real mechanical range.
 
 ### Setting bounds (Min/Max constraints)
 
@@ -591,12 +667,43 @@ see Multistart and Basin Hopping in the
 [Optimization](optimization.md) page — or Global Search there to
 collect a gallery of distinct design forms to choose among.
 
+## System Aperture & Object-Space Telecentric
+
+The **System Editor** (**System → System Editor**) sets how the aperture is
+specified. Pick the **Aperture Type** and enter its **Aperture Value**:
+
+| Aperture Type | Value means | Notes |
+|---|---|---|
+| **EPD**            | Entrance-pupil diameter (lens units) | The classic default. |
+| **FNumber**        | Image-space F-number (EFL / EPD) | |
+| **Object Space NA** | Object-space numerical aperture, `NA = n₀·sin u` (`n₀` = the object medium's index = Surface 0's material) | Finite-conjugate + **Object Height** fields only (see below). |
+
+**Object Space NA** sizes the pupil from the marginal-ray cone leaving the
+object, which is the natural specification for finite-conjugate work
+(microscope objectives, relays, machine-vision lenses). It is valid **only**
+when the object is at a finite distance (Surface 0 has a finite thickness) and
+the **Field Type is Object Height**. If the system is infinite-conjugate or
+uses Object Angle fields, the System Editor shows a red warning and analyses /
+optimization return an error until you fix it.
+
+**Telecentric Object Space** is a checkbox directly under the Afocal checkbox.
+When enabled, the entrance pupil is placed at infinity, so the chief ray is
+**parallel to the optical axis in object space** (the aperture stop appears at
+the front focal plane) — the standard condition for metrology and measurement
+optics, where magnification must not vary with object defocus. It is enabled
+**only** when the aperture is **Object Space NA** *and* **Ray Aiming is Off**;
+turning ray aiming on clears it. In the 2D layout you'll see each field's chief
+ray run parallel to the axis before the first surface.
+
+Both settings are saved in `.lhlt` and round-trip through ZEMAX `.zmx`
+(`OBNA` aperture; the object-space telecentric flag rides on the `FTYP` line).
+
 ## File Types
 
 | Extension | Meaning |
 |-----------|---------|
 | `.lhlt`   | LensHH-LT native format. Save/load from **File → Save/Open**. |
-| `.zmx`    | ZEMAX prescription. Import via **File → Import ZMX**. Only standard and even-asphere surfaces are honored. |
+| `.zmx`    | ZEMAX prescription. Import via **File → Import ZMX**. Only standard and even-asphere surfaces are honored. Object Space NA (`OBNA`) and object-space telecentric are honored. |
 | `.agf`    | Glass catalog. Loaded from `<install>\catalogs\Glass\` on startup. |
 
 ## Keyboard Shortcuts

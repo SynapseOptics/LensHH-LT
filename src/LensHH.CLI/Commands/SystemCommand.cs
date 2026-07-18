@@ -61,6 +61,10 @@ namespace LensHH.CLI.Commands
                 case "set-afocal":
                     SetAfocal(session, args);
                     break;
+                case "set-telecentric":
+                case "set-telecentric-object-space":
+                    SetTelecentric(session, args);
+                    break;
                 case "set-penalize-vignetting":
                 case "set-penalize-vignette":
                     SetPenalizeVignetting(session, args);
@@ -85,6 +89,7 @@ namespace LensHH.CLI.Commands
             AnsiConsole.MarkupLine($"[bold]Aperture:[/] {sys.Aperture.Type} = {sys.Aperture.Value}");
             AnsiConsole.MarkupLine($"[bold]Field Type:[/] {sys.FieldType}");
             AnsiConsole.MarkupLine($"[bold]Afocal:[/] {(sys.IsAfocal ? "On" : "Off")}");
+            AnsiConsole.MarkupLine($"[bold]Telecentric Object Space:[/] {(sys.TelecentricObjectSpace ? "On" : "Off")}");
             AnsiConsole.MarkupLine($"[bold]Penalize Vignetting:[/] {(sys.PenalizeVignetting ? "On" : "Off")}");
             AnsiConsole.MarkupLine($"[bold]Ray Aiming:[/] {sys.RayAiming}");
             AnsiConsole.MarkupLine($"[bold]Glass Catalogs:[/] {(sys.GlassCatalogs.Count > 0 ? string.Join(", ", sys.GlassCatalogs) : "(none)")}");
@@ -122,7 +127,7 @@ namespace LensHH.CLI.Commands
             var sys = session.EnsureSystem();
             if (args.Length < 3)
             {
-                AnsiConsole.MarkupLine("[red]Usage: system set-aperture epd|fno <value>[/]");
+                AnsiConsole.MarkupLine("[red]Usage: system set-aperture epd|fno|na <value>[/]");
                 return;
             }
 
@@ -140,12 +145,26 @@ namespace LensHH.CLI.Commands
                 case "fno":
                     sys.Aperture = new Aperture(ApertureType.FNumber, val);
                     break;
+                case "na":
+                case "objectna":
+                case "objectspacena":
+                    sys.Aperture = new Aperture(ApertureType.ObjectSpaceNA, val);
+                    break;
                 default:
-                    AnsiConsole.MarkupLine("[red]Use 'epd' or 'fno'.[/]");
+                    AnsiConsole.MarkupLine("[red]Use 'epd', 'fno', or 'na'.[/]");
                     return;
             }
 
+            // Telecentric object space is only meaningful with Object Space NA — clear it otherwise.
+            if (sys.Aperture.Type != ApertureType.ObjectSpaceNA && sys.TelecentricObjectSpace)
+                sys.TelecentricObjectSpace = false;
+
             AnsiConsole.MarkupLine($"[green]Aperture set to {sys.Aperture.Type} = {sys.Aperture.Value}[/]");
+            if (sys.Aperture.Type == ApertureType.ObjectSpaceNA)
+            {
+                var err = LensHH.Core.RayTrace.ApertureRadius.ObjectSpaceNaError(sys);
+                if (err != null) AnsiConsole.MarkupLine($"[yellow]Warning: {Markup.Escape(err)}[/]");
+            }
         }
 
         private void SetFields(Session session, string[] args)
@@ -365,6 +384,43 @@ namespace LensHH.CLI.Commands
             }
 
             AnsiConsole.MarkupLine($"[green]Afocal mode set to {(sys.IsAfocal ? "On" : "Off")}[/]");
+        }
+
+        private void SetTelecentric(Session session, string[] args)
+        {
+            var sys = session.EnsureSystem();
+            if (args.Length < 2)
+            {
+                AnsiConsole.MarkupLine($"[bold]Telecentric Object Space:[/] {(sys.TelecentricObjectSpace ? "On" : "Off")}");
+                AnsiConsole.MarkupLine("[dim]Usage: system set-telecentric on|off  (requires Object Space NA aperture + ray aiming Off)[/]");
+                return;
+            }
+
+            bool enable;
+            switch (args[1].ToLowerInvariant())
+            {
+                case "on": case "true": case "1": enable = true; break;
+                case "off": case "false": case "0": enable = false; break;
+                default:
+                    AnsiConsole.MarkupLine("[red]Use 'on' or 'off'.[/]");
+                    return;
+            }
+
+            if (enable)
+            {
+                if (sys.Aperture.Type != ApertureType.ObjectSpaceNA)
+                {
+                    AnsiConsole.MarkupLine("[red]Telecentric Object Space requires the Object Space NA aperture. Run 'system set-aperture na <NA>' first.[/]");
+                    return;
+                }
+                if (sys.RayAiming != Core.Enums.RayAimingMode.Off)
+                {
+                    AnsiConsole.MarkupLine("[red]Telecentric Object Space requires Ray Aiming to be Off.[/]");
+                    return;
+                }
+            }
+            sys.TelecentricObjectSpace = enable;
+            AnsiConsole.MarkupLine($"[green]Telecentric Object Space set to {(sys.TelecentricObjectSpace ? "On" : "Off")}[/]");
         }
 
         private void SetPenalizeVignetting(Session session, string[] args)
