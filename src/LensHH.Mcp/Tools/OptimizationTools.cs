@@ -170,8 +170,8 @@ namespace LensHH.Mcp.Tools
             return $"Loaded {mf.Operands.Count} operands from {filePath}.";
         }
 
-        [McpServerTool, Description("Run local optimization (damped least squares). Auto-applies the result to the live system — caller will not get a chance to revert. Use optimize_try if you want a keep-or-revert decision after seeing the merit. maxIterations defaults to 4000 (LM normally converges well before this), tolerance to 1e-10, dampingFactor to 0.001. useBroydenUpdate (default true) uses a rank-1 Jacobian update between full rebuilds — disable to force a full finite-difference Jacobian every step (slower but more robust on stiff designs). broydenRefreshInterval (default 5) is the number of accepted steps between forced Jacobian rebuilds. Returns the final merit value.")]
-        public string Optimize(int maxIterations = 4000, double tolerance = 1e-10, double dampingFactor = 0.001,
+        [McpServerTool, Description("Run local optimization (damped least squares). Auto-applies the result to the live system — caller will not get a chance to revert. Use optimize_try if you want a keep-or-revert decision after seeing the merit. maxIterations defaults to 6000 (LM normally converges well before this), tolerance to 1e-10, dampingFactor to 0.001. useBroydenUpdate (default true) uses a rank-1 Jacobian update between full rebuilds — disable to force a full finite-difference Jacobian every step (slower but more robust on stiff designs). broydenRefreshInterval (default 5) is the number of accepted steps between forced Jacobian rebuilds. Returns the final merit value.")]
+        public string Optimize(int maxIterations = OptimizationDefaults.LmIterations, double tolerance = 1e-10, double dampingFactor = 0.001,
             bool useBroydenUpdate = true, int broydenRefreshInterval = 5)
         {
             { var ge = _session.ValidateGlass(); if (ge != null) return ge; }
@@ -185,6 +185,10 @@ namespace LensHH.Mcp.Tools
             optimizer.InitialDamping = dampingFactor;
             optimizer.UseBroydenUpdate = useBroydenUpdate;
             optimizer.BroydenRefreshInterval = broydenRefreshInterval;
+            // Native C++ analytic Jacobian (bedrock path); auto-falls-back to C# for variable
+            // types native can't handle (SD / CA% / model-glass / multi-config).
+            optimizer.EngineMode = EngineMode.Native;
+            optimizer.NativeDerivativeMode = LensHH.Core.NativeInterop.MeritDerivativeMode.Analytic;
             optimizer.CollectVariables();
 
             var cts = new CancellationTokenSource(TimeSpan.FromMinutes(5));
@@ -204,7 +208,7 @@ namespace LensHH.Mcp.Tools
         }
 
         [McpServerTool, Description("Run local optimization but stage the result for the user to keep or revert. Snapshots the system before running, mutates it in place during the run, then awaits a follow-up call to optimize_keep_result (commit) or optimize_revert_result (restore the pre-run snapshot). Returns the merit comparison and explicit instructions for the next call. Same parameters as optimize, including useBroydenUpdate / broydenRefreshInterval.")]
-        public string OptimizeTry(int maxIterations = 4000, double tolerance = 1e-10, double dampingFactor = 0.001,
+        public string OptimizeTry(int maxIterations = OptimizationDefaults.LmIterations, double tolerance = 1e-10, double dampingFactor = 0.001,
             bool useBroydenUpdate = true, int broydenRefreshInterval = 5)
         {
             { var ge = _session.ValidateGlass(); if (ge != null) return ge; }
@@ -224,6 +228,10 @@ namespace LensHH.Mcp.Tools
             optimizer.InitialDamping = dampingFactor;
             optimizer.UseBroydenUpdate = useBroydenUpdate;
             optimizer.BroydenRefreshInterval = broydenRefreshInterval;
+            // Native C++ analytic Jacobian (bedrock path); auto-falls-back to C# for variable
+            // types native can't handle (SD / CA% / model-glass / multi-config).
+            optimizer.EngineMode = EngineMode.Native;
+            optimizer.NativeDerivativeMode = LensHH.Core.NativeInterop.MeritDerivativeMode.Analytic;
             optimizer.CollectVariables();
 
             var cts = new CancellationTokenSource(TimeSpan.FromMinutes(5));
@@ -410,8 +418,8 @@ namespace LensHH.Mcp.Tools
 
         // Blocking variant unregistered (2026-06-11): long-running optimizations
         // are non-blocking only over MCP — use multistart_optimize_start.
-        [Description("Run adaptive multistart optimization. Each trial perturbs from the running center, runs Hooke-Jeeves pre-step (robust to merit-function discontinuities), then short LM. Sigma grows on rejection: starts at initialSigma, resets there on any accepted move, and GROWS (×sigmaGrowth) up to sigmaCap on each rejection to escape a stuck basin. Metropolis acceptance keeps a 'currentCenter' that may accept worse-than-best moves with probability exp(-dM/T) so the optimizer can walk out of local basins. Glass-swap trials get LmPerTrial × glassSwapLmMultiplier iterations to recover from the index discontinuity. Parameters: maxTrials (default 2000), lmPerTrial (default 50), initialLm (default 200), initialSigma (default 0.001), sigmaGrowth (default 1.5), sigmaCap (default 0.1), enableMetropolis (default true), metropolisTemperature (default 0 = autotune from first 10 |dM| samples), hjStepsPerTrial (default 50, 0=disable), hjInitialStep (default 0.1), glassSwapLmMultiplier (default 4), glassSubPercent (default 50), constrainedOnly (default false). Per-LocalOptimizer tunables: tolerance (default 1e-10), dampingFactor (default 1e-6), useBroyden (default true), broydenRefreshInterval (default 5). Result is auto-applied to the system.")]
-        public string MultistartOptimize(int maxTrials = 2000, int lmPerTrial = 50, int initialLm = 200,
+        [Description("Run adaptive multistart optimization. Each trial perturbs from the running center, runs Hooke-Jeeves pre-step (robust to merit-function discontinuities), then short LM. Sigma grows on rejection: starts at initialSigma, resets there on any accepted move, and GROWS (×sigmaGrowth) up to sigmaCap on each rejection to escape a stuck basin. Metropolis acceptance keeps a 'currentCenter' that may accept worse-than-best moves with probability exp(-dM/T) so the optimizer can walk out of local basins. Glass-swap trials get LmPerTrial × glassSwapLmMultiplier iterations to recover from the index discontinuity. Parameters: maxTrials (default 3000), lmPerTrial (default 6000), initialLm (default 200), initialSigma (default 0.001), sigmaGrowth (default 1.5), sigmaCap (default 0.1), enableMetropolis (default true), metropolisTemperature (default 0 = autotune from first 10 |dM| samples), hjStepsPerTrial (default 50, 0=disable), hjInitialStep (default 0.1), glassSwapLmMultiplier (default 4), glassSubPercent (default 50), constrainedOnly (default false). Per-LocalOptimizer tunables: tolerance (default 1e-10), dampingFactor (default 1e-6), useBroyden (default true), broydenRefreshInterval (default 5). Result is auto-applied to the system.")]
+        public string MultistartOptimize(int maxTrials = OptimizationDefaults.MultistartTrials, int lmPerTrial = OptimizationDefaults.LmIterations, int initialLm = 200,
             double initialSigma = 0.001, double sigmaGrowth = 1.5, double sigmaCap = 0.1,
             bool enableMetropolis = true, double metropolisTemperature = 0.0,
             int hjStepsPerTrial = 50, double hjInitialStep = 0.1, int glassSwapLmMultiplier = 4,
@@ -467,7 +475,7 @@ namespace LensHH.Mcp.Tools
         [Description(
             "Split the highest-aberration lens element into two elements with equal power, then optimize glass selection via parallel trials. " +
             "Phases per split: (1) split + add boundary constraints, (2) pre-glass multistart with the original glass, (3) parallel glass-pair trials, (4) post-glass multistart with the winning pair. " +
-            "Iteration / trial counts (defaults match the GUI): maxSplits (1), glassTrials (300), lmPerTrial (4000), postSplitLm (4000), preGlassTrials (4000), postGlassTrials (2500), multistartInitialSigma (0.001 — sawtooth perturbation magnitude for the embedded multistarts). " +
+            "Iteration / trial counts (defaults match the GUI): maxSplits (1), glassTrials (300), lmPerTrial (6000), postSplitLm (6000), preGlassTrials (4000), postGlassTrials (2500), multistartInitialSigma (0.001 — sawtooth perturbation magnitude for the embedded multistarts). " +
             "Boundaries: minGlassThickness (1.0), maxGlassThickness (25.0), minAirGap (0.1), maxAirGap (25.0), minEdgeThickness (0.5). " +
             "Glass selection: catalogs (comma-separated AGF names; empty = all loaded), onlyPreferred (true). " +
             "Watchdog: skipPhaseAfterNoImprovementSec (180; auto-skip pre-/post-glass multistart when stalled). " +
@@ -476,8 +484,8 @@ namespace LensHH.Mcp.Tools
             "skipGlassTrials (false) bypasses Phases 4 + 5 entirely — split + LM polish only, no glass swap. " +
             "If skipGlassTrials is false, the catalogs string must resolve to at least one glass; an empty string with no catalogs loaded throws an error rather than silently doing nothing. " +
             "Result is auto-applied to the system; use system_save to persist.")]
-        public string SplitElement(int maxSplits = 1, int glassTrials = 300, int lmPerTrial = 4000,
-            int postSplitLm = 4000, int preGlassTrials = 4000, int postGlassTrials = 2500,
+        public string SplitElement(int maxSplits = 1, int glassTrials = 300, int lmPerTrial = OptimizationDefaults.LmIterations,
+            int postSplitLm = OptimizationDefaults.LmIterations, int preGlassTrials = 4000, int postGlassTrials = 2500,
             double multistartInitialSigma = 0.001, bool constrainedOnly = false, bool onlyPreferred = true,
             bool freeAllGlasses = false, bool acceptOnlyIfBetter = true,
             double minGlassThickness = 1.0, double maxGlassThickness = 25.0,
@@ -554,7 +562,7 @@ namespace LensHH.Mcp.Tools
         // Blocking variant unregistered (2026-06-11): use basin_hopping_start.
         [Description(
             "Basin-hopping optimization: a global-ish search that combines a Hooke-Jeeves pattern step + a Levenberg-Marquardt local refinement, with a random Gaussian kick (sigma) between hops to break out of local minima. Optionally substitutes glasses between hops, drawing from filtered or loaded catalogs (same model as Split Element). " +
-            "Hop budget: maxHops (default 2000). Per-hop LM iterations: lmIterationsPerHop (default 60). Per-hop Hooke-Jeeves steps: hjStepsPerHop (default 30). " +
+            "Hop budget: maxHops (default 3000). Per-hop LM iterations: lmIterationsPerHop (default 6000). Per-hop Hooke-Jeeves steps: hjStepsPerHop (default 30). " +
             "Kick magnitude: initialPerturbSigma (default 0.001 = 0.1%). HJ step bounds: hjInitialStep (default 0.25), hjMinStep (default 1e-4). " +
             "LM tunables: lmTolerance (1e-10), lmInitialDamping (1e-3), useBroydenUpdate (true). " +
             "Variable filtering: constrainedOnly (false) — when true, only variables with min/max are perturbed. " +
@@ -564,7 +572,7 @@ namespace LensHH.Mcp.Tools
             "Chain export: saveChainsFolder (default empty) — when set, EVERY chain's final design is written as a separate .lhlt in that folder (best-merit first), not just the global best. " +
             "Result is auto-applied to the system; use system_save to persist.")]
         public string BasinHopping(
-            int maxHops = 2000, int lmIterationsPerHop = 60, int hjStepsPerHop = 30,
+            int maxHops = OptimizationDefaults.MultistartTrials, int lmIterationsPerHop = OptimizationDefaults.LmIterations, int hjStepsPerHop = 30,
             double initialPerturbSigma = 0.001, double hjInitialStep = 0.25, double hjMinStep = 1e-4,
             double lmTolerance = 1e-10, double lmInitialDamping = 1e-3, bool useBroydenUpdate = true,
             bool constrainedOnly = false,
@@ -632,11 +640,11 @@ namespace LensHH.Mcp.Tools
             "Start GLOBAL Basin-Hopping HJ+LM in the background and return a job-id immediately (non-blocking). " +
             "Runs N chains (N = physical cores, FIXED — not settable) of basin-hopping; whenever a chain's no-improvement watchdog fires or it exhausts its hops, that chain RESTARTS seeded with the best design found by the OTHER chains, until the global time limit elapses or you cancel — a cooperative deep-dive that pools the best basin across chains. " +
             "Poll optimize_status(jobId) for progress (global best merit, restarts, hops); call optimize_cancel(jobId) to stop early. When the job completes the global-best design is auto-applied to the system. " +
-            "Per-chain HJ-LM settings: maxHops (2000), lmIterationsPerHop (60), hjStepsPerHop (30), initialPerturbSigma (0.001), useBroydenUpdate (true), constrainedOnly (false — when true, only randomize bounded variables), glassSubstitution (false), rescaleOnGlassSwap (false), onlyPreferred (true), catalogs (''), seed (1234). " +
+            "Per-chain HJ-LM settings: maxHops (3000), lmIterationsPerHop (6000), hjStepsPerHop (30), initialPerturbSigma (0.001), useBroydenUpdate (true), constrainedOnly (false — when true, only randomize bounded variables), glassSubstitution (false), rescaleOnGlassSwap (false), onlyPreferred (true), catalogs (''), seed (1234). " +
             "Mandatory no-improvement watchdog: noImprovementTimeoutSeconds (default 600; values <=0 are forced to 600 — it cannot be disabled). Global wall-clock budget: globalTimeoutMinutes (default 120; <=0 = run until cancelled). " +
             "Chain export: saveChainsFolder ('') — when set, every chain's best design is written there as a separate .lhlt (best-merit first).")]
         public string GlobalBasinHoppingStart(
-            int maxHops = 2000, int lmIterationsPerHop = 60, int hjStepsPerHop = 30,
+            int maxHops = OptimizationDefaults.MultistartTrials, int lmIterationsPerHop = OptimizationDefaults.LmIterations, int hjStepsPerHop = 30,
             double initialPerturbSigma = 0.001, bool useBroydenUpdate = true,
             bool constrainedOnly = false, bool glassSubstitution = false,
             bool rescaleOnGlassSwap = false, bool onlyPreferred = true, string catalogs = "",
@@ -848,9 +856,9 @@ namespace LensHH.Mcp.Tools
             "After calling this, poll optimize_status(jobId) every ~10-30 seconds to track progress (current trial, best merit, elapsed time) and report to the user. " +
             "Call optimize_cancel(jobId) to stop early. " +
             "When the job's status is Completed, the system already holds the optimized values (auto-applied) — there is no separate keep step. " +
-            "Parameters mirror optimize_multistart: maxTrials (2000), lmPerTrial (50), initialLm (200), initialSigma (0.0003), sigmaGrowth (1.5), sigmaCap (0.1), enableMetropolis (true), metropolisTemperature (0 = autotune), hjStepsPerTrial (50), hjInitialStep (0.1), glassSwapLmMultiplier (4), glassSubPercent (50), constrainedOnly (false), tolerance (1e-10), dampingFactor (1e-6), useBroyden (true), broydenRefreshInterval (5). " +
+            "Parameters mirror optimize_multistart: maxTrials (3000), lmPerTrial (6000), initialLm (200), initialSigma (0.0003), sigmaGrowth (1.5), sigmaCap (0.1), enableMetropolis (true), metropolisTemperature (0 = autotune), hjStepsPerTrial (50), hjInitialStep (0.1), glassSwapLmMultiplier (4), glassSubPercent (50), constrainedOnly (false), tolerance (1e-10), dampingFactor (1e-6), useBroyden (true), broydenRefreshInterval (5). " +
             "GPU: useGpuPreScreen (false) sieves a GPU-filling cloud of candidates per batch and keeps the best by merit. gpuMinCurvatureChangePercent (2.0) is the GPU DIFFERENCE GATE — only candidates structurally different from the running best (a glass swap with |Δn_d|>0.001, or a refractive surface whose curvature moved more than this %) are fed to the sieve, so it explores instead of collapsing into a pure refiner. 0 disables the gate. Only effective with useGpuPreScreen=true.")]
-        public string MultistartOptimizeStart(int maxTrials = 2000, int lmPerTrial = 50, int initialLm = 200,
+        public string MultistartOptimizeStart(int maxTrials = OptimizationDefaults.MultistartTrials, int lmPerTrial = OptimizationDefaults.LmIterations, int initialLm = 200,
             double initialSigma = 0.001, double sigmaGrowth = 1.5, double sigmaCap = 0.1,
             bool enableMetropolis = true, double metropolisTemperature = 0.0,
             int hjStepsPerTrial = 50, double hjInitialStep = 0.1, int glassSwapLmMultiplier = 4,
@@ -935,10 +943,10 @@ namespace LensHH.Mcp.Tools
             "Each pooled design is written as a .lhlt to outputFolder with its seed in the filename; the merit-best design is auto-applied to the current system when the job completes. " +
             "Poll optimize_status(jobId) for progress (pool count / models-to-keep, best merit); call optimize_cancel(jobId) to stop early (the pool found so far is still written). " +
             "Reproducibility: the same baseSeed reproduces the same pool exactly; run baseSeed=1, then 2, then 3 to accumulate independent, non-overlapping batches of designs. " +
-            "Params: modelsToKeep (16), maxRestarts (48), maxTrialsPerRestart (2000), lmPerTrial (4000), stallAtCapBatches (1 — restart ends after this many no-improvement batches at the sigma cap), baseSeed (1), glassSubPercent (50), initialSigma (0.001), sigmaCap (0.01), prePolishLm (0 = perturb the raw start design; >0 LM-polishes it once first), rescaleOnGlassSwap (true), useNativeEngine (true), analyticDerivative (true), outputFolder ('global_search_results').")]
+            "Params: modelsToKeep (16), maxRestarts (48), maxTrialsPerRestart (3000), lmPerTrial (6000), stallAtCapBatches (1 — restart ends after this many no-improvement batches at the sigma cap), baseSeed (1), glassSubPercent (50), initialSigma (0.001), sigmaCap (0.01), prePolishLm (0 = perturb the raw start design; >0 LM-polishes it once first), rescaleOnGlassSwap (true), useNativeEngine (true), analyticDerivative (true), outputFolder ('global_search_results').")]
         public string GlobalSearchStart(
-            int modelsToKeep = 16, int maxRestarts = 48, int maxTrialsPerRestart = 2000,
-            int lmPerTrial = 4000, int stallAtCapBatches = 1, int baseSeed = 1,
+            int modelsToKeep = 16, int maxRestarts = 48, int maxTrialsPerRestart = OptimizationDefaults.MultistartTrials,
+            int lmPerTrial = OptimizationDefaults.LmIterations, int stallAtCapBatches = 1, int baseSeed = 1,
             double glassSubPercent = 50, double initialSigma = 0.001, double sigmaCap = 0.01,
             int prePolishLm = 0, bool rescaleOnGlassSwap = true,
             bool useNativeEngine = true, bool analyticDerivative = true,
@@ -1039,7 +1047,7 @@ namespace LensHH.Mcp.Tools
             "chains (default 0 = auto = one chain per physical core) runs that many independent hopping chains concurrently and returns the single global best (chains=1 = classic single chain). " +
             "Parameters mirror optimize_basin_hopping.")]
         public string BasinHoppingStart(
-            int maxHops = 2000, int lmIterationsPerHop = 60, int hjStepsPerHop = 30,
+            int maxHops = OptimizationDefaults.MultistartTrials, int lmIterationsPerHop = OptimizationDefaults.LmIterations, int hjStepsPerHop = 30,
             double initialPerturbSigma = 0.001, double hjInitialStep = 0.25, double hjMinStep = 1e-4,
             double lmTolerance = 1e-10, double lmInitialDamping = 1e-3, bool useBroydenUpdate = true,
             bool constrainedOnly = false,
@@ -1132,8 +1140,8 @@ namespace LensHH.Mcp.Tools
             "Poll optimize_status for the active phase (pre-glass multistart / glass trials / post-glass multistart), current best merit, and elapsed time. " +
             "Result auto-applies. Parameters mirror optimize_split.")]
         public string SplitElementStart(
-            int maxSplits = 1, int glassTrials = 300, int lmPerTrial = 4000,
-            int postSplitLm = 4000, int preGlassTrials = 4000, int postGlassTrials = 2500,
+            int maxSplits = 1, int glassTrials = 300, int lmPerTrial = OptimizationDefaults.LmIterations,
+            int postSplitLm = OptimizationDefaults.LmIterations, int preGlassTrials = 4000, int postGlassTrials = 2500,
             double multistartInitialSigma = 0.001, bool constrainedOnly = false, bool onlyPreferred = true,
             bool freeAllGlasses = false, bool acceptOnlyIfBetter = true,
             double minGlassThickness = 1.0, double maxGlassThickness = 25.0,

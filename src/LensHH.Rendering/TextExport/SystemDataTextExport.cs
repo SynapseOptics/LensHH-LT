@@ -58,7 +58,32 @@ namespace LensHH.Rendering.TextExport
             }
 
             AppendIndexOfRefractionTable(sb, system, glassMgr);
+            AppendModelGlassTable(sb, system);
             return sb.ToString();
+        }
+
+        // Model-glass (Nd/Vd/dPgF) parameter table — emitted whenever the system
+        // has model-index surfaces, right after the Refractive Index Table (whose
+        // "Model Surface N" columns are computed from these three parameters).
+        private static void AppendModelGlassTable(StringBuilder sb, OpticalSystem system)
+        {
+            var modelSurfaces = new List<Surface>();
+            foreach (var s in system.Surfaces)
+                if (s.ModelIndexEnabled) modelSurfaces.Add(s);
+            if (modelSurfaces.Count == 0) return;
+
+            sb.AppendLine();
+            sb.AppendLine("Model Glass Parameters");
+            sb.AppendLine();
+            sb.AppendLine("Surface\tNd\tVd\tdPgF");
+            foreach (var s in modelSurfaces)
+            {
+                sb.Append("Model Surface ").Append(s.Index).Append('\t')
+                  .Append(s.ModelNd.ToString("F6", CultureInfo.InvariantCulture)).Append('\t')
+                  .Append(s.ModelVd.ToString("F4", CultureInfo.InvariantCulture)).Append('\t')
+                  .Append(s.ModelDPgF.ToString("F6", CultureInfo.InvariantCulture));
+                sb.AppendLine();
+            }
         }
 
         private static void Row(StringBuilder sb, string param, double value, string unit)
@@ -78,7 +103,24 @@ namespace LensHH.Rendering.TextExport
             var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             for (int i = 0; i < system.Surfaces.Count; i++)
             {
-                string mat = system.Surfaces[i].Material;
+                var surf = system.Surfaces[i];
+
+                // A model-glass surface computes its index from Nd/Vd/dPgF, not a
+                // catalog material. List it as its OWN distinct column ("Model
+                // Surface N") keyed by surface so it never dedups with a catalog
+                // glass of the same (now stale) Material name. Without this the
+                // model surface collapses into a same-named catalog glass and both
+                // the model row and the real glass disappear from the table.
+                if (surf.ModelIndexEnabled)
+                {
+                    string label = $"Model Surface {surf.Index}";
+                    // Unique key (surface index) → always added, never deduped.
+                    if (seen.Add("model" + surf.Index))
+                        materialToSurface.Add(new KeyValuePair<string, int>(label, i));
+                    continue;
+                }
+
+                string mat = surf.Material;
                 if (string.IsNullOrEmpty(mat)) continue;
                 if (mat.Equals("AIR", StringComparison.OrdinalIgnoreCase)) continue;
                 if (mat.Equals("MIRROR", StringComparison.OrdinalIgnoreCase)) continue;

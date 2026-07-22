@@ -42,8 +42,8 @@ namespace LensHH.Mcp
         public double SemiDiameterSeed { get; set; } = 12.5;
         public double AirGapSeed { get; set; } = 10;
         public double BflSeed { get; set; } = 45;
-        public int BhMaxHops { get; set; } = 2000;
-        public int BhLmPerHop { get; set; } = 4000;
+        public int BhMaxHops { get; set; } = OptimizationDefaults.MultistartTrials;
+        public int BhLmPerHop { get; set; } = OptimizationDefaults.LmIterations;
         public int BhHjPerHop { get; set; } = 30;
 
         /// <summary>No-improvement watchdog (seconds). When &gt; 0, each BH

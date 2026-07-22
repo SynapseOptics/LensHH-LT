@@ -359,7 +359,7 @@ namespace LensHH.Mcp
                     var lm = new LocalOptimizer(system, merit, session.GlassCatalog)
                     {
                         ParallelEvaluation       = true,
-                        MaxIterations            = 4000,
+                        MaxIterations            = OptimizationDefaults.LmIterations,
                         Tolerance                = 1e-10,
                         InitialDamping           = 1e-3,
                         UseBroydenUpdate         = true,

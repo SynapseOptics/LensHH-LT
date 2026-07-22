@@ -88,7 +88,14 @@ namespace LensHH.Core.IO
                     SemiDiameterMin = s.SemiDiameterMin,
                     SemiDiameterMax = s.SemiDiameterMax,
                     ClearAperturePercentMin = s.ClearAperturePercentMin,
-                    ClearAperturePercentMax = s.ClearAperturePercentMax
+                    ClearAperturePercentMax = s.ClearAperturePercentMax,
+                    ModelIndexEnabled = s.ModelIndexEnabled,
+                    ModelNd = s.ModelNd, ModelVd = s.ModelVd, ModelDPgF = s.ModelDPgF,
+                    ModelNdVariable = s.ModelNdVariable, ModelVdVariable = s.ModelVdVariable,
+                    ModelDPgFVariable = s.ModelDPgFVariable,
+                    ModelNdMin = s.ModelNdMin, ModelNdMax = s.ModelNdMax,
+                    ModelVdMin = s.ModelVdMin, ModelVdMax = s.ModelVdMax,
+                    ModelDPgFMin = s.ModelDPgFMin, ModelDPgFMax = s.ModelDPgFMax
                 };
 
                 // Only write aspheric data if non-trivial

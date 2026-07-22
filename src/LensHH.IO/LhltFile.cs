@@ -104,6 +104,23 @@ namespace LensHH.Core.IO
         public double? SemiDiameterMax { get; set; }
         public double? ClearAperturePercentMin { get; set; }
         public double? ClearAperturePercentMax { get; set; }
+
+        // Model glass (Nd/Vd/dPgF) — when enabled the refractive index is computed
+        // from these three parameters instead of a catalog Material. Each can be a
+        // Variable (bounds below) or a Pickup (carried in the pickups list).
+        public bool ModelIndexEnabled { get; set; }
+        public double ModelNd { get; set; }
+        public double ModelVd { get; set; }
+        public double ModelDPgF { get; set; }
+        public bool ModelNdVariable { get; set; }
+        public bool ModelVdVariable { get; set; }
+        public bool ModelDPgFVariable { get; set; }
+        public double? ModelNdMin { get; set; }
+        public double? ModelNdMax { get; set; }
+        public double? ModelVdMin { get; set; }
+        public double? ModelVdMax { get; set; }
+        public double? ModelDPgFMin { get; set; }
+        public double? ModelDPgFMax { get; set; }
     }
 
     public class LhltWavelength

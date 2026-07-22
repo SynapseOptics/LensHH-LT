@@ -92,9 +92,42 @@ public partial class ParameterStateViewModel : ObservableObject
         }
     }
 
-    // Preceding surfaces for pickup source
-    public int[] AvailablePickupSurfaces =>
-        Enumerable.Range(1, Math.Max(0, _surface.Index - 1)).ToArray();
+    private bool IsModelParam =>
+        _pickupParam == PickupParameter.ModelNd
+        || _pickupParam == PickupParameter.ModelVd
+        || _pickupParam == PickupParameter.ModelDPgF;
+
+    // Preceding surfaces for pickup source. Model-index pickups (Nd/Vd/dPgF) may ONLY source from
+    // a preceding surface that is itself a model-glass surface — a catalog/air source has no model
+    // coefficients, so picking it up would fill the target with junk (0). Filter those out so the
+    // user cannot select an invalid source.
+    public int[] AvailablePickupSurfaces
+    {
+        get
+        {
+            var pre = Enumerable.Range(1, Math.Max(0, _surface.Index - 1));
+            if (IsModelParam)
+            {
+                var surfs = _session.System.Surfaces;
+                pre = pre.Where(i => i < surfs.Count && surfs[i].ModelIndexEnabled);
+            }
+            return pre.ToArray();
+        }
+    }
+
+    // Resolve a valid source-surface index, snapping the selection into the allowed set (a model
+    // pickup requires a model-glass source). Returns 0 when no valid source exists.
+    private int ResolvePickupSource()
+    {
+        int src = PickupSourceSurface > 0 ? PickupSourceSurface : 1;
+        if (IsModelParam)
+        {
+            var avail = AvailablePickupSurfaces;
+            if (avail.Length == 0) return 0;
+            if (System.Array.IndexOf(avail, src) < 0) { src = avail[0]; PickupSourceSurface = src; }
+        }
+        return src;
+    }
 
     [ObservableProperty] private int _pickupSourceSurface = 1;
     [ObservableProperty] private double _pickupScale = 1.0;
@@ -106,11 +139,13 @@ public partial class ParameterStateViewModel : ObservableObject
             p => p.TargetSurfaceIndex == _surface.Index && p.Parameter == _pickupParam);
         if (existing == null)
         {
+            int src = ResolvePickupSource();
+            if (src <= 0) { IsPickup = false; return; }   // model pickup with no valid model source
             _session.System.Pickups.Add(new Pickup
             {
                 TargetSurfaceIndex = _surface.Index,
                 Parameter = _pickupParam,
-                SourceSurfaceIndex = PickupSourceSurface > 0 ? PickupSourceSurface : 1,
+                SourceSurfaceIndex = src,
                 ScaleFactor = PickupScale,
                 Offset = PickupOffset
             });
@@ -127,11 +162,13 @@ public partial class ParameterStateViewModel : ObservableObject
     {
         if (!IsPickup) { RemovePickup(); return; }
         RemovePickup();
+        int src = ResolvePickupSource();
+        if (src <= 0) { IsPickup = false; return; }   // model pickup with no valid model source — revert to Fixed
         _session.System.Pickups.Add(new Pickup
         {
             TargetSurfaceIndex = _surface.Index,
             Parameter = _pickupParam,
-            SourceSurfaceIndex = PickupSourceSurface,
+            SourceSurfaceIndex = src,
             ScaleFactor = PickupScale,
             Offset = PickupOffset
         });
@@ -161,6 +198,91 @@ public partial class SurfacePropertiesViewModel : ObservableObject
     public ParameterStateViewModel ClearApertureState { get; }
     public bool IsAutoAperture  => _surface.SemiDiameterMode == SemiDiameterMode.Auto;
     public bool IsFixedAperture => _surface.SemiDiameterMode == SemiDiameterMode.Fixed;
+
+    // Glass Model tab — when enabled the refractive index is computed from the
+    // three model-glass parameters (Nd/Vd/dPgF) instead of a catalog material.
+    // Each parameter can be Fixed / Variable / Pickup like curvature or thickness.
+    public ParameterStateViewModel ModelNdState { get; }
+    public ParameterStateViewModel ModelVdState { get; }
+    public ParameterStateViewModel ModelDPgFState { get; }
+
+    /// <summary>
+    /// Enable/disable model-glass mode. Toggling is where Glass ⇄ Model
+    /// conversion happens (per the design): enabling loads Nd/Vd/dPgF from the
+    /// currently-specified catalog glass; disabling finds the closest catalog
+    /// glass to the (possibly optimizer-modified) model parameters and writes
+    /// it back to the Material column.
+    /// </summary>
+    public bool ModelIndexEnabled
+    {
+        get => _surface.ModelIndexEnabled;
+        set
+        {
+            if (_surface.ModelIndexEnabled == value) return;
+
+            // Preferred catalogs drive both the extract and the closest-match
+            // search; an empty list means "search all loaded catalogs".
+            var preferred = _session.System.GlassCatalogs != null && _session.System.GlassCatalogs.Count > 0
+                ? _session.System.GlassCatalogs
+                : null;
+
+            if (value)
+            {
+                // Glass -> Model: seed the three parameters from the current glass.
+                var p = _session.GlassCatalog.ExtractModelParams(_surface.Material, preferred);
+                if (p.HasValue)
+                {
+                    _surface.ModelNd = p.Value.Nd;
+                    _surface.ModelVd = p.Value.Vd;
+                    _surface.ModelDPgF = p.Value.DPgF;
+                }
+                _surface.ModelIndexEnabled = true;
+            }
+            else
+            {
+                // Model -> Glass: snap to the closest real catalog glass.
+                // FindClosestGlass returns a "CATALOG:GLASS" key; Material stores
+                // the bare glass name, so strip the catalog prefix.
+                var g = _session.GlassCatalog.FindClosestGlass(
+                    _surface.ModelNd, _surface.ModelVd, _surface.ModelDPgF, preferred);
+                if (!string.IsNullOrEmpty(g))
+                {
+                    int ci = g.IndexOf(':');
+                    _surface.Material = ci >= 0 ? g.Substring(ci + 1) : g;
+                }
+                _surface.ModelIndexEnabled = false;
+            }
+
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(ModelNdValue));
+            OnPropertyChanged(nameof(ModelVdValue));
+            OnPropertyChanged(nameof(ModelDPgFValue));
+            OnPropertyChanged(nameof(GlassDisplay));
+        }
+    }
+
+    public double ModelNdValue
+    {
+        get => _surface.ModelNd;
+        set { _surface.ModelNd = value; OnPropertyChanged(); }
+    }
+
+    public double ModelVdValue
+    {
+        get => _surface.ModelVd;
+        set { _surface.ModelVd = value; OnPropertyChanged(); }
+    }
+
+    public double ModelDPgFValue
+    {
+        get => _surface.ModelDPgF;
+        set { _surface.ModelDPgF = value; OnPropertyChanged(); }
+    }
+
+    /// <summary>What the read-only "Glass" reference field shows on the tab:
+    /// "Model" while model-index is enabled, otherwise the catalog material.</summary>
+    public string GlassDisplay =>
+        _surface.ModelIndexEnabled ? "Model" : (_surface.Material ?? string.Empty);
 
     public double SemiDiameterValue
     {
@@ -268,6 +390,13 @@ public partial class SurfacePropertiesViewModel : ObservableObject
         ClearApertureState = new ParameterStateViewModel("Clear Aperture %", surface, session,
             PickupParameter.ClearAperturePercent, () => surface.ClearAperturePercentVariable, v => surface.ClearAperturePercentVariable = v,
             canVary: !surface.IsStop);
+
+        ModelNdState = new ParameterStateViewModel("Model Nd", surface, session,
+            PickupParameter.ModelNd, () => surface.ModelNdVariable, v => surface.ModelNdVariable = v);
+        ModelVdState = new ParameterStateViewModel("Model Vd", surface, session,
+            PickupParameter.ModelVd, () => surface.ModelVdVariable, v => surface.ModelVdVariable = v);
+        ModelDPgFState = new ParameterStateViewModel("Model dPgF", surface, session,
+            PickupParameter.ModelDPgF, () => surface.ModelDPgFVariable, v => surface.ModelDPgFVariable = v);
     }
 
     public void Apply()
@@ -277,6 +406,9 @@ public partial class SurfacePropertiesViewModel : ObservableObject
         ConicState.SavePickup();
         SemiDiameterState.SavePickup();
         ClearApertureState.SavePickup();
+        ModelNdState.SavePickup();
+        ModelVdState.SavePickup();
+        ModelDPgFState.SavePickup();
         _session.NotifySystemChanged("properties");
     }
 }

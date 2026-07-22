@@ -31,6 +31,11 @@
       <Setter Property="FontStyle" Value="Italic" />
       <Setter Property="Foreground" Value="Gray" />
     </Style>
+    <!-- Italic for the "Model" placeholder in the Glass column (model-index surfaces:
+         the index is computed from Nd/Vd/dPgF rather than a catalog glass). -->
+    <Style Selector="TextBlock.model-glass">
+      <Setter Property="FontStyle" Value="Italic" />
+    </Style>
   </Window.Styles>
 
   <DockPanel>
@@ -307,15 +312,23 @@
               <DataGridTemplateColumn Header="Glass" Width="100">
                 <DataGridTemplateColumn.CellTemplate>
                   <DataTemplate>
-                    <TextBlock Text="{Binding Material}"
-                               Classes.unresolved-glass="{Binding IsGlassUnresolved}"
-                               Classes.config-owned="{Binding IsGlassOwned}"
-                               VerticalAlignment="Center" TextAlignment="Center" Margin="4,0" />
+                    <!-- Grid wrapper so the cell is always full width and the TextBlock
+                         re-centers on a value change (e.g. glass → "Model"); relying on
+                         the TextBlock's own alignment left the just-edited cell left-aligned
+                         until the row was re-realized. -->
+                    <Grid>
+                      <TextBlock Text="{Binding GlassDisplay}"
+                                 Classes.unresolved-glass="{Binding IsGlassUnresolved}"
+                                 Classes.config-owned="{Binding IsGlassOwned}"
+                                 Classes.model-glass="{Binding IsModelGlass}"
+                                 HorizontalAlignment="Center" VerticalAlignment="Center"
+                                 TextAlignment="Center" Margin="4,0" />
+                    </Grid>
                   </DataTemplate>
                 </DataGridTemplateColumn.CellTemplate>
                 <DataGridTemplateColumn.CellEditingTemplate>
                   <DataTemplate>
-                    <TextBox Text="{Binding Material, UpdateSourceTrigger=LostFocus}" IsReadOnly="{Binding IsGlassOwned}" TextAlignment="Center" />
+                    <TextBox Text="{Binding Material, UpdateSourceTrigger=LostFocus}" IsReadOnly="{Binding IsGlassCellReadOnly}" TextAlignment="Center" />
                   </DataTemplate>
                 </DataGridTemplateColumn.CellEditingTemplate>
               </DataGridTemplateColumn>

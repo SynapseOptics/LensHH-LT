@@ -156,8 +156,21 @@ public partial class SurfaceRowViewModel : ObservableObject
     public string Material
     {
         get => _surface.Material;
-        set { if (_surface.Material != value) { _surface.Material = value ?? ""; OnPropertyChanged(); OnPropertyChanged(nameof(IsGlassUnresolved)); _session.NotifySystemChanged("surface"); } }
+        set { if (_surface.Material != value) { _surface.Material = value ?? ""; OnPropertyChanged(); OnPropertyChanged(nameof(GlassDisplay)); OnPropertyChanged(nameof(IsGlassUnresolved)); _session.NotifySystemChanged("surface"); } }
     }
+
+    /// <summary>Glass-column text: "Model" while model-index is enabled (the index
+    /// is computed from Nd/Vd/dPgF, not a catalog glass), otherwise the material.</summary>
+    public string GlassDisplay => _surface.ModelIndexEnabled ? "Model" : (_surface.Material ?? string.Empty);
+
+    /// <summary>True when the glass cell shows the model-index "Model" placeholder —
+    /// drives the italic style on the Glass column (see MainWindow.axaml).</summary>
+    public bool IsModelGlass => _surface.ModelIndexEnabled;
+
+    /// <summary>The glass cell is not editable when the value is owned by a
+    /// configuration OR when model-index mode is on (glass is replaced by Nd/Vd/dPgF;
+    /// re-enable by unchecking "Enable Model Index" in the surface's Glass Model tab).</summary>
+    public bool IsGlassCellReadOnly => IsGlassOwned || _surface.ModelIndexEnabled;
 
     public bool IsGlassUnresolved
     {
@@ -353,6 +366,9 @@ public partial class SurfaceRowViewModel : ObservableObject
         OnPropertyChanged(nameof(SemiDiameterWithMarker));
         OnPropertyChanged(nameof(ClearAperturePercentWithMarker));
         OnPropertyChanged(nameof(IsGlassUnresolved));
+        OnPropertyChanged(nameof(GlassDisplay));
+        OnPropertyChanged(nameof(IsModelGlass));
+        OnPropertyChanged(nameof(IsGlassCellReadOnly));
         OnPropertyChanged(nameof(IsFixedSemiDiameter));
         OnPropertyChanged(nameof(IsCaEditable));
         OnPropertyChanged(nameof(IsSemiDiameterEditable));

@@ -43,7 +43,7 @@ public partial class AsphereSearchDialogViewModel : ObservableObject
     [ObservableProperty] private bool _enableA6 = true;
     [ObservableProperty] private bool _enableA8 = false;
     [ObservableProperty] private int _lmIterationsPerTrial = 500;
-    [ObservableProperty] private int _finalLmIterations = 4000;
+    [ObservableProperty] private int _finalLmIterations = OptimizationDefaults.LmIterations;
     [ObservableProperty] private int _topN = 1;
     [ObservableProperty] private bool _skipAlreadyAspheric = true;
     [ObservableProperty] private bool _acceptOnlyIfBetter = true;

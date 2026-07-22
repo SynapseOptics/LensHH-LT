@@ -72,11 +72,12 @@ echo.
 echo === Engine obfuscation check ===
 REM Refuse to package a NON-obfuscated (dev) managed engine DLL. .NET Reactor
 REM (-suppressildasm 1) stamps the protected build with a SuppressIldasmAttribute
-REM that a plain `dotnet build` never adds; detect it as a raw string. A dev DLL
-REM in engine\ (e.g. left behind to make something compile) must never ship —
-REM the proprietary engine would otherwise go out in the clear.
-powershell -NoProfile -Command ^
-  "$dll='engine\LensHH.Core.dll'; if (-not (Test-Path $dll)) { Write-Host ('FATAL: engine DLL not found: ' + $dll); exit 1 }; $t=[Text.Encoding]::ASCII.GetString([IO.File]::ReadAllBytes($dll)); if ($t.Contains('SuppressIldasmAttribute')) { Write-Host 'Obfuscation check: OK (Reactor-protected engine DLL)' } else { Write-Host 'FATAL: engine\LensHH.Core.dll is a NON-OBFUSCATED (dev) build - refusing to package.'; Write-Host '       Restore it: run a Release build of Core (the ProtectWithReactor post-build)'; Write-Host '       or scripts\publish-obfuscated.bat, then re-run this installer build.'; exit 1 }"
+REM that a plain `dotnet build` never adds. A dev DLL in engine\ (e.g. left behind
+REM to make something compile, or manually staged for a GUI test) must never ship —
+REM the proprietary engine would otherwise go out in the clear. Shared, fail-closed
+REM guard (single source of truth; mirrors installer\verify-engine-obfuscated.sh
+REM for the Linux/mac path). NEVER bypass this by running ISCC on the .iss directly.
+powershell -NoProfile -ExecutionPolicy Bypass -File "installer\verify-engine-obfuscated.ps1" -Dll "engine\LensHH.Core.dll"
 if errorlevel 1 (
     echo Engine obfuscation check FAILED — refusing to build installer.
     pause

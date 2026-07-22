@@ -209,6 +209,8 @@
                      FontSize="12" Foreground="#888" />
           <TextBlock Text="{Binding BestMeritText, StringFormat='Best: {0}'}"
                      FontSize="12" Foreground="Green" FontWeight="SemiBold" />
+          <TextBlock Text="{Binding EngineText}"
+                     FontSize="12" Foreground="Gray" />
         </StackPanel>
       </Grid>
     </Border>

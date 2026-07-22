@@ -61,7 +61,7 @@ namespace LensHH.App.ViewModels
         // Polish.
         [ObservableProperty] private int _polishMethodIndex = 2;  // 0 = none, 1 = LM, 2 = Multistart (default)
         [ObservableProperty] private int _polishCount = 16;
-        [ObservableProperty] private int _lmIterations = 4000;
+        [ObservableProperty] private int _lmIterations = OptimizationDefaults.LmIterations;
 
         // Multistart-LM polish tuning (used when PolishMethodIndex == 2). The polish exits on
         // cap-stall; MsTrials is a high backstop so the trial budget isn't the limiter.
@@ -69,7 +69,7 @@ namespace LensHH.App.ViewModels
         [ObservableProperty] private int _msStopAtCapStallBatches = 1;
         [ObservableProperty] private double _msInitialSigma = 0.001;
         [ObservableProperty] private double _msSigmaCap = 0.01;
-        [ObservableProperty] private int _msLmIterationsPerTrial = 4000;
+        [ObservableProperty] private int _msLmIterationsPerTrial = OptimizationDefaults.LmIterations;
 
         /// <summary>Polish = Multistart LM (index 2) — enables the Multistart-tuning controls.</summary>
         public bool PolishIsMultistart => PolishMethodIndex == 2;

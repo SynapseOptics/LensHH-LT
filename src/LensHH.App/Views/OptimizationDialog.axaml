@@ -5,10 +5,10 @@
         x:DataType="vm:OptimizationDialogViewModel"
         Title="Local Optimization"
         Icon="avares://LensHH.App/Assets/icon_256.png"
-        Width="820" Height="620"
+        Width="1200" Height="620"
         WindowStartupLocation="CenterOwner"
         CanResize="True"
-        MinWidth="700" MinHeight="500">
+        MinWidth="1080" MinHeight="500">
 
   <DockPanel Margin="12">
 
@@ -57,7 +57,7 @@
       <Grid ColumnDefinitions="*,Auto,20,Auto,20,Auto" RowDefinitions="Auto,4,Auto">
         <!-- Row 0: status + elapsed -->
         <TextBlock Grid.Row="0" Grid.Column="0" Text="{Binding StatusText}"
-                   FontWeight="SemiBold" FontSize="14" />
+                   FontWeight="SemiBold" FontSize="14" TextWrapping="Wrap" />
         <TextBlock Grid.Row="0" Grid.Column="3" Text="{Binding ElapsedText}"
                    FontSize="13" />
         <TextBlock Grid.Row="0" Grid.Column="5"
@@ -73,6 +73,8 @@
                      FontSize="12" Foreground="Gray" />
           <TextBlock Text="{Binding BestMeritText, StringFormat='Best: {0}'}"
                      FontSize="12" Foreground="Green" FontWeight="SemiBold" />
+          <TextBlock Text="{Binding EngineText}"
+                     FontSize="12" Foreground="Gray" />
         </StackPanel>
       </Grid>
     </Border>

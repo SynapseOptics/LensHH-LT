@@ -44,8 +44,8 @@ namespace LensHH.App.ViewModels
         // ── Global Search settings ──
         [ObservableProperty] private int _modelsToKeep = 16;
         [ObservableProperty] private int _maxRestarts = 48;
-        [ObservableProperty] private int _maxTrialsPerRestart = 2000;
-        [ObservableProperty] private int _lmIterationsPerTrial = 4000;
+        [ObservableProperty] private int _maxTrialsPerRestart = OptimizationDefaults.MultistartTrials;
+        [ObservableProperty] private int _lmIterationsPerTrial = OptimizationDefaults.LmIterations;
         [ObservableProperty] private int _stopAtCapStallBatches = 1;
         [ObservableProperty] private int _baseSeed = 1;
 

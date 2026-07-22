@@ -101,9 +101,8 @@ namespace LensHH.CLI.Commands
 
             // Defaults match LocalOptimizer's own defaults so the CLI is
             // the most-faithful surface to the engine. maxiter lifted
-            // 200 -> 4000 to match the GUI dialog and the engine's
-            // expectation that LM converges well before that.
-            int maxIter = 4000;
+            // Shared OptimizationDefaults so the CLI LM matches the GUI/MCP default.
+            int maxIter = OptimizationDefaults.LmIterations;
             double tol = 1e-10;
             double damping = 0.001;
             bool useBroyden = true;
@@ -147,7 +146,11 @@ namespace LensHH.CLI.Commands
                 InitialDamping = damping,
                 UseBroydenUpdate = useBroyden,
                 BroydenRefreshInterval = broydenRefresh,
-                ParallelEvaluation = true
+                ParallelEvaluation = true,
+                // Native C++ analytic Jacobian (bedrock path); auto-falls-back to C# for
+                // variable types native can't handle (SD / CA% / model-glass / multi-config).
+                EngineMode = LensHH.Core.MeritFunction.EngineMode.Native,
+                NativeDerivativeMode = LensHH.Core.NativeInterop.MeritDerivativeMode.Analytic
             };
 
             optimizer.CollectVariables();
@@ -182,6 +185,7 @@ namespace LensHH.CLI.Commands
                 AnsiConsole.MarkupLine($"  Initial Merit: {result.InitialMerit:E6}");
                 AnsiConsole.MarkupLine($"  Final Merit:   {result.FinalMerit:E6}");
                 AnsiConsole.MarkupLine($"  Iterations:    {result.Iterations}");
+                AnsiConsole.MarkupLine($"  Engine:        {Markup.Escape(result.ComputePathDescription)}");
                 AnsiConsole.MarkupLine($"  {Markup.Escape(result.Message)}");
 
                 if (result.Converged)
@@ -320,6 +324,7 @@ namespace LensHH.CLI.Commands
                 AnsiConsole.MarkupLine($"  Post-LM Merit:  {result.PostInitialLmMerit:E6}");
                 AnsiConsole.MarkupLine($"  Final Merit:    {result.FinalMerit:E6}");
                 AnsiConsole.MarkupLine($"  Trials: {result.TrialsRun}, Accepted: {result.TrialsAccepted}");
+                AnsiConsole.MarkupLine($"  Engine:         {Markup.Escape(result.ComputePathDescription)}");
                 AnsiConsole.MarkupLine($"  {Markup.Escape(result.Message)}");
             }
             finally
@@ -531,11 +536,11 @@ namespace LensHH.CLI.Commands
 
             // Defaults mirror the GUI dialog: don't pre-polish the start, escape
             // fast (sigma cap 0.01, stall-at-cap 1), 50% glass swaps, deep per-trial LM.
-            var gs = new GlobalSearchSettings { StopAtCapStallBatches = 1, MaxTrialsPerRestart = 2000 };
+            var gs = new GlobalSearchSettings { StopAtCapStallBatches = 1, MaxTrialsPerRestart = OptimizationDefaults.MultistartTrials };
             gs.Multistart.InitialLmIterations = 0;        // 0 = perturb the raw start (no pre-polish)
             gs.Multistart.SigmaCap = 0.01;
             gs.Multistart.GlassSubstitutionProbability = 0.5;
-            gs.Multistart.LmIterationsPerTrial = 4000;
+            gs.Multistart.LmIterationsPerTrial = OptimizationDefaults.LmIterations;
             bool useNative = false, analytic = false;
             string outDir = "global_search_results";
 

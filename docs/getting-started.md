@@ -612,12 +612,10 @@ specs require, and weight them in line with how strict the spec is.
 ### Running the optimizer
 
 **Optimization → Local Optimization**. The dialog opens with
-sensible defaults — Max Iterations 4000, Broyden Update on, Init
+sensible defaults — Max Iterations 6000, Broyden Update on, Init
 Damp 1e-3 (Levenberg-Marquardt starting damping; see the
 [optimization reference](optimization.md#local-lm) for when to
-override):
-
-![Local Optimization dialog, ready to start](images/LocalOptimizationStart.png)
+override).
 
 1. Press **Start**. The dialog populates a per-variable table
    showing **Start Value**, **Current Value**, and **Delta** for
@@ -626,46 +624,47 @@ override):
 2. **Stop** cancels mid-run; **OK — Accept Results** keeps the
    current state; **Cancel — Revert** restores the pre-run design.
 
-A converged run on the Cooke-triplet starter (already close to
-optimum) typically improves the merit by a few percent and finishes
-within a fraction of a second:
+On the Cooke-triplet starter — already a sensible triplet — the run
+converges almost instantly and improves the merit only modestly,
+from **0.0794 to 0.0757** (133 iterations, about 0.3 s on the native
+analytic engine). The header strip reports which engine actually ran
+(here *Native Analytic*):
 
-![Local Optimization after a few hundred iterations — small improvement, all variables shifted slightly](images/LocalOptimizationSmallImprovement.png)
+![Local Optimization window — converged at iteration 133, merit 0.0794 → 0.0757, engine Native Analytic](images/CookeTripletMultiStart/LocalOptimizxationWindowResult.png)
 
-The clearest picture of what changed is in the wavefront map. On
-axis, the RMS wavefront error drops by roughly 3× — from about
-0.21–0.27 waves down to under 0.10 waves at the central wavelength —
-and the residual figure shifts from a clear spherical bowl to a
-much flatter, near-diffraction-limited surface:
+That few-percent gain is the defining trait of local optimization:
+**it polishes the design you hand it — it does not transform it.**
+Levenberg-Marquardt walks downhill to the *nearest* minimum of the
+merit surface and stops. Our starting triplet already sits close to
+a good local minimum, so "downhill" is a short walk.
 
-| Before | After |
+The before/after analyses make the point. The wavefront map and the
+polychromatic FFT MTF change only slightly — a small on-axis tidy-up,
+with the 14° and 20° fields essentially where they started (their
+oblique aberrations are baked into this glass/shape combination and a
+local polish can't reach them):
+
+| | Before (start, 0.0794) | After local opt (0.0757) |
+|---|---|---|
+| Wavefront | ![Wavefront before](images/CookeTripletMultiStart/WavefrontMapBeforeMultiStartOptimizationFixedGlass.png) | ![Wavefront after local](images/CookeTripletMultiStart/WavefrontMapAfterLocalOptimization.png) |
+| FFT MTF | ![MTF before](images/CookeTripletMultiStart/FftMtfBeforeMultiStartOptimizationFixedGlass.png) | ![MTF after local](images/CookeTripletMultiStart/FftMtfAfterLocalOptimization.png) |
+
+The geometric spot diagram barely moves at all — spot size here is
+dominated by the same off-axis aberrations that limit the off-axis
+MTF, so a local polish leaves it nearly untouched:
+
+| Before (start) | After local opt |
 |---|---|
-| ![Wavefront map before optimization](images/WavefrontMapBeforeOptimizationCookeTriplet.png) | ![Wavefront map after optimization](images/WavefrontMapAfterOptimizationCookeTriplet.png) |
+| ![Spot before](images/CookeTripletMultiStart/SpotDiagramBeforeMultiStartOptimizationFixedGlass.png) | ![Spot after local](images/CookeTripletMultiStart/SpotDiagramAfterLocalOptimization.png) |
 
-That on-axis improvement shows up immediately on the polychromatic
-FFT MTF. Before, the on-axis (blue) curve falls almost as fast as
-the off-axis curves; after, it pulls away and tracks the diffraction
-limit out past 150 cy/mm. The 14° and 20° curves improve only
-modestly — the 20° field is dominated by oblique aberrations the
-spherical-only triplet can't fully correct:
-
-| Before | After |
-|---|---|
-| ![FFT MTF before optimization](images/FftMtfBeforeOptimizationCookeTriplet.png) | ![FFT MTF after optimization](images/FftMtfAfterOptimizationCookeTriplet.png) |
-
-The geometric spot diagram changes much less between the two
-states. Spot size is dominated by the same off-axis aberrations
-that limit the off-axis MTF, so the optimizer's on-axis wavefront
-gains barely register there. This is a useful reminder that
-different metrics tell different parts of the story — in this
-particular run the merit function (RMS wavefront, equally weighted
-across fields) was pulled hardest by the field where it had the
-most room to move, which happened to be on-axis.
-
-For escaping local minima and pushing the off-axis fields harder,
+This is the moment to reach for a **global** method. To escape the
+starting basin — and to let the optimizer re-choose the glasses —
 see Multistart and Basin Hopping in the
-[Optimization](optimization.md) page — or Global Search there to
-collect a gallery of distinct design forms to choose among.
+[Optimization](optimization.md#multistart) page. On this
+exact triplet they take the merit from 0.0794 all the way down to
+**0.0190**, roughly a 4× improvement over this local polish, and in
+one demonstration they rebuild the whole lens starting from nothing
+but a stack of flat glass plates.
 
 ## System Aperture & Object-Space Telecentric
 

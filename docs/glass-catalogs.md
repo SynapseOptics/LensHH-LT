@@ -93,6 +93,74 @@ Every glass cell in the Surfaces table opens a picker dialog showing:
 Double-click an entry (or press **OK**) to assign it to the current
 surface.
 
+## Model Glass (Nd / Vd / dPgF)
+
+Instead of a named catalog entry, a surface's glass can be a **model
+glass** — a refractive index computed directly from three numbers:
+
+- **Nd** — refractive index at the d-line (587.6 nm).
+- **Vd** — the Abbe number (dispersion).
+- **dPgF** — the deviation of the relative partial dispersion (Pg,F)
+  from the "normal line", which sets the anomalous dispersion that
+  drives secondary-spectrum correction.
+
+The engine builds a full dispersion curve from these three values, so
+a model glass behaves like any real glass in ray tracing, analysis,
+and optimization — but it need not exist in any catalog. That makes it
+the tool for **exploring what glass a design *wants*** before you go
+shopping for a real one.
+
+### Enabling it
+
+Open a surface's **Properties → Glass Model** tab. Start with a
+catalog glass assigned — here surface 3 of a Cooke triplet is `F2`:
+
+![Lens Editor: surface 3 is catalog glass F2](images/ModelIndex/StartingLDE.png)
+
+With **Enable Model Index** off, the Nd/Vd/dPgF fields are disabled and
+the surface keeps its catalog glass:
+
+![Glass Model tab, Model Index disabled — glass F2](images/ModelIndex/ModelIndeUnchecked.png)
+
+Check **Enable Model Index** and the three fields populate from the
+current glass (F2's Nd ≈ 1.6200, Vd ≈ 36.37, dPgF ≈ 0.000279), and the
+glass label changes to **Model**:
+
+![Glass Model tab, Model Index enabled — fields loaded from F2, glass now Model](images/ModelIndex/ModelIndexChecked.png)
+
+Each parameter carries the familiar **Fixed / Variable / Pickup**
+choice, so **Nd, Vd, and dPgF can each be optimization variables** —
+letting the optimizer move continuously through index/dispersion space
+— or **pickups** slaved to another surface's model. (A pickup source
+must itself be a model-index surface; the picker only offers those, so
+a model parameter can never pick up a meaningless 0 from a catalog
+glass.)
+
+Edit a value directly to explore a hypothetical glass — say Nd = 1.65,
+higher than F2:
+
+![Editing Nd to 1.65](images/ModelIndex/ChangeNd1p65.png)
+
+In the Lens Editor the glass column now reads *Model* for that surface:
+
+![Lens Editor: surface 3 glass column shows Model](images/ModelIndex/ShowsUpAsModelInLDE.png)
+
+### Snapping back to a real glass
+
+When you have a model index you like, uncheck **Enable Model Index**
+and the surface **snaps to the closest catalog glass** — the nearest
+real glass in Nd/Vd/dPgF space. Because we raised Nd to 1.65, the
+closest match is no longer F2 but **F6**:
+
+| Snapped to F6 in the dialog | …and in the Lens Editor |
+|---|---|
+| ![Model Index unchecked — glass snapped to F6](images/ModelIndex/UncheckGlassChangedToF6.png) | ![Lens Editor: surface 3 now F6](images/ModelIndex/LDEShowingF6.png) |
+
+The round trip — start from a catalog glass, free Nd/Vd/dPgF as
+variables, optimize, then snap to the nearest real glass — is a
+standard way to let a design tell you which glasses it wants before
+committing to a manufacturable set.
+
 ## Custom / Filtered Catalogs
 
 ### Why

@@ -2,6 +2,54 @@
 
 All notable changes to LensHH-LT and the LensHH-LT-Engine.
 
+## 1.0.136 — 2026-07-21
+
+### Added
+- **Model glass (Nd / Vd / dPgF).** A surface's glass can now be defined by a
+  refractive-index *model* — Nd (index at the d-line), Vd (Abbe number), and dPgF
+  (relative partial-dispersion deviation) — instead of a named catalog entry.
+  Enable it per surface in **Properties → Glass Model**; the three parameters load
+  from the current glass, and each can be **Fixed, Variable, or a Pickup**, so the
+  optimizer can move continuously through index/dispersion space to discover what
+  glass a design *wants*. Disabling snaps the surface to the closest real catalog
+  glass. Model glasses are saved in the `.lhlt` file and behave like any other glass
+  in ray tracing, analysis, and optimization.
+
+### Changed
+- **Better-balanced merit-function normalization.** The global merit function now
+  uses a weighted-RMS convention, which rebalances how image-quality, first-order,
+  and boundary operands trade off against one another during optimization — designs
+  come out more evenly corrected across operand types. **Merit values are on a new
+  scale and are not directly comparable to numbers reported by earlier versions.**
+- **Safer optimizer defaults.** The default LM iteration and Multistart trial counts
+  were raised (LM 6000, Multistart 3000 trials) so a run no longer stops short of
+  convergence at the old low caps, and the GUI **Local Optimization** dialog now uses
+  the native analytic-derivative engine by default for faster, more accurate steps.
+
+### Fixed
+- **High-NA robustness.** A ray that diverged at an aspheric or conic surface could
+  leak a non-finite value into the merit function, poisoning an otherwise valid
+  optimization. Such intersections are now detected and rejected cleanly, fixing a
+  reported failure on a high-object-space-NA design.
+- **Afocal image quality.** Corrected the chief-ray piston term in the afocal OPD and
+  the centroid/mean-scatter reference for afocal systems, so wavefront and spot
+  metrics for riflescopes, telescopes, and other afocal designs are computed correctly.
+- **Local Optimizer convergence.** The Broyden-update path could stall short of the
+  minimum on a rejected step; it now refreshes the full Jacobian and continues.
+  Constrained-variable designs run with the Broyden update off now use the
+  finite-difference engine, which evaluates their bounded semi-diameters exactly.
+- **Model-index pickup source.** A model parameter (Nd/Vd/dPgF) pickup can only be
+  slaved to another model-index surface, so it can never copy a meaningless value
+  from a catalog glass.
+
+### Documentation
+- New **"Model Glass (Nd / Vd / dPgF)"** section in the Glass Catalogs reference.
+  Rebuilt the **Local / Multistart / Basin Hopping** optimization walkthroughs around
+  a single Cooke-triplet example with a curated source-of-truth lens-file set —
+  showing honestly how a local polish refines a design while global search escapes to
+  a much better basin, and demonstrating a design rebuilt from a bare stack of flat
+  plates.
+
 ## 1.0.135 — 2026-07-18
 
 ### Added

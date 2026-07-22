@@ -62,11 +62,12 @@ public partial class MultistartDialogViewModel : ObservableObject
     private readonly Stopwatch _stopwatch = new();
 
     // ── Settings ──
-    [ObservableProperty] private int _maxTrials = 2000;
-    // LmIterationsPerTrial: per-trial LM cap. Restored to 4000 — the previous
-    // default — at user request 2026-05-31. The per-trial LM should be allowed
-    // to converge cleanly; user explicitly objected to a small cap here.
-    [ObservableProperty] private int _lmIterationsPerTrial = 4000;
+    [ObservableProperty] private int _maxTrials = OptimizationDefaults.MultistartTrials;
+    // LmIterationsPerTrial: per-trial LM cap. Uses the shared OptimizationDefaults so LM
+    // and Multistart stay in lock-step across GUI/CLI/MCP. The per-trial LM must be allowed
+    // to converge cleanly — a small cap here is deadly (unconverged trials), which is why
+    // the default is intentionally generous.
+    [ObservableProperty] private int _lmIterationsPerTrial = OptimizationDefaults.LmIterations;
     // InitialLmIterations: Phase-1 cap. Dropped to 200 (engine default) per
     // user agreement — Phase 1 LM mostly polishes an already-converged seed
     // and 4000 here was overkill. Skippable entirely via the Skip Init LM box.
@@ -151,6 +152,7 @@ public partial class MultistartDialogViewModel : ObservableObject
     [ObservableProperty] private bool _isComplete;
     [ObservableProperty] private string _statusText = "Ready";
     [ObservableProperty] private string _meritText = "";
+    [ObservableProperty] private string _engineText = "";
     [ObservableProperty] private string _elapsedText = "0.0 s";
     [ObservableProperty] private string _trialText = "";
     [ObservableProperty] private string _initialMeritText = "";
@@ -434,6 +436,8 @@ public partial class MultistartDialogViewModel : ObservableObject
             string status = result.Cancelled ? "Cancelled" : "Completed";
             StatusText = $"{status} — {result.TrialsAccepted}/{result.TrialsRun} trials accepted";
             MeritText = $"Merit: {result.InitialMerit:E4} → {result.PostInitialLmMerit:E4} → {finalMerit:E4}";
+            // Transparency: show the engine/module that actually ran (incl. any fallback).
+            EngineText = $"Engine: {result.ComputePathDescription}";
         }
         catch (Exception ex)
         {

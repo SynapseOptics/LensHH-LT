@@ -202,6 +202,23 @@ public partial class VariableEditorViewModel : ObservableObject
                 Variables.Add(new VariableRowViewModel(num++, "Clear Aperture %", s.Index,
                     () => s.ClearAperturePercentMin, () => s.ClearAperturePercentMax,
                     v => s.ClearAperturePercentMin = v, v => s.ClearAperturePercentMax = v));
+
+            // Model-glass parameters (Nd / Vd / dPgF) — only for model-index surfaces.
+            if (s.ModelIndexEnabled)
+            {
+                if (s.ModelNdVariable)
+                    Variables.Add(new VariableRowViewModel(num++, "Model Nd", s.Index,
+                        () => s.ModelNdMin, () => s.ModelNdMax,
+                        v => s.ModelNdMin = v, v => s.ModelNdMax = v));
+                if (s.ModelVdVariable)
+                    Variables.Add(new VariableRowViewModel(num++, "Model Vd", s.Index,
+                        () => s.ModelVdMin, () => s.ModelVdMax,
+                        v => s.ModelVdMin = v, v => s.ModelVdMax = v));
+                if (s.ModelDPgFVariable)
+                    Variables.Add(new VariableRowViewModel(num++, "Model dPgF", s.Index,
+                        () => s.ModelDPgFMin, () => s.ModelDPgFMax,
+                        v => s.ModelDPgFMin = v, v => s.ModelDPgFMax = v));
+            }
         }
 
         // Config-specific variables (advanced edition): shown here with editable bounds. The Solve

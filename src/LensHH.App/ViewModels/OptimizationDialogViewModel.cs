@@ -48,7 +48,7 @@ public partial class OptimizationDialogViewModel : ObservableObject
     private readonly Stopwatch _stopwatch = new();
 
     // ── Settings ──
-    [ObservableProperty] private int _maxIterations = 4000;
+    [ObservableProperty] private int _maxIterations = OptimizationDefaults.LmIterations;
     [ObservableProperty] private bool _useBroydenUpdate = true;
 
     /// <summary>
@@ -65,6 +65,7 @@ public partial class OptimizationDialogViewModel : ObservableObject
     [ObservableProperty] private bool _isComplete;
     [ObservableProperty] private string _statusText = "Ready";
     [ObservableProperty] private string _meritText = "";
+    [ObservableProperty] private string _engineText = "";
     [ObservableProperty] private string _elapsedText = "0.0 s";
     [ObservableProperty] private int _iterationCount;
     [ObservableProperty] private string _initialMeritText = "";
@@ -108,6 +109,13 @@ public partial class OptimizationDialogViewModel : ObservableObject
             optimizer.UseBroydenUpdate = UseBroydenUpdate;
             optimizer.InitialDamping = InitialDamping;
             optimizer.ParallelEvaluation = true;
+
+            // Use the native C++ ANALYTIC Jacobian — the bedrock-validated path, same default the
+            // Basin Hopping / DE dialogs use. The optimizer auto-falls-back to C# only for variable
+            // types native can't handle (semi-diameter, clear-aperture, model-glass, multi-config);
+            // an ordinary curvature/thickness design runs native analytic (fast + exact gradients).
+            optimizer.EngineMode = EngineMode.Native;
+            optimizer.NativeDerivativeMode = LensHH.Core.NativeInterop.MeritDerivativeMode.Analytic;
 
             optimizer.CollectVariables();
 
@@ -188,6 +196,8 @@ public partial class OptimizationDialogViewModel : ObservableObject
                             result.Cancelled ? "Cancelled" : "Completed";
             StatusText = $"{status} — {result.Message}";
             MeritText = $"Merit: {result.InitialMerit:E6} → {finalMerit:E6}";
+            // Transparency: show the engine/module that actually ran (incl. any fallback).
+            EngineText = $"Engine: {result.ComputePathDescription}";
         }
         catch (Exception ex)
         {

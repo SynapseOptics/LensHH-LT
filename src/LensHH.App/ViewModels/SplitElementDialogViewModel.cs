@@ -39,8 +39,8 @@ public partial class SplitElementDialogViewModel : ObservableObject
     // ── Settings ──
     [ObservableProperty] private int _maxSplits = 1;
     [ObservableProperty] private int _glassTrials = 300;
-    [ObservableProperty] private int _lmPerTrial = 4000;
-    [ObservableProperty] private int _postSplitLm = 4000;
+    [ObservableProperty] private int _lmPerTrial = OptimizationDefaults.LmIterations;
+    [ObservableProperty] private int _postSplitLm = OptimizationDefaults.LmIterations;
     [ObservableProperty] private double _minGlassThickness = 1.0;
     [ObservableProperty] private double _maxGlassThickness = 25.0;
     [ObservableProperty] private double _minAirGap = 0.1;

@@ -39,8 +39,8 @@ public partial class GlobalBasinHoppingDialogViewModel : ObservableObject
     public void CancelRun() => _cts?.Cancel();
 
     // ── Editable per-chain HJ-LM settings ──
-    [ObservableProperty] private int _maxHops = 2000;
-    [ObservableProperty] private int _lmIterationsPerHop = 4000;
+    [ObservableProperty] private int _maxHops = OptimizationDefaults.MultistartTrials;
+    [ObservableProperty] private int _lmIterationsPerHop = OptimizationDefaults.LmIterations;
     [ObservableProperty] private int _hjStepsPerHop = 30;
     [ObservableProperty] private double _initialPerturbSigma = 0.001;
     [ObservableProperty] private bool _constrainedOnly = false;

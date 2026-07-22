@@ -106,7 +106,7 @@ constrain them. There are two equivalent ways to do that:
 Both are demonstrated below on the same Cooke triplet starting
 point (50 mm EFL, EPD 10, three fields 0°/14°/20°, three
 wavelengths 0.48/0.55/0.65 µm). Sample files:
-`samples/CookeTripletLocalOptimization/`.
+`samples/UserGuide/LensFilesForManual/`.
 
 #### Starting point
 
@@ -127,11 +127,11 @@ merit function does all the work with `EFL`, `WAVEX`, `CTG`, `CTA`,
 
 ![Merit function: CTG / CTA / EG / EA all present](images/CookeTripletLocalOptimization/MeritFunctionHandlesCTandET.png)
 
-Convergence (28 iterations, 0.2 s):
+Convergence (133 iterations, 0.3 s):
 
 ![Local Optimizer dialog after case (a)](images/CookeTripletLocalOptimization/LocalOptimizationWindowAfterLocalOptimizationUC.png)
 
-Merit goes from `8.51 × 10⁻³` to `7.87 × 10⁻³`. Optimized layout:
+Merit goes from `0.0794` to `0.0757`. Optimized layout:
 
 ![Layout after case (a)](images/CookeTripletLocalOptimization/LayoutAfterOptimization.png)
 
@@ -148,18 +148,19 @@ internal air gaps (S2, S4), and `[40, 100]` mm on the BFL (S6).
 
 ![Variable Editor — per-variable thickness bounds](images/CookeTripletLocalOptimization/CenterThicknessHandledWithConstraints.png)
 
-Convergence (411 iterations, 1.0 s):
+Convergence (566 iterations, 0.9 s):
 
 ![Local Optimizer dialog after case (b)](images/CookeTripletLocalOptimization/LocalOptimizationWindowAfterLocalOptimizationC.png)
 
-Merit goes from `8.54 × 10⁻³` to `7.86 × 10⁻³` — essentially the
-same final merit as case (a), and the optimized layout is visually
-identical. Constrained variables take more LM iterations because
-the transform makes the gradient flatten as a bound is approached;
-on this system the cost is fractions of a second, but on a much
-larger system the gap can grow. Both forms of constraint are
-supported and both reach the same optimum on this design — pick
-whichever fits your style.
+Merit goes from `0.0884` to `0.0843`, and the optimized layout is
+visually identical to case (a)'s — both constraint strategies reach
+the same design. (The two merit *values* are not directly comparable:
+case (a)'s merit also sums the `CTG`/`CTA` centre-thickness operands,
+which case (b) replaces with variable bounds.) Constrained variables
+take more LM iterations because the transform flattens the gradient as
+a bound is approached — 566 here versus 133 for case (a), still well
+under a second, though on a much larger system the gap can grow. Both
+forms of constraint are supported; pick whichever fits your style.
 
 #### Case (c) — no thickness handling at all
 
@@ -346,111 +347,83 @@ LM has little to do). When glass substitution is on, it also
 reports how many of the HJ-LM survivors were glass-swap
 candidates.
 
-### Three Multistart cases on the same design
+### Multistart on the Cooke triplet
 
-Sample files: `samples/CookeTripletMultiStartParallelPlate/` and
-`samples/CookeTripletMultiStartOptimizationFixedGlass/`. The
-target is the same Cooke triplet specification used in the Local
-Optimization section (50 mm EFL, EPD 10, three fields, three
-wavelengths). What changes case-to-case is the starting state and
-whether glass substitution is on.
+Sample file:
+`samples/UserGuide/LensFilesForManual/CookeTriplet_UC.lhlt` — the
+same 50 mm EFL triplet from the Local Optimization section (EPD 10,
+three fields 0°/14°/20°, three wavelengths), every curvature and
+thickness variable, thicknesses kept physical by the merit function
+(`CTG`/`CTA`/`EG`/`EA`). Its starting merit is **0.0794**. Where the
+local optimizer only polished it to 0.0757, Multistart's random
+restarts can jump out of that basin entirely.
 
-#### Case 1 — Parallel-plate start, glass substitution on
+Three scenarios show what that buys you — all from the defaults
+(**Trials 3000**, **LM/Trial 6000**, **Init Sigma 0.001**, Broyden
+and Metropolis on).
 
-`PPP_TRIPLET_ANY_GLASS_UC.lhlt`. The starting design is three
-flat plates separated by air gaps, all radii infinity, with the
-default Schott triplet glasses (SK16 / F2 / SK16). All three
-glass surfaces are flagged for substitution from the
-**CoreSet28** filtered catalog.
+#### Fixed glass — curvatures and thicknesses only
 
-| Before — three parallel plates | After — Multistart converged |
+With the glasses held fixed, Multistart perturbs only the continuous
+variables, and finds a basin far deeper than the local polish reached:
+
+![Multistart dialog, fixed glass — merit 0.0794 → 0.0429](images/CookeTripletMultiStart/MultiStartWindowResult.png)
+
+Result: **0.0794 → 0.0429** (136 s, 20 of 3000 trials accepted) — a
+~1.85× improvement the local optimizer could not reach, because it
+was trapped in the starting basin.
+
+| After — wavefront | After — FFT MTF |
 |---|---|
-| ![Parallel-plate start](images/CookeTripletMultiStart/LayoutBeforeOptimization.png) | ![After Multistart](images/CookeTripletMultiStart/LayoutAfterOptimization.png) |
+| ![Wavefront after fixed-glass Multistart](images/CookeTripletMultiStart/WavefrontMapAfterMultiStartOptimizationFixedGlass.png) | ![FFT MTF after fixed-glass Multistart](images/CookeTripletMultiStart/FftMtfAfterMultiStartOptimizationFixedGlass.png) |
 
-Settings — defaults except `Trials = 4000` (cancelled at 1232 of
-4000), `Glass Sub % = 50`. The run was stopped manually after
-1198 s when the merit had plateaued:
+#### Glass substitution on
 
-![Multistart dialog after parallel-plate run](images/CookeTripletMultiStart/MultistartWindow.png)
+Letting the optimizer re-choose the three glasses from the
+**CoreSet28** filtered catalog opens up more of the design space:
 
-Result: merit `6.42 × 10¹⁵ → 2.27 × 10⁻³` in 20 minutes. 40 of
-1232 trials were accepted. The substitution found a different
-glass set than the starting Schott triplet:
+![Multistart dialog, glass substitution — merit 0.0794 → 0.0276](images/CookeTripletMultiStart/MultiStartWindowResultGlassSubstitution.png)
+
+Result: **0.0794 → 0.0276** (335 s). The substitution replaced the
+starting Schott triplet with a set the search chose on its own:
 
 | Surface | Start glass | Best glass |
 |---|---|---|
-| 1 | SK16 | N-SF57 |
-| 3 | F2 | N-LAF2 |
-| 5 | SK16 | N-PK51 |
+| 1 | SK16 | N-LAK9 |
+| 3 | F2 | N-SF57 |
+| 5 | SK16 | LASF35 |
 
-#### Case 2 — Local-optimization result + Multistart, no glass substitution
-
-`CookeTripletMultiStartOptimizationFixedGlass/CookeTriplet_UC_AfterMultiStart.lhlt`.
-The starting state is the result of the Local Optimization case
-(a) above (merit ≈ 7.87 × 10⁻³). Glass substitution is off; only
-curvatures and thicknesses are perturbed.
-
-![Multistart dialog after fixed-glass run](images/CookeTripletMultiStart/MultiStartWindowResult.png)
-
-Result: merit `7.81 × 10⁻³ → 7.05 × 10⁻³` after 4108 attempted
-trials in ≈ 6.7 minutes; only 4 trials were accepted. Multistart
-found a slightly deeper basin (~10 % improvement) but the
-acceptance rate (~0.1 %) is the headline: small Sigma
-perturbations of an already-converged design rarely improve on it,
-which is exactly what you'd expect.
-
-| After — Multistart on fixed glasses | FFT MTF after |
+| After — wavefront | After — FFT MTF |
 |---|---|
-| ![Layout after fixed-glass Multistart](images/CookeTripletMultiStart/LayoutAfterMultiStart.png) | ![FFT MTF after fixed-glass Multistart](images/CookeTripletMultiStart/FftMtfAfterMultiStart.png) |
+| ![Wavefront after glass-sub Multistart](images/CookeTripletMultiStart/WavefrontMapAfterMultiStartOptimizationGS.png) | ![FFT MTF after glass-sub Multistart](images/CookeTripletMultiStart/FftMtfAfterMultiStartOptimizationGS.png) |
 
-#### Case 3 — Local-optimization result + Multistart, glass substitution on (Sigma matters)
+#### From a bare parallel plate
 
-Same starting state as Case 2 but with substitution enabled on
-S1 / S3 / S5 from CoreSet28. The story splits cleanly on
-**Init Sigma**.
+Multistart does not need a working lens to start from. Handed three
+**flat plates** — every radius infinity, no optical power — it
+rebuilds a real triplet:
 
-(This study predates 1.0.120. It used **Init Sigma = 0.001** with the
-grow-on-rejection schedule — which, after the 1.0.120 revert, is again
-the default: the intervening *triangle-wave* schedule (which shrank σ
-below the start before growing) was a regression and has been removed.
-The qualitative lesson below — small kicks refine, larger kicks escape
-— holds. Note that **Rescale on Glass Swap** (new in 1.0.120) directly
-targets the glass-swap rejection seen here: by preserving element power
-across a swap it keeps the swapped design feasible, so small-Sigma runs
-with substitution escape far more readily than they did in this run.)
-
-**At Init Sigma = 0.001**: the design did not budge. Every
-glass-swap trial that LM tried produced a worse-than-best post-LM
-merit and got rejected; without an LM-driven perturbation big
-enough to compensate for the index change, the design stayed
-locked in its current basin. (A separate Basin Hopping run on the
-same start with default Sigma = 0.001 + glass substitution behaved
-the same way: 3 of 1997 hops accepted, merit `7.06e-3 → 7.05e-3`.)
-
-**At Init Sigma = 0.01** (one decade larger):
-`CookeTriplet_UC_AllowGlassSigma0p01.lhlt`. The design escaped:
-
-![Multistart dialog after Init Sigma = 0.01 run](images/CookeTripletMultiStart/RunWith0p01Sigma.png)
-
-Result: merit `7.85e-3 → 3.95e-3` after 13 of 3248 trials accepted
-(~23 min), with substitutions on S1 (SK16 → N-PSK53A) and S5
-(SK16 → N-LAK10); F2 stayed on S3.
-
-| Layout after Init Sigma = 0.01 | FFT MTF after Init Sigma = 0.01 |
+| Before — three flat plates (merit 8.0 × 10¹⁴) | After — Multistart triplet |
 |---|---|
-| ![Layout after sigma 0.01 run](images/CookeTripletMultiStart/LayoutAfterSigma0p01.png) | ![FFT MTF after sigma 0.01 run](images/CookeTripletMultiStart/FftMtfAfterSigm0p01MS.png) |
+| ![Parallel-plate start](images/CookeTripletMultiStart/LayoutPPPStartingPoint.png) | ![After Multistart from plate](images/CookeTripletMultiStart/LayoutAfterMultiStartOptimizationGSPPPStartingPoint.png) |
 
-After this jump the run plateaued — a second pass found no
-further improvement.
+![Multistart dialog, parallel-plate start — merit 8.0 × 10¹⁴ → 0.0287](images/CookeTripletMultiStart/MultiStartOptimizationResultPPPStartingPoint.png)
 
-The takeaway from Cases 2 and 3 is concrete: once a design is at
-the bottom of its basin, the *floor* of the kick distribution is
-the only knob that matters for escape. A small Sigma (the default
-is 0.001) is tuned for refining around a known-good point, not
-jumping basins; raising Init Sigma toward the cap was enough to
-unlock this design *and* give glass substitution room to
-contribute. If 0.01 still locks, raise further (0.05–0.1) before
-deciding the design is converged for the chosen topology.
+Result: **8.0 × 10¹⁴ → 0.0287** (95 s). Read the header carefully: the
+Phase-1 initial LM left the merit at 8.0 × 10¹⁴ *untouched* — a
+zero-curvature plate has no gradient for LM to follow — so every bit
+of progress came from the random restarts. Notice too that Multistart
+settles near ~0.028 from **both** the finished triplet (0.0276) and
+the flat plate (0.0287): consistent, but it lands in the same
+moderately-deep basin either way. Basin Hopping, next, digs deeper
+from the identical starts.
+
+> **Init Sigma.** These runs all use the default **0.001**. The
+> per-hop kick is small, but the LM refinement that follows amplifies
+> it, and with *Rescale on Glass Swap* (on by default) keeping swapped
+> designs feasible, 0.001 escapes basins readily here. If a converged
+> design refuses to move, raise Init Sigma toward the cap (0.01–0.1)
+> before deciding it is done for the chosen topology.
 
 ## Global Multi Start Optimization
 
@@ -611,7 +584,7 @@ polish candidate forms → pick one → Local (or Basin Hopping) to refine.
 ![Global Evolutionary Optimization — a DE population search (sized to fill the GPU) with the focus+EFL conditioner, then Multistart-LM polish of the best seeds into a gallery of distinct, locally-optimized triplets.](images/EvolutionaryOptimization1.png)
 
 Sample:
-`samples/UserGuide/CookeTripletMultiStartParallelPlate/PPP_TRIPLET_ANY_GLASS_UC.lhlt`
+`samples/UserGuide/LensFilesForManual/PPP_TRIPLET_ANY_GLASS_UC.lhlt`
 — three flat plates, 50 mm EFL target, EPD 10, three fields, three wavelengths,
 glass substitution on (CoreSet28). With **Use GPU** on, the population fills the
 device automatically; the DE evolves it for the chosen number of generations, the
@@ -655,8 +628,8 @@ curvatures and thicknesses around it.
 
 | Setting | Default | Meaning |
 |---|---|---|
-| **Hops** | 20 | Outer loop count. Typical exploratory runs: 50–200. Long overnight runs: 500–1000. |
-| **LM / Hop** | 4000 | Max LM iterations per hop. Reduce to 200–500 for cheaper hops if you'd rather trade refinement depth for breadth. |
+| **Hops** | 3000 | Outer-loop cap **per chain**. With **Stop on no improvement** on (the usual mode) a chain plateaus and stops long before this — the cap is just a backstop. Lower it only if you want a hard wall on runtime. |
+| **LM / Hop** | 6000 | Max LM iterations per hop. LM stops early on tolerance once a hop converges (~30 iterations for an easy basin), so this is generous *headroom*, not a fixed cost — a hop that is still improving is never cut off. Reduce only if you deliberately want shallow, cheap hops. |
 | **HJ Steps** | 30 | Maximum Hooke-Jeeves steps per hop before handing off to LM. 30 is balanced; 0 disables HJ entirely. |
 | **Sigma** | 0.001 | *Starting* value of the Gaussian-perturbation scale. Sigma is adapted automatically during the run (see below). 0.001 is sufficient even for severe starts; you rarely need to raise it. |
 | **Seed** | 1234 | RNG seed. Change it to get a different random trajectory while keeping all other knobs identical — useful for confirming a result isn't a fluke. |
@@ -832,124 +805,131 @@ If you intended an element to participate but it's reported skipped,
 mark a curvature, conic, or glass-thickness variable on one of its
 faces.
 
-### Case study: parallel plates → Cooke triplet
+### Case study: Basin Hopping on the Cooke triplet
 
-This is about as demanding a starting point as the program is asked
-to handle: three *parallel plates* — every radius infinity, no
-optical power — that need to become a converged, real-glass triplet.
+Basin Hopping runs the same HJ+LM engine as Multistart, but it
+*chains* its hops: each hop perturbs the current best and accepts or
+rejects it by a Metropolis rule, so it explores by walking rather than
+restarting cold. On the same triplet
+(`samples/UserGuide/LensFilesForManual/CookeTriplet_UC.lhlt`, merit
+**0.0794**) it reaches deeper minima than Multistart — and it is far
+more robust from a bad starting point.
 
-Sample files:
-`samples/CookeTripletBasinHoppingParallelPlate/`. The starting
-prescription is three flat plates separated by air gaps, EFL
-target 50 mm, EPD 10, three fields (0°/14°/20°) and three
-wavelengths (0.48/0.55/0.65 µm). Every curvature and every
-thickness is variable, with bounds `[1, 25]` mm on glass and
-`[0.1, 100]` mm on air. The merit function carries `EFL = 50`
-(weight 100), `WAVEX` (weight 1, 6 × 12 quadrature), `EG ≥ 1` mm,
-`EA ≥ 0.1` mm, and `CTG`/`CTA` thickness bounds. Glass
-substitution is enabled on all three glass surfaces, drawing from
-the **CoreSet28** filtered catalog (28 glasses).
+Settings are the defaults except **Glass Source = CoreSet28** and
+**Chains = 0 (auto)**, which on this machine launched **10 parallel
+chains, one per physical core**. Each chain explores its own basin;
+the header merit is the single global best across all ten and only
+ever decreases.
 
-| Before — three parallel plates, no power | After — basin-hopping result |
+#### Fixed glass
+
+With glasses held fixed, Basin Hopping reaches the very same basin
+Multistart found — independent confirmation that **0.0429** is the
+real continuous-variable optimum for this triplet:
+
+![Basin-Hopping dialog, fixed glass — merit 0.0794 → 0.0429](images/CookeTripletMultiStart/BasinHoppingWindowResultFixedGlass.png)
+
+Result: **0.0794 → 0.0429** (289 s, 10 chains). Several chains reached
+0.0429 while the rest settled near 0.063 — the spread across chains is
+the method telling you which basin is genuinely deepest.
+
+#### Glass substitution on
+
+Allowing substitution from CoreSet28, Basin Hopping digs well past
+Multistart's 0.0276:
+
+![Basin-Hopping dialog, glass substitution — merit 0.0794 → 0.0190](images/CookeTripletMultiStart/BasinHoppingWindowResultGlassSubstitution.png)
+
+Result: **0.0794 → 0.0190** (563 s) — the deepest minimum any method
+reached on this design.
+
+| After — wavefront | After — FFT MTF |
 |---|---|
-| ![Starting layout: three flat plates](images/CookeTripletMultiStart/LayoutBeforeOptimization.png) | ![Optimized layout: Cooke-triplet-like design](images/CookeTripletBasinHoppingParallelPlate/LayoutAfterBasinHopping.png) |
+| ![Wavefront after glass-sub Basin Hopping](images/CookeTripletMultiStart/WavefrontMapAfterBasinHoppingOptimizationGS.png) | ![FFT MTF after glass-sub Basin Hopping](images/CookeTripletMultiStart/FftMtfAfterBasinHoppingOptimizationGS.png) |
 
-Settings: defaults except `Hops = 2000`, `Glass Substitution = on`,
-`Glass Source = CoreSet28`. The run was cancelled manually at hop
-475 of 2000 once the merit had clearly plateaued:
+#### From a bare parallel plate — and why Basin Hopping is more reliable
 
-![Basin-hopping dialog — Hops=2000, Sigma=0.001, Seed=1234, Broyden on, Glass substitution on, Glass Source=CoreSet28](images/CookeTripletBasinHoppingParallelPlate/BasinHoppingDialogWindow.png)
+The demanding test: hand Basin Hopping the same three **flat plates**
+Multistart got — every radius infinity, merit 8.0 × 10¹⁴ — and let it
+rebuild the lens from nothing.
 
-Result: merit dropped from `6.42 × 10¹⁵` to `2.17 × 10⁻³` in
-**689.5 s (≈ 11.5 min)**. The log records 37 accepted hops, 438
-rejected, and 13 glass-surface swaps across the accepted hops.
-The merit trajectory of the accepted hops tells the story:
+| Before — three flat plates | After — Basin-Hopping triplet |
+|---|---|
+| ![Parallel-plate start](images/CookeTripletMultiStart/LayoutPPPStartingPoint.png) | ![After Basin Hopping from plate](images/CookeTripletMultiStart/LayoutAfterBasinHoppingOptimizationGSPPPStartingPoint.png) |
 
-| Hop | Accepted merit | Wall-clock | Note |
-|---:|---:|---:|---|
-| 1 | 2.255 | < 1 s | Hop 1's LM run alone takes the merit from 10¹⁵ → ~2. The bulk of this is the EFL=50 target and the EA bound forcing curvature on the plates. |
-| 2 | 0.670 | — | First glass swap that paid off. |
-| 4 | 0.0847 | — | Cooke-like topology essentially settled. |
-| 7 | 0.0489 | — | Glass swap, triplet basin recognized. |
-| 10 | 0.0356 | — | Local refinement inside the triplet basin. |
-| 36 | 0.0246 | — | **Plateau breaks** after a 25-hop rejection streak (hops 11–35 with merit excursions up to 10⁵ that LM couldn't recover from). |
-| 46 | 0.00386 | ~ 50 s | Crossed 1 × 10⁻² and dropped a further 6× — most of the headline merit reduction is done. |
-| 64 | 0.00308 | — | LM refinement inside the basin. |
-| 200 | 0.00302 | — | Long quasi-plateau — many improving hops worth ≤ 1%. |
-| 239 | 0.00264 | — | Glass swap unblocks another step down. |
-| 320 | 0.00232 | — | Glass swap, ~13% gain. |
-| 364 | 0.00216 | — | Glass swap, final-tier basin. |
-| 384 | 0.002165 | — | Final best. |
-| 475 | — | 689.5 s | Run cancelled: no improvement in the 91 hops since 384. |
+![Basin-Hopping dialog, parallel-plate start — merit 8.0 × 10¹⁴ → 0.0190](images/CookeTripletMultiStart/BasinHoppingWindowResultGlassSubstitutionPPPStartingPoint.png)
 
-Three useful observations:
-
-- **Hop 1 + the first ~50 seconds do the headline work.** Hops 1
-  through 46 take the merit from `10¹⁵ → 3.86 × 10⁻³` — a 17-order
-  improvement that fits in less than a minute on this hardware.
-  That's not basin hopping — it's the per-hop LM run starting from
-  variables that all have analytic gradients toward the EFL target
-  and the thickness bounds. Basin hopping's actual contribution
-  shows up in the long tail (0.0386 → 0.00216, a further ~18×
-  refinement over the next 11 minutes) and in *getting out of
-  plateaus*.
-- **The hop-11 → hop-35 rejection streak is exactly why Basin
-  Hopping exists.** A pure Local optimizer at hop 10 would have
-  stopped at merit `0.0356` and reported convergence. The
-  Sigma-driven random kicks fired huge merit excursions
-  (10⁰ to 10⁵) for 25 consecutive hops before one finally landed
-  in a basin LM could descend into — and that basin (hop 36, merit
-  `0.0246`) unblocked the rapid drop to 10⁻³.
-- **Sigma = 0.001 was sufficient *for this start*.** Even with a
-  small per-hop kick, the LM refinement that follows amplifies it
-  across 4000 iterations into large effective displacements. The
-  log shows occasional huge spikes (merit > 10⁴) where LM didn't
-  recover from a perturbation — those naturally get rejected. The
-  default Sigma is right whenever the per-hop LM has an obvious
-  gradient direction to follow (like the EFL target here);
-  it is *not* sufficient when starting from an already-converged
-  design with no obvious next step (see the Multistart Case 3
-  story above for that scenario).
-
-The converged design is a recognizable Cooke triplet — positive
-front, negative middle around the stop, positive rear — built
-from glasses chosen by the substitution step rather than
-user-specified.
+Result: **8.0 × 10¹⁴ → 0.0190** (1837 s, 25 972 hops across 10
+chains). That is the **same 0.0190** Basin Hopping reached from the
+*finished* triplet — the optimum is **starting-point-independent**; it
+simply took longer to get there from nothing. The header also shows the
+Phase-1 LM leaving the plate untouched at 8.0 × 10¹⁴ (a zero-curvature
+surface has no gradient), so every bit of progress came from the hops.
+The converged design is a recognizable Cooke triplet — positive front,
+negative middle around the stop, positive rear — built from glasses the
+substitution step chose, not any the user specified:
 
 | Spot | FFT MTF |
 |---|---|
-| ![Spot diagram of optimized triplet](images/CookeTripletBasinHoppingParallelPlate/SpotDiagramAfterBasinHopping.png) | ![FFT MTF of optimized triplet](images/CookeTripletBasinHoppingParallelPlate/FftMtfAfterBasinHopping.png) |
+| ![Spot of the basin-hopping triplet](images/CookeTripletMultiStart/SpotDiagramAfterBasinHoppingOptimizationGSPPPStartingPoint.png) | ![FFT MTF of the basin-hopping triplet](images/CookeTripletMultiStart/FftMtfAfterBasinHoppingOptimizationGSPPPStartingPoint.png) |
 
-After basin hopping, the standard finish is a Local LM pass for
-the last few percent.
+**Basin Hopping vs Multistart from the plate.** From the *identical*
+flat-plate start, the two methods diverge:
+
+| Method | Result from the plate | Time |
+|---|---|---|
+| Multistart, glass sub | 0.0287 | 95 s |
+| Basin Hopping, glass sub | **0.0190** | 1837 s |
+
+Multistart's independent restarts each land in whatever basin they
+happen to hit, and it keeps the best — here that plateaus near ~0.028.
+Basin Hopping's *chained* hops, with the Hooke-Jeeves pattern search
+running before each LM, walk out of shallow basins toward the deepest
+one. So Basin Hopping is slower but more reliable when the start is far
+from any good design; Multistart is faster and, with the GPU
+pre-screen, scales to far more restarts. After either, the standard
+finish is a Local LM pass for the last fraction of a percent.
 
 ### Reading the log
 
-The basin-hopping dialog prints one line per hop:
+A parallel run (Chains > 1) is too noisy to print every hop from every
+chain, so the log records only **new global bests** — the moments when
+some chain beats the best merit any chain had reached so far:
+
+```
+new global best  6.086659E-002   (hop 369)
+new global best  5.276065E-002   (hop 1258)
+new global best  2.979231E-002   (hop 1283)
+```
+
+The hop number is a cumulative counter across all chains, so it climbs
+faster than any single chain's own hop count. The header keeps the
+running totals — global best merit, and cumulative accepted / rejected /
+glass-swap counts — and the **Chains** tab shows each chain's own
+progress with a **◄ best** marker on whichever chain currently holds the
+global best.
+
+With **Chains = 1** the log is the classic per-hop trace instead:
 
 ```
 Hop  14 [ACC] merit=4.87551E-002  best=4.87551E-002  glass-swaps=1
 Hop  15 [rej] merit=5.37427E-002  best=4.87551E-002
 ```
 
-`[ACC]` means the post-LM merit beat the previous best. `glass-swaps=N`
-shows how many glass surfaces were re-randomized for that hop (0 if
-omitted). When a hop's `merit` is dramatically larger than `best`
-(e.g., 10⁴ or 10⁵), the perturbation pushed the design into a
-non-tracing or otherwise broken state and LM couldn't recover —
-those hops just get rejected.
+`[ACC]` means the post-LM merit beat the previous best; `glass-swaps=N`
+is how many glass surfaces were re-randomized for that hop. When a hop's
+`merit` is dramatically larger than `best` (10⁴–10⁵), the perturbation
+pushed the design into a non-tracing or broken state that LM couldn't
+recover from — those hops simply get rejected.
 
 Watch for two patterns:
 
-- **Quick early plunge, long tail.** Like the case study: 99 % of
-  the gain in the first 10–20 hops, then slow refinement. Normal.
-- **Long flat plateau.** Best merit unchanged for many tens of
-  hops. Either you're at the global optimum for the chosen
-  topology, or you need a larger Sigma / more variables / a glass
-  substitution pool.
-
-When the plateau persists for 50–100 hops with no improvement,
-stopping is usually the right call.
+- **Quick early plunge, long tail.** Like the case study: most of the
+  gain in the first fraction of the run, then slow refinement. Normal.
+- **Long flat plateau.** Global best unchanged for a long stretch.
+  Either you're at the best form for the chosen topology and glass pool,
+  or you need a larger Sigma, more variables, or a broader substitution
+  catalog — that's what **Stop on no improvement** is for.
 
 ## Global Basin Hopping (HJ + LM)
 

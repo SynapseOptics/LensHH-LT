@@ -2,7 +2,7 @@
 ; Requires Inno Setup 6.x
 
 #define MyAppName "LensHH-LT"
-#define MyAppVersion "1.0.135"
+#define MyAppVersion "1.0.136"
 #define MyAppPublisher "Synapse Optics"
 #define MyAppExeName "LensHH.App.exe"
 #define MyAppURL "https://github.com/SynapseOptics/LensHH-LT"
@@ -22,6 +22,17 @@
 #define Engine RepoRoot + "\engine"
 #define Assets RepoRoot + "\src\LensHH.App\Assets"
 #define Docs RepoRoot + "\docs"
+
+; ┌───────────────────────────────────────────────────────────────────────────┐
+; │  DO NOT run ISCC on this .iss directly.  Build the installer ONLY via       │
+; │  installer\build-installer.bat, which runs the fail-closed obfuscation      │
+; │  guard (installer\verify-engine-obfuscated.ps1) BEFORE compiling. Compiling │
+; │  directly SKIPS that guard and can package a NON-obfuscated engine DLL.     │
+; │  (An ISPP compile-time guard was attempted but this Inno build's Exec can't │
+; │   return a child exit code and lacks ExecAndCaptureOutput — so the reliable │
+; │   guard lives in build-installer.bat.  Never package — not even a -dev      │
+; │   test build — with a plain LensHH.Core.dll.)                               │
+; └───────────────────────────────────────────────────────────────────────────┘
 
 [Setup]
 AppId={{E7A3F2B1-4C5D-4E6F-8A9B-1C2D3E4F5A6B}

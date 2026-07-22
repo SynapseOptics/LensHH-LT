@@ -78,6 +78,11 @@ public partial class GlassSubstitutionViewModel : ObservableObject
             var surf = _session.System.Surfaces[i];
             if (string.IsNullOrEmpty(surf.Material)) continue;
             if (surf.Material.Equals("MIRROR", StringComparison.OrdinalIgnoreCase)) continue;
+            // Model-index surfaces are ineligible for glass substitution: the index is
+            // driven by the Nd/Vd/dPgF model (which can itself be varied in optimization),
+            // so there is no catalog glass to substitute. Excluding it also prevents the
+            // stale Material name (e.g. the glass it was seeded from) from appearing here.
+            if (surf.ModelIndexEnabled) continue;
 
             // Find or create a setting for this surface
             var setting = _session.System.GlassSubstitutions

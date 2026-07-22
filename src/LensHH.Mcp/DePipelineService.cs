@@ -28,7 +28,7 @@ namespace LensHH.Mcp
         public int PolishCount { get; set; } = 16;
         public int SeedsToEmit { get; set; } = 16;
         public int BaseSeed { get; set; } = 1;
-        public int LmIterations { get; set; } = 4000;
+        public int LmIterations { get; set; } = OptimizationDefaults.LmIterations;
         /// <summary>When set, polish a previously-saved DE result folder (every *.lhlt) and skip
         /// the DE search. The files must match the loaded design's structure.</summary>
         public string? PolishFolder { get; set; }

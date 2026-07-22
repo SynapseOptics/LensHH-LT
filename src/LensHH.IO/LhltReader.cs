@@ -95,7 +95,14 @@ namespace LensHH.Core.IO
                     SemiDiameterMin = ls.SemiDiameterMin,
                     SemiDiameterMax = ls.SemiDiameterMax,
                     ClearAperturePercentMin = ls.ClearAperturePercentMin,
-                    ClearAperturePercentMax = ls.ClearAperturePercentMax
+                    ClearAperturePercentMax = ls.ClearAperturePercentMax,
+                    ModelIndexEnabled = ls.ModelIndexEnabled,
+                    ModelNd = ls.ModelNd, ModelVd = ls.ModelVd, ModelDPgF = ls.ModelDPgF,
+                    ModelNdVariable = ls.ModelNdVariable, ModelVdVariable = ls.ModelVdVariable,
+                    ModelDPgFVariable = ls.ModelDPgFVariable,
+                    ModelNdMin = ls.ModelNdMin, ModelNdMax = ls.ModelNdMax,
+                    ModelVdMin = ls.ModelVdMin, ModelVdMax = ls.ModelVdMax,
+                    ModelDPgFMin = ls.ModelDPgFMin, ModelDPgFMax = ls.ModelDPgFMax
                 };
 
                 if (ls.AsphericCoefficients != null)

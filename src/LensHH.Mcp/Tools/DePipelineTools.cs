@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Linq;
 using System.Text;
 using ModelContextProtocol.Server;
+using LensHH.Core.Optimization;
 
 namespace LensHH.Mcp.Tools
 {
@@ -41,7 +42,7 @@ namespace LensHH.Mcp.Tools
             + "polishCount (default 16): how many of the best distinct seeds to polish.\n"
             + "seedsToEmit (default 16): how many distinct seeds the DE emits.\n"
             + "baseSeed (default 1): RNG seed for reproducibility.\n"
-            + "lmIterations (default 4000): LM iteration cap per candidate (LocalLM path).\n"
+            + "lmIterations (default 6000): LM iteration cap per candidate (LocalLM path).\n"
             + "polishFolder (default none): polish every *.lhlt in this folder (each must match the loaded design's "
             + "structure) and SKIP the DE search — re-optimize a previously-saved seed set.")]
         public string DePipelineStart(
@@ -58,7 +59,7 @@ namespace LensHH.Mcp.Tools
             int polishCount = 16,
             int seedsToEmit = 16,
             int baseSeed = 1,
-            int lmIterations = 4000,
+            int lmIterations = OptimizationDefaults.LmIterations,
             string? polishFolder = null)
         {
             try
