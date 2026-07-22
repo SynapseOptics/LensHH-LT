@@ -1072,7 +1072,7 @@ so a stuck phase doesn't block the run.
 
 ### Case study: post-Multistart Cooke triplet → split element
 
-Sample files: `samples/CookeTripletSplit/`. The starting state
+Sample files: `samples/UserGuide/CookeTripletSplit/`. The starting state
 is a Cooke triplet that was first synthesized from three parallel
 plates (finite conjugate, 500 mm working distance) by Multistart
 with glass substitution. By the time Split Element runs, the
@@ -1164,99 +1164,184 @@ A run does four things in order:
 
 | Setting | Default | Meaning |
 |---|---|---|
-| **A4 / A6 / A8** | all on | Which even-asphere coefficients to mark variable on each trial. Higher orders give finer correction but slower convergence and tighter manufacturability requirements. |
-| **Top N** | 3 | How many of the ranked candidate surfaces to apply after the trial sweep. 1 = single best, larger N = composite improvement at the cost of more aspheric surfaces in the final design. |
-| **LM/Trial** | 4000 | LM iterations per per-surface trial. Default is more than enough for most designs; reduce only if the candidate count × trial cost is excessive. |
-| **Final LM** | 4000 | LM iterations for the post-application polish across all newly aspheric surfaces. |
+| **A4 / A6 / A8** | A4, A6 on; A8 off | Which even-asphere coefficients to mark variable on each trial. A4 and A6 are on by default; enable A8 when a surface is working hard. Higher orders give finer correction but slower convergence and tighter manufacturability requirements. |
+| **Top N** | 1 | How many of the ranked candidate surfaces to apply after the trial sweep. Default **1** = the single best surface; a larger N applies several for a composite improvement at the cost of more aspheric surfaces in the final design. |
+| **LM/Trial** | 500 | LM iterations per per-surface trial. A short trial is enough to *rank* the candidates; the real polish happens in the Final LM step, so this stays small to keep the candidate × trial sweep fast. |
+| **Final LM** | 6000 | LM iterations for the post-application polish across all newly aspheric surfaces. |
 | **Min Δ %** | 1 | Minimum trial improvement (over the starting merit) required to consider a candidate surface. Trials below this are still listed in the table but the picker skips them when applying. |
 | **Reject if worse** | on | If the post-final-LM merit is worse than the pre-search merit, the original geometry is restored. |
 
-### Case study: post-Split Cooke triplet → 3 aspheric surfaces
+> **Why A4/A6/A8 and not the conic constant.** The search fits the even-aspheric
+> polynomial coefficients and deliberately holds the conic constant `k` at 0. To lowest
+> order the conic is *degenerate* with A4: the base conic's departure from a sphere is
+> `((1+k)/8)·c³·r⁴ + …` — a term in **r⁴**, exactly what A4 controls. Free both `k` and
+> A4 and they push on the same handle, giving a rank-deficient, ill-conditioned fit. The
+> conic's higher-order effect (r⁶, r⁸…) is itself a constrained subset of what A6/A8
+> already span, so once the polynomial is free the conic adds little but conditioning
+> trouble. The polynomial is the more general parameterization, so it's the one the
+> search uses — if a surface "wants" a strong conic, you'll see it show up as a large A4.
 
-Sample files: `samples/CookeTripletSearchAsphericSurfaces/`. The
-starting state is the result of the Split Element case study
-above (merit `0.001708`).
+### Case study: aspherizing a well-corrected Cooke triplet
 
-Settings — defaults: A4/A6/A8 all on, Top N = 3, LM/Trial = 4000,
-Final LM = 4000, Min Δ % = 1, Reject if worse on.
+Sample files (`samples/UserGuide/LensFilesForManual/`):
+`CookeTriplet_UC_GS_Best_BeforeAspherization.lhlt` (start),
+`CookeTriplet_UC_GS_Best_AfterAspherization.lhlt`, and
+`CookeTriplet_UC_GS_Best_AfterAspherization_AfterBasinHoppimg.lhlt`.
 
-![Asphere search dialog after run completes](images/CookeTripletSearchAsphericSurfaces/SearchBestAsphereSurfaceResult.png)
+The starting design is an already well-corrected Cooke triplet —
+the best result of an earlier Basin-Hopping run — with a merit of
+`0.02627`. The goal is to squeeze it further by aspherizing two
+surfaces, then let Basin Hopping re-explore the glasses on the
+aspheric design.
 
-The trial sweep took 0.6 s (every per-surface LM is fast on this
-system). Trial results, ranked:
+#### First: add intermediate fields
+
+Before adding aspheres, **widen the field sampling**. This design
+was corrected on the usual three fields (0°, 14°, 20°), which is
+fine for all-spherical surfaces. But an even asphere adds several
+new degrees of freedom per surface, and the optimizer will happily
+spend them driving the merit down *at the sampled fields* — which
+can leave large gaps in between. The symptom is an MTF-vs-field
+curve that is excellent at 0 / 14 / 20° but sags badly at the
+un-sampled fields between them.
+
+The remedy is to sample the field more densely before optimizing.
+Here the field set was expanded to seven points — 0, 5, 8, 11, 14,
+17, 20° — so the optimizer has to keep *every* field honest:
+
+![Fields used for aspherization](images/AsphereExploration/FieldsUsedForAsperization.png)
+
+On this denser field set the starting design's merit is `0.02627`.
+
+#### The asphere search
+
+Settings — A4 / A6 / A8 all on (A8 enabled manually), **Top N = 2**,
+LM/Trial = 500, Final LM = 6000, Min Δ % = 1, Reject if worse on:
+
+![Search Best Asphere Surface dialog](images/AsphereExploration/Result_500_A4_A6_A8_2.png)
+
+The candidate surfaces are the three glass front surfaces (1, 3, 5).
+The per-surface trial sweep (11.6 s) ranks them:
 
 | # | Surface | Post-trial merit | Δ % |
 |---|---:|---:|---:|
-| 1 | 3 | 0.001673 | +2.05 % |
-| 2 | 1 | 0.001678 | +1.75 % |
-| 3 | 7 | 0.001680 | +1.63 % |
-| 4 | 5 | 0.001689 | +1.12 % |
+| 1 | 1 | 0.020947 | +20.3 % |
+| 2 | 5 | 0.023632 | +10.0 % |
+| 3 | 3 | 0.024176 |  +8.0 % |
 
-With **Top N = 3**, surfaces 3, 1, and 7 were aspherized; surface
-5 was kept spherical despite being a viable candidate. The final
-LM polish across the three new aspheric surfaces took the merit
-the rest of the way: `0.001708 → 0.001639` (+4.1 %).
+With **Top N = 2**, surfaces 1 and 5 are aspherized; surface 3 is
+left spherical. The final LM polish across the two new aspheric
+surfaces takes the merit to `0.020252` — a **+22.9 %** reduction
+from the `0.026268` start.
 
-Net: merit `0.001708 → 0.001639` (~4 % reduction) in under a
-second of compute, at the cost of three aspheric surfaces.
+#### Follow-on: Basin Hopping on the aspheric design
 
-| FFT MTF after asphere search | Spot after asphere search |
-|---|---|
-| ![FFT MTF after asphere search](images/CookeTripletSearchAsphericSurfaces/FftMtfAfterAsphere.png) | ![Spot after asphere search](images/CookeTripletSearchAsphericSurfaces/SpotDiagramAfterAsphere.png) |
+This is exactly the workflow that used to abort before 1.0.137 —
+a global search on a design that already carries aspheric surfaces.
+It now runs to completion (see the release note for 1.0.137).
 
-Two practical notes:
+The aspherized design still uses the exotic glasses inherited from
+the earlier optimization (S1 `N-SF57`, S3 `LASF35`, S5 `N-PSK53A`).
+Running Basin Hopping with **Glass substitution on** and **Glass
+Source = CoreSet28** (a curated 28-glass, readily-manufacturable
+set) lets it trade those for catalog glasses while re-tuning the
+aspheric coefficients:
 
-- **The composite gain (Top N > 1) usually beats the
-  best-single-surface gain.** In this run the best single trial
-  was +2.1 % on surface 3, but applying surfaces 3 + 1 + 7
-  together and re-polishing gave +4.1 %. The cross-coupling is
-  free — it costs the same final-LM pass either way.
-- **Aspheric surfaces are not free in fabrication.** Each one
-  added is a real cost in the production lens. If you're
-  prototyping or budget-constrained, set Top N = 1; if you're
-  exploring the limits of the design, leave it at 3 and decide
-  per-surface afterward whether to keep the change.
+![Basin-Hopping dialog after aspheric run](images/AsphereExploration/BasinHoppingResultStartingFileResult_500_A4_A6_A8_2.png)
 
-#### Follow-on: Multistart on the aspherized design
+Settings — Hops 3000, LM/Hop 6000, HJ Steps 30, Sigma 0.001,
+Broyden update on, 10 chains (auto), stop-on-no-improvement after
+1200 s. The run stopped on the no-improvement timeout after 6226
+hops across 10 chains (~73 min); the best chain (chain 2) reached
+merit `0.017318` in 568 hops.
 
-The asphere search's final-LM polish only finds the local
-optimum around the *initial* aspheric coefficients. Multistart
-with the new aspheric variables in play kicks them across basins
-using the per-order scale rule (`1e-3 / y^(2(k+1))`); for an
-already-aspherized design this routinely finds another factor of
-1.2–1.5× of merit reduction.
+Result: merit `0.020252 → 0.017318` (a further −14.5 %). All three
+glasses were swapped onto the CoreSet28 catalog —
+`N-SF57 → F2`, `LASF35 → SF2`, `N-PSK53A → N-PK51` — and both
+aspheric surfaces (1, 5) were kept, with re-optimized coefficients.
 
-Sample file:
-`samples/CookeTripletSearchAsphericSurfaces/PPP_TRIPLET_ANY_GLASS_UC_T1_AfterSplit_AfterAshpere_MultiStart.lhlt`.
-Settings — defaults except `Glass Sub % = 50` (substitution still
-on, surfaces 1 / 3 / 5 / 7 eligible); the run was cancelled
-manually after a long plateau.
+#### Progression across the three stages
 
-![Multistart dialog after aspheric run](images/CookeTripletSearchAsphericSurfaces/MultiStartAsphereResult.png)
+**MTF vs field** — the payoff from the denser field sampling: the
+response stays uniform across the whole field instead of sagging
+between the corrected points.
 
-Result: merit `1.638 × 10⁻³ → 1.228 × 10⁻³` after 17 of 7464
-trials accepted in ≈ 21.6 min. One glass swap was kept (S3:
-`LASF35 → SF5`); S1 and S5/7 stayed put. All three previously-
-aspherized surfaces (1, 3, 7) had their A4 / A6 / A8 coefficients
-revisited by the per-order kick rule; their final values appear
-in the Lens Editor:
+| Before | After asphere | After asphere + Basin Hopping |
+|---|---|---|
+| ![](images/AsphereExploration/FftMtfVsFieldBeforeAspherization.png) | ![](images/AsphereExploration/FftMtfVsFieldAfterAspherization.png) | ![](images/AsphereExploration/FftMtfVsFieldAfterAsperizationAndBasinHopping.png) |
 
-![Lens Editor after asphere + Multistart](images/CookeTripletSearchAsphericSurfaces/AfterAshereMultiStartpng.png)
+**FFT MTF**
 
-| Layout after asphere + Multistart | FFT MTF after asphere + Multistart |
-|---|---|
-| ![Layout after asphere + MS](images/CookeTripletSearchAsphericSurfaces/LayoutAsphereMS.png) | ![FFT MTF after asphere + MS](images/CookeTripletSearchAsphericSurfaces/FftMtfAfterAsphereMS.png) |
+| Before | After asphere | After asphere + Basin Hopping |
+|---|---|---|
+| ![](images/AsphereExploration/FftMtfBeforeAspherization.png) | ![](images/AsphereExploration/FftMtfAfterAspherization.png) | ![](images/AsphereExploration/FftMtfAfterAsperizationBasinHopping.png) |
 
-Net: a further ~25 % reduction (`1.638e-3 → 1.228e-3`) on top of
-the asphere-search gain, taking the cumulative chain
-*parallel-plates → Multistart → Split → Asphere search →
-Multistart* to merit `1.228 × 10⁻³` from a starting `6.4 × 10¹⁵`.
-The headline observation is the same one Multistart Case 3
-made earlier: small-Sigma kicks of an already-converged design
-rarely escape the basin — but on aspheric surfaces, where the
-per-order scale rule produces small but well-conditioned
-perturbations, the acceptance rate is enough to chip away at
-the merit even when curvature/thickness alone wouldn't.
+**Spot size — RMS radius (µm), polychromatic**
+
+The spot radii are tabulated rather than shown as diagrams (the
+per-field spot images are hard to read at print size). Note the
+trade the added fields force: the on-axis spot grows a little
+(3.15 → 4.49 µm) while the 20° edge improves by ~38 %
+(11.59 → 7.21 µm). The design is redistributed for uniformity
+across the field instead of being peaked on-axis — which is what
+keeps the MTF-vs-field curve flat.
+
+| Field (°) | Before | After asphere | After asphere + BH |
+|---:|---:|---:|---:|
+| 0  |  3.15 | 3.34 | 4.49 |
+| 5  |  3.02 | 2.87 | 4.16 |
+| 8  |  2.92 | 2.33 | 3.64 |
+| 11 |  3.22 | 2.33 | 2.92 |
+| 14 |  4.60 | 3.63 | 2.56 |
+| 17 |  7.40 | 6.03 | 4.03 |
+| 20 | 11.59 | 9.21 | 7.21 |
+
+![RMS spot radius vs field](images/AsphereExploration/AsphereSpotVsField.png)
+
+**Wavefront map**
+
+| Before | After asphere | After asphere + Basin Hopping |
+|---|---|---|
+| ![](images/AsphereExploration/WavefrontMapBeforeAspherization.png) | ![](images/AsphereExploration/WavefrontMapAfterAspherization.png) | ![](images/AsphereExploration/WavefrontMapAfterAsperizationAndBasinHopping.png) |
+
+**Wavefront error — RMS (waves), polychromatic**
+
+Weighted-RMS over the three lines (0.48 / 0.55 / 0.65 µm), the same
+convention as the merit function. The worst-field error falls from
+0.209 to 0.126 waves and flattens across the field — the aspheres
+correct the mid-field zones, and the Basin-Hopping glass swap takes
+the on-axis error down to λ/22.
+
+| Field (°) | Before | After asphere | After asphere + BH |
+|---:|---:|---:|---:|
+| 0  | 0.086 | 0.067 | 0.045 |
+| 5  | 0.152 | 0.086 | 0.052 |
+| 8  | 0.195 | 0.091 | 0.056 |
+| 11 | 0.209 | 0.087 | 0.069 |
+| 14 | 0.187 | 0.087 | 0.064 |
+| 17 | 0.137 | 0.105 | 0.077 |
+| 20 | 0.147 | 0.132 | 0.126 |
+
+![RMS wavefront error vs field](images/AsphereExploration/AsphereWfeVsField.png)
+
+**Layout**
+
+| Before | After asphere | After asphere + Basin Hopping |
+|---|---|---|
+| ![](images/AsphereExploration/LayoutBeforeAspherization.png) | ![](images/AsphereExploration/LayoutAfterAsperization.png) | ![](images/AsphereExploration/LayoutAfterAsperizationAndBasinHopping.png) |
+
+Net: the chain took the merit from `0.02627` (spherical) to
+`0.02025` (two aspheres) to `0.01732` (aspheres + a manufacturable
+glass swap) — a **34 % reduction** overall, and the final design
+sits on catalog glasses. Two practical notes:
+
+- **Aspheric surfaces are not free to fabricate.** Keep Top N as
+  low as the design allows — here two surfaces bought the bulk of
+  the gain, and surface 3 was left spherical on purpose.
+- **Add fields before you add degrees of freedom.** The extra
+  aspheric coefficients make it easy to over-fit the sampled
+  fields; the denser 7-field set is what keeps the MTF-vs-field
+  curve uniform through the whole image.
 
 ## SPC (Synthesis by Saddle-Point Construction)
 
@@ -1362,7 +1447,7 @@ range with weight `0.3` is enough — the case study below uses it.
 
 ### Case study: BK7 singlet → 3-element design (singlet + doublet)
 
-Sample folder: `samples/SPC_BK7_SINGLET/SPC_DESIGNS7/`. The
+Sample folder: `samples/UserGuide/SingletBK7SPC/`. The
 starting design is a single biconvex N-BK7 element (50 mm EFL,
 F/4, 12.5 mm entrance pupil, fields 0/7/10°, three visible wavelengths).
 Glass substitution is enabled on S1 against the `S1_GLASS`

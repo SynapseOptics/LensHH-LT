@@ -2,6 +2,30 @@
 
 All notable changes to LensHH-LT and the LensHH-LT-Engine.
 
+## 1.0.137 — 2026-07-22
+
+### Fixed
+- **Optimizers no longer abort on aspheric designs.** A global-optimizer run
+  (Basin Hopping or Multistart) or a Local Optimization on a design with aspheric
+  surfaces could fail part-way through with an internal "analytic derivative"
+  error and **discard all progress**, reverting to the starting design — even
+  after the run had improved it considerably. The cause was a *trial* perturbation
+  pushing a surface into a geometry where a ray fails to trace; the
+  analytic-derivative engine treated that transient, self-correcting trace failure
+  as an unsupported operation and aborted the entire run. It now handles such trial
+  geometries the same way the rest of the engine does — the offending trial is
+  simply rejected, like any other worse trial — so the run continues to completion
+  and keeps the improved design.
+
+### Documentation
+- Rewrote the **Search Best Asphere Surface** case study end to end: a worked
+  three-stage example (spherical → two aspheric surfaces → Basin Hopping with a
+  manufacturable glass swap), corrected default settings, an explanation of why the
+  search fits the aspheric coefficients rather than the conic constant, and a note
+  on widening field sampling before adding aspheric degrees of freedom.
+- Corrected the sample-file paths for the **Split Element** and **SPC** case
+  studies in the Optimization reference (they now point under `samples/UserGuide/`).
+
 ## 1.0.136 — 2026-07-21
 
 ### Added

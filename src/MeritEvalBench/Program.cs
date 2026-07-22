@@ -41,6 +41,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using LensHH.Core.Analysis;
 using LensHH.Core.Enums;
 using LensHH.Core.Glass;
 using LensHH.Core.IO;
@@ -111,7 +112,7 @@ internal static class Program
             else if (a == "--outdir") deSeedsOut = args[++i];
             else if (a == "--help" || a == "-h") { PrintUsage(); return 0; }
         }
-        if (mode is not ("value" or "jacobian" or "gpu" or "all" or "prescreen" or "tracebench" or "defloor" or "deresident" or "deseeds" or "deseedlm" or "seedcsv"))
+        if (mode is not ("value" or "jacobian" or "gpu" or "all" or "prescreen" or "tracebench" or "defloor" or "deresident" or "deseeds" or "deseedlm" or "seedcsv" or "analyze"))
         { Console.Error.WriteLine($"ERROR: --mode must be value|jacobian|gpu|all|prescreen|tracebench|defloor|deresident|deseeds|deseedlm|seedcsv (was {mode})"); return 1; }
         // tracebench (synthetic device trace) + seedcsv (reads a folder of *.lhlt) need no --lens.
         if (lenses.Count == 0 && mode is not ("tracebench" or "seedcsv"))
@@ -206,6 +207,7 @@ internal static class Program
                 if (mode is "deresident")        RunDeResident(lensPath, name, glassMgr, dePop, deGens, deResGpuOnly);
                 if (mode is "deseeds")           RunDeSeeds(lensPath, name, glassMgr, dePop, deGens, deSeedsOut);
                 if (mode is "deseedlm")          RunDeSeedLm(lensPath, name, glassMgr, dePop, deGens, deSeedsOut);
+                if (mode is "analyze")           RunAnalyze(lensPath, name, glassMgr);
             }
             catch (Exception ex) { Console.WriteLine($"⚠ {name}: {ex.GetType().Name}: {ex.Message}"); }
         }
@@ -217,6 +219,71 @@ internal static class Program
         }
         Console.WriteLine("\n Done.");
         return 0;
+    }
+
+    // ── analyze: per-field RMS spot radius (µm) + RMS wavefront error (waves).
+    //    Polychromatic spot (wavelengthIndex = -1); wavefront at the primary line.
+    //    Machine-readable "ANALYZE,<lens>,<fieldDeg>,<rmsSpotUm>,<rmsWaveWaves>"
+    //    lines follow the human table for easy scraping into docs. ───────────────
+    private static void RunAnalyze(string lensPath, string name, GlassCatalogManager glassMgr)
+    {
+        var read = LhltReader.Read(lensPath);
+        var system = read.System;
+        int nwl = system.Wavelengths.Count;
+        Console.WriteLine(" [analyze] per-field RMS spot radius (µm, polychromatic) + RMS wavefront error (waves)");
+        Console.Write($"   fields={system.Fields.Count}  wavelengths=[");
+        Console.Write(string.Join(", ", system.Wavelengths.Select(w => $"{w.Value:F3}µm(w{w.Weight:F1}{(w.IsPrimary ? ",P" : "")})")));
+        Console.WriteLine($"]  afocal={system.IsAfocal}");
+        // header: field, spot, per-wavelength WFE, polychromatic WFE
+        Console.Write($"   {"field(°)",9} {"RMS spot(µm)",13}");
+        foreach (var w in system.Wavelengths) Console.Write($" {("WFE " + w.Value.ToString("F2") + "µm"),13}");
+        Console.WriteLine($" {"WFE poly",13}");
+
+        for (int i = 0; i < system.Fields.Count; i++)
+        {
+            double fieldDeg = system.Fields[i].Y;
+            double rmsSpotUm = double.NaN;
+            try { rmsSpotUm = SpotDiagram.Compute(system, glassMgr, i, 6, 12, -1).RmsRadius * 1000.0; }  // mm → µm
+            catch (Exception ex) { Console.WriteLine($"   spot f{i}: {ex.GetType().Name}: {ex.Message}"); }
+
+            var perWl = new double[nwl];
+            double wsum = 0, wwfe2 = 0;
+            for (int w = 0; w < nwl; w++)
+            {
+                double wfe = double.NaN;
+                try { wfe = WavefrontMapCalculator.Compute(system, glassMgr, i, w, 64).RmsWavefront; }
+                catch (Exception ex) { Console.WriteLine($"   wfe f{i} wl{w}: {ex.GetType().Name}: {ex.Message}"); }
+                perWl[w] = wfe;
+                double wt = system.Wavelengths[w].Weight;
+                if (!double.IsNaN(wfe)) { wwfe2 += wt * wfe * wfe; wsum += wt; }
+            }
+            // Polychromatic WFE = weighted-RMS across wavelengths (same convention as the merit).
+            double polyWfe = wsum > 0 ? Math.Sqrt(wwfe2 / wsum) : double.NaN;
+
+            Console.Write($"   {fieldDeg,9:F1} {rmsSpotUm,13:F3}");
+            foreach (var v in perWl) Console.Write($" {v,13:F4}");
+            Console.WriteLine($" {polyWfe,13:F4}");
+        }
+
+        // machine-readable: ANALYZE,<lens>,<fieldDeg>,<rmsSpotUm>,<wfe_wl0>,...,<wfe_wlN>,<polyWfe>
+        for (int i = 0; i < system.Fields.Count; i++)
+        {
+            double fieldDeg = system.Fields[i].Y;
+            double rmsSpotUm = double.NaN;
+            try { rmsSpotUm = SpotDiagram.Compute(system, glassMgr, i, 6, 12, -1).RmsRadius * 1000.0; } catch { }
+            var perWl = new double[nwl];
+            double wsum = 0, wwfe2 = 0;
+            for (int w = 0; w < nwl; w++)
+            {
+                double wfe = double.NaN;
+                try { wfe = WavefrontMapCalculator.Compute(system, glassMgr, i, w, 64).RmsWavefront; } catch { }
+                perWl[w] = wfe;
+                double wt = system.Wavelengths[w].Weight;
+                if (!double.IsNaN(wfe)) { wwfe2 += wt * wfe * wfe; wsum += wt; }
+            }
+            double polyWfe = wsum > 0 ? Math.Sqrt(wwfe2 / wsum) : double.NaN;
+            Console.WriteLine($"ANALYZE,{name},{fieldDeg:F1},{rmsSpotUm:F4},{string.Join(",", perWl.Select(v => v.ToString("F5")))},{polyWfe:F5}");
+        }
     }
 
     // ── Throughput timer: call evalBatch (which processes batchN designs)
