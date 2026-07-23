@@ -104,6 +104,24 @@ namespace LensHH.Core.IO
             foreach (var field in system.Fields)
                 sb.Append(" " + field.Weight.ToString(CultureInfo.InvariantCulture));
             sb.AppendLine();
+
+            // Vignetting factors. Derived per-field values from the auto-vignetting solver (all zero
+            // when there is no vignetting). VANN (tangential angle) is always 0 in LT. Callers that
+            // need current values should solve semi-diameters before exporting.
+            WriteFieldFactor(sb, system, "VDXN", f => f.VDX);
+            WriteFieldFactor(sb, system, "VDYN", f => f.VDY);
+            WriteFieldFactor(sb, system, "VCXN", f => f.VCX);
+            WriteFieldFactor(sb, system, "VCYN", f => f.VCY);
+            WriteFieldFactor(sb, system, "VANN", f => f.TAN);
+        }
+
+        private static void WriteFieldFactor(StringBuilder sb, OpticalSystem system, string key,
+            System.Func<LensHH.Core.Models.Field, double> sel)
+        {
+            sb.Append(key);
+            foreach (var field in system.Fields)
+                sb.Append(" " + sel(field).ToString(CultureInfo.InvariantCulture));
+            sb.AppendLine();
         }
 
         private static void WriteWavelengths(StringBuilder sb, OpticalSystem system)

@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Linq;
 using System.Text;
 using LensHH.Core.Analysis;
+using LensHH.Core.Enums;
 using LensHH.Core.Glass;
 using LensHH.Core.Models;
 
@@ -59,7 +60,36 @@ namespace LensHH.Rendering.TextExport
 
             AppendIndexOfRefractionTable(sb, system, glassMgr);
             AppendModelGlassTable(sb, system);
+            AppendVignettingFactorsTable(sb, system, glassMgr);
             return sb.ToString();
+        }
+
+        // Per-field vignetting factors (VDX/VDY/VCX/VCY/TAN) — emitted only when automatic vignetting
+        // is enabled. The factors are derived state, so the semi-diameters are solved first to refresh
+        // them to the current geometry (idempotent; touches only Auto semi-diameters). TAN is always 0
+        // in LT. This is the "view/copy/export the factors" surface — it rides System Data's existing
+        // Copy Table / Export Text buttons rather than adding a dedicated analysis tab.
+        private static void AppendVignettingFactorsTable(StringBuilder sb, OpticalSystem system,
+            GlassCatalogManager glassMgr)
+        {
+            if (!system.UseAutomaticVignettingFactors) return;
+            SemiDiameterSolver.Solve(system, glassMgr);
+
+            sb.AppendLine();
+            sb.AppendLine("Vignetting Factors");
+            sb.AppendLine();
+            string fieldUnit = system.FieldType == FieldType.ObjectHeight ? "mm" : "deg";
+            sb.AppendLine($"Field ({fieldUnit})\tVDX\tVDY\tVCX\tVCY\tTAN");
+            foreach (var f in system.Fields)
+            {
+                sb.Append(f.Y.ToString("G10", CultureInfo.InvariantCulture)).Append('\t')
+                  .Append(f.VDX.ToString("F6", CultureInfo.InvariantCulture)).Append('\t')
+                  .Append(f.VDY.ToString("F6", CultureInfo.InvariantCulture)).Append('\t')
+                  .Append(f.VCX.ToString("F6", CultureInfo.InvariantCulture)).Append('\t')
+                  .Append(f.VCY.ToString("F6", CultureInfo.InvariantCulture)).Append('\t')
+                  .Append(f.TAN.ToString("F6", CultureInfo.InvariantCulture));
+                sb.AppendLine();
+            }
         }
 
         // Model-glass (Nd/Vd/dPgF) parameter table — emitted whenever the system

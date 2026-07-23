@@ -39,6 +39,14 @@ namespace LensHH.Core.IO
         /// OpticalSystem.PenalizeVignetting for the runtime semantics.
         /// </summary>
         public bool PenalizeVignetting { get; set; }
+
+        /// <summary>
+        /// When true, per-field vignetting factors are auto-computed after each semi-diameter solve
+        /// and applied as an entrance-pupil remap. The factors themselves are derived state and are
+        /// NOT serialized — only this flag is; the factors are recomputed on load. See
+        /// OpticalSystem.UseAutomaticVignettingFactors.
+        /// </summary>
+        public bool UseAutomaticVignettingFactors { get; set; }
         public List<string> GlassCatalogs { get; set; } = new List<string>();
 
         // Glass substitution settings

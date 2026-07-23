@@ -54,6 +54,7 @@ namespace LensHH.Core.IO
                 IsAfocal = file.IsAfocal,
                 TelecentricObjectSpace = file.TelecentricObjectSpace,
                 PenalizeVignetting = file.PenalizeVignetting,
+                UseAutomaticVignettingFactors = file.UseAutomaticVignettingFactors,
                 GlassCatalogs = file.GlassCatalogs ?? new System.Collections.Generic.List<string>()
             };
 

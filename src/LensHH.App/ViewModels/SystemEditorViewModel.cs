@@ -106,6 +106,12 @@ public partial class SystemEditorViewModel : ObservableObject
         set { _session.System.PenalizeVignetting = value; OnPropertyChanged(); }
     }
 
+    public bool UseAutomaticVignettingFactors
+    {
+        get => _session.System.UseAutomaticVignettingFactors;
+        set { _session.System.UseAutomaticVignettingFactors = value; OnPropertyChanged(); }
+    }
+
     public bool RayAiming
     {
         get => _session.System.RayAiming != RayAimingMode.Off;
