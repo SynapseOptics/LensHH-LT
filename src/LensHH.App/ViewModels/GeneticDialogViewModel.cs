@@ -193,7 +193,7 @@ public partial class GeneticDialogViewModel : ObservableObject
             ElapsedText = $"{_stopwatch.Elapsed.TotalSeconds:F1} s";
 
             // Re-evaluate with fresh evaluator (config-aware in PRO via the factory)
-            LensHH.Core.Analysis.SemiDiameterSolver.Solve(_session.System, _session.GlassCatalog);
+            LensHH.Core.Analysis.SemiDiameterSolver.Solve(_session.System, _session.GlassCatalog, accurateApertures: true);
             var freshEval = AppExtensions.CreateMeritEvaluator(
                 _session.System, _session.GlassCatalog);
             double finalMerit = freshEval.Evaluate(_session.MeritFunction);

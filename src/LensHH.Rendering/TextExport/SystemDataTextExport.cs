@@ -73,7 +73,7 @@ namespace LensHH.Rendering.TextExport
             GlassCatalogManager glassMgr)
         {
             if (!system.UseAutomaticVignettingFactors) return;
-            SemiDiameterSolver.Solve(system, glassMgr);
+            SemiDiameterSolver.Solve(system, glassMgr, accurateApertures: true);
 
             sb.AppendLine();
             sb.AppendLine("Vignetting Factors");

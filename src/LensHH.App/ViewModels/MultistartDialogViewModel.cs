@@ -423,7 +423,7 @@ public partial class MultistartDialogViewModel : ObservableObject
             // Re-evaluate with a fresh evaluator to match what Evaluate button shows.
             // Route through the factory so PRO stays config-aware (a plain 2-arg
             // evaluator collapses a multi-config merit to a single configuration).
-            LensHH.Core.Analysis.SemiDiameterSolver.Solve(_session.System, _session.GlassCatalog);
+            LensHH.Core.Analysis.SemiDiameterSolver.Solve(_session.System, _session.GlassCatalog, accurateApertures: true);
             var freshEval = AppExtensions.CreateMeritEvaluator(
                 _session.System, _session.GlassCatalog);
             double finalMerit = freshEval.Evaluate(_session.MeritFunction);

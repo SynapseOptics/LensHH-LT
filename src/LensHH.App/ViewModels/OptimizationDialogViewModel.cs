@@ -176,7 +176,7 @@ public partial class OptimizationDialogViewModel : ObservableObject
 
             // Re-evaluate with a fresh evaluator to match what Evaluate button shows
             // (config-aware in PRO via the factory).
-            LensHH.Core.Analysis.SemiDiameterSolver.Solve(_session.System, _session.GlassCatalog);
+            LensHH.Core.Analysis.SemiDiameterSolver.Solve(_session.System, _session.GlassCatalog, accurateApertures: true);
             var freshEval = AppExtensions.CreateMeritEvaluator(
                 _session.System, _session.GlassCatalog);
             double finalMerit = freshEval.Evaluate(_session.MeritFunction);

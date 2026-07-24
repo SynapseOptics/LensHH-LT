@@ -265,7 +265,7 @@ public partial class GlobalBasinHoppingDialogViewModel : ObservableObject
         if (result != null)
         {
             _lastResult = result;
-            LensHH.Core.Analysis.SemiDiameterSolver.Solve(_session.System, _session.GlassCatalog);
+            LensHH.Core.Analysis.SemiDiameterSolver.Solve(_session.System, _session.GlassCatalog, accurateApertures: true);
             var freshEval = AppExtensions.CreateMeritEvaluator(_session.System, _session.GlassCatalog);
             double finalMerit = freshEval.Evaluate(_session.MeritFunction);
             BestMeritText = finalMerit.ToString("E6");
@@ -300,7 +300,7 @@ public partial class GlobalBasinHoppingDialogViewModel : ObservableObject
         var pick = _lastResult.ChainResults.FirstOrDefault(c => c.ChainIndex == SelectedChain.Chain);
         if (pick.System == null) return;
         _session.System.CopyFrom(pick.System);
-        LensHH.Core.Analysis.SemiDiameterSolver.Solve(_session.System, _session.GlassCatalog);
+        LensHH.Core.Analysis.SemiDiameterSolver.Solve(_session.System, _session.GlassCatalog, accurateApertures: true);
         var eval = AppExtensions.CreateMeritEvaluator(_session.System, _session.GlassCatalog);
         double m = eval.Evaluate(_session.MeritFunction);
         BestMeritText = m.ToString("E6");

@@ -24,7 +24,7 @@ namespace LensHH.Mcp.Tools
             // beam (all fields), not the layout's 5 mm fallback for unsolved surfaces. Mirrors
             // the GUI (GuiSession solves before it draws); the RenderApp only reads SemiDiameter.
             // Cheap, idempotent, and keeps the drawing correct after edits.
-            try { LensHH.Core.Analysis.SemiDiameterSolver.Solve(_session.System, _session.GlassCatalog); } catch { }
+            try { LensHH.Core.Analysis.SemiDiameterSolver.Solve(_session.System, _session.GlassCatalog, accurateApertures: true); } catch { }
 
             var response = await RenderAppClient.SendAsync(_session.System, analysis, parms);
             if (response.Success)

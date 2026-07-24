@@ -1484,7 +1484,7 @@ namespace LensHH.API
         {
             if (_system != null)
             {
-                try { SemiDiameterSolver.Solve(_system, GlassCatalog); }
+                try { SemiDiameterSolver.Solve(_system, GlassCatalog, accurateApertures: true); }
                 catch { /* ignore if system is incomplete */ }
             }
         }

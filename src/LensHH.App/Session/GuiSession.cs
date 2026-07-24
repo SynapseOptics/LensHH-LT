@@ -387,8 +387,10 @@ public class GuiSession
         try { LensHH.Core.Analysis.PickupSolver.Solve(_system); }
         catch { /* ignore if system is incomplete */ }
 
-        // Recompute AUTO semi-diameters on every system change
-        try { LensHH.Core.Analysis.SemiDiameterSolver.Solve(_system, _glassCatalog); }
+        // Recompute AUTO semi-diameters on every system change. accurateApertures: the drawn/edited
+        // clear apertures must contain the full layout ray fan even under a vignetting aperture (the
+        // fast per-perturbation solve inside optimization can undersize rear surfaces).
+        try { LensHH.Core.Analysis.SemiDiameterSolver.Solve(_system, _glassCatalog, accurateApertures: true); }
         catch { /* ignore if system is incomplete */ }
 
         // Run the unified engine validator and route each error code

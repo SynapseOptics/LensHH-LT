@@ -1719,6 +1719,9 @@ namespace LensHH.CLI.Commands
                 }
                 case "layout":
                 {
+                    // Solve accurate apertures so drawn Auto elements contain the full ray fan even under
+                    // a vignetting aperture (mirrors the GUI's GuiSession solve before it draws).
+                    try { Core.Analysis.SemiDiameterSolver.Solve(system, glassMgr, accurateApertures: true); } catch { }
                     var layout = Core.Analysis.SystemLayout.ComputeLayout(system, glassMgr,
                         numRays: 15, startFromSurface1: !fromObject, wavelengthIndex: layoutWaveIdx);
                     var layoutFieldYs = system.Fields.Select(f => f.Y).ToList();

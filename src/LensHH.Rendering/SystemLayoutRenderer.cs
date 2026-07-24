@@ -125,6 +125,20 @@ namespace LensHH.Rendering
                     sb.AppendLine(F($"<line x1=\"{sx:F1}\" y1=\"{centerY + stopY:F1}\" x2=\"{sx:F1}\" y2=\"{centerY + stopY + barLen:F1}\" stroke=\"black\" stroke-width=\"1.5\"/>"));
                 }
 
+                // Vignetting aperture (flat dummy in air) — draw a distinct-colored aperture bar so
+                // these otherwise-invisible clipping surfaces (e.g. S3/S7) are visible on the layout.
+                if (surf.IsVignettingAperture)
+                {
+                    double vx = SvgX(surf.VertexZ);
+                    double vY = surf.SemiDiameter * scale;
+                    double barLen = 8;
+                    const string vColor = "#1565c0";   // blue — distinguishes from the black aperture stop
+                    // Top bar
+                    sb.AppendLine(F($"<line x1=\"{vx:F1}\" y1=\"{centerY - vY - barLen:F1}\" x2=\"{vx:F1}\" y2=\"{centerY - vY:F1}\" stroke=\"{vColor}\" stroke-width=\"1.5\"/>"));
+                    // Bottom bar
+                    sb.AppendLine(F($"<line x1=\"{vx:F1}\" y1=\"{centerY + vY:F1}\" x2=\"{vx:F1}\" y2=\"{centerY + vY + barLen:F1}\" stroke=\"{vColor}\" stroke-width=\"1.5\"/>"));
+                }
+
                 // Object surface — curved arc or vertical line
                 if (surf.Index == 0)
                 {
