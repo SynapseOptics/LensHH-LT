@@ -21,6 +21,7 @@ public partial class GeoMtfVsFreqViewModel : ObservableObject
     [ObservableProperty] private Bitmap? _plotImage;
     [ObservableProperty] private bool _isVisible;
     [ObservableProperty] private bool _isBusy;
+    [ObservableProperty] private bool _useVignettingFactors;
     [ObservableProperty] private int _selectedWavelengthIndex = 0;
     [ObservableProperty] private int _numRings = 15;
     [ObservableProperty] private int _numFreqPoints = 200;
@@ -72,10 +73,10 @@ public partial class GeoMtfVsFreqViewModel : ObservableObject
                 {
                     if (polychromatic)
                         res[f] = GeometricMtfKidger.ComputePolychromatic(system, glassMgr, f, rings,
-                            maxFrequency: maxFreqSetting, numFreqPoints: numFreqPts);
+                            maxFrequency: maxFreqSetting, numFreqPoints: numFreqPts, useVignettingFactors: UseVignettingFactors);
                     else
                         res[f] = GeometricMtfKidger.Compute(system, glassMgr, f, waveIdx, rings,
-                            maxFrequency: maxFreqSetting, numFreqPoints: numFreqPts);
+                            maxFrequency: maxFreqSetting, numFreqPoints: numFreqPts, useVignettingFactors: UseVignettingFactors);
                 }
                 return res;
             });
@@ -145,6 +146,7 @@ public partial class GeoMtfVsFieldViewModel : ObservableObject
     [ObservableProperty] private Bitmap? _plotImage;
     [ObservableProperty] private bool _isVisible;
     [ObservableProperty] private bool _isBusy;
+    [ObservableProperty] private bool _useVignettingFactors;
     [ObservableProperty] private int _selectedWavelengthIndex = 0;
     [ObservableProperty] private int _numRings = 30;
     [ObservableProperty] private int _numFieldPoints = 20;
@@ -194,7 +196,7 @@ public partial class GeoMtfVsFieldViewModel : ObservableObject
             var result = await Task.Run(() =>
                 GeometricMtfKidger.ComputeVsFieldMultiFreq(
                     system, glassMgr, _frequencies, polychromatic ? 0 : waveIdx,
-                    NumRings, NumFieldPoints, polychromatic: polychromatic));
+                    NumRings, NumFieldPoints, polychromatic: polychromatic, useVignettingFactors: UseVignettingFactors));
 
             _lastResult = result;
             string fieldUnit = system.FieldType == Core.Enums.FieldType.ObjectHeight ? "mm" : "deg";
@@ -228,6 +230,7 @@ public partial class GeoMtfVsFocusViewModel : ObservableObject
     [ObservableProperty] private Bitmap? _plotImage;
     [ObservableProperty] private bool _isVisible;
     [ObservableProperty] private bool _isBusy;
+    [ObservableProperty] private bool _useVignettingFactors;
     /// <summary>True when the loaded system is afocal — the tab shows a
     /// "disabled" overlay in that case (no defined focus axis for an
     /// afocal output).</summary>
@@ -308,7 +311,7 @@ public partial class GeoMtfVsFocusViewModel : ObservableObject
                             system, glassMgr, f, SpatialFrequency,
                             polychromatic ? 0 : waveIdx,
                             FocusRange, NumFocusSteps, NumRings,
-                            polychromatic: polychromatic);
+                            polychromatic: polychromatic, useVignettingFactors: UseVignettingFactors);
                     return res;
                 });
 
@@ -330,7 +333,7 @@ public partial class GeoMtfVsFocusViewModel : ObservableObject
                         system, glassMgr, fieldIdx, SpatialFrequency,
                         polychromatic ? 0 : waveIdx,
                         FocusRange, NumFocusSteps, NumRings,
-                        polychromatic: polychromatic));
+                        polychromatic: polychromatic, useVignettingFactors: UseVignettingFactors));
 
                 _lastResult = result;
                 _lastResults = null;

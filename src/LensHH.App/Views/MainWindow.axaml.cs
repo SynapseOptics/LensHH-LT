@@ -765,6 +765,9 @@ public partial class MainWindow : Window
     {
         var dialog = new SystemEditorDialog { DataContext = new SystemEditorViewModel(VM.Session) };
         await dialog.ShowDialog(this);
+        // The editor may have toggled Use Automatic Vignetting Factors — refresh so the per-analysis
+        // "Use Vignetting Factors" checkboxes show/hide immediately.
+        VM.RefreshVignettingOption();
     }
 
     private async void CatalogPreference_Click(object? sender, RoutedEventArgs e)

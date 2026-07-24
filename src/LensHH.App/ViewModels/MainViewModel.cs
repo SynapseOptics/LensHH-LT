@@ -81,6 +81,16 @@ public partial class MainViewModel : ObservableObject
     public SystemDataViewModel SystemData { get; }
     public GuiSession Session => _session;
 
+    /// <summary>True when the system has automatic vignetting factors enabled. Drives the visibility
+    /// of every per-analysis "Use Vignetting Factors" checkbox (their IsVisible binds here, since the
+    /// analysis TabItems' DataContext is this MainViewModel). Refreshed on system change and after the
+    /// System editor is applied (see RefreshVignettingOption).</summary>
+    public bool ShowVignettingOption => _session.System?.UseAutomaticVignettingFactors ?? false;
+
+    /// <summary>Re-evaluate <see cref="ShowVignettingOption"/> — call after the System editor may have
+    /// toggled the flag so the per-analysis checkboxes show/hide immediately.</summary>
+    public void RefreshVignettingOption() => OnPropertyChanged(nameof(ShowVignettingOption));
+
     public MainViewModel(GuiSession session)
     {
         _session = session;
@@ -114,6 +124,7 @@ public partial class MainViewModel : ObservableObject
             HasUnresolvedGlass = _session.CannotCompute;
             if (_session.CannotCompute)
                 StatusText = _session.CannotComputeMessage;
+            OnPropertyChanged(nameof(ShowVignettingOption));
         };
         _session.FileStateChanged += () => WindowTitle = _session.WindowTitle;
         WindowTitle = _session.WindowTitle;

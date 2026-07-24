@@ -18,6 +18,7 @@ public partial class LayoutViewModel : ObservableObject
     private readonly GuiSession _session;
 
     [ObservableProperty] private Bitmap? _layoutImage;
+    [ObservableProperty] private bool _useVignettingFactors;
     [ObservableProperty] private int _numRays = 15;
     [ObservableProperty] private int _startSurface = 0;
     [ObservableProperty] private bool _startFromSurface1 = true;
@@ -123,7 +124,7 @@ public partial class LayoutViewModel : ObservableObject
                 _session.System, _session.GlassCatalog,
                 numRays: NumRays,
                 startFromSurface1: fromSurf1,
-                wavelengthIndex: wIdx);
+                wavelengthIndex: wIdx, useVignettingFactors: UseVignettingFactors);
             // Pass the system's field list so the renderer can show the
             // per-field summary panel (and flag fields with 0 traced rays).
             var fieldYs = _session.System.Fields.Select(f => f.Y).ToList();

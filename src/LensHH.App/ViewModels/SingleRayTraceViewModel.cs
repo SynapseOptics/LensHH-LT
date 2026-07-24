@@ -34,6 +34,7 @@ public partial class SingleRayTraceViewModel : ObservableObject
     private readonly GuiSession _session;
 
     [ObservableProperty] private bool _isVisible;
+    [ObservableProperty] private bool _useVignettingFactors;
     [ObservableProperty] private bool _isBusy;
     [ObservableProperty] private string _statusText = "";
 
@@ -122,7 +123,7 @@ public partial class SingleRayTraceViewModel : ObservableObject
             int waveIdx = Math.Clamp(SelectedWaveIndex, 0, system.Wavelengths.Count - 1);
 
             var result = await Task.Run(() =>
-                RayTraceListing.Trace(system, glassMgr, fieldY, Px, Py, waveIdx));
+                RayTraceListing.Trace(system, glassMgr, fieldY, Px, Py, waveIdx, useVignettingFactors: UseVignettingFactors));
 
             if (!result.Success)
             {

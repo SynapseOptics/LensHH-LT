@@ -21,6 +21,7 @@ public partial class LongitudinalAberrationViewModel : ObservableObject
 
     [ObservableProperty] private Bitmap? _plotImage;
     [ObservableProperty] private bool _isVisible;
+    [ObservableProperty] private bool _useVignettingFactors;
     [ObservableProperty] private bool _isBusy;
     [ObservableProperty] private bool _isDisabled;
     [ObservableProperty] private int _numZones = 32;
@@ -68,7 +69,7 @@ public partial class LongitudinalAberrationViewModel : ObservableObject
 
             int zones = NumZones;
             var result = await Task.Run(() =>
-                LensHH.Core.Analysis.LongitudinalAberration.Compute(system, glassMgr, numZones: zones));
+                LensHH.Core.Analysis.LongitudinalAberration.Compute(system, glassMgr, numZones: zones, useVignettingFactors: UseVignettingFactors));
 
             _lastResult = result;
 

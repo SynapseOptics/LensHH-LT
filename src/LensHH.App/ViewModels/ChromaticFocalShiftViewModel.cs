@@ -19,6 +19,7 @@ public partial class ChromaticFocalShiftViewModel : ObservableObject
 
     [ObservableProperty] private Bitmap? _plotImage;
     [ObservableProperty] private bool _isVisible;
+    [ObservableProperty] private bool _useVignettingFactors;
     [ObservableProperty] private bool _isBusy;
     [ObservableProperty] private bool _isDisabled;
 

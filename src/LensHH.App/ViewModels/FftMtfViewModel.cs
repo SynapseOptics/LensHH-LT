@@ -23,6 +23,7 @@ public partial class FftMtfViewModel : ObservableObject
     [ObservableProperty] private double _maxFrequency = 0; // 0 = auto
     [ObservableProperty] private int _gridSize = 256;
     [ObservableProperty] private bool _isVisible;
+    [ObservableProperty] private bool _useVignettingFactors;
     [ObservableProperty] private int _selectedWavelengthIndex = 0; // 0 = All (Polychromatic)
     [ObservableProperty] private bool _isBusy;
 
@@ -87,10 +88,10 @@ public partial class FftMtfViewModel : ObservableObject
 
                 if (polychromatic)
                     results[0] = FftMtfCalculator.ComputePolychromatic(
-                        system, glassMgr, 0, gridSize, freqStep);
+                        system, glassMgr, 0, gridSize, freqStep, useVignettingFactors: UseVignettingFactors);
                 else
                     results[0] = FftMtfCalculator.ComputeVsFrequency(
-                        system, glassMgr, 0, waveIdx, gridSize, freqStep);
+                        system, glassMgr, 0, waveIdx, gridSize, freqStep, useVignettingFactors: UseVignettingFactors);
 
                 if (results[0].MaxFrequency > 0)
                     freqStep = results[0].MaxFrequency / 200.0;
@@ -104,10 +105,10 @@ public partial class FftMtfViewModel : ObservableObject
                         {
                             if (polychromatic)
                                 results[f] = FftMtfCalculator.ComputePolychromatic(
-                                    system, glassMgr, f, gridSize, fs);
+                                    system, glassMgr, f, gridSize, fs, useVignettingFactors: UseVignettingFactors);
                             else
                                 results[f] = FftMtfCalculator.ComputeVsFrequency(
-                                    system, glassMgr, f, waveIdx, gridSize, fs);
+                                    system, glassMgr, f, waveIdx, gridSize, fs, useVignettingFactors: UseVignettingFactors);
                         }
                         catch
                         {

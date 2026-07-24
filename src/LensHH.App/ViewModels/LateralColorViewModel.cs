@@ -19,6 +19,7 @@ public partial class LateralColorViewModel : ObservableObject
 
     [ObservableProperty] private Bitmap? _plotImage;
     [ObservableProperty] private bool _isVisible;
+    [ObservableProperty] private bool _useVignettingFactors;
     [ObservableProperty] private bool _isBusy;
     [ObservableProperty] private bool _isOnAxisOnly;
     [ObservableProperty] private bool _isDisabled;
@@ -101,7 +102,7 @@ public partial class LateralColorViewModel : ObservableObject
                 waveLabels[w] = $"{LabelFormat.Wavelength(system.Wavelengths[w].Value, system.Wavelengths)}";
 
             var result = await Task.Run(() =>
-                LateralColorCalculator.Compute(system, glassMgr, numFieldPoints: 50));
+                LateralColorCalculator.Compute(system, glassMgr, numFieldPoints: 50, useVignettingFactors: UseVignettingFactors));
 
             _lastResult = result;
 

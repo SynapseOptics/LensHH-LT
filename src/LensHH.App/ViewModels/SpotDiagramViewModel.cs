@@ -27,6 +27,9 @@ public partial class SpotDiagramViewModel : ObservableObject
     [ObservableProperty] private bool _isVisible;
     [ObservableProperty] private bool _isBusy;
     [ObservableProperty] private bool _useGrid;
+    // Per-analysis opt-in to apply the system's automatic vignetting factors. Default off; the
+    // checkbox is only shown (via MainViewModel.ShowVignettingOption) when the system flag is on.
+    [ObservableProperty] private bool _useVignettingFactors;
 
     /// <summary>
     /// Wavelength dropdown. Index 0 = "Polychromatic" (maps to engine -1);
@@ -95,6 +98,7 @@ public partial class SpotDiagramViewModel : ObservableObject
             int arms = NumArms;
             int grid = GridSize;
             bool useGrid = UseGrid;
+            bool useVf = UseVignettingFactors;
             // 0 = Polychromatic → -1 to engine; n ≥ 1 → wavelength n-1.
             int wIdx = SelectedWavelengthOption <= 0 ? -1 : SelectedWavelengthOption - 1;
 
@@ -113,8 +117,8 @@ public partial class SpotDiagramViewModel : ObservableObject
                 for (int f = 0; f < numFields; f++)
                 {
                     res[f] = useGrid
-                        ? SpotDiagram.ComputeGrid(system, glassMgr, f, grid, wavelengthIndex: wIdx)
-                        : SpotDiagram.Compute(system, glassMgr, f, rings, arms, wavelengthIndex: wIdx);
+                        ? SpotDiagram.ComputeGrid(system, glassMgr, f, grid, wavelengthIndex: wIdx, useVignettingFactors: useVf)
+                        : SpotDiagram.Compute(system, glassMgr, f, rings, arms, wavelengthIndex: wIdx, useVignettingFactors: useVf);
                 }
                 _lastResults = res;
 

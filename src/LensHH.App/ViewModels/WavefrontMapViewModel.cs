@@ -23,6 +23,7 @@ public partial class WavefrontMapViewModel : ObservableObject
     [ObservableProperty] private int _gridSize = 64;
     [ObservableProperty] private bool _isVisible;
     [ObservableProperty] private bool _isBusy;
+    [ObservableProperty] private bool _useVignettingFactors;
 
     private WavefrontResult[]? _lastResults;
 
@@ -43,6 +44,7 @@ public partial class WavefrontMapViewModel : ObservableObject
             int numFields = system.Fields.Count;
             int numWaves = system.Wavelengths.Count;
             int gridSize = GridSize;
+            bool useVf = UseVignettingFactors;
 
             string fieldUnit = system.FieldType == Core.Enums.FieldType.ObjectHeight ? "mm" : "deg";
 
@@ -58,7 +60,7 @@ public partial class WavefrontMapViewModel : ObservableObject
                 for (int f = 0; f < numFields; f++)
                     for (int w = 0; w < numWaves; w++)
                         results[f * numWaves + w] =
-                            WavefrontMapCalculator.Compute(system, glassMgr, f, w, gridSize);
+                            WavefrontMapCalculator.Compute(system, glassMgr, f, w, gridSize, useVignettingFactors: useVf);
 
                 _lastResults = results;
 

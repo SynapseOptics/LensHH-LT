@@ -21,6 +21,7 @@ public partial class FftPsfViewModel : ObservableObject
     private readonly GuiSession _session;
 
     [ObservableProperty] private Bitmap? _psfImage;
+    [ObservableProperty] private bool _useVignettingFactors;
     [ObservableProperty] private int _gridSize = 64;
     [ObservableProperty] private bool _isVisible;
     [ObservableProperty] private int _selectedWavelengthIndex = 0;
@@ -75,7 +76,7 @@ public partial class FftPsfViewModel : ObservableObject
             {
                 var results = new PsfResult[numFields];
                 for (int f = 0; f < numFields; f++)
-                    results[f] = FftPsfCalculator.Compute(system, glassMgr, f, waveIdx, gridSize);
+                    results[f] = FftPsfCalculator.Compute(system, glassMgr, f, waveIdx, gridSize, useVignettingFactors: UseVignettingFactors);
 
                 _lastResults = results;
 

@@ -23,6 +23,7 @@ public partial class OpdFanViewModel : ObservableObject
     [ObservableProperty] private int _numPoints = 64;
     [ObservableProperty] private bool _isVisible;
     [ObservableProperty] private bool _isBusy;
+    [ObservableProperty] private bool _useVignettingFactors;
 
     private OpdFanResult[]? _lastResults;
 
@@ -42,6 +43,7 @@ public partial class OpdFanViewModel : ObservableObject
             var glassMgr = _session.GlassCatalog;
             int numFields = system.Fields.Count;
             int numPoints = NumPoints;
+            bool useVf = UseVignettingFactors;
 
             string fieldUnit = system.FieldType == Core.Enums.FieldType.ObjectHeight ? "mm" : "deg";
             var fieldLabels = new string[numFields];
@@ -56,7 +58,7 @@ public partial class OpdFanViewModel : ObservableObject
             {
                 var results = new OpdFanResult[numFields];
                 for (int f = 0; f < numFields; f++)
-                    results[f] = OpdFan.Compute(system, glassMgr, f, numPoints);
+                    results[f] = OpdFan.Compute(system, glassMgr, f, numPoints, useVignettingFactors: useVf);
 
                 _lastResults = results;
 

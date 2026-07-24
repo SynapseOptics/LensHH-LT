@@ -22,6 +22,7 @@ public partial class FftMtfVsFieldViewModel : ObservableObject
     [ObservableProperty] private Bitmap? _mtfImage;
     [ObservableProperty] private int _gridSize = 64;
     [ObservableProperty] private bool _isVisible;
+    [ObservableProperty] private bool _useVignettingFactors;
     [ObservableProperty] private int _selectedWavelengthIndex = 0;
     [ObservableProperty] private string _frequencyLabel = "50, 100 cy/mm";
     [ObservableProperty] private int _numFieldPoints = 20;
@@ -134,7 +135,7 @@ public partial class FftMtfVsFieldViewModel : ObservableObject
                     system, glassMgr, freqs,
                     polychromatic ? 0 : waveIdx,
                     gridSize, numFieldPoints: numPts,
-                    polychromatic: polychromatic));
+                    polychromatic: polychromatic, useVignettingFactors: UseVignettingFactors));
 
             _lastResult = result;
 

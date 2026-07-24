@@ -20,6 +20,7 @@ public partial class FftMtfVsFocusViewModel : ObservableObject
 
     [ObservableProperty] private Bitmap? _plotImage;
     [ObservableProperty] private bool _isVisible;
+    [ObservableProperty] private bool _useVignettingFactors;
     [ObservableProperty] private bool _isBusy;
     /// <summary>True when the loaded system is afocal — the tab shows a
     /// "disabled" overlay in that case (semantics of focus shift in diopters
@@ -154,10 +155,10 @@ public partial class FftMtfVsFocusViewModel : ObservableObject
                     {
                         if (polychromatic)
                             res[f] = FftMtfCalculator.ComputeThroughFocusPolychromatic(
-                                system, glassMgr, f, freq, range, steps, grid);
+                                system, glassMgr, f, freq, range, steps, grid, useVignettingFactors: UseVignettingFactors);
                         else
                             res[f] = FftMtfCalculator.ComputeThroughFocus(
-                                system, glassMgr, f, freq, waveIdx, range, steps, grid);
+                                system, glassMgr, f, freq, waveIdx, range, steps, grid, useVignettingFactors: UseVignettingFactors);
                     }
                     return res;
                 });
@@ -180,10 +181,10 @@ public partial class FftMtfVsFocusViewModel : ObservableObject
                 {
                     if (polychromatic)
                         return FftMtfCalculator.ComputeThroughFocusPolychromatic(
-                            system, glassMgr, fieldIdx, freq, range, steps, grid);
+                            system, glassMgr, fieldIdx, freq, range, steps, grid, useVignettingFactors: UseVignettingFactors);
                     else
                         return FftMtfCalculator.ComputeThroughFocus(
-                            system, glassMgr, fieldIdx, freq, waveIdx, range, steps, grid);
+                            system, glassMgr, fieldIdx, freq, waveIdx, range, steps, grid, useVignettingFactors: UseVignettingFactors);
                 });
 
                 _lastResult = result;

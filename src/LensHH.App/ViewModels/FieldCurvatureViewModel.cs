@@ -19,6 +19,7 @@ public partial class FieldCurvatureViewModel : ObservableObject
 
     [ObservableProperty] private Bitmap? _plotImage;
     [ObservableProperty] private bool _isVisible;
+    [ObservableProperty] private bool _useVignettingFactors;
     [ObservableProperty] private bool _isBusy;
     [ObservableProperty] private bool _isOnAxisOnly;
 
@@ -77,7 +78,7 @@ public partial class FieldCurvatureViewModel : ObservableObject
                 waveLabels[w] = $"{LabelFormat.Wavelength(system.Wavelengths[w].Value, system.Wavelengths)}";
 
             var mwResult = await Task.Run(() =>
-                FieldCurvatureCalculator.ComputeAllWavelengths(system, glassMgr, numPoints: 100));
+                FieldCurvatureCalculator.ComputeAllWavelengths(system, glassMgr, numPoints: 100, useVignettingFactors: UseVignettingFactors));
 
             _lastMwResult = mwResult;
 

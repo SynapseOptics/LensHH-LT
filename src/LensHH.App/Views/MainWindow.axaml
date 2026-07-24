@@ -415,6 +415,10 @@
                       VerticalAlignment="Center" />
             <CheckBox Content="Start from Surface 1" IsChecked="{Binding Layout.StartFromSurface1}"
                       VerticalAlignment="Center" />
+            <CheckBox Content="Use Vignetting Factors" VerticalAlignment="Center" Margin="8,0,0,0"
+                      IsChecked="{Binding Layout.UseVignettingFactors}"
+                      IsVisible="{Binding ShowVignettingOption}"
+                      ToolTip.Tip="Apply the system's automatic vignetting factors to the drawn rays (default off). Shown only when Use Automatic Vignetting Factors is enabled in System parameters." />
             <Button Content="Redraw" Command="{Binding Layout.RenderCommand}" Width="70" />
             <Button Content="Export Image" Click="ExportImage_Click" Tag="Layout" Width="90" FontSize="11" />
           </StackPanel>
@@ -703,6 +707,7 @@
                         Width="160" />
               <TextBlock Text="Max Freq (0=auto):" VerticalAlignment="Center" />
               <TextBox Text="{Binding FftMtf.MaxFrequency, UpdateSourceTrigger=LostFocus}" Width="60" />
+              <CheckBox Content="Use Vignetting Factors" VerticalAlignment="Center" Margin="8,0,0,0" IsChecked="{Binding FftMtf.UseVignettingFactors}" IsVisible="{Binding ShowVignettingOption}" ToolTip.Tip="Apply the system's automatic vignetting factors to this analysis (default off)." />
               <Button Content="Compute" Command="{Binding FftMtf.ComputeCommand}" Width="80" />
               <Button Content="Export Text..." Command="{Binding FftMtf.ExportTextCommand}" Width="100" />
               <Button Content="Export Image" Click="ExportImage_Click" Tag="FftMtf" Width="90" FontSize="11" />
@@ -746,6 +751,7 @@
               <TextBox Text="{Binding FftMtfVsField.NumFieldPoints, UpdateSourceTrigger=LostFocus}" Width="40" />
               <Button Content="Frequencies..." Click="MtfVsFieldFrequencies_Click" Width="110" />
               <TextBlock Text="{Binding FftMtfVsField.FrequencyLabel}" VerticalAlignment="Center" Foreground="#666" />
+              <CheckBox Content="Use Vignetting Factors" VerticalAlignment="Center" Margin="8,0,0,0" IsChecked="{Binding FftMtfVsField.UseVignettingFactors}" IsVisible="{Binding ShowVignettingOption}" ToolTip.Tip="Apply the system's automatic vignetting factors to this analysis (default off)." />
               <Button Content="Compute" Command="{Binding FftMtfVsField.ComputeCommand}" Width="80" />
               <Button Content="Export Text..." Command="{Binding FftMtfVsField.ExportTextCommand}" Width="100" />
               <Button Content="Export Image" Click="ExportImage_Click" Tag="FftMtfVsField" Width="90" FontSize="11" />
@@ -792,6 +798,7 @@
               <TextBox Text="{Binding FftMtfVsFocus.FocusRange, UpdateSourceTrigger=LostFocus}" Width="60" />
               <TextBlock Text="Steps:" VerticalAlignment="Center" />
               <TextBox Text="{Binding FftMtfVsFocus.NumFocusSteps, UpdateSourceTrigger=LostFocus}" Width="40" />
+              <CheckBox Content="Use Vignetting Factors" VerticalAlignment="Center" Margin="8,0,0,0" IsChecked="{Binding FftMtfVsFocus.UseVignettingFactors}" IsVisible="{Binding ShowVignettingOption}" ToolTip.Tip="Apply the system's automatic vignetting factors to this analysis (default off)." />
               <Button Content="Compute" Command="{Binding FftMtfVsFocus.ComputeCommand}" Width="80" />
               <Button Content="Export Text..." Command="{Binding FftMtfVsFocus.ExportTextCommand}" Width="100" />
               <Button Content="Export Image" Click="ExportImage_Click" Tag="FftMtfVsFocus" Width="90" FontSize="11" />
@@ -839,6 +846,10 @@
                         SelectedIndex="{Binding SpotDiagram.SelectedWavelengthOption}"
                         Width="180"
                         VerticalAlignment="Center" />
+              <CheckBox Content="Use Vignetting Factors" VerticalAlignment="Center" Margin="8,0,0,0"
+                        IsChecked="{Binding SpotDiagram.UseVignettingFactors}"
+                        IsVisible="{Binding ShowVignettingOption}"
+                        ToolTip.Tip="Apply the system's automatic vignetting factors to this analysis (default off). Shown only when Use Automatic Vignetting Factors is enabled in System parameters." />
               <Button Content="Compute" Command="{Binding SpotDiagram.ComputeCommand}" Width="80" />
               <Button Content="Export Text..." Command="{Binding SpotDiagram.ExportTextCommand}" Width="100" />
               <Button Content="Export Image" Click="ExportImage_Click" Tag="SpotDiagram" Width="90" FontSize="11" />
@@ -909,6 +920,7 @@
         <Grid>
           <DockPanel>
             <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="4" Spacing="8">
+              <CheckBox Content="Use Vignetting Factors" VerticalAlignment="Center" Margin="8,0,0,0" IsChecked="{Binding FieldCurvature.UseVignettingFactors}" IsVisible="{Binding ShowVignettingOption}" ToolTip.Tip="Apply the system's automatic vignetting factors to this analysis (default off)." />
               <Button Content="Compute" Command="{Binding FieldCurvature.ComputeCommand}" Width="80" />
               <Button Content="Export Text..." Command="{Binding FieldCurvature.ExportTextCommand}" Width="100"
                       IsEnabled="{Binding !FieldCurvature.IsOnAxisOnly}" />
@@ -1025,6 +1037,7 @@
               <TextBox Text="{Binding GeoMtfVsFreq.NumFreqPoints, UpdateSourceTrigger=LostFocus}" Width="45" />
               <TextBlock Text="Max Freq (0=auto):" VerticalAlignment="Center" />
               <TextBox Text="{Binding GeoMtfVsFreq.MaxFrequency, UpdateSourceTrigger=LostFocus}" Width="60" />
+              <CheckBox Content="Use Vignetting Factors" VerticalAlignment="Center" Margin="8,0,0,0" IsChecked="{Binding GeoMtfVsFreq.UseVignettingFactors}" IsVisible="{Binding ShowVignettingOption}" ToolTip.Tip="Apply the system's automatic vignetting factors to this analysis (default off)." />
               <Button Content="Compute" Command="{Binding GeoMtfVsFreq.ComputeCommand}" Width="80" />
               <Button Content="Export Text..." Command="{Binding GeoMtfVsFreq.ExportTextCommand}" Width="100" />
               <Button Content="Export Image" Click="ExportImage_Click" Tag="GeoMtfVsFreq" Width="90" FontSize="11" />
@@ -1060,6 +1073,7 @@
               <TextBox Text="{Binding GeoMtfVsField.NumFieldPoints, UpdateSourceTrigger=LostFocus}" Width="40" />
               <Button Content="Frequencies..." Click="GeoMtfFrequencies_Click" Width="100" />
               <TextBlock Text="{Binding GeoMtfVsField.FrequencyLabel}" VerticalAlignment="Center" Foreground="#666" />
+              <CheckBox Content="Use Vignetting Factors" VerticalAlignment="Center" Margin="8,0,0,0" IsChecked="{Binding GeoMtfVsField.UseVignettingFactors}" IsVisible="{Binding ShowVignettingOption}" ToolTip.Tip="Apply the system's automatic vignetting factors to this analysis (default off)." />
               <Button Content="Compute" Command="{Binding GeoMtfVsField.ComputeCommand}" Width="80" />
               <Button Content="Export Text..." Command="{Binding GeoMtfVsField.ExportTextCommand}" Width="100" />
               <Button Content="Export Image" Click="ExportImage_Click" Tag="GeoMtfVsField" Width="90" FontSize="11" />
@@ -1100,6 +1114,7 @@
               <TextBox Text="{Binding GeoMtfVsFocus.FocusRange, UpdateSourceTrigger=LostFocus}" Width="50" />
               <TextBlock Text="Steps:" VerticalAlignment="Center" />
               <TextBox Text="{Binding GeoMtfVsFocus.NumFocusSteps, UpdateSourceTrigger=LostFocus}" Width="40" />
+              <CheckBox Content="Use Vignetting Factors" VerticalAlignment="Center" Margin="8,0,0,0" IsChecked="{Binding GeoMtfVsFocus.UseVignettingFactors}" IsVisible="{Binding ShowVignettingOption}" ToolTip.Tip="Apply the system's automatic vignetting factors to this analysis (default off)." />
               <Button Content="Compute" Command="{Binding GeoMtfVsFocus.ComputeCommand}" Width="80" />
               <Button Content="Export Text..." Command="{Binding GeoMtfVsFocus.ExportTextCommand}" Width="100" />
               <Button Content="Export Image" Click="ExportImage_Click" Tag="GeoMtfVsFocus" Width="90" FontSize="11" />
@@ -1133,6 +1148,10 @@
             <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="4" Spacing="8">
               <TextBlock Text="Points:" VerticalAlignment="Center" />
               <TextBox Text="{Binding TransverseRayFan.NumPoints, UpdateSourceTrigger=LostFocus}" Width="50" />
+              <CheckBox Content="Use Vignetting Factors" VerticalAlignment="Center" Margin="8,0,0,0"
+                        IsChecked="{Binding TransverseRayFan.UseVignettingFactors}"
+                        IsVisible="{Binding ShowVignettingOption}"
+                        ToolTip.Tip="Apply the system's automatic vignetting factors to this analysis (default off). Shown only when Use Automatic Vignetting Factors is enabled in System parameters." />
               <Button Content="Compute" Command="{Binding TransverseRayFan.ComputeCommand}" Width="80" />
               <Button Content="Export Text..." Command="{Binding TransverseRayFan.ExportTextCommand}" Width="100" />
               <Button Content="Export Image" Click="ExportImage_Click" Tag="TransverseRayFan" Width="90" FontSize="11" />
@@ -1161,6 +1180,10 @@
             <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="4" Spacing="8">
               <TextBlock Text="Points:" VerticalAlignment="Center" />
               <TextBox Text="{Binding OpdFan.NumPoints, UpdateSourceTrigger=LostFocus}" Width="50" />
+              <CheckBox Content="Use Vignetting Factors" VerticalAlignment="Center" Margin="8,0,0,0"
+                        IsChecked="{Binding OpdFan.UseVignettingFactors}"
+                        IsVisible="{Binding ShowVignettingOption}"
+                        ToolTip.Tip="Apply the system's automatic vignetting factors to this analysis (default off). Shown only when Use Automatic Vignetting Factors is enabled in System parameters." />
               <Button Content="Compute" Command="{Binding OpdFan.ComputeCommand}" Width="80" />
               <Button Content="Export Text..." Command="{Binding OpdFan.ExportTextCommand}" Width="100" />
               <Button Content="Export Image" Click="ExportImage_Click" Tag="OpdFan" Width="90" FontSize="11" />
@@ -1195,6 +1218,10 @@
                 <ComboBoxItem Content="256" />
                 <ComboBoxItem Content="512" />
               </ComboBox>
+              <CheckBox Content="Use Vignetting Factors" VerticalAlignment="Center" Margin="8,0,0,0"
+                        IsChecked="{Binding WavefrontMap.UseVignettingFactors}"
+                        IsVisible="{Binding ShowVignettingOption}"
+                        ToolTip.Tip="Apply the system's automatic vignetting factors to this analysis (default off). Shown only when Use Automatic Vignetting Factors is enabled in System parameters." />
               <Button Content="Compute" Command="{Binding WavefrontMap.ComputeCommand}" Width="80" />
               <Button Content="Export Text..." Command="{Binding WavefrontMap.ExportTextCommand}" Width="100" />
               <Button Content="Export Image" Click="ExportImage_Click" Tag="WavefrontMap" Width="90" FontSize="11" />
@@ -1223,6 +1250,10 @@
             <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="4" Spacing="8">
               <TextBlock Text="Points:" VerticalAlignment="Center" />
               <TextBox Text="{Binding PupilAberrationFan.NumPoints, UpdateSourceTrigger=LostFocus}" Width="50" />
+              <CheckBox Content="Use Vignetting Factors" VerticalAlignment="Center" Margin="8,0,0,0"
+                        IsChecked="{Binding PupilAberrationFan.UseVignettingFactors}"
+                        IsVisible="{Binding ShowVignettingOption}"
+                        ToolTip.Tip="Apply the system's automatic vignetting factors to this analysis (default off). Shown only when Use Automatic Vignetting Factors is enabled in System parameters." />
               <Button Content="Compute" Command="{Binding PupilAberrationFan.ComputeCommand}" Width="80" />
               <Button Content="Export Text..." Command="{Binding PupilAberrationFan.ExportTextCommand}" Width="100" />
               <Button Content="Export Image" Click="ExportImage_Click" Tag="PupilAberrationFan" Width="90" FontSize="11" />
@@ -1249,6 +1280,7 @@
         <Grid>
           <DockPanel>
             <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="4" Spacing="8">
+              <CheckBox Content="Use Vignetting Factors" VerticalAlignment="Center" Margin="8,0,0,0" IsChecked="{Binding LateralColor.UseVignettingFactors}" IsVisible="{Binding ShowVignettingOption}" ToolTip.Tip="Apply the system's automatic vignetting factors to this analysis (default off)." />
               <Button Content="Compute" Command="{Binding LateralColor.ComputeCommand}" Width="80" />
               <Button Content="Export Text..." Command="{Binding LateralColor.ExportTextCommand}" Width="100"
                       IsEnabled="{Binding !LateralColor.IsDisabled}" />
@@ -1320,6 +1352,7 @@
             <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="4" Spacing="8">
               <TextBlock Text="Pupil zones:" VerticalAlignment="Center" />
               <TextBox Text="{Binding LongitudinalAberration.NumZones, UpdateSourceTrigger=LostFocus}" Width="50" />
+              <CheckBox Content="Use Vignetting Factors" VerticalAlignment="Center" Margin="8,0,0,0" IsChecked="{Binding LongitudinalAberration.UseVignettingFactors}" IsVisible="{Binding ShowVignettingOption}" ToolTip.Tip="Apply the system's automatic vignetting factors to this analysis (default off)." />
               <Button Content="Compute" Command="{Binding LongitudinalAberration.ComputeCommand}" Width="80" />
               <Button Content="Export Text..." Command="{Binding LongitudinalAberration.ExportTextCommand}" Width="100" />
               <Button Content="Export Image" Click="ExportImage_Click" Tag="LongitudinalAberration" Width="90" FontSize="11" />
@@ -1366,6 +1399,7 @@
               <TextBlock Text="Wave:" VerticalAlignment="Center" />
               <ComboBox ItemsSource="{Binding SingleRayTrace.WaveOptions}"
                         SelectedIndex="{Binding SingleRayTrace.SelectedWaveIndex}" Width="160" />
+              <CheckBox Content="Use Vignetting Factors" VerticalAlignment="Center" Margin="8,0,0,0" IsChecked="{Binding SingleRayTrace.UseVignettingFactors}" IsVisible="{Binding ShowVignettingOption}" ToolTip.Tip="Apply the system's automatic vignetting factors to this analysis (default off)." />
               <Button Content="Trace" Command="{Binding SingleRayTrace.ComputeCommand}" Width="70" />
               <Button Content="Select All" Click="RayTraceSelectAll_Click" Width="70" FontSize="11" />
               <Button Content="Copy" Click="RayTraceCopy_Click" Width="50" FontSize="11" />
@@ -1425,6 +1459,10 @@
               <ComboBox ItemsSource="{Binding FftPsf.WavelengthOptions}"
                         SelectedIndex="{Binding FftPsf.SelectedWavelengthIndex}"
                         Width="160" />
+              <CheckBox Content="Use Vignetting Factors" VerticalAlignment="Center" Margin="8,0,0,0"
+                        IsChecked="{Binding FftPsf.UseVignettingFactors}"
+                        IsVisible="{Binding ShowVignettingOption}"
+                        ToolTip.Tip="Apply the system's automatic vignetting factors to this analysis (default off). Shown only when Use Automatic Vignetting Factors is enabled in System parameters." />
               <Button Content="Compute" Command="{Binding FftPsf.ComputeCommand}" Width="80" />
               <Button Content="Export Text..." Command="{Binding FftPsf.ExportTextCommand}" Width="100" />
               <Button Content="Export Image" Click="ExportImage_Click" Tag="FftPsf" Width="90" FontSize="11" />

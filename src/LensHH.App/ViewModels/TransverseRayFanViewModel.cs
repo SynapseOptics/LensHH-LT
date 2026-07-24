@@ -20,6 +20,7 @@ public partial class TransverseRayFanViewModel : ObservableObject
     private readonly GuiSession _session;
 
     [ObservableProperty] private Bitmap? _rayFanImage;
+    [ObservableProperty] private bool _useVignettingFactors;
     [ObservableProperty] private int _numPoints = 64;
     [ObservableProperty] private bool _isVisible;
     [ObservableProperty] private bool _isBusy;
@@ -56,7 +57,7 @@ public partial class TransverseRayFanViewModel : ObservableObject
             {
                 var results = new RayFanResult[numFields];
                 for (int f = 0; f < numFields; f++)
-                    results[f] = TransverseRayFan.Compute(system, glassMgr, f, numPoints);
+                    results[f] = TransverseRayFan.Compute(system, glassMgr, f, numPoints, useVignettingFactors: UseVignettingFactors);
 
                 _lastResults = results;
 
