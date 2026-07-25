@@ -905,6 +905,7 @@ internal static class Program
 
         var read = LhltReader.Read(lensPath);
         var system = read.System;
+        var mf = read.MeritFunction;
         try { LensHH.Core.Analysis.PickupSolver.Solve(system); } catch { }
         try { LensHH.Core.Analysis.SemiDiameterSolver.Solve(system, glassMgr); } catch { }
 
@@ -1069,6 +1070,16 @@ internal static class Program
             Console.WriteLine($"  vignetting-remap parity: both-ok={vBoth}  mismatch={vMism}  max|Δxy|={vDxy:E3} mm   {(vDxy < 1e-9 && vMism == 0 ? "✅ PASS" : "❌ FAIL")}");
         }
         else Console.WriteLine($"  vignetting-remap: GPU trace failed rc={rcv}");
+
+        // ── Full-merit integration parity: the evaluator with GPU grid-trace injection
+        // (spot rays traced on GPU, injected into the pupil cache) vs the pure-C# evaluator. ──
+        if (mf != null)
+        {
+            double mCs = new MeritFunctionEvaluator(system, glassMgr).Evaluate(mf);
+            double mGpu = new MeritFunctionEvaluator(system, glassMgr) { UseGpuGridTrace = true }.Evaluate(mf);
+            bool ok = Math.Abs(mGpu - mCs) <= 1e-9 * Math.Max(1.0, Math.Abs(mCs));
+            Console.WriteLine($"  full-merit (evaluator):  C#={mCs:E10}  GPU-grid={mGpu:E10}  |Δ|={Math.Abs(mGpu - mCs):E3}   {(ok ? "✅ PASS" : "❌ FAIL")}");
+        }
     }
 
     // ── tracebench: FP32-vs-FP64 ray-trace throughput ─────────────────────────
