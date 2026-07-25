@@ -225,6 +225,7 @@ public partial class BasinHoppingHjLmDialogViewModel : ObservableObject
         LogText = "";
         VariableRows.Clear();
         GlassRows.Clear();
+        LensHH.Core.NativeInterop.GpuGridTracer.ResetCounters(); // task #25 — GPU usage indicator
         Accepted = false;
         _batch = null;
         ChainRows.Clear();
@@ -492,6 +493,14 @@ public partial class BasinHoppingHjLmDialogViewModel : ObservableObject
             string chainNote = _batch != null ? $"{_batch.ChainsRun} chains, " : "";
             AppendLog($"Merit: {result.InitialMerit:E6} -> {finalMerit:E6} in {_stopwatch.Elapsed.TotalSeconds:F1}s " +
                 $"({chainNote}{result.Accepted} accepted / {result.Rejected} rejected, {result.GlassSwaps} glass swaps)");
+            // task #25 — did the GPU dense-grid trace actually run? Ground-truth counter.
+            if (UseGpuTrace)
+            {
+                long gpuCalls = LensHH.Core.NativeInterop.GpuGridTracer.TotalTraceCalls;
+                AppendLog(gpuCalls > 0
+                    ? $"GPU trace: {gpuCalls:N0} launches, {LensHH.Core.NativeInterop.GpuGridTracer.TotalRaysTraced:N0} rays"
+                    : "GPU trace: NOT engaged (ran native/analytic — GPU accelerates only the C# FD path)");
+            }
 
             if (!string.IsNullOrWhiteSpace(SaveChainsFolder))
             {
