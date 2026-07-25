@@ -68,9 +68,11 @@ public partial class MultistartDialogViewModel : ObservableObject
     // to converge cleanly — a small cap here is deadly (unconverged trials), which is why
     // the default is intentionally generous.
     [ObservableProperty] private int _lmIterationsPerTrial = OptimizationDefaults.LmIterations;
-    // InitialLmIterations: Phase-1 cap. Dropped to 200 (engine default) per
-    // user agreement — Phase 1 LM mostly polishes an already-converged seed
-    // and 4000 here was overkill. Skippable entirely via the Skip Init LM box.
+    // InitialLmIterations: Phase-1 cap. Kept small (200): Phase 1 is a SINGLE-THREADED LM, while the
+    // real optimization is Phase 2's parallel per-trial LMs across all cores. A big value here just
+    // stalls the run in a long low-CPU phase before the parallel trials start. The seed still gets
+    // fully optimized in Phase 2. Raise it only if you specifically want a thorough (single-threaded)
+    // pre-polish; skippable entirely via the Skip Init LM box.
     [ObservableProperty] private int _initialLmIterations = 200;
     /// <summary>When true, MultistartOptimizer skips Phase 1 entirely (the
     /// one-time LM pass on the seed before any randomization). Use when the
@@ -146,6 +148,15 @@ public partial class MultistartDialogViewModel : ObservableObject
     // device-fill count. The GPU is otherwise idle, so a bigger pool is a near-free way to give
     // the value-only sieve more shots at a good (post-LM) design. Scales GPU work/scratch ~linearly.
     [ObservableProperty] private double _gpuPopulationMultiplier = 1.0;
+
+    // ── Dense-grid GPU trace (task #25) ──
+    // DISTINCT from the pre-screen above: this offloads the per-iteration dense-grid ray
+    // trace to the GPU on the C# / FD path (semi-diameter / automatic-vignetting designs),
+    // giving a bit-identical merit value. Guaranteed win on the serial Phase-1 initial LM;
+    // the parallel Phase-2 fan-out shares the one GPU, so treat it as measure-then-keep.
+    // Shown only when a CUDA device + the trace kernel are usable. Default off.
+    [ObservableProperty] private bool _useGpuTrace = false;
+    public bool GpuTraceAvailable => LensHH.Core.NativeInterop.GpuGridTracer.IsAvailable;
 
     // ── Status ──
     [ObservableProperty] private bool _isRunning;
@@ -342,6 +353,9 @@ public partial class MultistartDialogViewModel : ObservableObject
             optimizer.NativeDerivativeMode = (DerivativeModeIndex == 1)
                 ? LensHH.Core.NativeInterop.MeritDerivativeMode.Analytic
                 : LensHH.Core.NativeInterop.MeritDerivativeMode.FiniteDifference;
+            // task #25: offload the dense-grid ray trace to the GPU on the C# / FD path.
+            // No-op on native/analytic or without a CUDA device.
+            optimizer.UseGpuGridTrace = UseGpuTrace;
             optimizer.FilteredCatalogSearchPaths = GlassSubstitutionViewModel.FindFilteredCatalogFolder() is string dir
                 ? new[] { dir } : Array.Empty<string>();
 

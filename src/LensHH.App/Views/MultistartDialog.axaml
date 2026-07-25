@@ -71,6 +71,15 @@
         </StackPanel>
         <TextBlock Text="{Binding GpuStatusText}" FontSize="11" Foreground="#555"
                    Margin="22,0,0,0" TextWrapping="Wrap" />
+        <!-- Dense-grid GPU trace (task #25) — distinct from the pre-screen above. -->
+        <CheckBox Content="Trace dense grids on GPU (C# / semi-diameter path)"
+                  IsChecked="{Binding UseGpuTrace}"
+                  IsEnabled="{Binding !IsRunning}"
+                  IsVisible="{Binding GpuTraceAvailable}"
+                  Margin="22,2,0,0" VerticalAlignment="Center"
+                  Tag="Distinct from the pre-screen above. Offloads the per-iteration dense-grid ray trace to the GPU on the C# / FD path — semi-diameter and automatic-vignetting designs — for a bit-identical merit value. Guaranteed speed-up on the serial initial LM; the parallel per-trial fan-out shares the one GPU, so measure it on your design. Requires a CUDA GPU; a no-op on the native/analytic path."
+                  PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"
+                  GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
       </StackPanel>
     </Border>
 

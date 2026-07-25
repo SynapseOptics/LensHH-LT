@@ -124,6 +124,14 @@ public partial class BasinHoppingHjLmDialogViewModel : ObservableObject
     public IReadOnlyList<string> DerivativeModeOptions { get; } =
         new[] { "Finite Difference", "Analytic" };
 
+    // ── Dense-grid GPU trace (task #25) ──
+    // Offload the per-hop dense-grid ray trace to the GPU on the C# / FD path (semi-diameter
+    // / automatic-vignetting designs), giving a bit-identical merit value. Each chain runs
+    // its hops serially, so a single chain is a clean win; N parallel chains share the one
+    // GPU (measure). Shown only when a CUDA device + the trace kernel are usable. Default off.
+    [ObservableProperty] private bool _useGpuTrace = false;
+    public bool GpuTraceAvailable => LensHH.Core.NativeInterop.GpuGridTracer.IsAvailable;
+
     // No-improvement watchdog: terminate the run if best merit hasn't improved
     // within this many seconds since the last improvement. 0 = disabled. When
     // ON, MaxHops effectively becomes a safety cap and the watchdog is the
@@ -328,6 +336,7 @@ public partial class BasinHoppingHjLmDialogViewModel : ObservableObject
                 optimizer.NativeDerivativeMode = (DerivativeModeIndex == 1)
                     ? LensHH.Core.NativeInterop.MeritDerivativeMode.Analytic
                     : LensHH.Core.NativeInterop.MeritDerivativeMode.FiniteDifference;
+                optimizer.UseGpuGridTrace = UseGpuTrace; // task #25 — GPU dense-grid trace (C# path)
                 optimizer.FilteredCatalogSearchPaths = filteredDir != null ? new[] { filteredDir } : Array.Empty<string>();
                 optimizer.OnProgress = p => Dispatcher.UIThread.Post(() =>
                     {
@@ -392,6 +401,7 @@ public partial class BasinHoppingHjLmDialogViewModel : ObservableObject
                 _batch.NativeDerivativeMode = (DerivativeModeIndex == 1)
                     ? LensHH.Core.NativeInterop.MeritDerivativeMode.Analytic
                     : LensHH.Core.NativeInterop.MeritDerivativeMode.FiniteDifference;
+                _batch.UseGpuGridTrace = UseGpuTrace; // task #25 — GPU dense-grid trace (C# path)
                 _batch.FilteredCatalogSearchPaths = filteredDir != null ? new[] { filteredDir } : Array.Empty<string>();
                 _batch.OnProgress = p => Dispatcher.UIThread.Post(() =>
                     {
