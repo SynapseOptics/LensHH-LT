@@ -458,6 +458,15 @@ public partial class BasinHoppingHjLmDialogViewModel : ObservableObject
         IsRunning = false;
         IsComplete = true;
 
+        // task #25 — ALWAYS report GPU-trace state, even on Stop/cancel. On Stop, Optimize
+        // throws OperationCanceledException so `result` is null and the block below is
+        // skipped — but the process-wide counter still holds what ran, so log it here
+        // unconditionally. The result != null branch also puts it in the status line.
+        string gpuNote = GpuTraceNote();
+        AppendLog(gpuNote);
+        if (result == null)
+            StatusText = "Cancelled   ·   " + gpuNote;
+
         if (result != null)
         {
             // Re-evaluate to match what other panels show (config-aware in PRO via the factory)
@@ -489,14 +498,11 @@ public partial class BasinHoppingHjLmDialogViewModel : ObservableObject
             }
 
             BestMeritText = finalMerit.ToString("E6");
-            // task #25 — ALWAYS report GPU-trace state (ground-truth counter) in the
-            // prominent status line AND the log, so it can't be missed.
-            string gpuNote = GpuTraceNote();
+            // gpuNote computed + logged above (always). Put it in the prominent status line too.
             StatusText = (result.Cancelled ? "Cancelled" : "Complete") + "   ·   " + gpuNote;
             string chainNote = _batch != null ? $"{_batch.ChainsRun} chains, " : "";
             AppendLog($"Merit: {result.InitialMerit:E6} -> {finalMerit:E6} in {_stopwatch.Elapsed.TotalSeconds:F1}s " +
                 $"({chainNote}{result.Accepted} accepted / {result.Rejected} rejected, {result.GlassSwaps} glass swaps)");
-            AppendLog(gpuNote);
 
             if (!string.IsNullOrWhiteSpace(SaveChainsFolder))
             {
