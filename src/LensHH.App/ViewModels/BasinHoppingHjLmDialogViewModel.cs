@@ -489,18 +489,14 @@ public partial class BasinHoppingHjLmDialogViewModel : ObservableObject
             }
 
             BestMeritText = finalMerit.ToString("E6");
-            StatusText = result.Cancelled ? "Cancelled" : "Complete";
+            // task #25 — ALWAYS report GPU-trace state (ground-truth counter) in the
+            // prominent status line AND the log, so it can't be missed.
+            string gpuNote = GpuTraceNote();
+            StatusText = (result.Cancelled ? "Cancelled" : "Complete") + "   ·   " + gpuNote;
             string chainNote = _batch != null ? $"{_batch.ChainsRun} chains, " : "";
             AppendLog($"Merit: {result.InitialMerit:E6} -> {finalMerit:E6} in {_stopwatch.Elapsed.TotalSeconds:F1}s " +
                 $"({chainNote}{result.Accepted} accepted / {result.Rejected} rejected, {result.GlassSwaps} glass swaps)");
-            // task #25 — did the GPU dense-grid trace actually run? Ground-truth counter.
-            if (UseGpuTrace)
-            {
-                long gpuCalls = LensHH.Core.NativeInterop.GpuGridTracer.TotalTraceCalls;
-                AppendLog(gpuCalls > 0
-                    ? $"GPU trace: {gpuCalls:N0} launches, {LensHH.Core.NativeInterop.GpuGridTracer.TotalRaysTraced:N0} rays"
-                    : "GPU trace: NOT engaged (ran native/analytic — GPU accelerates only the C# FD path)");
-            }
+            AppendLog(gpuNote);
 
             if (!string.IsNullOrWhiteSpace(SaveChainsFolder))
             {
@@ -519,6 +515,18 @@ public partial class BasinHoppingHjLmDialogViewModel : ObservableObject
                 catch (Exception ex) { AppendLog($"Chain save failed: {ex.Message}"); }
             }
         }
+    }
+
+    /// <summary>task #25 — one-line ground-truth report of whether the GPU dense-grid trace
+    /// actually ran this run, and if not, why. Reads GpuGridTracer's process-wide counters.</summary>
+    private string GpuTraceNote()
+    {
+        long calls = LensHH.Core.NativeInterop.GpuGridTracer.TotalTraceCalls;
+        if (calls > 0)
+            return $"GPU trace: {calls:N0} launches ({LensHH.Core.NativeInterop.GpuGridTracer.TotalRaysTraced:N0} rays)";
+        if (!GpuTraceAvailable) return "GPU trace: no CUDA device in this session";
+        if (!UseGpuTrace)       return "GPU trace: checkbox off";
+        return "GPU trace: idle — design ran native/analytic (nothing to offload; GPU helps only the C# FD path)";
     }
 
     private void LogGlassEligibility(int eligible, int skipped)

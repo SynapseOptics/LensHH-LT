@@ -208,18 +208,13 @@ public partial class OptimizationDialogViewModel : ObservableObject
 
             string status = result.Converged ? "Converged" :
                             result.Cancelled ? "Cancelled" : "Completed";
-            StatusText = $"{status} — {result.Message}";
+            // task #25 — ALWAYS report GPU-trace state (ground-truth counter), in the
+            // prominent status line so it can't be missed.
+            string gpuNote = GpuTraceNote();
+            StatusText = $"{status} — {result.Message}   ·   {gpuNote}";
             MeritText = $"Merit: {result.InitialMerit:E6} → {finalMerit:E6}";
             // Transparency: show the engine/module that actually ran (incl. any fallback).
-            EngineText = $"Engine: {result.ComputePathDescription}";
-            // task #25 — did the GPU dense-grid trace actually run? Ground-truth counter.
-            if (UseGpuTrace)
-            {
-                long gpuCalls = LensHH.Core.NativeInterop.GpuGridTracer.TotalTraceCalls;
-                EngineText += gpuCalls > 0
-                    ? $"  |  GPU trace: {gpuCalls:N0} launches, {LensHH.Core.NativeInterop.GpuGridTracer.TotalRaysTraced:N0} rays"
-                    : "  |  GPU trace: NOT engaged (ran native/analytic — GPU accelerates only the C# FD path)";
-            }
+            EngineText = $"Engine: {result.ComputePathDescription}   ·   {gpuNote}";
         }
         catch (Exception ex)
         {
@@ -236,6 +231,18 @@ public partial class OptimizationDialogViewModel : ObservableObject
     {
         _cts?.Cancel();
         StatusText = "Stopping...";
+    }
+
+    /// <summary>task #25 — one-line ground-truth report of whether the GPU dense-grid trace
+    /// actually ran this run, and if not, why. Reads GpuGridTracer's process-wide counters.</summary>
+    private string GpuTraceNote()
+    {
+        long calls = LensHH.Core.NativeInterop.GpuGridTracer.TotalTraceCalls;
+        if (calls > 0)
+            return $"GPU trace: {calls:N0} launches ({LensHH.Core.NativeInterop.GpuGridTracer.TotalRaysTraced:N0} rays)";
+        if (!GpuTraceAvailable) return "GPU trace: no CUDA device in this session";
+        if (!UseGpuTrace)       return "GPU trace: checkbox off";
+        return "GPU trace: idle — design ran native/analytic (nothing to offload; GPU helps only the C# FD path)";
     }
 
     private double GetCurrentVariableValue(OptimizationVariable v)
