@@ -112,7 +112,7 @@ internal static class Program
             else if (a == "--outdir") deSeedsOut = args[++i];
             else if (a == "--help" || a == "-h") { PrintUsage(); return 0; }
         }
-        if (mode is not ("value" or "jacobian" or "gpu" or "all" or "prescreen" or "tracebench" or "defloor" or "deresident" or "deseeds" or "deseedlm" or "seedcsv" or "analyze"))
+        if (mode is not ("value" or "jacobian" or "gpu" or "all" or "prescreen" or "tracebench" or "defloor" or "deresident" or "deseeds" or "deseedlm" or "seedcsv" or "analyze" or "gridparity"))
         { Console.Error.WriteLine($"ERROR: --mode must be value|jacobian|gpu|all|prescreen|tracebench|defloor|deresident|deseeds|deseedlm|seedcsv (was {mode})"); return 1; }
         // tracebench (synthetic device trace) + seedcsv (reads a folder of *.lhlt) need no --lens.
         if (lenses.Count == 0 && mode is not ("tracebench" or "seedcsv"))
@@ -208,6 +208,7 @@ internal static class Program
                 if (mode is "deseeds")           RunDeSeeds(lensPath, name, glassMgr, dePop, deGens, deSeedsOut);
                 if (mode is "deseedlm")          RunDeSeedLm(lensPath, name, glassMgr, dePop, deGens, deSeedsOut);
                 if (mode is "analyze")           RunAnalyze(lensPath, name, glassMgr);
+                if (mode is "gridparity")        RunGridParity(lensPath, name, glassMgr);
             }
             catch (Exception ex) { Console.WriteLine($"⚠ {name}: {ex.GetType().Name}: {ex.Message}"); }
         }
@@ -868,6 +869,206 @@ internal static class Program
     {
         int cu = 0; try { cu = lenshh_gpu_last_cuda_error(); } catch { }
         return cu != 0 ? $"rc={rc} (CUresult {cu})" : $"rc={rc}";
+    }
+
+    // ── gridparity: GPU rays-parallel single-design trace vs C# trace (task #25) ──
+    // Traces a dense pupil grid × fields × waves for ONE design on the GPU
+    // (lenshh_gpu_run_trace_grid) and compares per-ray transverse x/y + OPD waves
+    // against the C# ArbitraryRay.Trace of the same rays. The parity gate: if the
+    // GPU trace matches C# per-ray, feeding it into the C# reduction yields the same
+    // merit by construction.
+    [DllImport("lenshh_native", CallingConvention = CallingConvention.Cdecl)]
+    private static extern long lenshh_gpu_trace_grid_scratch_size(int numSurfaces, int numWavelengths, int numFields, int numRays);
+    [DllImport("lenshh_native", CallingConvention = CallingConvention.Cdecl)]
+    private static extern int lenshh_gpu_run_trace_grid(
+        [In] NativeSurfaceData[] surfaces, int numSurfaces,
+        [In] double[] indices, int numWavelengths,
+        [In] double[] wavelengthsUm,
+        ref NativeSystemConfig config,
+        [In] NativeFieldData[] fields, int numFields,
+        [In] int[] rayField, [In] int[] rayWave,
+        [In] double[] basePx, [In] double[] basePy,
+        [In] double[] vigOrNull,
+        double pupilRadius, double epPos,
+        [Out] double[] outX, [Out] double[] outY, [Out] double[] outOpd, [Out] int[] outOk,
+        int numRays, IntPtr dScratch, long dScratchBytes, int skipStaticHtod);
+    [DllImport("lenshh_native", CallingConvention = CallingConvention.Cdecl)]
+    private static extern int lenshh_gpu_alloc_device(long bytes, out IntPtr outDevPtr);
+    [DllImport("lenshh_native", CallingConvention = CallingConvention.Cdecl)]
+    private static extern int lenshh_gpu_free_device(IntPtr devPtr);
+
+    private static void RunGridParity(string lensPath, string name, GlassCatalogManager glassMgr)
+    {
+        Console.WriteLine();
+        Console.WriteLine(" [gridparity] GPU rays-parallel trace vs C# trace (per-ray, RA off, no vignetting)");
+        if (!GpuPreScreener.IsAvailable) { Console.WriteLine("  ⚠ no CUDA device — skipped"); return; }
+
+        var read = LhltReader.Read(lensPath);
+        var system = read.System;
+        try { LensHH.Core.Analysis.PickupSolver.Solve(system); } catch { }
+        try { LensHH.Core.Analysis.SemiDiameterSolver.Solve(system, glassMgr); } catch { }
+
+        var surfaces = NativeMarshaling.ToNativeSurfaces(system);
+        var config = NativeMarshaling.ToNativeConfig(system);
+        var fields = NativeMarshaling.ToNativeFields(system);
+        int nSurf = system.Surfaces.Count, nWl = system.Wavelengths.Count, nF = system.Fields.Count;
+        var wavelengthsUm = new double[nWl];
+        for (int w = 0; w < nWl; ++w) wavelengthsUm[w] = system.Wavelengths[w].Value;
+
+        var indPerWl = new double[nWl][];
+        for (int w = 0; w < nWl; ++w) indPerWl[w] = glassMgr.BuildRefractiveIndexArray(system, system.Wavelengths[w].Value);
+        var indicesFlat = new double[nWl * nSurf];
+        for (int w = 0; w < nWl; ++w) for (int i = 0; i < nSurf; ++i) indicesFlat[w * nSurf + i] = indPerWl[w][i];
+
+        int pw = system.PrimaryWavelengthIndex;
+        var primIdx = indPerWl[pw];
+        double epPos = LensHH.Core.RayTrace.ArbitraryRay.ComputeEntrancePupilPosition(system, primIdx);
+        double efl = new LensHH.Core.RayTrace.ParaxialRayTracer(system, primIdx).CalculateEfl();
+        double pupilRadius = LensHH.Core.RayTrace.ApertureRadius.Compute(system, primIdx, efl, epPos);
+
+        const int G = 16;
+        var rF = new List<int>(); var rW = new List<int>(); var bPx = new List<double>(); var bPy = new List<double>();
+        for (int f = 0; f < nF; ++f)
+          for (int w = 0; w < nWl; ++w)
+            for (int iy = 0; iy < G; ++iy)
+              for (int ix = 0; ix < G; ++ix)
+              {
+                  double px = -1.0 + 2.0 * (ix + 0.5) / G, py = -1.0 + 2.0 * (iy + 0.5) / G;
+                  if (px * px + py * py > 1.0) continue;
+                  rF.Add(f); rW.Add(w); bPx.Add(px); bPy.Add(py);
+              }
+        int R = rF.Count;
+        int[] arF = rF.ToArray(), arW = rW.ToArray();
+        double[] arPx = bPx.ToArray(), arPy = bPy.ToArray();
+
+        long scratchBytes = lenshh_gpu_trace_grid_scratch_size(nSurf, nWl, nF, R);
+        if (lenshh_gpu_alloc_device(scratchBytes, out IntPtr dScratch) != 0) { Console.WriteLine("  ⚠ device alloc failed"); return; }
+        var outX = new double[R]; var outY = new double[R]; var outOpd = new double[R]; var outOk = new int[R];
+        int rc;
+        try
+        {
+            rc = lenshh_gpu_run_trace_grid(surfaces, nSurf, indicesFlat, nWl, wavelengthsUm, ref config, fields, nF,
+                arF, arW, arPx, arPy, null, pupilRadius, epPos, outX, outY, outOpd, outOk, R, dScratch, scratchBytes, 0);
+        }
+        finally { lenshh_gpu_free_device(dScratch); }
+        if (rc != 0) { Console.WriteLine($"  ⚠ GPU trace failed rc={rc}"); return; }
+
+        // C# trace of the same rays (store for parity + reduction).
+        var csX = new double[R]; var csY = new double[R]; var csOk = new int[R];
+        double maxDxy = 0, maxOpd = 0; int both = 0, mism = 0;
+        for (int r = 0; r < R; ++r)
+        {
+            int f = arF[r], w = arW[r];
+            double wlNm = system.Wavelengths[w].Value * 1000.0;
+            var res = LensHH.Core.RayTrace.ArbitraryRay.Trace(system, indPerWl[w], system.Fields[f].Y, pupilRadius,
+                arPx[r], arPy[r], wavelengthNm: wlNm, entrancePupilPosition: epPos,
+                useRayAiming: false, stopRadius: 0.0, applyVignetting: false);
+            bool cok = res != null && res.Success;
+            csOk[r] = cok ? 1 : 0;
+            if (cok) { csX[r] = res.FinalRay.X; csY[r] = res.FinalRay.Y; }
+            bool gok = outOk[r] != 0;
+            if (cok != gok) { mism++; continue; }
+            if (cok)
+            {
+                both++;
+                maxDxy = Math.Max(maxDxy, Math.Max(Math.Abs(outX[r] - res.FinalRay.X), Math.Abs(outY[r] - res.FinalRay.Y)));
+                maxOpd = Math.Max(maxOpd, Math.Abs(outOpd[r] - res.AccumulatedWaves));
+            }
+        }
+        Console.WriteLine($"  {name}: grid={G}x{G}  rays={R}  both-ok={both}  success-mismatch={mism}");
+        Console.WriteLine($"  max|Δxy| = {maxDxy:E3} mm    max|Δopd| = {maxOpd:E3} waves");
+        Console.WriteLine((maxDxy < 1e-9 && maxOpd < 1e-9 && mism == 0) ? "  ✅ PARITY PASS" : "  ❌ PARITY FAIL");
+
+        // ── Merit value from the traced rays (representative dense-grid image quality:
+        // centroid-referenced RMS spot per (field,wave) group, RMS across groups). Both
+        // paths feed the SAME reducer, so the values match by per-ray parity. ──
+        int nG = nF * nWl;
+        double SpotMerit(double[] xs, double[] ys, int[] oks)
+        {
+            var sx = new double[nG]; var sy = new double[nG]; var sxx = new double[nG]; var syy = new double[nG]; var cnt = new int[nG];
+            for (int r = 0; r < R; ++r) { if (oks[r] == 0) continue; int g = arF[r] * nWl + arW[r]; sx[g] += xs[r]; sy[g] += ys[r]; sxx[g] += xs[r] * xs[r]; syy[g] += ys[r] * ys[r]; cnt[g]++; }
+            double sum = 0; int nc = 0;
+            for (int g = 0; g < nG; ++g) { if (cnt[g] == 0) continue; double mx = sx[g] / cnt[g], my = sy[g] / cnt[g]; sum += (sxx[g] / cnt[g] - mx * mx) + (syy[g] / cnt[g] - my * my); nc++; }
+            return nc > 0 ? Math.Sqrt(sum / nc) : 0;
+        }
+        double meritGpu = SpotMerit(outX, outY, outOk);
+        double meritCs = SpotMerit(csX, csY, csOk);
+        Console.WriteLine($"  spot-RMS merit  GPU={meritGpu:E10}  C#={meritCs:E10}  |Δ|={Math.Abs(meritGpu - meritCs):E3}");
+
+        // ── Latency: single-design GPU (trace+DtoH+reduce) vs C# 1-thread (trace+reduce). ──
+        const int K = 200;
+        // Non-persistent: alloc + upload EVERYTHING each call (what a naive first cut costs).
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        for (int k = 0; k < K; ++k)
+        {
+            if (lenshh_gpu_alloc_device(scratchBytes, out IntPtr ds) != 0) break;
+            lenshh_gpu_run_trace_grid(surfaces, nSurf, indicesFlat, nWl, wavelengthsUm, ref config, fields, nF,
+                arF, arW, arPx, arPy, null, pupilRadius, epPos, outX, outY, outOpd, outOk, R, ds, scratchBytes, 0);
+            lenshh_gpu_free_device(ds);
+            SpotMerit(outX, outY, outOk);
+        }
+        sw.Stop(); double gpuNaiveMs = sw.Elapsed.TotalMilliseconds / K;
+
+        // Persistent grid: alloc ONCE, upload the constant grid ONCE (prime skip=0), then per-call skip=1
+        // uploads only the design (surfaces+indices) — the FD-loop steady state.
+        lenshh_gpu_alloc_device(scratchBytes, out IntPtr dsP);
+        lenshh_gpu_run_trace_grid(surfaces, nSurf, indicesFlat, nWl, wavelengthsUm, ref config, fields, nF,
+            arF, arW, arPx, arPy, null, pupilRadius, epPos, outX, outY, outOpd, outOk, R, dsP, scratchBytes, 0);
+        sw.Restart();
+        for (int k = 0; k < K; ++k)
+        {
+            lenshh_gpu_run_trace_grid(surfaces, nSurf, indicesFlat, nWl, wavelengthsUm, ref config, fields, nF,
+                arF, arW, arPx, arPy, null, pupilRadius, epPos, outX, outY, outOpd, outOk, R, dsP, scratchBytes, 1);
+            SpotMerit(outX, outY, outOk);
+        }
+        sw.Stop(); double gpuPersistMs = sw.Elapsed.TotalMilliseconds / K;
+        lenshh_gpu_free_device(dsP);
+
+        sw.Restart();
+        for (int k = 0; k < K; ++k)
+        {
+            for (int r = 0; r < R; ++r)
+            {
+                var res = LensHH.Core.RayTrace.ArbitraryRay.Trace(system, indPerWl[arW[r]], system.Fields[arF[r]].Y, pupilRadius,
+                    arPx[r], arPy[r], wavelengthNm: system.Wavelengths[arW[r]].Value * 1000.0, entrancePupilPosition: epPos,
+                    useRayAiming: false, stopRadius: 0.0, applyVignetting: false);
+                bool ok = res != null && res.Success; csOk[r] = ok ? 1 : 0;
+                if (ok) { csX[r] = res.FinalRay.X; csY[r] = res.FinalRay.Y; }
+            }
+            SpotMerit(csX, csY, csOk);
+        }
+        sw.Stop(); double csMs = sw.Elapsed.TotalMilliseconds / K;
+
+        Console.WriteLine($"  latency/design (single thread):  C# = {csMs:F4} ms");
+        Console.WriteLine($"    GPU non-persistent (alloc+full upload/call) = {gpuNaiveMs:F4} ms  → {csMs / Math.Max(1e-9, gpuNaiveMs):F1}×");
+        Console.WriteLine($"    GPU persistent grid (design-only upload)     = {gpuPersistMs:F4} ms  → {csMs / Math.Max(1e-9, gpuPersistMs):F1}×");
+
+        // ── Vignetting-remap parity: on-device affine remap vs C# applyVignetting:true ──
+        system.UseAutomaticVignettingFactors = true;
+        try { LensHH.Core.Analysis.SemiDiameterSolver.Solve(system, glassMgr); } catch { }
+        var surfacesV = NativeMarshaling.ToNativeSurfaces(system);
+        var vig = new double[nF * 4];
+        for (int f = 0; f < nF; ++f) { var fd = system.Fields[f]; vig[f * 4 + 0] = fd.VDX; vig[f * 4 + 1] = fd.VDY; vig[f * 4 + 2] = fd.VCX; vig[f * 4 + 3] = fd.VCY; }
+        lenshh_gpu_alloc_device(scratchBytes, out IntPtr dsV);
+        int rcv = lenshh_gpu_run_trace_grid(surfacesV, nSurf, indicesFlat, nWl, wavelengthsUm, ref config, fields, nF,
+            arF, arW, arPx, arPy, vig, pupilRadius, epPos, outX, outY, outOpd, outOk, R, dsV, scratchBytes, 0);
+        lenshh_gpu_free_device(dsV);
+        if (rcv == 0)
+        {
+            double vDxy = 0; int vBoth = 0, vMism = 0;
+            for (int r = 0; r < R; ++r)
+            {
+                int f = arF[r], w = arW[r];
+                var res = LensHH.Core.RayTrace.ArbitraryRay.Trace(system, indPerWl[w], system.Fields[f].Y, pupilRadius,
+                    arPx[r], arPy[r], wavelengthNm: system.Wavelengths[w].Value * 1000.0, entrancePupilPosition: epPos,
+                    useRayAiming: false, stopRadius: 0.0, fieldIndex: f, applyVignetting: true);
+                bool cok = res != null && res.Success; bool gok = outOk[r] != 0;
+                if (cok != gok) { vMism++; continue; }
+                if (cok) { vBoth++; vDxy = Math.Max(vDxy, Math.Max(Math.Abs(outX[r] - res.FinalRay.X), Math.Abs(outY[r] - res.FinalRay.Y))); }
+            }
+            Console.WriteLine($"  vignetting-remap parity: both-ok={vBoth}  mismatch={vMism}  max|Δxy|={vDxy:E3} mm   {(vDxy < 1e-9 && vMism == 0 ? "✅ PASS" : "❌ FAIL")}");
+        }
+        else Console.WriteLine($"  vignetting-remap: GPU trace failed rc={rcv}");
     }
 
     // ── tracebench: FP32-vs-FP64 ray-trace throughput ─────────────────────────
