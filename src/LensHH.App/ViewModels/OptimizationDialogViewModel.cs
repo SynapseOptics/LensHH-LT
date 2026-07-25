@@ -51,6 +51,14 @@ public partial class OptimizationDialogViewModel : ObservableObject
     [ObservableProperty] private int _maxIterations = OptimizationDefaults.LmIterations;
     [ObservableProperty] private bool _useBroydenUpdate = true;
 
+    /// <summary>Offload the dense-grid ray trace to the GPU (task #25). Only effective on the
+    /// C# path — the forced-C#/FD case of semi-diameter / automatic-vignetting variables — with a
+    /// CUDA device. Bit-identical merit; ~24× per eval on rectangular-grid spot merits. Default off.</summary>
+    [ObservableProperty] private bool _useGpuTrace = false;
+
+    /// <summary>True when a CUDA device + the GPU trace kernel are usable — gates the checkbox.</summary>
+    public bool GpuTraceAvailable => LensHH.Core.NativeInterop.GpuGridTracer.IsAvailable;
+
     /// <summary>
     /// Levenberg–Marquardt initial damping. 1e-3 (default) is the across-
     /// the-board default — robust on aspheric mixes and well-conditioned
@@ -116,6 +124,11 @@ public partial class OptimizationDialogViewModel : ObservableObject
             // an ordinary curvature/thickness design runs native analytic (fast + exact gradients).
             optimizer.EngineMode = EngineMode.Native;
             optimizer.NativeDerivativeMode = LensHH.Core.NativeInterop.MeritDerivativeMode.Analytic;
+
+            // task #25: offload the dense-grid ray trace to the GPU. Only effective on the C# path
+            // (the forced-C#/FD case: semi-diameter / automatic vignetting variables) with a CUDA
+            // device — bit-identical value, ~24× per merit-eval. A no-op otherwise.
+            optimizer.UseGpuGridTrace = UseGpuTrace;
 
             optimizer.CollectVariables();
 

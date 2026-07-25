@@ -23,7 +23,7 @@
     <!-- ═══ Top: Settings + Controls ═══ -->
     <Border DockPanel.Dock="Top" BorderBrush="#CCC" BorderThickness="1"
             CornerRadius="4" Padding="12,8" Margin="0,0,0,8">
-      <Grid ColumnDefinitions="Auto,12,Auto,40,Auto,40,Auto,12,Auto,*,Auto" RowDefinitions="Auto">
+      <Grid ColumnDefinitions="Auto,12,Auto,40,Auto,40,Auto,12,Auto,*,Auto" RowDefinitions="Auto,6,Auto">
         <!-- Max Iterations -->
         <TextBlock Grid.Column="0" Text="Max Iterations:" VerticalAlignment="Center" />
         <TextBox Grid.Column="2" Text="{Binding MaxIterations, UpdateSourceTrigger=LostFocus}" Width="70"
@@ -48,6 +48,14 @@
           <Button Content="Stop" Command="{Binding StopOptimizationCommand}"
                   IsEnabled="{Binding IsRunning}" Width="80" />
         </StackPanel>
+
+        <!-- GPU trace (task #25) — second row; shown only when a CUDA device is present. -->
+        <CheckBox Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="9" Content="Trace dense grids on GPU"
+                  IsChecked="{Binding UseGpuTrace}"
+                  IsEnabled="{Binding !IsRunning}"
+                  IsVisible="{Binding GpuTraceAvailable}"
+                  VerticalAlignment="Center"
+                  ToolTip.Tip="Offload the dense-grid ray trace to the GPU. Effective on the C# path (semi-diameter / automatic-vignetting variables); the merit value is bit-identical to the CPU path, but each iteration is much faster on rectangular-grid spot merits. Requires a CUDA GPU." />
       </Grid>
     </Border>
 
