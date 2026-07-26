@@ -57,10 +57,8 @@ namespace LensHH.App.ViewModels
         [ObservableProperty] private double _sigmaCap = 0.01;
         [ObservableProperty] private int _engineModeIndex = 1;     // 0 = C#, 1 = Native
         [ObservableProperty] private int _derivativeModeIndex = 1; // 0 = FD, 1 = Analytic
-        [ObservableProperty] private bool _useGpuPreScreen;
-        // GPU pre-screen tuning (1.0.128) — same knobs as the Multistart dialog. The
-        // difference gate / survivor-distinctness threshold and the population multiplier
-        // are what make the value-only sieve a basin-escape tool rather than a refiner.
+        // GPU pre-screen on/off comes from Preferences ▸ GPU. Tuning knobs kept at
+        // defaults (same as Multistart): difference gate + population multiplier.
         [ObservableProperty] private double _gpuMinCurvatureChangePercent = 2.0;
         [ObservableProperty] private double _gpuPopulationMultiplier = 1.0;
 
@@ -127,6 +125,7 @@ namespace LensHH.App.ViewModels
             }
             catch { InitialMeritText = "—"; }
 
+            LensHH.Core.NativeInterop.GpuActivity.Reset();   // live GPU-activity chip
             var svc = new GlobalSearchService(
                 _session.System, _session.MeritFunction, _session.GlassCatalog)
             {
@@ -143,7 +142,7 @@ namespace LensHH.App.ViewModels
                         SigmaCap = SigmaCap,
                         GlassSubstitutionProbability = GlassSubstitutionProbability / 100.0,
                         RescaleCurvatureOnGlassSwap = RescaleOnGlassSwap,
-                        UseGpuPreScreen = UseGpuPreScreen,
+                        UseGpuPreScreen = AppPreferences.GpuPreScreen,   // global Preferences ▸ GPU
                         GpuPreScreenMinCurvatureChangePercent = GpuMinCurvatureChangePercent,
                         GpuPreScreenFill = GpuPopulationMultiplier,
                         LmIterationsPerTrial = Math.Max(1, LmIterationsPerTrial),

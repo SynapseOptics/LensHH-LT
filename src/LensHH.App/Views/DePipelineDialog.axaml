@@ -1,6 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:LensHH.App.ViewModels"
+        xmlns:controls="using:LensHH.App.Views.Controls"
         x:Class="LensHH.App.Views.DePipelineDialog"
         x:DataType="vm:DePipelineDialogViewModel"
         Title="Global Evolutionary Optimization"
@@ -20,10 +21,6 @@
                    TextWrapping="Wrap" Foreground="#555555" FontSize="12"/>
 
         <WrapPanel Orientation="Horizontal">
-          <StackPanel Margin="0,0,16,6" VerticalAlignment="Bottom">
-            <CheckBox Content="Use GPU (fills the device)" IsChecked="{Binding UseGpu}" IsEnabled="{Binding GpuAvailable}"/>
-            <TextBlock Text="No CUDA device — CPU only" FontSize="10" Foreground="#999999" IsVisible="{Binding !GpuAvailable}"/>
-          </StackPanel>
           <StackPanel Margin="0,0,16,6" Width="150">
             <TextBlock Text="Generations" FontSize="11"/>
             <NumericUpDown Value="{Binding Generations, UpdateSourceTrigger=LostFocus}" Minimum="1" Maximum="1000000" Increment="500" FormatString="0"/>
@@ -128,6 +125,8 @@
                   Command="{Binding RunCommand}" IsEnabled="{Binding CanRun}" Classes="accent"/>
           <Button Grid.Column="1" Content="Stop" Width="100" Margin="8,0,0,0"
                   Command="{Binding StopCommand}" IsEnabled="{Binding IsRunning}"/>
+          <controls:GpuStatusChip Grid.Column="2" HorizontalAlignment="Left"
+                                  Margin="14,0,0,0" VerticalAlignment="Center"/>
           <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,12,0">
             <TextBlock Text="Initial:" Foreground="#888888" FontSize="12"/>
             <TextBlock Text="{Binding InitialMeritText}" Margin="4,0,12,0" FontSize="12"/>

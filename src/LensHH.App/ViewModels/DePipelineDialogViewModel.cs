@@ -38,13 +38,10 @@ namespace LensHH.App.ViewModels
             // Default output under the system title so the auto-save is discoverable.
             OutputDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
                 "LensHH-LT", "de_pipeline");
-            GpuAvailable = GpuResidentDe.IsAvailable;
-            UseGpu = GpuAvailable;
         }
 
         // ── Pipeline settings ──
-        [ObservableProperty] private bool _gpuAvailable;
-        [ObservableProperty] private bool _useGpu;
+        // GPU-resident DE on/off comes from the global Preferences ▸ GPU setting.
         [ObservableProperty] private int _generations = 10000;
         [ObservableProperty] private int _populationSize = 256;   // CPU; GPU auto-fills
         [ObservableProperty] private int _seedsToEmit = 16;
@@ -146,9 +143,10 @@ namespace LensHH.App.ViewModels
             }
             catch { InitialMeritText = "—"; }
 
+            LensHH.Core.NativeInterop.GpuActivity.Reset();   // live GPU-activity chip
             var pset = new DePipelineSettings
             {
-                UseGpu = UseGpu,
+                UseGpu = AppPreferences.GpuResidentDe,   // global Preferences ▸ GPU-resident DE
                 PolishCandidateCount = Math.Max(0, PolishCount),
                 LmIterations = Math.Max(1, LmIterations),
                 PolishMethod = PolishMethodIndex switch

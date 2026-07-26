@@ -58,7 +58,7 @@ public class Program
                 var _ = session.GlassCatalog;   // ensure catalogs load
                 var vm = new DePipelineDialogViewModel(session)
                 {
-                    UseGpu = false,
+                    // GPU-resident DE now follows Preferences ▸ GPU (default off headless).
                     Generations = 20,
                     PopulationSize = 48,
                     SeedsToEmit = 4,
