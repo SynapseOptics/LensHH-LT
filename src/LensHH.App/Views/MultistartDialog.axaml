@@ -36,52 +36,7 @@
                  TextWrapping="Wrap" MinHeight="28" />
     </Border>
 
-    <!-- ═══ Hardware acceleration (G2 / 1.0.115 Beta) ═══ -->
-    <!-- GPU pre-screen will sieve N candidates → top-K survivors before HJ-LM.
-         1.0.115 ships the infrastructure (native kernel, C# wrapper, this UI);
-         the Phase-2 inner-loop integration lands in 1.0.116. The checkbox
-         here verifies the user's GPU is detected and the path is reachable. -->
-    <Border DockPanel.Dock="Top" Background="#F0F4FF" BorderBrush="#7050D0"
-            BorderThickness="1" CornerRadius="4" Padding="10,6" Margin="0,0,0,6">
-      <StackPanel Orientation="Vertical" Spacing="3">
-        <StackPanel Orientation="Horizontal" Spacing="8">
-          <TextBlock Text="⚡" FontSize="14" VerticalAlignment="Center" />
-          <TextBlock Text="Hardware acceleration" FontWeight="SemiBold" VerticalAlignment="Center" />
-          <CheckBox Content="Use GPU pre-screen (Beta)"
-                    IsChecked="{Binding UseGpuPreScreen}"
-                    IsEnabled="{Binding IsGpuToggleEnabled}"
-                    Margin="12,0,0,0" VerticalAlignment="Center"
-                    Tag="When enabled, each Phase-2 trial batch generates enough candidate designs to fill the GPU and evaluates them all in one launch. Only the top-N survivors run the expensive HJ-LM polish."
-                    PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"
-                    GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
-          <TextBlock Text="Min change (%):" VerticalAlignment="Center" Margin="12,0,0,0" />
-          <TextBox Text="{Binding GpuMinCurvatureChangePercent, UpdateSourceTrigger=LostFocus}"
-                   Width="60" VerticalAlignment="Center"
-                   IsEnabled="{Binding UseGpuPreScreen}"
-                   Tag="Difference gate (1.0.128): only feed the GPU sieve designs that are structurally different from the running BEST — a glass swap (|Δn_d| > 0.001) or a refractive surface whose curvature moved by more than this percent (a flat surface gaining any curvature counts). Without it the value-only sieve keeps the least-displaced candidates and acts as a pure refiner, never escaping the basin. Survivors are still ranked by merit. 0 disables the gate. Default 2%."
-                   PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"
-                   GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
-          <TextBlock Text="Population ×:" VerticalAlignment="Center" Margin="12,0,0,0" />
-          <TextBox Text="{Binding GpuPopulationMultiplier, UpdateSourceTrigger=LostFocus}"
-                   Width="50" VerticalAlignment="Center"
-                   IsEnabled="{Binding UseGpuPreScreen}"
-                   Tag="GPU population multiplier (1.0.128): the sieve evaluates this many TIMES the GPU's device-fill candidates per batch (default 1 = one device fill). The GPU is otherwise idle, so a bigger pool — e.g. 10× — is a near-free way to give the value-only sieve more shots at a design that polishes well under LM. Scales GPU kernel time and device scratch roughly linearly; if it runs out of GPU memory it falls back to CPU for that batch."
-                   PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"
-                   GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
-        </StackPanel>
-        <TextBlock Text="{Binding GpuStatusText}" FontSize="11" Foreground="#555"
-                   Margin="22,0,0,0" TextWrapping="Wrap" />
-        <!-- Dense-grid GPU trace (task #25) — distinct from the pre-screen above. -->
-        <CheckBox Content="Trace dense grids on GPU (C# / semi-diameter path)"
-                  IsChecked="{Binding UseGpuTrace}"
-                  IsEnabled="{Binding !IsRunning}"
-                  IsVisible="{Binding GpuTraceAvailable}"
-                  Margin="22,2,0,0" VerticalAlignment="Center"
-                  Tag="Distinct from the pre-screen above. Offloads the per-iteration dense-grid ray trace to the GPU on the C# / FD path — semi-diameter and automatic-vignetting designs — for a bit-identical merit value. Guaranteed speed-up on the serial initial LM; the parallel per-trial fan-out shares the one GPU, so measure it on your design. Requires a CUDA GPU; a no-op on the native/analytic path."
-                  PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"
-                  GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
-      </StackPanel>
-    </Border>
+    <!-- GPU acceleration settings live in Editors ▸ Preferences (global, 3 modes). -->
 
     <!-- ═══ Advanced (collapsed by default) — Engine / Derivative / LM knobs ═══ -->
     <Expander DockPanel.Dock="Top" Header="▸ Advanced (engine, derivative, LM internals)"

@@ -127,36 +127,14 @@ public partial class MultistartDialogViewModel : ObservableObject
     public IReadOnlyList<string> DerivativeModeOptions { get; } =
         new[] { "Finite Difference", "Analytic" };
 
-    // ── GPU pre-screen (Beta, G2 / 1.0.115) ──
-    // Bound to the checkbox in the "Hardware acceleration" strip at top.
-    // 1.0.115 ships this as a detection-only Beta: the toggle verifies the
-    // user's GPU is reachable and the dispatcher is wired, but the Multistart
-    // Phase-2 inner-loop hook lands in 1.0.116. When the kernel inner-loop
-    // integration arrives, this property already feeds MultistartSettings.
-    // UseGpuPreScreen — no UI rewiring needed.
-    [ObservableProperty] private bool _useGpuPreScreen;
-    [ObservableProperty] private string _gpuStatusText = "Detecting GPU...";
-    [ObservableProperty] private bool _isGpuToggleEnabled;
-
-    // GPU difference gate (1.0.128): only feed the GPU sieve designs that are
-    // STRUCTURALLY different from the running best — a glass change (|Δn_d|>0.001) or a
-    // refractive surface whose curvature moved by more than this percent. Stops the
-    // value-only sieve from collapsing into a pure refiner. 0 disables the gate.
+    // ── GPU pre-screen tuning (advanced; the on/off lives in Preferences ▸ GPU) ──
+    // Difference gate: only feed the sieve designs STRUCTURALLY different from the
+    // running best (a glass swap or a curvature moved by more than this percent) —
+    // stops the value-only sieve collapsing into a pure refiner. Population multiplier:
+    // candidates sieved per batch = this × the device-fill count. Kept at defaults;
+    // whether the pre-screen runs at all is the global AppPreferences.GpuPreScreen.
     [ObservableProperty] private double _gpuMinCurvatureChangePercent = 2.0;
-
-    // GPU population multiplier (1.0.128): candidates sieved per batch = this × the GPU's
-    // device-fill count. The GPU is otherwise idle, so a bigger pool is a near-free way to give
-    // the value-only sieve more shots at a good (post-LM) design. Scales GPU work/scratch ~linearly.
     [ObservableProperty] private double _gpuPopulationMultiplier = 1.0;
-
-    // ── Dense-grid GPU trace (task #25) ──
-    // DISTINCT from the pre-screen above: this offloads the per-iteration dense-grid ray
-    // trace to the GPU on the C# / FD path (semi-diameter / automatic-vignetting designs),
-    // giving a bit-identical merit value. Guaranteed win on the serial Phase-1 initial LM;
-    // the parallel Phase-2 fan-out shares the one GPU, so treat it as measure-then-keep.
-    // Shown only when a CUDA device + the trace kernel are usable. Default off.
-    [ObservableProperty] private bool _useGpuTrace = false;
-    public bool GpuTraceAvailable => LensHH.Core.NativeInterop.GpuGridTracer.IsAvailable;
 
     // ── Status ──
     [ObservableProperty] private bool _isRunning;
@@ -188,66 +166,8 @@ public partial class MultistartDialogViewModel : ObservableObject
     public MultistartDialogViewModel(GuiSession session)
     {
         _session = session;
-        DetectGpu();
     }
 
-    // ── G2 / 1.0.115: GPU detection ──
-    // Runs once at dialog construction. Sets IsGpuToggleEnabled so the
-    // checkbox is interactable only when a CUDA device is reachable, and
-    // populates GpuStatusText with what the user needs to know:
-    //   - GPU detected → name + 1.7-1.9× speedup expectation + Beta note
-    //   - No GPU       → reason the toggle is disabled
-    // The first call lazy-loads the CUDA driver inside the native DLL; ~50 ms.
-    private void DetectGpu()
-    {
-        try
-        {
-            bool available = LensHH.Core.NativeInterop.GpuPreScreener.IsAvailable;
-            if (available)
-            {
-                // Check whether the CURRENT design has variable types the GPU
-                // kernel can't accept. If so, surface this in the status text
-                // upfront and disable the toggle — better than letting the
-                // user enable it then quietly running CPU and only discovering
-                // via the post-run telemetry.
-                string? blocker = CheckGpuVariableCompatibility();
-                if (blocker != null)
-                {
-                    IsGpuToggleEnabled = false;
-                    UseGpuPreScreen = false;
-                    GpuStatusText =
-                        $"CUDA device detected, but this design has {blocker}. " +
-                        "GPU pre-screen requires only curvature / thickness / conic " +
-                        "variables — falling back to CPU. Remove the unsupported " +
-                        "variable types to enable.";
-                }
-                else
-                {
-                    IsGpuToggleEnabled = true;
-                    UseGpuPreScreen = false; // Off by default — user opts in.
-                    GpuStatusText =
-                        "CUDA device detected. When enabled, each Phase-2 batch generates ~16× more " +
-                        "candidate designs than CPU cores, evaluates all on GPU in one launch " +
-                        "(~60 µs/design on 4060), and runs HJ-LM only on the top survivors. " +
-                        "Continuous variables AND glass-swap candidates are sieved together.";
-                }
-            }
-            else
-            {
-                IsGpuToggleEnabled = false;
-                UseGpuPreScreen = false;
-                GpuStatusText =
-                    "No compatible NVIDIA GPU detected. Pre-screen disabled. " +
-                    "(Requires CUDA-capable card and recent NVIDIA driver.)";
-            }
-        }
-        catch (System.Exception ex)
-        {
-            IsGpuToggleEnabled = false;
-            UseGpuPreScreen = false;
-            GpuStatusText = $"GPU detection failed: {ex.Message.Replace("\n", " ")}. Pre-screen disabled.";
-        }
-    }
 
     /// <summary>
     /// Inspect the current design's optimization variables. Returns a
@@ -308,7 +228,7 @@ public partial class MultistartDialogViewModel : ObservableObject
         StatusText = "Starting initial optimization...";
         VariableRows.Clear();
         GlassRows.Clear();
-        LensHH.Core.NativeInterop.GpuGridTracer.ResetCounters(); // task #25 — GPU usage indicator
+        LensHH.Core.NativeInterop.GpuActivity.Reset();   // reset the live GPU-activity chip counters
 
         _cts = new CancellationTokenSource();
         _stopwatch.Restart();
@@ -336,11 +256,8 @@ public partial class MultistartDialogViewModel : ObservableObject
                     GlassSubstitutionProbability = GlassSubstitutionProbability / 100.0,
                     UseBroydenUpdate = UseBroydenUpdate,
                     InitialDamping = InitialDamping,
-                    // G2 / 1.0.115 Beta: plumb the dialog checkbox into the
-                    // optimizer settings. 1.0.115 ships infrastructure only —
-                    // MultistartOptimizer Phase-2 hook lands in 1.0.116, at
-                    // which point this flag will start gating the GPU sieve.
-                    UseGpuPreScreen = UseGpuPreScreen,
+                    // Pre-screen on/off comes from the global Preferences ▸ GPU setting.
+                    UseGpuPreScreen = AppPreferences.GpuPreScreen,
                     // 1.0.128: difference gate threshold (only effective with the GPU sieve on).
                     GpuPreScreenMinCurvatureChangePercent = GpuMinCurvatureChangePercent,
                     // 1.0.128: evaluate this × the GPU device-fill candidates per batch.
@@ -354,9 +271,8 @@ public partial class MultistartDialogViewModel : ObservableObject
             optimizer.NativeDerivativeMode = (DerivativeModeIndex == 1)
                 ? LensHH.Core.NativeInterop.MeritDerivativeMode.Analytic
                 : LensHH.Core.NativeInterop.MeritDerivativeMode.FiniteDifference;
-            // task #25: offload the dense-grid ray trace to the GPU on the C# / FD path.
-            // No-op on native/analytic or without a CUDA device.
-            optimizer.UseGpuGridTrace = UseGpuTrace;
+            // Global GPU image-quality setting (Preferences ▸ GPU). No-op without a CUDA device.
+            optimizer.UseGpuGridTrace = AppPreferences.GpuImageQuality;
             optimizer.FilteredCatalogSearchPaths = GlassSubstitutionViewModel.FindFilteredCatalogFolder() is string dir
                 ? new[] { dir } : Array.Empty<string>();
 
@@ -449,13 +365,10 @@ public partial class MultistartDialogViewModel : ObservableObject
             TrialsAccepted = result.TrialsAccepted;
 
             string status = result.Cancelled ? "Cancelled" : "Completed";
-            // task #25 — ALWAYS report GPU-trace state (ground-truth counter), four ways,
-            // in the prominent status line so it can't be missed.
-            string gpuNote = GpuTraceNote();
-            StatusText = $"{status} — {result.TrialsAccepted}/{result.TrialsRun} trials accepted   ·   {gpuNote}";
+            StatusText = $"{status} — {result.TrialsAccepted}/{result.TrialsRun} trials accepted";
             MeritText = $"Merit: {result.InitialMerit:E4} → {result.PostInitialLmMerit:E4} → {finalMerit:E4}";
             // Transparency: show the engine/module that actually ran (incl. any fallback).
-            EngineText = $"Engine: {result.ComputePathDescription}   ·   {gpuNote}";
+            EngineText = $"Engine: {result.ComputePathDescription}";
         }
         catch (Exception ex)
         {
@@ -472,18 +385,6 @@ public partial class MultistartDialogViewModel : ObservableObject
     {
         _cts?.Cancel();
         StatusText = "Stopping...";
-    }
-
-    /// <summary>task #25 — one-line ground-truth report of whether the GPU dense-grid trace
-    /// actually ran this run, and if not, why. Reads GpuGridTracer's process-wide counters.</summary>
-    private string GpuTraceNote()
-    {
-        long calls = LensHH.Core.NativeInterop.GpuGridTracer.TotalTraceCalls;
-        if (calls > 0)
-            return $"GPU trace: {calls:N0} launches ({LensHH.Core.NativeInterop.GpuGridTracer.TotalRaysTraced:N0} rays)";
-        if (!GpuTraceAvailable) return "GPU trace: no CUDA device in this session";
-        if (!UseGpuTrace)       return "GPU trace: checkbox off";
-        return "GPU trace: idle — design ran native/analytic (nothing to offload; GPU helps only the C# FD path)";
     }
 
     // Workaround: CommunityToolkit generates TrailText from _trialText

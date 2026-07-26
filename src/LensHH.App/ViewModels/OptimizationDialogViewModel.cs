@@ -51,13 +51,9 @@ public partial class OptimizationDialogViewModel : ObservableObject
     [ObservableProperty] private int _maxIterations = OptimizationDefaults.LmIterations;
     [ObservableProperty] private bool _useBroydenUpdate = true;
 
-    /// <summary>Offload the dense-grid ray trace to the GPU (task #25). Only effective on the
-    /// C# path — the forced-C#/FD case of semi-diameter / automatic-vignetting variables — with a
-    /// CUDA device. Bit-identical merit; ~24× per eval on rectangular-grid spot merits. Default off.</summary>
-    [ObservableProperty] private bool _useGpuTrace = false;
-
-    /// <summary>True when a CUDA device + the GPU trace kernel are usable — gates the checkbox.</summary>
-    public bool GpuTraceAvailable => LensHH.Core.NativeInterop.GpuGridTracer.IsAvailable;
+    // Local Optimization never uses the GPU — it runs ParallelEvaluation=true (all
+    // CPU cores on the operands), which serves a single LM chain well. The GPU is
+    // reserved for the multi-trial optimizers (Preferences ▸ GPU acceleration).
 
     /// <summary>
     /// Levenberg–Marquardt initial damping. 1e-3 (default) is the across-
@@ -97,7 +93,6 @@ public partial class OptimizationDialogViewModel : ObservableObject
         IsComplete = false;
         StatusText = "Optimizing...";
         VariableRows.Clear();
-        LensHH.Core.NativeInterop.GpuGridTracer.ResetCounters(); // task #25 — GPU usage indicator
 
         _cts = new CancellationTokenSource();
         _stopwatch.Restart();
@@ -125,11 +120,6 @@ public partial class OptimizationDialogViewModel : ObservableObject
             // an ordinary curvature/thickness design runs native analytic (fast + exact gradients).
             optimizer.EngineMode = EngineMode.Native;
             optimizer.NativeDerivativeMode = LensHH.Core.NativeInterop.MeritDerivativeMode.Analytic;
-
-            // task #25: offload the dense-grid ray trace to the GPU. Only effective on the C# path
-            // (the forced-C#/FD case: semi-diameter / automatic vignetting variables) with a CUDA
-            // device — bit-identical value, ~24× per merit-eval. A no-op otherwise.
-            optimizer.UseGpuGridTrace = UseGpuTrace;
 
             optimizer.CollectVariables();
 
@@ -208,13 +198,10 @@ public partial class OptimizationDialogViewModel : ObservableObject
 
             string status = result.Converged ? "Converged" :
                             result.Cancelled ? "Cancelled" : "Completed";
-            // task #25 — ALWAYS report GPU-trace state (ground-truth counter), in the
-            // prominent status line so it can't be missed.
-            string gpuNote = GpuTraceNote();
-            StatusText = $"{status} — {result.Message}   ·   {gpuNote}";
+            StatusText = $"{status} — {result.Message}";
             MeritText = $"Merit: {result.InitialMerit:E6} → {finalMerit:E6}";
             // Transparency: show the engine/module that actually ran (incl. any fallback).
-            EngineText = $"Engine: {result.ComputePathDescription}   ·   {gpuNote}";
+            EngineText = $"Engine: {result.ComputePathDescription}";
         }
         catch (Exception ex)
         {
@@ -231,18 +218,6 @@ public partial class OptimizationDialogViewModel : ObservableObject
     {
         _cts?.Cancel();
         StatusText = "Stopping...";
-    }
-
-    /// <summary>task #25 — one-line ground-truth report of whether the GPU dense-grid trace
-    /// actually ran this run, and if not, why. Reads GpuGridTracer's process-wide counters.</summary>
-    private string GpuTraceNote()
-    {
-        long calls = LensHH.Core.NativeInterop.GpuGridTracer.TotalTraceCalls;
-        if (calls > 0)
-            return $"GPU trace: {calls:N0} launches ({LensHH.Core.NativeInterop.GpuGridTracer.TotalRaysTraced:N0} rays)";
-        if (!GpuTraceAvailable) return "GPU trace: no CUDA device in this session";
-        if (!UseGpuTrace)       return "GPU trace: checkbox off";
-        return "GPU trace: idle — design ran native/analytic (nothing to offload; GPU helps only the C# FD path)";
     }
 
     private double GetCurrentVariableValue(OptimizationVariable v)

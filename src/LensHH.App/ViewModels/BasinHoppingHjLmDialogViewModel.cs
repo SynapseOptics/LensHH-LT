@@ -124,14 +124,6 @@ public partial class BasinHoppingHjLmDialogViewModel : ObservableObject
     public IReadOnlyList<string> DerivativeModeOptions { get; } =
         new[] { "Finite Difference", "Analytic" };
 
-    // ── Dense-grid GPU trace (task #25) ──
-    // Offload the per-hop dense-grid ray trace to the GPU on the C# / FD path (semi-diameter
-    // / automatic-vignetting designs), giving a bit-identical merit value. Each chain runs
-    // its hops serially, so a single chain is a clean win; N parallel chains share the one
-    // GPU (measure). Shown only when a CUDA device + the trace kernel are usable. Default off.
-    [ObservableProperty] private bool _useGpuTrace = false;
-    public bool GpuTraceAvailable => LensHH.Core.NativeInterop.GpuGridTracer.IsAvailable;
-
     // No-improvement watchdog: terminate the run if best merit hasn't improved
     // within this many seconds since the last improvement. 0 = disabled. When
     // ON, MaxHops effectively becomes a safety cap and the watchdog is the
@@ -225,7 +217,7 @@ public partial class BasinHoppingHjLmDialogViewModel : ObservableObject
         LogText = "";
         VariableRows.Clear();
         GlassRows.Clear();
-        LensHH.Core.NativeInterop.GpuGridTracer.ResetCounters(); // task #25 — GPU usage indicator
+        LensHH.Core.NativeInterop.GpuActivity.Reset();   // reset the live GPU-activity chip counters
         Accepted = false;
         _batch = null;
         ChainRows.Clear();
@@ -337,7 +329,7 @@ public partial class BasinHoppingHjLmDialogViewModel : ObservableObject
                 optimizer.NativeDerivativeMode = (DerivativeModeIndex == 1)
                     ? LensHH.Core.NativeInterop.MeritDerivativeMode.Analytic
                     : LensHH.Core.NativeInterop.MeritDerivativeMode.FiniteDifference;
-                optimizer.UseGpuGridTrace = UseGpuTrace; // task #25 — GPU dense-grid trace (C# path)
+                optimizer.UseGpuGridTrace = AppPreferences.GpuImageQuality;   // global GPU image-quality setting
                 optimizer.FilteredCatalogSearchPaths = filteredDir != null ? new[] { filteredDir } : Array.Empty<string>();
                 optimizer.OnProgress = p => Dispatcher.UIThread.Post(() =>
                     {
@@ -402,7 +394,7 @@ public partial class BasinHoppingHjLmDialogViewModel : ObservableObject
                 _batch.NativeDerivativeMode = (DerivativeModeIndex == 1)
                     ? LensHH.Core.NativeInterop.MeritDerivativeMode.Analytic
                     : LensHH.Core.NativeInterop.MeritDerivativeMode.FiniteDifference;
-                _batch.UseGpuGridTrace = UseGpuTrace; // task #25 — GPU dense-grid trace (C# path)
+                _batch.UseGpuGridTrace = AppPreferences.GpuImageQuality;   // global GPU image-quality setting
                 _batch.FilteredCatalogSearchPaths = filteredDir != null ? new[] { filteredDir } : Array.Empty<string>();
                 _batch.OnProgress = p => Dispatcher.UIThread.Post(() =>
                     {
@@ -458,14 +450,8 @@ public partial class BasinHoppingHjLmDialogViewModel : ObservableObject
         IsRunning = false;
         IsComplete = true;
 
-        // task #25 — ALWAYS report GPU-trace state, even on Stop/cancel. On Stop, Optimize
-        // throws OperationCanceledException so `result` is null and the block below is
-        // skipped — but the process-wide counter still holds what ran, so log it here
-        // unconditionally. The result != null branch also puts it in the status line.
-        string gpuNote = GpuTraceNote();
-        AppendLog(gpuNote);
         if (result == null)
-            StatusText = "Cancelled   ·   " + gpuNote;
+            StatusText = "Cancelled";
 
         if (result != null)
         {
@@ -498,8 +484,7 @@ public partial class BasinHoppingHjLmDialogViewModel : ObservableObject
             }
 
             BestMeritText = finalMerit.ToString("E6");
-            // gpuNote computed + logged above (always). Put it in the prominent status line too.
-            StatusText = (result.Cancelled ? "Cancelled" : "Complete") + "   ·   " + gpuNote;
+            StatusText = result.Cancelled ? "Cancelled" : "Complete";
             string chainNote = _batch != null ? $"{_batch.ChainsRun} chains, " : "";
             AppendLog($"Merit: {result.InitialMerit:E6} -> {finalMerit:E6} in {_stopwatch.Elapsed.TotalSeconds:F1}s " +
                 $"({chainNote}{result.Accepted} accepted / {result.Rejected} rejected, {result.GlassSwaps} glass swaps)");
@@ -521,18 +506,6 @@ public partial class BasinHoppingHjLmDialogViewModel : ObservableObject
                 catch (Exception ex) { AppendLog($"Chain save failed: {ex.Message}"); }
             }
         }
-    }
-
-    /// <summary>task #25 — one-line ground-truth report of whether the GPU dense-grid trace
-    /// actually ran this run, and if not, why. Reads GpuGridTracer's process-wide counters.</summary>
-    private string GpuTraceNote()
-    {
-        long calls = LensHH.Core.NativeInterop.GpuGridTracer.TotalTraceCalls;
-        if (calls > 0)
-            return $"GPU trace: {calls:N0} launches ({LensHH.Core.NativeInterop.GpuGridTracer.TotalRaysTraced:N0} rays)";
-        if (!GpuTraceAvailable) return "GPU trace: no CUDA device in this session";
-        if (!UseGpuTrace)       return "GPU trace: checkbox off";
-        return "GPU trace: idle — design ran native/analytic (nothing to offload; GPU helps only the C# FD path)";
     }
 
     private void LogGlassEligibility(int eligible, int skipped)
