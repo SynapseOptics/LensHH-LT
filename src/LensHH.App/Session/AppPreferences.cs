@@ -14,6 +14,34 @@ public static class AppPreferences
 {
     private sealed class PrefData
     {
+        // GPU acceleration — three INDEPENDENT mechanisms (see feedback_gpu_settings_ux).
+        // All default false. Local Optimization never uses the GPU regardless.
+        public bool GpuImageQuality { get; set; }   // dense-grid merit-VALUE trace
+        public bool GpuPreScreen { get; set; }       // Multistart candidate sieve
+        public bool GpuResidentDe { get; set; }      // GPU-resident Differential Evolution
+    }
+
+    // ── GPU settings (persisted on set) ──────────────────────────────────────
+    /// <summary>Use the GPU dense-grid merit-value trace for all optimizers EXCEPT
+    /// Local Optimization. Global; the image-quality accelerator.</summary>
+    public static bool GpuImageQuality
+    {
+        get => _data.GpuImageQuality;
+        set { if (_data.GpuImageQuality != value) { _data.GpuImageQuality = value; Save(); } }
+    }
+
+    /// <summary>Use the GPU candidate-design pre-screen in Multistart.</summary>
+    public static bool GpuPreScreen
+    {
+        get => _data.GpuPreScreen;
+        set { if (_data.GpuPreScreen != value) { _data.GpuPreScreen = value; Save(); } }
+    }
+
+    /// <summary>Run Differential Evolution resident on the GPU (population on device).</summary>
+    public static bool GpuResidentDe
+    {
+        get => _data.GpuResidentDe;
+        set { if (_data.GpuResidentDe != value) { _data.GpuResidentDe = value; Save(); } }
     }
 
     private static readonly string PrefDir = Path.Combine(

@@ -71,6 +71,8 @@
         <MenuItem Header="_Fields..." Click="FieldEditor_Click" />
         <MenuItem Header="_System..." Click="SystemEditor_Click" />
         <MenuItem Header="_Catalog Preference..." Click="CatalogPreference_Click" />
+        <Separator />
+        <MenuItem Header="_Preferences..." Click="Preferences_Click" />
       </MenuItem>
       <MenuItem Header="_Analysis">
         <MenuItem Header="_Update All Analyses" Command="{Binding UpdateAllAnalysesCommand}" InputGesture="F5" />

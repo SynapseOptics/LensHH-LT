@@ -776,6 +776,12 @@ public partial class MainWindow : Window
         await dialog.ShowDialog(this);
     }
 
+    private async void Preferences_Click(object? sender, RoutedEventArgs e)
+    {
+        var dialog = new PreferencesDialog { DataContext = new PreferencesDialogViewModel() };
+        await dialog.ShowDialog(this);
+    }
+
     // ── Insert Lens from File ─────────────────────────────────────────────
 
     private async void InsertLensFromFile_Click(object? sender, RoutedEventArgs e)

@@ -1,0 +1,46 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:LensHH.App.ViewModels"
+        x:Class="LensHH.App.Views.PreferencesDialog"
+        x:DataType="vm:PreferencesDialogViewModel"
+        Title="Preferences"
+        Icon="avares://LensHH.App/Assets/icon_256.png"
+        Width="540" SizeToContent="Height"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False">
+  <StackPanel Margin="18" Spacing="14">
+
+    <TextBlock Text="GPU acceleration" FontWeight="SemiBold" FontSize="15" />
+    <TextBlock Text="{Binding GpuStatusText}" FontSize="12" Foreground="#555" TextWrapping="Wrap" />
+
+    <Border BorderBrush="#DDD" BorderThickness="1" CornerRadius="6" Padding="14,10">
+      <StackPanel Spacing="10" IsEnabled="{Binding GpuAvailable}">
+
+        <CheckBox Content="Image-quality acceleration" IsChecked="{Binding GpuImageQuality}"
+                  ToolTip.Tip="Trace the dense image-quality merit grid (spot, wavefront, sensitivity) on the GPU. Applies to Multistart, Basin Hopping, Global Search and DE — never Local Optimization. Merit values are bit-identical to the CPU path." />
+        <TextBlock Text="Speeds up the merit-value trace for every optimizer except Local Optimization."
+                   FontSize="11" Foreground="#777" Margin="26,-4,0,0" TextWrapping="Wrap" />
+
+        <CheckBox Content="Multistart GPU pre-screen (Beta)" IsChecked="{Binding GpuPreScreen}"
+                  ToolTip.Tip="During Multistart, evaluate many candidate designs on the GPU in one launch and only polish the best survivors on the CPU." />
+        <TextBlock Text="Sieves candidate designs on the GPU before the expensive local polish (Multistart only)."
+                   FontSize="11" Foreground="#777" Margin="26,-4,0,0" TextWrapping="Wrap" />
+
+        <CheckBox Content="GPU-resident Differential Evolution" IsChecked="{Binding GpuResidentDe}"
+                  ToolTip.Tip="Run the whole DE population and its merit evaluation on the GPU, avoiding a host round-trip each generation." />
+        <TextBlock Text="Keeps the DE population and merit evaluation on the device (DE / Memetic-DE only)."
+                   FontSize="11" Foreground="#777" Margin="26,-4,0,0" TextWrapping="Wrap" />
+
+      </StackPanel>
+    </Border>
+
+    <TextBlock Text="Local Optimization always runs on the CPU with operand parallelism — it does not use the GPU."
+               FontSize="11" Foreground="#888" FontStyle="Italic" TextWrapping="Wrap" />
+
+    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,4,0,0">
+      <Button Content="OK" Click="OK_Click" Width="90" FontWeight="SemiBold" />
+      <Button Content="Cancel" Click="Cancel_Click" Width="90" IsCancel="True" />
+    </StackPanel>
+
+  </StackPanel>
+</Window>
