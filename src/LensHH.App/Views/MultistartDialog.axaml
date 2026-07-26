@@ -1,6 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:LensHH.App.ViewModels"
+        xmlns:controls="using:LensHH.App.Views.Controls"
         x:Class="LensHH.App.Views.MultistartDialog"
         x:DataType="vm:MultistartDialogViewModel"
         Title="Multi Start Optimization"
@@ -23,6 +24,9 @@
               IsEnabled="{Binding IsRunning}" Width="90"
               Tag="Cancel the run. The design is restored to the best-ever values seen so far."
               PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited" />
+
+      <controls:GpuStatusChip Grid.Column="2" HorizontalAlignment="Left"
+                              Margin="14,0,0,0" VerticalAlignment="Center" />
 
       <Button Grid.Column="3" Content="OK — Accept Results" Click="OK_Click" Width="180"
               IsEnabled="{Binding IsComplete}" FontWeight="SemiBold" Margin="0,0,8,0" />

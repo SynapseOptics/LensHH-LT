@@ -1,6 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:LensHH.App.ViewModels"
+        xmlns:controls="using:LensHH.App.Views.Controls"
         x:Class="LensHH.App.Views.BasinHoppingHjLmDialog"
         x:DataType="vm:BasinHoppingHjLmDialogViewModel"
         Title="Basin-Hopping HJ+LM Optimization"
@@ -15,6 +16,7 @@
     <!-- Bottom Buttons -->
     <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal"
                 HorizontalAlignment="Right" Spacing="8" Margin="0,6,0,0">
+      <controls:GpuStatusChip VerticalAlignment="Center" Margin="0,0,8,0" />
       <Button Content="OK — Accept Results" Click="OK_Click" Width="180"
               IsEnabled="{Binding IsComplete}" FontWeight="SemiBold" />
       <Button Content="Cancel — Revert" Click="Cancel_Click" Width="150" IsCancel="True" />
