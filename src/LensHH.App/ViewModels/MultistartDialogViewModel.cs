@@ -276,10 +276,13 @@ public partial class MultistartDialogViewModel : ObservableObject
             optimizer.FilteredCatalogSearchPaths = GlassSubstitutionViewModel.FindFilteredCatalogFolder() is string dir
                 ? new[] { dir } : Array.Empty<string>();
 
-            // Get initial merit for display. Route through the factory so PRO's
-            // config-aware evaluator sums ALL configurations — a plain 2-arg
-            // MeritFunctionEvaluator is config-blind and collapses a multi-config
-            // merit to a single configuration (wrong initial/best merit).
+            // Get initial merit for display. EnsureSolved first so this matches the
+            // Evaluate-merit button exactly (both read one canonical accurate-SD +
+            // vignetting state; neither depends on what a prior in-place fast re-solve
+            // left behind). Route through the factory so PRO's config-aware evaluator
+            // sums ALL configurations — a plain 2-arg MeritFunctionEvaluator is
+            // config-blind and collapses a multi-config merit to a single config.
+            _session.EnsureSolved();
             var evaluator = AppExtensions.CreateMeritEvaluator(
                 _session.System, _session.GlassCatalog);
             double initialMerit = evaluator.Evaluate(_session.MeritFunction);

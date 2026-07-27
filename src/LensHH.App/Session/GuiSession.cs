@@ -381,6 +381,20 @@ public class GuiSession
     /// Pass markDirty: false from internal load/new flows that have just
     /// installed a freshly-loaded system and shouldn't be flagged dirty.
     /// </summary>
+    /// <summary>
+    /// Bring the system to its canonical evaluated state — pickups + the ACCURATE-aperture
+    /// SD solve (which also recomputes auto-vignetting factors) — WITHOUT marking dirty or
+    /// firing SystemChanged. Every DISPLAY-path merit read (the Evaluate button, an
+    /// optimizer dialog's initial-merit read) calls this first, so two evaluations of the
+    /// same design can never disagree because one ran after an in-place fast SD re-solve
+    /// and the other didn't. Idempotent (the solver recomputes from geometry).
+    /// </summary>
+    public void EnsureSolved()
+    {
+        try { LensHH.Core.Analysis.PickupSolver.Solve(_system); } catch { }
+        try { LensHH.Core.Analysis.SemiDiameterSolver.Solve(_system, _glassCatalog, accurateApertures: true); } catch { }
+    }
+
     public void NotifySystemChanged(string sender, bool markDirty = true)
     {
         // Apply pickup solves first (target = source * scale + offset)

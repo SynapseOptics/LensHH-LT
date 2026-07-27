@@ -642,6 +642,7 @@ public partial class MeritFunctionEditorViewModel : ObservableObject
         if (_session.CannotCompute) { MeritValueText = _session.CannotComputeMessage; return; }
         try
         {
+            _session.EnsureSolved();   // canonical accurate-SD + vignetting state (see issue: Evaluate vs Multistart-initial)
             var mf = _session.MeritFunction;
             // Config-aware in the advanced edition: evaluates every configuration (each operand in
             // its assigned config), so the merit is the same regardless of the active config.
