@@ -34,6 +34,10 @@ and the programmatic interfaces.
 - **[Optimization](optimization.md)** — the optimizers (Local LM,
   Multistart, Global Search, Basin Hopping) plus design-shape operators
   (split-element, SPC synthesis), and when to use each.
+- **[Semi-Diameter as an Optimization Variable](semi-diameter-variables.md)** —
+  make a Fixed-aperture surface's clear-aperture semi-diameter a
+  variable and let the optimizer size the aperture directly; worked
+  Cooke-triplet-with-vignetting case study.
 - **[Glass Catalogs](glass-catalogs.md)** — AGF format, the five shipping
   catalogs, preference order, custom catalogs via GlassCatalogGenerator,
   and glass substitution during optimization.

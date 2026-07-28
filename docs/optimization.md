@@ -44,6 +44,12 @@ table. Typical choices:
 - Aspheric coefficients on even-asphere surfaces.
 - Glass choice — Multistart and Basin Hopping can substitute glasses
   during search.
+- Clear-aperture semi-diameter on Fixed-aperture surfaces — let the
+  optimizer size the aperture directly, with automatic vignetting
+  factors keeping the pupil sampling correct and an on-axis
+  clearance floor protecting the axial beam. See
+  [Semi-Diameter as an Optimization Variable](semi-diameter-variables.md)
+  for the worked Cooke-triplet-with-vignetting case study.
 
 Every variable carries optional `Min` / `Max` bounds. Internally the
 LM solver works on an *unbounded* transformed variable, so the
