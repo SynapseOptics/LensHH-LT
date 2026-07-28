@@ -4,6 +4,28 @@ All notable changes to LensHH-LT and the LensHH-LT-Engine.
 
 ## 1.0.138 — unreleased
 
+### Added
+- **Automatic vignetting factors.** When a field is vignetted by the system's
+  apertures, only part of its pupil reaches the image, and sampling the full nominal
+  pupil gives a poor picture of the real image quality — which in turn hurts
+  optimization. LensHH-LT can now compute per-field vignetting factors (a pupil
+  decenter and compression) automatically, so that spot, wavefront, and other
+  image-quality evaluations sample the pupil that actually gets through. Enable
+  **Use Automatic Vignetting Factors** in the System settings; the factors are
+  recalculated automatically whenever the clear apertures are solved, so they always
+  reflect the current design and are never edited by hand. A read-only per-field
+  factor table appears in the System Data report, and each analysis carries a
+  **Use Vignetting Factors** option.
+- **Semi-diameter as an optimization variable.** A Fixed-aperture surface's
+  clear-aperture semi-diameter can now be made a variable (**Surface Properties →
+  Variable / Pickup**), so the optimizer sizes the aperture directly — trading light
+  throughput and vignetting against aberrations — alongside the curvatures,
+  thicknesses, and glasses. An automatic on-axis aperture-clearance floor keeps a
+  semi-diameter variable from ever being driven below the axial marginal cone, so the
+  on-axis beam is never clipped, and automatic vignetting factors keep the merit
+  function's pupil sampling correct as the apertures move. See the new
+  **Semi-Diameter as an Optimization Variable** guide for a worked example.
+
 ### Changed
 - **Basin Hopping now escapes stalled searches with full-range restarts.** When
   a hopping chain goes a number of hops without improving, it returns to its best
@@ -15,8 +37,27 @@ All notable changes to LensHH-LT and the LensHH-LT-Engine.
   design instead of freezing at the first local minimum. Aperture semi-diameters and
   aspheric coefficients are refined by the LM rather than randomly perturbed, so
   aperture/asphere noise no longer disrupts the shape exploration.
+- **GPU acceleration is configured in one place, with a live status indicator.**
+  The GPU options that used to appear as per-dialog checkboxes have moved to a single
+  **Editors → Preferences** dialog, with separate settings for the image-quality
+  trace, the Multistart pre-screen, and the GPU-resident evolutionary population.
+  These apply globally to the multi-trial optimizers (Multistart, Basin Hopping,
+  Global Search, Differential Evolution); Local Optimization runs on all CPU cores,
+  where the GPU doesn't help. Each optimizer dialog now shows a live **⚡ GPU** chip
+  driven by ground-truth kernel-launch counters, so you can see which GPU paths are
+  actually running *during* a run rather than only after it.
+
+### Fixed
+- **The merit-function editor and the optimizers now agree on the initial merit.**
+  On a freshly-edited design the merit shown in the editor could differ from the
+  starting merit an optimizer reported, because the design was not guaranteed to be
+  fully solved (pickups and clear apertures) at the moment the editor evaluated it.
+  Both paths now solve the design before evaluating, so the two numbers agree.
 
 ### Documentation
+- New **Semi-Diameter as an Optimization Variable** guide: what the feature is, how
+  to enable it, and a worked Cooke-triplet-with-vignetting example with runnable
+  sample files.
 - Documented the Basin Hopping full-range restart in the Optimization reference
   (new "Escaping a stalled search" section).
 
