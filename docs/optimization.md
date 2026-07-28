@@ -266,6 +266,12 @@ Multistart, not a hold-current placeholder.
 
 ### GPU pre-screen (Beta, new in 1.0.115; tuning knobs added 1.0.128)
 
+> **Note (1.0.138):** GPU acceleration is now enabled globally in
+> **Editors → Preferences** rather than through per-dialog checkboxes, and each
+> optimizer dialog shows a live **⚡ GPU** status chip — see
+> [GPU Acceleration](gpu-acceleration.md). The dialog controls described below
+> reflect an earlier layout and are being updated.
+
 Most random perturbations produce designs that are strictly
 worse than the current best — running the full HJ-LM cycle on
 them is wasted work. The **GPU pre-screen** filter, available

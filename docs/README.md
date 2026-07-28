@@ -38,6 +38,12 @@ and the programmatic interfaces.
   make a Fixed-aperture surface's clear-aperture semi-diameter a
   variable and let the optimizer size the aperture directly; worked
   Cooke-triplet-with-vignetting case study.
+- **[Automatic Vignetting Factors](vignetting-factors.md)** — sample the
+  vignetted pupil correctly for off-axis fields in analysis and
+  optimization; recalculated automatically as the apertures change.
+- **[GPU Acceleration](gpu-acceleration.md)** — configure the GPU
+  options in Preferences and confirm they're running with the live GPU
+  status chip; which optimizers use the GPU and which don't.
 - **[Glass Catalogs](glass-catalogs.md)** — AGF format, the five shipping
   catalogs, preference order, custom catalogs via GlassCatalogGenerator,
   and glass substitution during optimization.

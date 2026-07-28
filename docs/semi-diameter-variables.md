@@ -23,9 +23,9 @@ Two mechanisms keep this correct and safe automatically:
   to trim off-axis flare without any risk of clipping the on-axis
   bundle.
 
-Enable **automatic vignetting factors** in the System settings; it
-is the setting that ties the moving apertures to the merit
-function's pupil sampling.
+Enable **[automatic vignetting factors](vignetting-factors.md)** in the
+System settings; it is the setting that ties the moving apertures to
+the merit function's pupil sampling.
 
 ## Enabling a semi-diameter variable
 
