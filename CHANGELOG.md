@@ -2,6 +2,24 @@
 
 All notable changes to LensHH-LT and the LensHH-LT-Engine.
 
+## 1.0.138 — unreleased
+
+### Changed
+- **Basin Hopping now escapes stalled searches with full-range restarts.** When
+  a hopping chain goes a number of hops without improving, it returns to its best
+  design and re-randomizes the shape variables (curvatures, thicknesses, glasses)
+  across their full range — a Multistart-magnitude jump — then keeps hopping. This
+  gives each chain the global-restart reach that previously only Multistart had, on
+  top of Basin Hopping's Hooke-Jeeves and LM refinement, so a multi-chain
+  Basin-Hopping run is now competitive with (and often beats) Multistart on the same
+  design instead of freezing at the first local minimum. Aperture semi-diameters and
+  aspheric coefficients are refined by the LM rather than randomly perturbed, so
+  aperture/asphere noise no longer disrupts the shape exploration.
+
+### Documentation
+- Documented the Basin Hopping full-range restart in the Optimization reference
+  (new "Escaping a stalled search" section).
+
 ## 1.0.137 — 2026-07-22
 
 ### Fixed

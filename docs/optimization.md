@@ -605,9 +605,12 @@ collecting many
 distinct forms, rather than driving one design as far as possible.)
 Each *hop* runs:
 
-1. **Random perturbation.** Every variable gets a Gaussian kick of
-   standard deviation `Sigma × variable_scale`. This pulls the
-   design into a fresh starting point.
+1. **Random perturbation.** Each continuous *shape* variable gets a
+   Gaussian kick of standard deviation `Sigma × variable_scale`,
+   pulling the design into a fresh starting point. Aperture
+   semi-diameters and aspheric coefficients are not kicked — they are
+   left for the LM to tune, so aperture/asphere noise doesn't disrupt
+   the shape exploration.
 2. **Hooke-Jeeves pattern search.** A derivative-free local search
    that works on the merit value alone. Steps along axes; expands
    the step on every successful direction; contracts only when no
@@ -640,6 +643,26 @@ curvatures and thicknesses around it.
 | **Glass Source** | first filtered catalog | Pool used when Glass Substitution is on. Filtered catalogs in `<install>/catalogs/Filtered/` are typically 30–100 glasses curated by status, manufacturer, refractive-index range, etc. See [Glass Catalogs](glass-catalogs.md). |
 | **Stop on no improvement / Timeout (s)** | off / 600 | Per-chain watchdog. When on, a chain ends early if *its own* best merit hasn't improved within this many seconds — see [Stop on no improvement](#stop-on-no-improvement). |
 | **Save chains to** | (empty) | Folder to write every chain's final design (one `.lhlt` each) when the run finishes. Empty = keep only the global best in the workspace. See [Saving every chain's design](#saving-every-chains-design). |
+
+### Escaping a stalled search (full-range restarts)
+
+*New in 1.0.138.* Basin Hopping's small per-hop kicks are ideal for
+refining a basin and for short hops to nearby ones, but on a hard design a
+chain can circle the same local minimum. When a chain goes a number of hops
+without a new best, it now performs a **full-range restart**: it returns to
+its best design, re-randomizes the *shape* variables (curvatures,
+thicknesses, glasses) across their whole range — the same magnitude a
+Multistart trial uses — and continues hopping from there. A restart that
+lands somewhere better is kept; otherwise the chain returns to its best and
+tries a fresh jump.
+
+This gives each chain the global-restart reach that previously only
+Multistart had, layered on top of Basin Hopping's Hooke-Jeeves and LM
+refinement. In practice a Basin-Hopping run — especially with several
+[parallel chains](#parallel-chains) — now reaches the deep basins Multistart
+finds *and* polishes each one it visits, so it is competitive with (and
+often beats) Multistart on the same design instead of freezing at the first
+local minimum. Restarts are automatic; there is nothing to configure.
 
 ### Parallel chains
 
