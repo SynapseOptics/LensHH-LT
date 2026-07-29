@@ -14,9 +14,12 @@ slower on the multi-trial workloads.
 
 Open **Editors → Preferences**. The GPU section has three independent settings:
 
-- **GPU image-quality trace** — traces the dense image-quality ray grid (the
-  merit function's spot / wavefront sampling) on the GPU. Applies to every
-  multi-trial optimizer.
+- **GPU image-quality trace** — traces the dense image-quality ray grid on the
+  GPU. It engages for merits whose image-quality operand is a **SPOT** family
+  (`SPOT`/`SPOTR`/`SPOTM`/…) evaluated on a field with off-axis extent, with ray
+  aiming off. **Wavefront (`WAVEX`/OPD) and on-axis-only merits evaluate on the
+  CPU** — GPU acceleration for wavefront and sensitivity operands is planned for
+  a later release. Applies to every multi-trial optimizer.
 - **GPU pre-screen** — the Multistart candidate sieve: many trial designs are
   scored on the GPU and only the most promising are handed to the CPU optimizer.
 - **GPU-resident evolutionary population** — runs the Differential Evolution
