@@ -144,6 +144,14 @@ The after-state:
 |---|---|
 | ![Spot diagram after Multistart, 64 rectangular grid, using vignetting factors](images/SemiDiameterVariable/SpotDiagram64RUsingVignettingFactorsAfterMultiStart.png) | ![Wavefront map after Multistart](images/SemiDiameterVariable/WavefrontMapAfterMultiStart.png) |
 
+The spot sizes, read from the diagrams:
+
+| Field | RMS before (µm) | RMS after (µm) | GEO before (µm) | GEO after (µm) |
+|---|---|---|---|---|
+| 0°  | 6.47  | 7.25  | 20.32 | 23.03 |
+| 14° | 19.97 | 16.00 | 71.52 | 39.64 |
+| 20° | 21.91 | 13.42 | 72.03 | 27.57 |
+
 | Lateral color — after | Merit function — after |
 |---|---|
 | ![Lateral color after Multistart](images/SemiDiameterVariable/LateralColorAfterMultiStart.png) | ![Merit function after Multistart](images/SemiDiameterVariable/MeritFunctionAfterMultiStart.png) |
@@ -152,8 +160,11 @@ The after-state:
 
 The edge relative illumination stayed at ~37%, held there by the
 `ILL` constraint, while the mid-field illumination actually
-improved and the spot, wavefront, and lateral color all got
-markedly better. Sizing the two outer clear apertures — growing the
+improved. Off-axis image quality got markedly better — at 20°, the
+RMS spot fell from 21.9 to 13.4 µm and the geometric spot from 72.0
+to 27.6 µm — traded against a small increase in the on-axis spot
+(6.5 to 7.3 µm RMS), which the merit function allowed. Sizing the two
+outer clear apertures — growing the
 front and shrinking the rear — was only possible because the
 semi-diameters were variables. The automatic vignetting factors kept
 the merit function's pupil sampling correct as those apertures
