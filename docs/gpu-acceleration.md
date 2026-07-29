@@ -28,6 +28,32 @@ Differential Evolution**. **Local Optimization always runs on the CPU** — a
 single Levenberg–Marquardt chain already uses all cores for its operand
 evaluations and does not benefit from the GPU.
 
+## Tuning the pre-screen (CLI, MCP, API)
+
+The Preferences switch turns the pre-screen on or off; it then runs with
+defaults chosen to work well without tuning. Two knobs are available to power
+users through the CLI, MCP, and API (the GUI intentionally exposes only the
+on/off switch):
+
+- **Difference gate** — only candidates structurally different from the running
+  best (a glass swap, or a refractive surface whose curvature moved more than a
+  set percentage) are fed to the sieve, so it keeps exploring instead of
+  collapsing into a pure refiner. Default **2%**; `0` disables the gate.
+- **Population / device-fill multiplier** — how large a candidate cloud each
+  batch evaluates, as a multiple of the count that fills the GPU. Default
+  **1.0** (fill the device once); `2.0` doubles the cloud. This replaced the
+  older CPU-relative "oversample" multiplier — the batch now auto-sizes to the
+  GPU.
+
+| Surface | Difference gate | Fill multiplier |
+|---|---|---|
+| **CLI** (`optimize multistart`) | `mincurvchange=<pct>` | `gpufill=<x>` |
+| **MCP** (`optimize_multistart_start`) | `gpuMinCurvatureChangePercent` | `gpuPreScreenFill` |
+| **API** (`MultistartSettings`) | `GpuPreScreenMinCurvatureChangePercent` | `GpuPreScreenFill` |
+
+For example, `optimize multistart gpu mincurvchange=1.5 gpufill=2` runs the
+pre-screen with a 1.5% difference gate over a doubled candidate cloud.
+
 ## The GPU status chip
 
 Each optimizer dialog shows a **⚡ GPU** chip. It reflects **ground-truth
