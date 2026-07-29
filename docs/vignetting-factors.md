@@ -49,6 +49,16 @@ vignetting-over-field plot — always use the real apertures regardless of this
 option, so they report the true light throughput rather than the remapped
 sampling.
 
+The per-analysis toggle is provided mainly so you can see what the **optimizer**
+was working from: enabling it reproduces the same vignetted sampling the merit
+function used, which is useful for understanding or verifying an optimized
+result. For judging the finished design we generally recommend the opposite — a
+**dense pupil grid with vignetting factors off**. Rays that fall outside the
+clear aperture are simply discarded, so the survivors report the true image
+quality with no reliance on the remap. Analysis is not run in a tight loop the
+way optimization is, so a dense grid costs little, and there is rarely a reason
+not to use one.
+
 ## In optimization
 
 Optimizing a vignetted system is the main reason to use automatic vignetting
