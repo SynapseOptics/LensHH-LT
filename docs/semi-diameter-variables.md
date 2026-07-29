@@ -70,9 +70,9 @@ the field is dim: **relative illumination is only ~37% at the 20°
 field**. That is by design — the merit function will hold that floor
 rather than fight it. The starting state:
 
-| Relative illumination — start | Spot (64R, vignetting factors) — start |
+| Relative illumination — start | Spot (64 rectangular grid, vignetting factors) — start |
 |---|---|
-| ![Starting relative illumination](images/SemiDiameterVariable/StartingRelativeIllumination.png) | ![Starting spot diagram, 64 rings, using vignetting factors](images/SemiDiameterVariable/StartingSpotDiagram64RUsingVignettingFactors.png) |
+| ![Starting relative illumination](images/SemiDiameterVariable/StartingRelativeIllumination.png) | ![Starting spot diagram, 64 rectangular grid, using vignetting factors](images/SemiDiameterVariable/StartingSpotDiagram64RUsingVignettingFactors.png) |
 
 | Wavefront map — start | Lateral color — start |
 |---|---|
@@ -140,9 +140,9 @@ The after-state:
 |---|---|
 | ![Layout after Multistart](images/SemiDiameterVariable/LayoutAfterMultiStart.png) | ![Relative illumination after Multistart](images/SemiDiameterVariable/RelativeIlluminationAfterMultiStart.png) |
 
-| Spot (64R, vignetting factors) — after | Wavefront map — after |
+| Spot (64 rectangular grid, vignetting factors) — after | Wavefront map — after |
 |---|---|
-| ![Spot diagram after Multistart, 64 rings, using vignetting factors](images/SemiDiameterVariable/SpotDiagram64RUsingVignettingFactorsAfterMultiStart.png) | ![Wavefront map after Multistart](images/SemiDiameterVariable/WavefrontMapAfterMultiStart.png) |
+| ![Spot diagram after Multistart, 64 rectangular grid, using vignetting factors](images/SemiDiameterVariable/SpotDiagram64RUsingVignettingFactorsAfterMultiStart.png) | ![Wavefront map after Multistart](images/SemiDiameterVariable/WavefrontMapAfterMultiStart.png) |
 
 | Lateral color — after | Merit function — after |
 |---|---|
