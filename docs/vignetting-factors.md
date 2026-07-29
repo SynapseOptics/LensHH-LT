@@ -16,7 +16,10 @@ transform of the normalized pupil coordinates — a **decenter** (the shifted
 centre of the surviving pupil) and a **compression** (how much narrower the
 surviving pupil is in x and y). Applying them concentrates the sampled rays
 inside the aperture that actually passes light, so even a modest ray grid
-represents the field correctly.
+represents the field correctly. On a vignetted Cooke triplet, for example, a
+sparse ~50-ray pupil grid with vignetting factors matches the off-axis RMS spot
+of a dense ~50,000-ray reference to within about 1%; without them the same grid
+is biased by several to tens of percent.
 
 ## Enabling automatic vignetting factors
 
