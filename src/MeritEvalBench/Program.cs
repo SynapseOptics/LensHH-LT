@@ -1076,9 +1076,12 @@ internal static class Program
         if (mf != null)
         {
             double mCs = new MeritFunctionEvaluator(system, glassMgr).Evaluate(mf);
+            LensHH.Core.NativeInterop.GpuGridTracer.ResetCounters();
             double mGpu = new MeritFunctionEvaluator(system, glassMgr) { UseGpuGridTrace = true }.Evaluate(mf);
+            long gTraces = LensHH.Core.NativeInterop.GpuGridTracer.TotalTraceCalls;
+            long gRays = LensHH.Core.NativeInterop.GpuGridTracer.TotalRaysTraced;
             bool ok = Math.Abs(mGpu - mCs) <= 1e-9 * Math.Max(1.0, Math.Abs(mCs));
-            Console.WriteLine($"  full-merit (evaluator):  C#={mCs:E10}  GPU-grid={mGpu:E10}  |Δ|={Math.Abs(mGpu - mCs):E3}   {(ok ? "✅ PASS" : "❌ FAIL")}");
+            Console.WriteLine($"  full-merit (evaluator):  C#={mCs:E10}  GPU-grid={mGpu:E10}  |Δ|={Math.Abs(mGpu - mCs):E3}   {(ok ? "✅ PASS" : "❌ FAIL")}   [GPU engaged: {gTraces} trace-call(s), {gRays} rays]");
         }
     }
 
