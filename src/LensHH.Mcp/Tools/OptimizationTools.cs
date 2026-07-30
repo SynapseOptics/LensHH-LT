@@ -857,7 +857,7 @@ namespace LensHH.Mcp.Tools
             "Call optimize_cancel(jobId) to stop early. " +
             "When the job's status is Completed, the system already holds the optimized values (auto-applied) — there is no separate keep step. " +
             "Parameters mirror optimize_multistart: maxTrials (3000), lmPerTrial (6000), initialLm (200), initialSigma (0.0003), sigmaGrowth (1.5), sigmaCap (0.1), enableMetropolis (true), metropolisTemperature (0 = autotune), hjStepsPerTrial (50), hjInitialStep (0.1), glassSwapLmMultiplier (4), glassSubPercent (50), constrainedOnly (false), tolerance (1e-10), dampingFactor (1e-6), useBroyden (true), broydenRefreshInterval (5). " +
-            "GPU: useGpuPreScreen (false) sieves a GPU-filling cloud of candidates per batch and keeps the best by merit. gpuMinCurvatureChangePercent (2.0) is the GPU DIFFERENCE GATE — only candidates structurally different from the running best (a glass swap with |Δn_d|>0.001, or a refractive surface whose curvature moved more than this %) are fed to the sieve, so it explores instead of collapsing into a pure refiner. 0 disables the gate. gpuPreScreenFill (1.0) is the population/device-fill multiplier: each batch evaluates gpuPreScreenFill × (device-fill candidate count), so 1.0 fills the GPU once and 2.0 doubles the cloud. GPU params only take effect with useGpuPreScreen=true.")]
+            "GPU: useGpuPreScreen (false) sieves a GPU-filling cloud of candidates per batch and keeps the best by merit. gpuMinCurvatureChangePercent (2.0) is the GPU DIFFERENCE GATE — only candidates structurally different from the running best (a glass swap with |Δn_d|>0.001, or a refractive surface whose curvature moved more than this %) are fed to the sieve, so it explores instead of collapsing into a pure refiner. 0 disables the gate. gpuPreScreenFill (1.0) is the population/device-fill multiplier: each batch evaluates gpuPreScreenFill × (device-fill candidate count), so 1.0 fills the GPU once and 2.0 doubles the cloud. The gpu*/useGpuPreScreen params above only take effect with useGpuPreScreen=true. useGpuImageQuality (false) is a SEPARATE, orthogonal GPU path: it traces the merit's image-quality operands (SPOT/WAVE/SENS) on the GPU each trial (needs a CUDA device, at least one off-axis field, ray-aiming off; falls back to CPU otherwise).")]
         public string MultistartOptimizeStart(int maxTrials = OptimizationDefaults.MultistartTrials, int lmPerTrial = OptimizationDefaults.LmIterations, int initialLm = 200,
             double initialSigma = 0.001, double sigmaGrowth = 1.5, double sigmaCap = 0.1,
             bool enableMetropolis = true, double metropolisTemperature = 0.0,
@@ -866,7 +866,7 @@ namespace LensHH.Mcp.Tools
             double tolerance = 1e-10, double dampingFactor = 1e-6,
             bool useBroyden = true, int broydenRefreshInterval = 5,
             bool useGpuPreScreen = false, double gpuMinCurvatureChangePercent = 2.0,
-            double gpuPreScreenFill = 1.0)
+            double gpuPreScreenFill = 1.0, bool useGpuImageQuality = false)
         {
             { var ge = _session.ValidateGlass(); if (ge != null) return ge; }
             if (_session.MeritFunction == null || _session.MeritFunction.Operands.Count == 0)
@@ -901,6 +901,7 @@ namespace LensHH.Mcp.Tools
             {
                 Settings = settings,
                 FilteredCatalogSearchPaths = FindFilteredCatalogPaths(),
+                UseGpuGridTrace = useGpuImageQuality,
                 OnProgress = p =>
                 {
                     job.Phase = p.IsInitialLm ? $"Initial LM iter {p.InitialLmIteration}" : $"Trial {p.Trial}";
