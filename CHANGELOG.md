@@ -2,7 +2,25 @@
 
 All notable changes to LensHH-LT and the LensHH-LT-Engine.
 
-## 1.0.138 — unreleased
+## 1.0.139 — unreleased
+
+### Changed
+- **GPU image-quality acceleration now covers wavefront and sensitivity operands.**
+  The GPU image-quality trace (**Preferences → GPU image evaluation**) previously
+  accelerated only spot-based image-quality operands; it now also traces the rays
+  for wavefront (`WAVEX`/`WAVEM`/`WAVEC`) and sensitivity (`SENS`) operands on the
+  GPU. Global-optimization runs whose merit is built on wavefront error or element
+  sensitivity get the same acceleration on a CUDA GPU. Results are bit-identical to
+  the CPU path; on-axis-only merits — and machines without a CUDA GPU — continue to
+  evaluate on the CPU.
+
+### Added
+- **GPU image-quality is now selectable from the CLI and MCP, not only the GUI.**
+  `optimize multistart gpuimage` and `optimize basin gpuimage` (CLI), and the
+  `useGpuImageQuality` parameter on the Multistart and Basin-Hopping start tools
+  (MCP), turn on the GPU image-quality trace — matching the Preferences switch.
+
+## 1.0.138 — 2026-07-29
 
 ### Added
 - **Automatic vignetting factors.** When a field is vignetted by the system's
