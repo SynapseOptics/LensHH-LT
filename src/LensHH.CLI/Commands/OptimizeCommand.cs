@@ -23,7 +23,7 @@ namespace LensHH.CLI.Commands
   [green]optimize run [[maxiter=N]] [[tol=V]] [[damping=V]] [[broyden=true|false]] [[refresh=N]][/]  Run local optimization (auto-applies result to the system)
   [green]optimize try [[maxiter=N]] [[tol=V]] [[damping=V]] [[broyden=true|false]] [[refresh=N]][/]  Run local optimization and prompt to keep or revert
   [green]optimize multistart [[trials=N]] [[lm=N]] [[initlm=N]] [[sigma=V]] [[cap=V]] [[growth=V]] [[glass=V]] [[constrained]] [[tol=V]] [[damping=V]] [[broyden=true|false]] [[refresh=N]] [[gpu]] [[mincurvchange=V]] [[gpufill=V]] [[gpuimage]][/]  Multistart optimization. gpu = sieve candidates on the GPU. mincurvchange (default 2) = GPU difference gate: only feed designs that differ from the running best by a glass swap or this % refractive-surface curvature change (0 = off; stops the GPU sieve acting as a pure refiner). gpufill (default 1) = population/device-fill multiplier: candidates per batch = gpufill × device-fill count (1 = fill the GPU once, 2 = double the cloud). gpuimage = trace the merit's image-quality operands (SPOT/WAVE/SENS) on the GPU each trial (separate from the pre-screen; needs a CUDA device, off-axis fields, ray-aiming off).
-  [green]optimize basin [[hops=N]] [[lm=N]] [[hj=N]] [[sigma=V]] [[hjstep=V]] [[hjmin=V]] [[tol=V]] [[damping=V]] [[broyden=true|false]] [[constrained]] [[glasssub=true|false]] [[onlypreferred=true|false]] [[catalog=NAME]] [[seed=N]][/]  Basin hopping (Hooke-Jeeves + LM with random kicks between hops)
+  [green]optimize basin [[hops=N]] [[lm=N]] [[hj=N]] [[sigma=V]] [[hjstep=V]] [[hjmin=V]] [[tol=V]] [[damping=V]] [[broyden=true|false]] [[constrained]] [[glasssub=true|false]] [[onlypreferred=true|false]] [[catalog=NAME]] [[seed=N]] [[gpuimage]][/]  Basin hopping (Hooke-Jeeves + LM with random kicks between hops). gpuimage = trace image-quality operands (SPOT/WAVE/SENS) on the GPU (needs off-axis fields, ray-aiming off).
   [green]optimize global-basin [[hops=N]] [[lm=N]] [[hj=N]] [[sigma=V]] [[broyden=true|false]] [[glasssub=true|false]] [[rescale=true|false]] [[constrained]] [[onlypreferred=true|false]] [[catalog=NAME]] [[seed=N]] [[timeout=SEC]] [[globalmin=MIN]] [[savechains=DIR]] [[apply=N]][/]  Global Basin Hopping HJ+LM: chains=physical cores (fixed); each chain restarts from the best of the OTHER chains when its no-improvement watchdog (timeout, default 600s) fires or hops are exhausted, until the global limit (globalmin, default 120) elapses or you cancel. savechains: write every chain's best design; apply=N: apply chain N's design instead of the global best.
   [green]optimize split [[splits=N]] [[trials=N]] [[lm=N]] [[postlm=N]] [[preglass=N]] [[postglass=N]] [[sigma=V]] [[constrained]] [[onlypreferred=true|false]] [[minglass=V]] [[maxglass=V]] [[minair=V]] [[maxair=V]] [[minedge=V]] [[skipsec=V]] [[tol=V]] [[damping=V]] [[broyden=true|false]] [[refresh=N]] [[catalog=NAME]] [[noglass]][/]  Split element synthesis. catalog: AGF name (e.g. catalog=S1_GLASS); resolved against catalogs\FilteredGlassCatalogues. noglass: skip the glass-trials phase entirely (split + LM polish only).
   [green]optimize spc [[elements=N]] [[topn=N]] [[scanmin=V]] [[scanmax=V]] [[steps=N]] [[epsilon=V]] [[glass=N]] [[lm=N]] [[postlm=N]] [[catalog=NAME]] [[archive=true|false]] [[archivedir=PATH]] [[dop=N]] [[nullglass=NAME]] [[runinitlm=true|false]] [[initlm=N]] [[onlypreferred=true|false]] [[minglass=V]] [[maxglass=V]] [[minair=V]] [[maxair=V]] [[minedge=V]] [[constraintweight=V]][/]  Synthesis by SPC. catalog is mandatory (single AGF name or comma-separated list).
@@ -785,12 +785,18 @@ namespace LensHH.CLI.Commands
 
             var settings = new BasinHoppingSettings();
             string? saveChainsFolder = null;
+            bool gpuImage = false;   // task #26: GPU image-quality trace (SPOT/WAVE/SENS)
 
             for (int i = 1; i < args.Length; i++)
             {
                 if (args[i].Equals("constrained", StringComparison.OrdinalIgnoreCase))
                 {
                     settings.ConstrainedOnly = true;
+                    continue;
+                }
+                if (args[i].Equals("gpuimage", StringComparison.OrdinalIgnoreCase))
+                {
+                    gpuImage = true;
                     continue;
                 }
                 var parts = args[i].Split('=', 2);
@@ -843,7 +849,10 @@ namespace LensHH.CLI.Commands
             {
                 Settings = settings,
                 FilteredCatalogSearchPaths = FindFilteredCatalogPaths(),
+                UseGpuGridTrace = gpuImage,
             };
+            if (gpuImage)
+                AnsiConsole.MarkupLine("  GPU image-quality trace: ON  (SPOT/WAVE/SENS on the GPU; needs off-axis fields, ray-aiming off)");
 
             // Throttle progress: with N chains, OnProgress fires from N threads on every
             // hop — print at most ~3×/s so the console isn't flooded (and timing is clean).

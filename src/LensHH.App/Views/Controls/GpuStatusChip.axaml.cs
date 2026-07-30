@@ -69,14 +69,13 @@ public partial class GpuStatusChip : UserControl
             $"  Image-quality:  {now.ImageQualityTraces:N0} traces\n" +
             $"  Pre-screen:     {now.PreScreenBatches:N0} batches\n" +
             $"  DE-resident:    {now.DeGenerations:N0} generations";
-        // Honesty hint: the image-quality trace accelerates SPOT operands on a field
-        // with off-axis extent. If the user enabled it but no traces ran, say why
-        // rather than just look idle — WAVEX/OPD and on-axis-only merits evaluate on
-        // the CPU (WAVE/SENS on the GPU is planned for a later release).
+        // Honesty hint: the image-quality trace accelerates spot/wavefront/sensitivity
+        // operands on a field with off-axis extent (ray-aiming off). If the user enabled
+        // it but no traces ran, say why rather than just look idle.
         if (LensHH.App.Session.AppPreferences.GpuImageQuality && now.ImageQualityTraces == 0)
-            tip += "\n\nImage-quality GPU is enabled but hasn't engaged: it accelerates" +
-                   "\nSPOT operands with an off-axis field. WAVEX/OPD and on-axis-only" +
-                   "\nmerits evaluate on the CPU.";
+            tip += "\n\nImage-quality GPU is enabled but hasn't engaged: it needs a" +
+                   "\nspot/wavefront/sensitivity operand on an off-axis field, ray-aiming" +
+                   "\noff. On-axis-only merits evaluate on the CPU.";
         ToolTip.SetTip(Chip, tip);
     }
 

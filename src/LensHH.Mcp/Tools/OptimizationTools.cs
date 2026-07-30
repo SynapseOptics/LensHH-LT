@@ -1055,7 +1055,7 @@ namespace LensHH.Mcp.Tools
             double lmTolerance = 1e-10, double lmInitialDamping = 1e-3, bool useBroydenUpdate = true,
             bool constrainedOnly = false,
             bool glassSubstitution = false, bool onlyPreferred = true, string catalogs = "",
-            int seed = 1234, int chains = 0, string saveChainsFolder = "")
+            int seed = 1234, int chains = 0, string saveChainsFolder = "", bool useGpuImageQuality = false)
         {
             { var ge = _session.ValidateGlass(); if (ge != null) return ge; }
             if (_session.MeritFunction == null || _session.MeritFunction.Operands.Count == 0)
@@ -1088,6 +1088,7 @@ namespace LensHH.Mcp.Tools
             {
                 Settings = settings,
                 FilteredCatalogSearchPaths = FindFilteredCatalogPaths(),
+                UseGpuGridTrace = useGpuImageQuality,
                 OnProgress = p =>
                 {
                     job.Phase = $"Hop {p.Hop}/{p.MaxHops} {p.Phase}";
