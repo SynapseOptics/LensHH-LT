@@ -219,6 +219,14 @@ public partial class VariableEditorViewModel : ObservableObject
                         () => s.ModelDPgFMin, () => s.ModelDPgFMax,
                         v => s.ModelDPgFMin = v, v => s.ModelDPgFMax = v));
             }
+
+            // Paraxial (ideal thin lens): the optimizer varies POWER in diopters
+            // (1000/f) — continuous through afocal and sign-symmetric — so the
+            // min/max bounds are power. Only meaningful on a Paraxial surface.
+            if (s.Type == SurfaceType.Paraxial && s.FocalLengthVariable)
+                Variables.Add(new VariableRowViewModel(num++, "Focal Power (D)", s.Index,
+                    () => s.FocalPowerMin, () => s.FocalPowerMax,
+                    v => s.FocalPowerMin = v, v => s.FocalPowerMax = v));
         }
 
         // Config-specific variables (advanced edition): shown here with editable bounds. The Solve

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using LensHH.Core.Activation;
@@ -482,28 +483,34 @@ public class GuiSession
     /// Snapshot all variable values (curvature, thickness, conic, aspheric)
     /// so they can be restored if the user cancels optimization.
     /// </summary>
-    public List<(int surfIdx, double curv, double thick, double conic, double[] asph)> SnapshotVariableValues()
+    public List<Surface> SnapshotVariableValues()
     {
-        var snap = new List<(int, double, double, double, double[])>();
-        foreach (var s in _system.Surfaces)
-            snap.Add((s.Index, s.Curvature, s.Thickness, s.Conic,
-                (double[])s.AsphericCoefficients.Clone()));
-        return snap;
+        // Full surface clones — covers EVERY optimizable scalar (curvature, thickness,
+        // conic, aspheres, model glass, semi-diameter, CA%, and paraxial focal length).
+        // A per-field tuple silently dropped new variable types (paraxial focal length
+        // never reverted on Cancel); cloning can't regress that way.
+        return _system.Surfaces.Select(s => s.Clone()).ToList();
     }
 
-    /// <summary>Restore variable values from a previous snapshot.</summary>
-    public void RestoreVariableValues(List<(int surfIdx, double curv, double thick, double conic, double[] asph)> snapshot)
+    /// <summary>Restore variable values from a previous snapshot (revert on Cancel).</summary>
+    public void RestoreVariableValues(List<Surface> snapshot)
     {
-        foreach (var (surfIdx, curv, thick, conic, asph) in snapshot)
+        int n = Math.Min(snapshot.Count, _system.Surfaces.Count);
+        for (int i = 0; i < n; i++)
         {
-            if (surfIdx < _system.Surfaces.Count)
-            {
-                var s = _system.Surfaces[surfIdx];
-                s.Curvature = curv;
-                s.Thickness = thick;
-                s.Conic = conic;
-                Array.Copy(asph, s.AsphericCoefficients, Math.Min(asph.Length, s.AsphericCoefficients.Length));
-            }
+            var s = _system.Surfaces[i];
+            var o = snapshot[i];
+            s.Curvature = o.Curvature;
+            s.Thickness = o.Thickness;
+            s.Conic = o.Conic;
+            s.SemiDiameter = o.SemiDiameter;
+            s.ClearAperturePercent = o.ClearAperturePercent;
+            s.ModelNd = o.ModelNd;
+            s.ModelVd = o.ModelVd;
+            s.ModelDPgF = o.ModelDPgF;
+            s.FocalLength = o.FocalLength;
+            Array.Copy(o.AsphericCoefficients, s.AsphericCoefficients,
+                Math.Min(o.AsphericCoefficients.Length, s.AsphericCoefficients.Length));
         }
     }
 

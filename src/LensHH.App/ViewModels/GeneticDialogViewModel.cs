@@ -231,17 +231,8 @@ public partial class GeneticDialogViewModel : ObservableObject
     }
 
     private double GetVariableValue(OptimizationVariable v)
-    {
-        if (v.Type == VariableType.FieldY)
-            return _session.System.Fields[v.FieldIndex].Y;
-        var surface = _session.System.Surfaces[v.SurfaceIndex];
-        switch (v.Type)
-        {
-            case VariableType.Curvature: return surface.Curvature;
-            case VariableType.Thickness: return surface.Thickness;
-            case VariableType.Conic: return surface.Conic;
-            case VariableType.AsphericCoefficient: return surface.AsphericCoefficients[v.AsphericTermIndex];
-            default: return 0;
-        }
-    }
+        // Single source of truth: OptimizationVariable.GetValue defines the
+        // convention for EVERY variable (curvature not radius, focal POWER not
+        // focal length). Delegate so this display can never diverge.
+        => v.GetValue(_session.System);
 }

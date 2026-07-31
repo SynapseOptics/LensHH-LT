@@ -129,6 +129,15 @@ namespace LensHH.Core.IO
         public double? ModelVdMax { get; set; }
         public double? ModelDPgFMin { get; set; }
         public double? ModelDPgFMax { get; set; }
+
+        // Paraxial (ideal thin lens) — only meaningful when Type == Paraxial.
+        // FocalLength = the single shape parameter f (PositiveInfinity = zero power).
+        // Can be a Variable (bounds below) or a Pickup (carried in the pickups list).
+        public double FocalLength { get; set; } = double.PositiveInfinity;
+        public bool FocalLengthVariable { get; set; }
+        // Optimization bounds are on the power (diopters), not the focal length.
+        public double? FocalPowerMin { get; set; }
+        public double? FocalPowerMax { get; set; }
     }
 
     public class LhltWavelength

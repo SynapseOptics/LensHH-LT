@@ -278,6 +278,27 @@ namespace LensHH.Rendering
                 }
             }
 
+            // Paraxial (ideal thin lens) surfaces — flat vertical line with an
+            // outward double-arrow at each end (the standard ideal-lens symbol).
+            // No glass element is drawn for these (see SystemLayout element pass).
+            foreach (var surf in layout.Surfaces)
+            {
+                if (!surf.IsParaxial) continue;
+                double sd = surf.SemiDiameter > 1e-6 ? surf.SemiDiameter : maxSD * 0.5;
+                double px = SvgX(surf.VertexZ);
+                double yTop = SvgY(sd);
+                double yBot = SvgY(-sd);
+                const string col = "#0066cc";
+                sb.AppendLine(F($"<line x1=\"{px:F1}\" y1=\"{yTop:F1}\" x2=\"{px:F1}\" y2=\"{yBot:F1}\" stroke=\"{col}\" stroke-width=\"1.5\"/>"));
+                const double a = 5.0; // arrowhead size (px)
+                // Top arrowhead (pointing up/out)
+                sb.AppendLine(F($"<line x1=\"{px:F1}\" y1=\"{yTop:F1}\" x2=\"{px - a:F1}\" y2=\"{yTop + a:F1}\" stroke=\"{col}\" stroke-width=\"1.5\"/>"));
+                sb.AppendLine(F($"<line x1=\"{px:F1}\" y1=\"{yTop:F1}\" x2=\"{px + a:F1}\" y2=\"{yTop + a:F1}\" stroke=\"{col}\" stroke-width=\"1.5\"/>"));
+                // Bottom arrowhead (pointing down/out)
+                sb.AppendLine(F($"<line x1=\"{px:F1}\" y1=\"{yBot:F1}\" x2=\"{px - a:F1}\" y2=\"{yBot - a:F1}\" stroke=\"{col}\" stroke-width=\"1.5\"/>"));
+                sb.AppendLine(F($"<line x1=\"{px:F1}\" y1=\"{yBot:F1}\" x2=\"{px + a:F1}\" y2=\"{yBot - a:F1}\" stroke=\"{col}\" stroke-width=\"1.5\"/>"));
+            }
+
             // Rays — count traced rays per field for the summary panel.
             // A "traced" ray is one with >= 2 points (renderable as a
             // polyline). A 1-point ray represents a trace that died at

@@ -186,6 +186,9 @@ public partial class SurfacePropertiesViewModel : ObservableObject
     public int SurfaceIndex => _surface.Index;
     public string Title => $"Surface {_surface.Index} Properties";
     public bool IsEvenAsphere => _surface.Type == SurfaceType.EvenAsphere;
+    /// <summary>True for a Paraxial (ideal thin lens) surface — drives the
+    /// Focal Length tab's visibility (its only shape parameter).</summary>
+    public bool IsParaxial => _surface.Type == SurfaceType.Paraxial;
 
     // Variable/Pickup tab
     public ParameterStateViewModel CurvatureState { get; }
@@ -205,6 +208,10 @@ public partial class SurfacePropertiesViewModel : ObservableObject
     public ParameterStateViewModel ModelNdState { get; }
     public ParameterStateViewModel ModelVdState { get; }
     public ParameterStateViewModel ModelDPgFState { get; }
+
+    // Paraxial (ideal thin lens) focal length — the surface's single shape
+    // parameter, Fixed / Variable / Pickup like any other.
+    public ParameterStateViewModel FocalLengthState { get; }
 
     /// <summary>
     /// Enable/disable model-glass mode. Toggling is where Glass ⇄ Model
@@ -278,6 +285,19 @@ public partial class SurfacePropertiesViewModel : ObservableObject
         get => _surface.ModelDPgF;
         set { _surface.ModelDPgF = value; OnPropertyChanged(); }
     }
+
+    /// <summary>Paraxial focal length f (mm). PositiveInfinity = zero power.</summary>
+    public double FocalLengthValue
+    {
+        get => _surface.FocalLength;
+        set { _surface.FocalLength = value; OnPropertyChanged(); OnPropertyChanged(nameof(FocalPowerText)); }
+    }
+
+    /// <summary>Read-only optical power in diopters — the quantity the optimizer
+    /// varies (set its min/max in the Variable Editor). 0 D = afocal.</summary>
+    public string FocalPowerText => double.IsInfinity(_surface.FocalLength)
+        ? "0 D (afocal)"
+        : _surface.FocalPower.ToString("G6", CultureInfo.InvariantCulture) + " D";
 
     /// <summary>What the read-only "Glass" reference field shows on the tab:
     /// "Model" while model-index is enabled, otherwise the catalog material.</summary>
@@ -397,6 +417,9 @@ public partial class SurfacePropertiesViewModel : ObservableObject
             PickupParameter.ModelVd, () => surface.ModelVdVariable, v => surface.ModelVdVariable = v);
         ModelDPgFState = new ParameterStateViewModel("Model dPgF", surface, session,
             PickupParameter.ModelDPgF, () => surface.ModelDPgFVariable, v => surface.ModelDPgFVariable = v);
+
+        FocalLengthState = new ParameterStateViewModel("Focal Length", surface, session,
+            PickupParameter.FocalLength, () => surface.FocalLengthVariable, v => surface.FocalLengthVariable = v);
     }
 
     public void Apply()
@@ -409,6 +432,7 @@ public partial class SurfacePropertiesViewModel : ObservableObject
         ModelNdState.SavePickup();
         ModelVdState.SavePickup();
         ModelDPgFState.SavePickup();
+        FocalLengthState.SavePickup();
         _session.NotifySystemChanged("properties");
     }
 }

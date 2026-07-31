@@ -260,7 +260,7 @@
                 </DataGridTemplateColumn.CellTemplate>
                 <DataGridTemplateColumn.CellEditingTemplate>
                   <DataTemplate>
-                    <TextBox Text="{Binding Radius, Converter={StaticResource InfConv}, UpdateSourceTrigger=LostFocus}" IsReadOnly="{Binding IsRadiusOwned}" TextAlignment="Center" />
+                    <TextBox Text="{Binding Radius, Converter={StaticResource InfConv}, UpdateSourceTrigger=LostFocus}" IsReadOnly="{Binding IsRadiusCellReadOnly}" TextAlignment="Center" />
                   </DataTemplate>
                 </DataGridTemplateColumn.CellEditingTemplate>
               </DataGridTemplateColumn>
@@ -305,7 +305,7 @@
                 </DataGridTemplateColumn.CellTemplate>
                 <DataGridTemplateColumn.CellEditingTemplate>
                   <DataTemplate>
-                    <TextBox Text="{Binding Conic, Converter={StaticResource InfConv}, UpdateSourceTrigger=LostFocus}" IsReadOnly="{Binding IsConicOwned}" TextAlignment="Center" />
+                    <TextBox Text="{Binding Conic, Converter={StaticResource InfConv}, UpdateSourceTrigger=LostFocus}" IsReadOnly="{Binding IsConicCellReadOnly}" TextAlignment="Center" />
                   </DataTemplate>
                 </DataGridTemplateColumn.CellEditingTemplate>
               </DataGridTemplateColumn>

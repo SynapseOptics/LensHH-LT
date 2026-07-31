@@ -333,6 +333,44 @@
           </StackPanel>
         </ScrollViewer>
       </TabItem>
+
+      <!-- ═══ Focal Length Tab (Paraxial ideal lens only) ═══ -->
+      <TabItem Header="Focal Length" IsVisible="{Binding IsParaxial}">
+        <ScrollViewer>
+          <StackPanel Margin="12" Spacing="14">
+            <Border BorderBrush="#CCC" BorderThickness="1" CornerRadius="4" Padding="12,8">
+              <StackPanel Spacing="6">
+                <TextBlock Text="Focal Length (ideal thin lens)" FontWeight="SemiBold" FontSize="14" />
+                <DockPanel>
+                  <TextBlock Text="f (mm):" Width="70" VerticalAlignment="Center" />
+                  <TextBox Text="{Binding FocalLengthValue, UpdateSourceTrigger=LostFocus}" Width="180" />
+                </DockPanel>
+                <DockPanel>
+                  <TextBlock Text="Power:" Width="70" VerticalAlignment="Center" />
+                  <TextBlock Text="{Binding FocalPowerText}" VerticalAlignment="Center" FontWeight="SemiBold" />
+                </DockPanel>
+                <TextBlock Text="The optimizer varies power (diopters), continuous through afocal; set its min/max in the Variable Editor."
+                           TextWrapping="Wrap" FontSize="11" Foreground="#666" />
+                <StackPanel Orientation="Horizontal" Spacing="20">
+                  <RadioButton Content="Fixed" IsChecked="{Binding FocalLengthState.IsFixed}" GroupName="Focal" />
+                  <RadioButton Content="Variable" IsChecked="{Binding FocalLengthState.IsVariable}" GroupName="Focal" />
+                  <RadioButton Content="Pickup" IsChecked="{Binding FocalLengthState.IsPickupSelected}" GroupName="Focal" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Spacing="8"
+                            IsVisible="{Binding FocalLengthState.IsPickup}">
+                  <TextBlock Text="Source Surf:" VerticalAlignment="Center" />
+                  <ComboBox ItemsSource="{Binding FocalLengthState.AvailablePickupSurfaces}"
+                            SelectedItem="{Binding FocalLengthState.PickupSourceSurface}" Width="70" />
+                  <TextBlock Text="Scale:" VerticalAlignment="Center" />
+                  <TextBox Text="{Binding FocalLengthState.PickupScale, UpdateSourceTrigger=LostFocus}" Width="70" />
+                  <TextBlock Text="Offset:" VerticalAlignment="Center" />
+                  <TextBox Text="{Binding FocalLengthState.PickupOffset, UpdateSourceTrigger=LostFocus}" Width="70" />
+                </StackPanel>
+              </StackPanel>
+            </Border>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
     </TabControl>
   </DockPanel>
 </Window>

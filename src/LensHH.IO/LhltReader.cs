@@ -36,8 +36,13 @@ namespace LensHH.Core.IO
         /// </summary>
         private static string MigrateJson(string json)
         {
-            // Ray aiming: Paraxial removed, map to Off
-            json = json.Replace("\"Paraxial\"", "\"Off\"");
+            // Ray aiming: the old "Paraxial" mode was removed → map to Off.
+            // Scope the rewrite to the RayAiming property ONLY — a blanket
+            // replace of "Paraxial" would also corrupt the SurfaceType.Paraxial
+            // (ideal thin lens) surface value added in 1.0.140, which serializes
+            // as "Type": "Paraxial" and must round-trip intact.
+            json = System.Text.RegularExpressions.Regex.Replace(
+                json, "(\"RayAiming\"\\s*:\\s*)\"Paraxial\"", "$1\"Off\"");
             return json;
         }
 
@@ -103,7 +108,9 @@ namespace LensHH.Core.IO
                     ModelDPgFVariable = ls.ModelDPgFVariable,
                     ModelNdMin = ls.ModelNdMin, ModelNdMax = ls.ModelNdMax,
                     ModelVdMin = ls.ModelVdMin, ModelVdMax = ls.ModelVdMax,
-                    ModelDPgFMin = ls.ModelDPgFMin, ModelDPgFMax = ls.ModelDPgFMax
+                    ModelDPgFMin = ls.ModelDPgFMin, ModelDPgFMax = ls.ModelDPgFMax,
+                    FocalLength = ls.FocalLength, FocalLengthVariable = ls.FocalLengthVariable,
+                    FocalPowerMin = ls.FocalPowerMin, FocalPowerMax = ls.FocalPowerMax
                 };
 
                 if (ls.AsphericCoefficients != null)

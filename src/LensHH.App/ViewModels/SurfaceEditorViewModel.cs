@@ -34,25 +34,53 @@ public partial class SurfaceRowViewModel : ObservableObject
         (_surface.Index == _session.System.Surfaces.Count - 1 ? "IMG" : _surface.Index.ToString());
 
     // Type as string-based combo (Avalonia ComboBox works better with string/index)
-    public static string[] TypeOptions { get; } = new[] { "Standard", "Even Asphere" };
+    public static string[] TypeOptions { get; } = new[] { "Standard", "Even Asphere", "Paraxial" };
 
-    public string TypeDisplay => _surface.Type == SurfaceType.EvenAsphere ? "Even Asphere" : "Standard";
+    public string TypeDisplay => _surface.Type switch
+    {
+        SurfaceType.Paraxial => "Paraxial",
+        SurfaceType.EvenAsphere => "Even Asphere",
+        _ => "Standard"
+    };
 
     public int TypeIndex
     {
-        get => _surface.Type == SurfaceType.EvenAsphere ? 1 : 0;
+        get => _surface.Type switch
+        {
+            SurfaceType.Paraxial => 2,
+            SurfaceType.EvenAsphere => 1,
+            _ => 0
+        };
         set
         {
-            var newType = value == 1 ? SurfaceType.EvenAsphere : SurfaceType.Standard;
+            var newType = value switch
+            {
+                2 => SurfaceType.Paraxial,
+                1 => SurfaceType.EvenAsphere,
+                _ => SurfaceType.Standard
+            };
             if (_surface.Type != newType)
             {
                 _surface.Type = newType;
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(TypeDisplay));
+                // Paraxial blanks + disables Radius/Conic/Glass; refresh those cells.
+                OnPropertyChanged(nameof(IsParaxial));
+                OnPropertyChanged(nameof(RadiusDisplay));
+                OnPropertyChanged(nameof(ConicDisplay));
+                OnPropertyChanged(nameof(GlassDisplay));
+                OnPropertyChanged(nameof(IsRadiusCellReadOnly));
+                OnPropertyChanged(nameof(IsConicCellReadOnly));
+                OnPropertyChanged(nameof(IsGlassCellReadOnly));
                 _session.NotifySystemChanged("surface");
             }
         }
     }
+
+    /// <summary>True when this surface is a Paraxial (ideal thin lens). Its only
+    /// shape parameter is the focal length (edited in the Properties dialog); the
+    /// Radius/Conic/Glass cells are blanked and non-editable.</summary>
+    public bool IsParaxial => _surface.Type == SurfaceType.Paraxial;
 
     public bool IsStop
     {
@@ -96,6 +124,7 @@ public partial class SurfaceRowViewModel : ObservableObject
     {
         get
         {
+            if (IsParaxial) return string.Empty;   // ideal lens: curvature not applicable
             string val = double.IsPositiveInfinity(_surface.Radius) ? "Infinity" : _surface.Radius.ToString("G8", CultureInfo.InvariantCulture);
             if (IsRadiusOwned) return val + Marker(LensHH.App.SurfaceConfigParam.Curvature);   // owned: show active-config solve
             if (_surface.CurvatureVariable) val += " V";
@@ -145,6 +174,7 @@ public partial class SurfaceRowViewModel : ObservableObject
     {
         get
         {
+            if (IsParaxial) return string.Empty;   // ideal lens: conic not applicable
             string val = _surface.Conic.ToString("G8", CultureInfo.InvariantCulture);
             if (IsConicOwned) return val + Marker(LensHH.App.SurfaceConfigParam.Conic);   // owned: show active-config solve
             if (_surface.ConicVariable) val += " V";
@@ -161,7 +191,8 @@ public partial class SurfaceRowViewModel : ObservableObject
 
     /// <summary>Glass-column text: "Model" while model-index is enabled (the index
     /// is computed from Nd/Vd/dPgF, not a catalog glass), otherwise the material.</summary>
-    public string GlassDisplay => _surface.ModelIndexEnabled ? "Model" : (_surface.Material ?? string.Empty);
+    public string GlassDisplay => IsParaxial ? string.Empty
+        : (_surface.ModelIndexEnabled ? "Model" : (_surface.Material ?? string.Empty));
 
     /// <summary>True when the glass cell shows the model-index "Model" placeholder —
     /// drives the italic style on the Glass column (see MainWindow.axaml).</summary>
@@ -170,7 +201,12 @@ public partial class SurfaceRowViewModel : ObservableObject
     /// <summary>The glass cell is not editable when the value is owned by a
     /// configuration OR when model-index mode is on (glass is replaced by Nd/Vd/dPgF;
     /// re-enable by unchecking "Enable Model Index" in the surface's Glass Model tab).</summary>
-    public bool IsGlassCellReadOnly => IsGlassOwned || _surface.ModelIndexEnabled;
+    public bool IsGlassCellReadOnly => IsGlassOwned || _surface.ModelIndexEnabled || IsParaxial;
+
+    /// <summary>Radius / Conic cells are read-only when owned by a configuration
+    /// OR when this is a Paraxial surface (curvature/conic are not applicable).</summary>
+    public bool IsRadiusCellReadOnly => IsRadiusOwned || IsParaxial;
+    public bool IsConicCellReadOnly => IsConicOwned || IsParaxial;
 
     public bool IsGlassUnresolved
     {

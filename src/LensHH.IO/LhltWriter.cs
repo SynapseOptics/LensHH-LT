@@ -96,7 +96,9 @@ namespace LensHH.Core.IO
                     ModelDPgFVariable = s.ModelDPgFVariable,
                     ModelNdMin = s.ModelNdMin, ModelNdMax = s.ModelNdMax,
                     ModelVdMin = s.ModelVdMin, ModelVdMax = s.ModelVdMax,
-                    ModelDPgFMin = s.ModelDPgFMin, ModelDPgFMax = s.ModelDPgFMax
+                    ModelDPgFMin = s.ModelDPgFMin, ModelDPgFMax = s.ModelDPgFMax,
+                    FocalLength = s.FocalLength, FocalLengthVariable = s.FocalLengthVariable,
+                    FocalPowerMin = s.FocalPowerMin, FocalPowerMax = s.FocalPowerMax
                 };
 
                 // Only write aspheric data if non-trivial
