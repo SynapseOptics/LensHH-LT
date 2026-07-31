@@ -172,7 +172,16 @@ namespace LensHH.Core.IO
                 else
                     sb.AppendLine(FormatDouble("  DISZ", surface.Thickness));
 
-                if (!string.IsNullOrEmpty(surface.Material))
+                if (surface.ModelIndexEnabled)
+                {
+                    // ZEMAX model glass: ___BLANK <flag> <solve> <Nd> <Vd> <dPgF> ...
+                    // The index is defined by the model parameters, not a catalog name.
+                    sb.AppendLine("  GLAS ___BLANK 1 0 " +
+                        surface.ModelNd.ToString("G17", CultureInfo.InvariantCulture) + " " +
+                        surface.ModelVd.ToString("G17", CultureInfo.InvariantCulture) + " " +
+                        surface.ModelDPgF.ToString("G17", CultureInfo.InvariantCulture) + " 0 0 0 0 0");
+                }
+                else if (!string.IsNullOrEmpty(surface.Material))
                     sb.AppendLine($"  GLAS {surface.Material} 0 0 0 0 0");
 
                 // Only write DIAM line for Fixed mode; Auto diameters are computed by the reader

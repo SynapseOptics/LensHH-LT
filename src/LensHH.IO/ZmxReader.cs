@@ -650,6 +650,25 @@ namespace LensHH.Core.IO
                             // GUI's substitution pass has a deterministic
                             // signal to match against the loaded catalogs.
                             string mat = parts[1];
+                            // ZEMAX model glass: name "___BLANK" with the model index
+                            // parameters in parts[4..6] = Nd, Vd (Abbe), dPgF (relative
+                            // partial-dispersion deviation). Import as an LT model-index
+                            // surface — the index is computed from (Nd, Vd, dPgF), not a
+                            // catalog lookup (GlassCatalogManager gives ModelIndexEnabled
+                            // precedence over Material), so Material is left blank.
+                            if (mat.Equals("___BLANK", StringComparison.OrdinalIgnoreCase) &&
+                                parts.Length > 5 &&
+                                TryParseDouble(parts[4], out double modelNd) &&
+                                TryParseDouble(parts[5], out double modelVd))
+                            {
+                                surface.ModelIndexEnabled = true;
+                                surface.ModelNd = modelNd;
+                                surface.ModelVd = modelVd;
+                                if (parts.Length > 6 && TryParseDouble(parts[6], out double modelDPgF))
+                                    surface.ModelDPgF = modelDPgF;
+                                surface.Material = "";
+                                break;
+                            }
                             // Only repack when the name token isn't already
                             // a real glass name. Treat any token that starts
                             // with a digit as a fictitious numeric label;
