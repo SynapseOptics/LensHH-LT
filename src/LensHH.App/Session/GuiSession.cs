@@ -315,17 +315,24 @@ public class GuiSession
         {
             var s = _system.Surfaces[i];
 
-            // Imported model glass with no catalog name (e.g. ZEMAX "___BLANK"):
-            // snap Material to the nearest catalog glass so the element renders
-            // shaded in the 2D layout. ModelIndexEnabled stays true, so the index
-            // is still the EXACT imported Nd/Vd/dPgF — only the display name changes.
+            // Imported model glass with no catalog name (e.g. ZEMAX "___BLANK"): snap
+            // Material to the nearest catalog glass so the element shades in the 2D
+            // layout. ModelIndexEnabled stays true, so the index is still the EXACT
+            // imported Nd/Vd/dPgF — only the display name changes. GATE on a genuine
+            // index match (< 0.05): a near-air / fictitious model medium (e.g. Nd=1.005,
+            // which has no real-glass match) is left blank so the layout shows a gap,
+            // not a spurious glass block, and no path is misled by a far-off Material.
             if (s.ModelIndexEnabled && string.IsNullOrEmpty(s.Material))
             {
                 var closest = _glassCatalog.FindClosestGlass(s.ModelNd, s.ModelVd, s.ModelDPgF, preferred);
                 if (!string.IsNullOrEmpty(closest))
                 {
                     int ci = closest.IndexOf(':');
-                    s.Material = ci >= 0 ? closest.Substring(ci + 1) : closest;
+                    string bare = ci >= 0 ? closest.Substring(ci + 1) : closest;
+                    var gd = _glassCatalog.GetGlass(bare, preferred);
+                    if (gd != null &&
+                        Math.Abs(gd.GetIndex(LensHH.Core.Glass.ModelGlass.LambdaD) - s.ModelNd) < 0.05)
+                        s.Material = bare;
                 }
                 continue;
             }
