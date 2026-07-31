@@ -314,6 +314,22 @@ public class GuiSession
         for (int i = 0; i < _system.Surfaces.Count; i++)
         {
             var s = _system.Surfaces[i];
+
+            // Imported model glass with no catalog name (e.g. ZEMAX "___BLANK"):
+            // snap Material to the nearest catalog glass so the element renders
+            // shaded in the 2D layout. ModelIndexEnabled stays true, so the index
+            // is still the EXACT imported Nd/Vd/dPgF — only the display name changes.
+            if (s.ModelIndexEnabled && string.IsNullOrEmpty(s.Material))
+            {
+                var closest = _glassCatalog.FindClosestGlass(s.ModelNd, s.ModelVd, s.ModelDPgF, preferred);
+                if (!string.IsNullOrEmpty(closest))
+                {
+                    int ci = closest.IndexOf(':');
+                    s.Material = ci >= 0 ? closest.Substring(ci + 1) : closest;
+                }
+                continue;
+            }
+
             var mat = s.Material;
             if (string.IsNullOrEmpty(mat)) continue;
             if (mat.Equals("MIRROR", StringComparison.OrdinalIgnoreCase)) continue;
