@@ -189,10 +189,15 @@ public partial class SurfaceRowViewModel : ObservableObject
         set { if (_surface.Material != value) { _surface.Material = value ?? ""; OnPropertyChanged(); OnPropertyChanged(nameof(GlassDisplay)); OnPropertyChanged(nameof(IsGlassUnresolved)); _session.NotifySystemChanged("surface"); } }
     }
 
-    /// <summary>Glass-column text: "Model" while model-index is enabled (the index
-    /// is computed from Nd/Vd/dPgF, not a catalog glass), otherwise the material.</summary>
+    /// <summary>Glass-column text. For a model-index surface the index is computed from
+    /// Nd/Vd/dPgF, not a catalog glass: show the nearest catalog glass name when one has
+    /// been assigned (e.g. an import that snapped to "SK16"), else the generic "Model".
+    /// Either way the cell is italic (IsModelGlass) to flag that it's a model, not a
+    /// literal catalog glass.</summary>
     public string GlassDisplay => IsParaxial ? string.Empty
-        : (_surface.ModelIndexEnabled ? "Model" : (_surface.Material ?? string.Empty));
+        : (_surface.ModelIndexEnabled
+            ? (string.IsNullOrEmpty(_surface.Material) ? "Model" : _surface.Material)
+            : (_surface.Material ?? string.Empty));
 
     /// <summary>True when the glass cell shows the model-index "Model" placeholder —
     /// drives the italic style on the Glass column (see MainWindow.axaml).</summary>
