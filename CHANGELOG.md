@@ -2,7 +2,38 @@
 
 All notable changes to LensHH-LT and the LensHH-LT-Engine.
 
-## 1.0.139 — unreleased
+## 1.0.140 — unreleased
+
+### Added
+- **Paraxial (ideal thin lens) surface.** A new surface type defined by a single
+  parameter — its focal length — that bends rays to a perfect focus with no
+  aberration at any ray height. It is useful for first-order layout, for standing
+  in for a not-yet-designed group, and as an afocal or relay element. Set a
+  surface's **Type** to *Paraxial* in the lens data editor; the focal length is
+  entered in **Surface Properties** and can be Fixed, Variable, or a Pickup. When
+  it is a variable the optimizer works in optical power (diopters), which stays
+  continuous and sign-symmetric through the afocal (infinite-focal-length) case.
+  The surface carries the surrounding indices, so it behaves correctly when
+  immersed (it focuses at `n·f`). Paraxial surfaces are supported in the GUI, the
+  CLI (`surface edit <i> type=paraxial`, `surface variable focal-length <i>`), the
+  MCP tools, and the API, and they import and export in the ZEMAX `.zmx` format.
+- **Model-glass interchange with the `.zmx` format.** A model glass — a medium
+  defined by its index, Abbe number, and partial-dispersion deviation (Nd / Vd /
+  dPgF) rather than a catalog name — now imports and exports in the ZEMAX `.zmx`
+  format, round-tripping the three parameters. On import, a model glass is also
+  matched to the nearest catalog glass for the purpose of the 2D layout shading,
+  and the lens data editor shows that nearest-glass name for reference.
+
+### Fixed
+- **Front-element vignetting on imported lenses.** A lens imported from a `.zmx`
+  file could fail to vignette at a front element — for example a double-Gauss that
+  should show a cat's-eye clip would clip on one side only. The clear aperture was
+  being overridden by the larger mechanical-edge extent stored in the file, so the
+  surface only "clipped" at the mechanical edge (effectively never). Ray clipping
+  now uses the clear aperture, so imported lenses vignette the same as when the
+  design is built or reopened natively.
+
+## 1.0.139 — 2026-07-30
 
 ### Changed
 - **GPU image-quality acceleration now covers wavefront and sensitivity operands.**
