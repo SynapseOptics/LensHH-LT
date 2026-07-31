@@ -773,6 +773,9 @@ namespace LensHH.Core.IO
                     return SurfaceType.Standard;
                 case "EVENASPH":
                     return SurfaceType.EvenAsphere;
+                case "PARAXIAL":
+                    // Ideal thin lens: PARM 1 = focal length (mm), PARM 2 = OPD mode.
+                    return SurfaceType.Paraxial;
                 default:
                     // Unsupported surface types default to Standard
                     return SurfaceType.Standard;
@@ -786,6 +789,13 @@ namespace LensHH.Core.IO
             {
                 if (TryParseDouble(parts[2], out double val))
                 {
+                    // Paraxial (ideal thin lens): PARM 1 = focal length (mm), PARM 2 = OPD
+                    // mode (ignored — LT's ideal lens is always diffraction-limited).
+                    if (surface.Type == SurfaceType.Paraxial)
+                    {
+                        if (paramIndex == 1) surface.FocalLength = val;
+                        return;
+                    }
                     // PARM 1-8 map to AsphericCoefficients[0-7]
                     int arrayIndex = paramIndex - 1;
                     if (arrayIndex >= 0 && arrayIndex < surface.AsphericCoefficients.Length)

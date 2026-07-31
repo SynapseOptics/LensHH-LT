@@ -155,6 +155,9 @@ namespace LensHH.Core.IO
                     case SurfaceType.EvenAsphere:
                         sb.AppendLine("  TYPE EVENASPH");
                         break;
+                    case SurfaceType.Paraxial:
+                        sb.AppendLine("  TYPE PARAXIAL");
+                        break;
                 }
 
                 sb.AppendLine(FormatDouble("  CURV", surface.Curvature));
@@ -201,6 +204,17 @@ namespace LensHH.Core.IO
                             sb.AppendLine($"  PARM {i + 1} {surface.AsphericCoefficients[i].ToString("E16", CultureInfo.InvariantCulture)}");
                         }
                     }
+                }
+                else if (surface.Type == SurfaceType.Paraxial)
+                {
+                    // ZEMAX Paraxial: PARM 1 = focal length (mm), PARM 2 = OPD mode
+                    // (1 = compute wavefront/OPD like a real lens — matches LT's
+                    // diffraction-limited ideal lens). A VPAR line marks the focal
+                    // length variable so an optimized design round-trips.
+                    sb.AppendLine($"  PARM 1 {surface.FocalLength.ToString("G17", CultureInfo.InvariantCulture)}");
+                    if (surface.FocalLengthVariable)
+                        sb.AppendLine("  VPAR 1");
+                    sb.AppendLine("  PARM 2 1");
                 }
             }
         }
