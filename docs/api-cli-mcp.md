@@ -191,6 +191,20 @@ system info                         # shows Aperture, Field Type, Telecentric Ob
 Object Space NA and ray aiming is Off. See
 [System Aperture & Object-Space Telecentric](getting-started.md#system-aperture--object-space-telecentric).
 
+**Paraxial (ideal thin lens) surfaces.** Set a surface to an ideal lens by
+giving it a focal length, then optimise its power (diopters):
+
+```bash
+surface edit 2 focal-length=75          # makes surface 2 Paraxial, f = 75 mm
+surface variable focal-length 2 on min=8 max=15   # vary it; bounds are DIOPTERS (1000/f)
+var list                                # shows "Focal Power  13.3333 D (f=75 mm)"
+```
+
+The MCP server exposes the same via `edit_surface` (`property="type"` →
+`paraxial`, or `property="focal_length"`) and `set_variable`
+(`property="focal_power"`, `min`/`max` in diopters); the C# API adds
+`SetSurface(..., focalLength:)` and `SetFocalLengthVariable(index, minPower, maxPower)`.
+
 ### Exit Codes
 
 The CLI returns a non-zero exit code when a command fails or a script

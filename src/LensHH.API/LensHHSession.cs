@@ -397,7 +397,7 @@ namespace LensHH.API
         /// <summary>Edit a surface property.</summary>
         public void SetSurface(int index, double? radius = null, double? thickness = null,
             string? material = null, double? semiDiameter = null, double? conic = null,
-            bool? isStop = null)
+            bool? isStop = null, double? focalLength = null)
         {
             EnsureSystem();
             if (index < 0 || index >= _system!.Surfaces.Count)
@@ -413,6 +413,13 @@ namespace LensHH.API
             }
             if (conic.HasValue) s.Conic = conic.Value;
             if (isStop.HasValue) s.IsStop = isStop.Value;
+            // Focal length is meaningful only for an ideal-lens (Paraxial) surface, so
+            // setting it makes the surface Paraxial (curvature/conic/glass are ignored).
+            if (focalLength.HasValue)
+            {
+                s.Type = SurfaceType.Paraxial;
+                s.FocalLength = focalLength.Value;
+            }
         }
 
         /// <summary>Set semi-diameter mode for a surface (Auto or Fixed).</summary>
@@ -563,6 +570,20 @@ namespace LensHH.API
             s.ConicVariable = variable;
             s.ConicMin = min;
             s.ConicMax = max;
+        }
+
+        /// <summary>Set a Paraxial (ideal-lens) surface's focal length as variable for
+        /// optimization. Like Radius/Curvature, focal length is entered/displayed in mm
+        /// but the optimizer varies POWER, so the bounds are in DIOPTERS (1000/f) —
+        /// continuous through afocal (f=±∞ ↔ 0 D) and sign-symmetric.</summary>
+        public void SetFocalLengthVariable(int surfaceIndex, bool variable = true,
+            double? minPower = null, double? maxPower = null)
+        {
+            EnsureSystem();
+            var s = _system!.Surfaces[surfaceIndex];
+            s.FocalLengthVariable = variable;
+            s.FocalPowerMin = minPower;
+            s.FocalPowerMax = maxPower;
         }
 
         /// <summary>Set an aspheric coefficient as variable for optimization.</summary>

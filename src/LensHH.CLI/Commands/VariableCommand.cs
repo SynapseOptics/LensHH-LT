@@ -346,6 +346,25 @@ namespace LensHH.CLI.Commands
                         }
                     });
                 }
+                if (s.FocalLengthVariable)
+                {
+                    // Paraxial ideal lens: value shown as focal length + power; bounds are diopters.
+                    list.Add(new VariableEntry
+                    {
+                        Source = $"Surf {surfIdx}",
+                        Parameter = "Focal Power",
+                        Value = $"{s.FocalPower:G6} D (f={s.FocalLength:G6} mm)",
+                        Min = s.FocalPowerMin,
+                        Max = s.FocalPowerMax,
+                        ApplyConstraints = (min, max, clrMin, clrMax) =>
+                        {
+                            if (min.HasValue) s.FocalPowerMin = min;
+                            if (max.HasValue) s.FocalPowerMax = max;
+                            if (clrMin) s.FocalPowerMin = null;
+                            if (clrMax) s.FocalPowerMax = null;
+                        }
+                    });
+                }
                 for (int j = 0; j < s.AsphericVariable.Length; j++)
                 {
                     if (s.AsphericVariable[j])

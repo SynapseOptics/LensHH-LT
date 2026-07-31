@@ -426,7 +426,7 @@ namespace LensHH.Mcp.Tools
             return $"Surface {surfaceIndex} removed. System now has {sys.Surfaces.Count} surfaces.";
         }
 
-        [McpServerTool, Description("Edit a surface property. property can be: radius, thickness, material, conic, semi_diameter, semi_diameter_mode (auto/fixed), inner_radius, obscuration, stop (true/false). value is the new value as a string.")]
+        [McpServerTool, Description("Edit a surface property. property can be: radius, thickness, material, conic, semi_diameter, semi_diameter_mode (auto/fixed), inner_radius, obscuration, stop (true/false), type (standard/paraxial), focal_length (mm, for a paraxial ideal-lens surface). value is the new value as a string.")]
         public string EditSurface(int surfaceIndex, string property, string value)
         {
             var sys = _session.System;
@@ -478,6 +478,27 @@ namespace LensHH.Mcp.Tools
                         foreach (var surf in sys.Surfaces) surf.IsStop = false;
                     s.IsStop = isStop;
                     break;
+                case "type":
+                    if (value.Equals("paraxial", StringComparison.OrdinalIgnoreCase))
+                        s.Type = SurfaceType.Paraxial;
+                    else if (value.Equals("standard", StringComparison.OrdinalIgnoreCase))
+                        s.Type = SurfaceType.Standard;
+                    else if (value.Equals("even_asphere", StringComparison.OrdinalIgnoreCase) ||
+                             value.Equals("evenasphere", StringComparison.OrdinalIgnoreCase))
+                        s.Type = SurfaceType.EvenAsphere;
+                    else
+                        return "Use 'standard', 'paraxial', or 'even_asphere'.";
+                    break;
+                case "focal_length":
+                    // Focal length applies to a Paraxial (ideal-lens) surface; setting it
+                    // makes the surface Paraxial. Use +/-Infinity (afocal) or a finite mm value.
+                    if (value.Equals("inf", StringComparison.OrdinalIgnoreCase) ||
+                        value.Equals("infinity", StringComparison.OrdinalIgnoreCase))
+                    { s.Type = SurfaceType.Paraxial; s.FocalLength = double.PositiveInfinity; }
+                    else if (double.TryParse(value, out double fl))
+                    { s.Type = SurfaceType.Paraxial; s.FocalLength = fl; }
+                    else return "Invalid focal_length value.";
+                    break;
                 default:
                     return $"Unknown property '{property}'.";
             }
@@ -504,7 +525,7 @@ namespace LensHH.Mcp.Tools
             return $"Surface {surfaceIndex} set to Even Asphere with {Math.Min(parts.Length, 8)} coefficients.";
         }
 
-        [McpServerTool, Description("Set a surface variable for optimization. property can be: radius, thickness, conic, aspheric (with optional index 0-7). Set variable=true to make variable, false to fix. Optional: min and max bounds for constrained optimization.")]
+        [McpServerTool, Description("Set a surface variable for optimization. property can be: radius, thickness, conic, aspheric (with optional index 0-7), focal_length/focal_power (a paraxial ideal-lens surface — the optimizer varies POWER, so min/max are in DIOPTERS = 1000/f). Set variable=true to make variable, false to fix. Optional: min and max bounds for constrained optimization.")]
         public string SetVariable(int surfaceIndex, string property, bool variable, double? min = null, double? max = null)
         {
             var sys = _session.System;
@@ -528,6 +549,13 @@ namespace LensHH.Mcp.Tools
                     s.ConicVariable = variable;
                     if (min.HasValue) s.ConicMin = min.Value;
                     if (max.HasValue) s.ConicMax = max.Value;
+                    break;
+                case "focal_length":
+                case "focal_power":
+                    // Paraxial ideal lens: optimizer varies POWER, so bounds are diopters.
+                    s.FocalLengthVariable = variable;
+                    if (min.HasValue) s.FocalPowerMin = min.Value;
+                    if (max.HasValue) s.FocalPowerMax = max.Value;
                     break;
                 default:
                     if (property.StartsWith("aspheric", StringComparison.OrdinalIgnoreCase))
@@ -567,6 +595,15 @@ namespace LensHH.Mcp.Tools
             sb.AppendLine($"  Conic: {s.Conic:F6}");
             sb.AppendLine($"  Stop: {s.IsStop}");
             sb.AppendLine($"  Variables: C={s.CurvatureVariable} T={s.ThicknessVariable} K={s.ConicVariable}");
+
+            if (s.Type == SurfaceType.Paraxial)
+            {
+                sb.AppendLine($"  Focal Length: {s.FocalLength:F6} mm (Power: {s.FocalPower:F6} D)");
+                sb.AppendLine($"  Focal Length Variable: {s.FocalLengthVariable}" +
+                    (s.FocalLengthVariable
+                        ? $"  Power Bounds [D]: [{s.FocalPowerMin?.ToString("G6") ?? "-inf"}, {s.FocalPowerMax?.ToString("G6") ?? "+inf"}]"
+                        : ""));
+            }
 
             if (s.Type == SurfaceType.EvenAsphere)
             {

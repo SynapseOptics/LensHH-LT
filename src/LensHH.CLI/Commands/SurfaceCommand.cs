@@ -19,12 +19,12 @@ namespace LensHH.CLI.Commands
   [green]surface remove <index>[/]              Remove surface at index
   [green]surface edit <index> <param>=<value>[/] Edit surface parameters
     Parameters: radius, thickness, material, semi-diameter, semi-diameter-mode=auto|fixed, conic, stop,
-               inner-radius, obscuration
+               inner-radius, obscuration, type=standard|paraxial, focal-length (mm, ideal lens)
   [green]surface set-asphere <index> <a1> <a2> ...[/] Set aspheric coefficients
   [green]surface clear-fixed-diameters[/]   Reset all semi-diameters to auto mode
   [green]surface set-ca <s1> <s2> <percent>[/]  Set clear aperture % for surface range (Auto only)
   [green]surface variable <param> <surfaces> [[on|off]] [[noinf]] [[min=<v>]] [[max=<v>]][/]
-    Parameters: curvature, thickness, conic, aspheric [[terms]]
+    Parameters: curvature, thickness, conic, aspheric [[terms]], focal-length (min/max in DIOPTERS)
     Surfaces: 3, 1-5, all, glass, air, glass 1-5, air 1-5
     noinf: skip infinite-radius surfaces (curvature only)
     Aspheric terms: omit=all, 3=single, 0,2,4=list, 0-3=range (0-7 maps to A2-A16)
@@ -254,6 +254,23 @@ namespace LensHH.CLI.Commands
                         if (double.TryParse(kv[1], NumberStyles.Float, CultureInfo.InvariantCulture, out double ob))
                             surface.ObscurationRadius = ob;
                         break;
+                    case "type":
+                        if (kv[1].Equals("paraxial", StringComparison.OrdinalIgnoreCase))
+                            surface.Type = SurfaceType.Paraxial;
+                        else if (kv[1].Equals("standard", StringComparison.OrdinalIgnoreCase))
+                            surface.Type = SurfaceType.Standard;
+                        else if (kv[1].Equals("even-asphere", StringComparison.OrdinalIgnoreCase) ||
+                                 kv[1].Equals("even_asphere", StringComparison.OrdinalIgnoreCase))
+                            surface.Type = SurfaceType.EvenAsphere;
+                        break;
+                    case "focal-length":
+                        // Paraxial ideal-lens focal length (mm); setting it makes the surface Paraxial.
+                        if (kv[1].Equals("inf", StringComparison.OrdinalIgnoreCase) ||
+                            kv[1].Equals("infinity", StringComparison.OrdinalIgnoreCase))
+                        { surface.Type = SurfaceType.Paraxial; surface.FocalLength = double.PositiveInfinity; }
+                        else if (double.TryParse(kv[1], NumberStyles.Float, CultureInfo.InvariantCulture, out double fl))
+                        { surface.Type = SurfaceType.Paraxial; surface.FocalLength = fl; }
+                        break;
                 }
             }
 
@@ -300,9 +317,15 @@ namespace LensHH.CLI.Commands
             }
 
             var param = args[1].ToLowerInvariant();
-            if (param != "curvature" && param != "thickness" && param != "conic" && param != "aspheric")
+            // Paraxial focal length is entered in mm but optimized as POWER; accept any
+            // spelling and collapse to the canonical "focal_power".
+            if (param == "focal-length" || param == "focal_length" ||
+                param == "focal-power" || param == "focal_power")
+                param = "focal_power";
+            if (param != "curvature" && param != "thickness" && param != "conic" &&
+                param != "aspheric" && param != "focal_power")
             {
-                AnsiConsole.MarkupLine($"[yellow]Unknown parameter: {Markup.Escape(param)}. Use curvature, thickness, conic, or aspheric.[/]");
+                AnsiConsole.MarkupLine($"[yellow]Unknown parameter: {Markup.Escape(param)}. Use curvature, thickness, conic, aspheric, or focal-length.[/]");
                 return;
             }
 
@@ -401,6 +424,12 @@ namespace LensHH.CLI.Commands
                         surface.ConicVariable = enable;
                         if (min.HasValue) surface.ConicMin = min;
                         if (max.HasValue) surface.ConicMax = max;
+                        break;
+                    case "focal_power":
+                        // Paraxial ideal lens: optimizer varies POWER, so min/max are diopters (1000/f).
+                        surface.FocalLengthVariable = enable;
+                        if (min.HasValue) surface.FocalPowerMin = min;
+                        if (max.HasValue) surface.FocalPowerMax = max;
                         break;
                     case "aspheric":
                         var terms = ParseAsphericTerms(args);

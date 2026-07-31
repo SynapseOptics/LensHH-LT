@@ -87,7 +87,7 @@ namespace LensHH.API
         void RemoveSurface(int index);
         void SetSurface(int index, double? radius = null, double? thickness = null,
             string? material = null, double? semiDiameter = null, double? conic = null,
-            bool? isStop = null);
+            bool? isStop = null, double? focalLength = null);
 
         void SetWavelengths(double[] wavelengthsUm, int primaryIndex = 0);
         void AddWavelength(double wavelengthUm, double weight = 1.0, bool isPrimary = false);
@@ -97,6 +97,7 @@ namespace LensHH.API
         void SetCurvatureVariable(int surfaceIndex, bool variable = true, double? min = null, double? max = null);
         void SetThicknessVariable(int surfaceIndex, bool variable = true, double? min = null, double? max = null);
         void SetConicVariable(int surfaceIndex, bool variable = true, double? min = null, double? max = null);
+        void SetFocalLengthVariable(int surfaceIndex, bool variable = true, double? minPower = null, double? maxPower = null);
         void SetAsphericVariable(int surfaceIndex, int termIndex, bool variable = true, double? min = null, double? max = null);
         void SetCurvatureVariableRange(int surface1, int surface2, bool variable = true, bool skipInfiniteRadius = true);
         void SetThicknessVariableRange(int surface1, int surface2, bool variable = true);

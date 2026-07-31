@@ -42,6 +42,13 @@ table. Typical choices:
   Standard until you set a non-zero conic; even-aspheres carry a
   conic in addition to the polynomial coefficients).
 - Aspheric coefficients on even-asphere surfaces.
+- Focal length of a **Paraxial** (ideal-lens) surface. You enter and read
+  the focal length in millimetres, but — exactly like Radius vs Curvature —
+  the optimizer varies the **power** (diopters, `1000/f`). Power is what makes
+  the bounds meaningful: it is continuous through afocal (`f = ±∞ ↔ 0 D`) and
+  sign-symmetric, so a `Min`/`Max` range like `−20 … 20 D` is well defined
+  whereas a focal-length range spanning infinity is not. The variable is
+  labelled *Focal Power (D)* in the editor.
 - Glass choice — Multistart and Basin Hopping can substitute glasses
   during search.
 - Clear-aperture semi-diameter on Fixed-aperture surfaces — let the

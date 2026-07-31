@@ -183,7 +183,7 @@ Each row in the Lens Editor is one surface, ordered object → image:
 | Column | What it is |
 |---|---|
 | **Surf** | Surface number (`OBJ`, then `1, 2, …`, `IMG`). |
-| **Surface Type** | Standard (spherical) or an aspheric type. |
+| **Surface Type** | Standard (spherical), an aspheric type, or **Paraxial** (an ideal thin lens defined by a focal length — see below). |
 | **Stop** | Checkbox marking the aperture stop. |
 | **Radius (mm)** | Radius of curvature (`Infinity` for a flat surface). |
 | **Thickness (mm)** | Axial distance to the next surface. |
@@ -193,6 +193,17 @@ Each row in the Lens Editor is one surface, ordered object → image:
 | **CA %** | Clear-aperture percent, on Auto surfaces (see below). |
 | **Fixed SD** | Checkbox choosing how the semi-diameter is set. |
 | **Properties** | The `…` button — per-surface variable / pickup, aspheric, and aperture settings. |
+
+**Paraxial (ideal thin lens) surfaces.** Setting a surface's type to
+**Paraxial** turns it into an ideal thin lens defined by a single **focal
+length** (mm) — it bends rays with no aberration and no thickness. Radius,
+conic, and glass are ignored and shown blank; the focal length is edited in the
+surface **Properties** dialog (a positive *f* converges, negative diverges,
+`Infinity` is afocal / no power). It carries the surrounding indices, so an
+immersed ideal lens of focal length *f* in medium *n* focuses at *n·f*. Paraxial
+surfaces are handy for representing a "perfect" element, a relay, or a stand-in
+for a subsystem you have not designed yet. They run on CPU only (never the GPU),
+and they are diffraction-limited: an on-axis WAVEX/OPD merit reads ≈ 0 at focus.
 
 **Apertures — the Semi-Diameter, CA %, and Fixed SD columns.** These
 three work together to set each surface's clear aperture:
