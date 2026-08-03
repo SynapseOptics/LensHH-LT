@@ -2,7 +2,18 @@
 
 All notable changes to LensHH-LT and the LensHH-LT-Engine.
 
-## 1.0.140 — unreleased
+## 1.0.141 — unreleased
+
+### Fixed
+- **2D layout rendering of paraxial surfaces.** In a system containing paraxial
+  (ideal thin lens) surfaces, the 2D layout could draw each field's rays crossing
+  the paraxial surface at a different axial position, so the ray bundles appeared
+  to focus at staggered planes. The rays are now drawn crossing the paraxial
+  surface at its true (flat) plane, so the layout renders correctly. Ray tracing,
+  optimization, and all analyses were already correct — this was a drawing-only
+  issue.
+
+## 1.0.140 — 2026-07-31
 
 ### Added
 - **Paraxial (ideal thin lens) surface.** A new surface type defined by a single
