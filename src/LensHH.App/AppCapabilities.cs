@@ -22,6 +22,12 @@ namespace LensHH.App
         /// merit editor. Default false (LT); the advanced-edition host sets it true.</summary>
         public static bool SagittalFieldSupported { get; set; } = false;
 
+        /// <summary>True when the edition supports PRO surface types (Coordinate Break) — offers
+        /// "Coordinate Break" in the Lens Editor's surface-Type dropdown and enables its Properties
+        /// tab. Default false (LT); the advanced-edition host sets it true. A Coordinate Break loaded
+        /// from a file still displays regardless (only creation via the dropdown is gated).</summary>
+        public static bool CoordinateBreakSupported { get; set; } = false;
+
         /// <summary>
         /// Version string shown in the About box. When null (default) the About box falls back
         /// to this assembly's version. A host whose own assembly carries the product version

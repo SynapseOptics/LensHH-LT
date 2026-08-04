@@ -173,6 +173,9 @@ namespace LensHH.Core.IO
         public int SourceConfigurationIndex { get; set; } = -1;
         public double ScaleFactor { get; set; } = 1.0;
         public double Offset { get; set; }
+        // 0-based generic-parameter slot; only used when Parameter == SurfaceParameter
+        // (PRO Coordinate Break). Defaults to 0 for all legacy single-value pickups.
+        public int ParameterIndex { get; set; }
     }
 
     public class LhltMeritFunction

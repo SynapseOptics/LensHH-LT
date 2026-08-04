@@ -19,24 +19,29 @@ public partial class ParameterStateViewModel : ObservableObject
     private readonly Surface _surface;
     private readonly GuiSession _session;
     private readonly PickupParameter _pickupParam;
+    // 0-based generic-parameter slot; only meaningful for a SurfaceParameter pickup
+    // (PRO Coordinate Break), where one surface carries several distinct params under
+    // the same PickupParameter. -1 for every ordinary single-value parameter.
+    private readonly int _paramIndex;
     private readonly Func<bool> _getVar;
     private readonly Action<bool> _setVar;
     private readonly bool _canVary;
 
     public ParameterStateViewModel(string label, Surface surface, GuiSession session,
-        PickupParameter pickupParam, Func<bool> getVar, Action<bool> setVar, bool canVary = true)
+        PickupParameter pickupParam, Func<bool> getVar, Action<bool> setVar,
+        bool canVary = true, int paramIndex = -1)
     {
         Label = label;
         _surface = surface;
         _session = session;
         _pickupParam = pickupParam;
+        _paramIndex = paramIndex;
         _getVar = getVar;
         _setVar = setVar;
         _canVary = canVary;
 
         // Find existing pickup
-        var pickup = session.System.Pickups.FirstOrDefault(
-            p => p.TargetSurfaceIndex == surface.Index && p.Parameter == pickupParam);
+        var pickup = session.System.Pickups.FirstOrDefault(Matches);
         if (pickup != null)
         {
             _isPickup = true;
@@ -45,6 +50,13 @@ public partial class ParameterStateViewModel : ObservableObject
             _pickupOffset = pickup.Offset;
         }
     }
+
+    /// <summary>Matches a pickup to THIS parameter: same target surface and parameter,
+    /// and — for a slot-indexed SurfaceParameter pickup — the same slot.</summary>
+    private bool Matches(Pickup p) =>
+        p.TargetSurfaceIndex == _surface.Index
+        && p.Parameter == _pickupParam
+        && (_pickupParam != PickupParameter.SurfaceParameter || p.ParameterIndex == _paramIndex);
 
     [ObservableProperty] private bool _isPickup;
 
@@ -135,8 +147,7 @@ public partial class ParameterStateViewModel : ObservableObject
 
     private void EnsurePickup()
     {
-        var existing = _session.System.Pickups.FirstOrDefault(
-            p => p.TargetSurfaceIndex == _surface.Index && p.Parameter == _pickupParam);
+        var existing = _session.System.Pickups.FirstOrDefault(Matches);
         if (existing == null)
         {
             int src = ResolvePickupSource();
@@ -145,6 +156,7 @@ public partial class ParameterStateViewModel : ObservableObject
             {
                 TargetSurfaceIndex = _surface.Index,
                 Parameter = _pickupParam,
+                ParameterIndex = _paramIndex < 0 ? 0 : _paramIndex,
                 SourceSurfaceIndex = src,
                 ScaleFactor = PickupScale,
                 Offset = PickupOffset
@@ -154,8 +166,7 @@ public partial class ParameterStateViewModel : ObservableObject
 
     private void RemovePickup()
     {
-        _session.System.Pickups.RemoveAll(
-            p => p.TargetSurfaceIndex == _surface.Index && p.Parameter == _pickupParam);
+        _session.System.Pickups.RemoveAll(Matches);
     }
 
     public void SavePickup()
@@ -168,6 +179,7 @@ public partial class ParameterStateViewModel : ObservableObject
         {
             TargetSurfaceIndex = _surface.Index,
             Parameter = _pickupParam,
+            ParameterIndex = _paramIndex < 0 ? 0 : _paramIndex,
             SourceSurfaceIndex = src,
             ScaleFactor = PickupScale,
             Offset = PickupOffset
@@ -189,6 +201,9 @@ public partial class SurfacePropertiesViewModel : ObservableObject
     /// <summary>True for a Paraxial (ideal thin lens) surface — drives the
     /// Focal Length tab's visibility (its only shape parameter).</summary>
     public bool IsParaxial => _surface.Type == SurfaceType.Paraxial;
+    /// <summary>True for a Coordinate Break (PRO) surface — drives the Coordinate Break
+    /// tab's visibility. Its shape is five generic params (decenter X/Y, tilt X/Y/Z) + Order.</summary>
+    public bool IsCoordinateBreak => _surface.Type == SurfaceType.CoordinateBreak;
 
     // Variable/Pickup tab
     public ParameterStateViewModel CurvatureState { get; }
@@ -212,6 +227,15 @@ public partial class SurfacePropertiesViewModel : ObservableObject
     // Paraxial (ideal thin lens) focal length — the surface's single shape
     // parameter, Fixed / Variable / Pickup like any other.
     public ParameterStateViewModel FocalLengthState { get; }
+
+    // Coordinate Break (PRO): five generic params, each Fixed / Variable / Pickup.
+    // Slots 0..4 = Decenter X, Decenter Y, Tilt X, Tilt Y, Tilt Z (0-based storage;
+    // "Parameter 1..5" to the user). Order lives in Settings[0].
+    public ParameterStateViewModel DecenterXState { get; }
+    public ParameterStateViewModel DecenterYState { get; }
+    public ParameterStateViewModel TiltXState { get; }
+    public ParameterStateViewModel TiltYState { get; }
+    public ParameterStateViewModel TiltZState { get; }
 
     /// <summary>
     /// Enable/disable model-glass mode. Toggling is where Glass ⇄ Model
@@ -291,6 +315,23 @@ public partial class SurfacePropertiesViewModel : ObservableObject
     {
         get => _surface.FocalLength;
         set { _surface.FocalLength = value; OnPropertyChanged(); OnPropertyChanged(nameof(FocalPowerText)); }
+    }
+
+    // ── Coordinate Break parameters (mm / degrees). Stored 0-based in Surface.Parameters;
+    //    exposed here as named values. Order is Settings[0] (0 = decenter then tilt,
+    //    the ZEMAX default; 1 = tilt then decenter). ─────────────────────────────────────
+    public double DecenterXValue { get => _surface.Parameters[0]; set { _surface.Parameters[0] = value; OnPropertyChanged(); } }
+    public double DecenterYValue { get => _surface.Parameters[1]; set { _surface.Parameters[1] = value; OnPropertyChanged(); } }
+    public double TiltXValue     { get => _surface.Parameters[2]; set { _surface.Parameters[2] = value; OnPropertyChanged(); } }
+    public double TiltYValue     { get => _surface.Parameters[3]; set { _surface.Parameters[3] = value; OnPropertyChanged(); } }
+    public double TiltZValue     { get => _surface.Parameters[4]; set { _surface.Parameters[4] = value; OnPropertyChanged(); } }
+
+    /// <summary>Coordinate Break Order: 0 = decenter then tilt (ZEMAX default), 1 = tilt
+    /// then decenter. Bound to a two-item ComboBox (SelectedIndex).</summary>
+    public int OrderIndex
+    {
+        get => _surface.Settings[0] == 1 ? 1 : 0;
+        set { _surface.Settings[0] = value == 1 ? 1 : 0; OnPropertyChanged(); }
     }
 
     /// <summary>Read-only optical power in diopters — the quantity the optimizer
@@ -420,6 +461,20 @@ public partial class SurfacePropertiesViewModel : ObservableObject
 
         FocalLengthState = new ParameterStateViewModel("Focal Length", surface, session,
             PickupParameter.FocalLength, () => surface.FocalLengthVariable, v => surface.FocalLengthVariable = v);
+
+        // Coordinate Break params: each slot 0..4 is Fixed / Variable / Pickup, keyed by
+        // the generic SurfaceParameter pickup + its slot. Variable flag lives in
+        // Surface.ParameterVariable[slot]; bounds (for the Variable Editor) in ParameterMin/Max[slot].
+        DecenterXState = new ParameterStateViewModel("Decenter X", surface, session,
+            PickupParameter.SurfaceParameter, () => surface.ParameterVariable[0], v => surface.ParameterVariable[0] = v, paramIndex: 0);
+        DecenterYState = new ParameterStateViewModel("Decenter Y", surface, session,
+            PickupParameter.SurfaceParameter, () => surface.ParameterVariable[1], v => surface.ParameterVariable[1] = v, paramIndex: 1);
+        TiltXState = new ParameterStateViewModel("Tilt X", surface, session,
+            PickupParameter.SurfaceParameter, () => surface.ParameterVariable[2], v => surface.ParameterVariable[2] = v, paramIndex: 2);
+        TiltYState = new ParameterStateViewModel("Tilt Y", surface, session,
+            PickupParameter.SurfaceParameter, () => surface.ParameterVariable[3], v => surface.ParameterVariable[3] = v, paramIndex: 3);
+        TiltZState = new ParameterStateViewModel("Tilt Z", surface, session,
+            PickupParameter.SurfaceParameter, () => surface.ParameterVariable[4], v => surface.ParameterVariable[4] = v, paramIndex: 4);
     }
 
     public void Apply()
@@ -433,6 +488,11 @@ public partial class SurfacePropertiesViewModel : ObservableObject
         ModelVdState.SavePickup();
         ModelDPgFState.SavePickup();
         FocalLengthState.SavePickup();
+        DecenterXState.SavePickup();
+        DecenterYState.SavePickup();
+        TiltXState.SavePickup();
+        TiltYState.SavePickup();
+        TiltZState.SavePickup();
         _session.NotifySystemChanged("properties");
     }
 }

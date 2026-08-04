@@ -227,6 +227,21 @@ public partial class VariableEditorViewModel : ObservableObject
                 Variables.Add(new VariableRowViewModel(num++, "Focal Power (D)", s.Index,
                     () => s.FocalPowerMin, () => s.FocalPowerMax,
                     v => s.FocalPowerMin = v, v => s.FocalPowerMax = v));
+
+            // Coordinate Break (PRO): each free decenter/tilt param varies with its own
+            // min/max bounds in Surface.ParameterMin/Max[slot] (slots 0..4).
+            if (s.Type == SurfaceType.CoordinateBreak)
+            {
+                string[] cbNames = { "Decenter X", "Decenter Y", "Tilt X", "Tilt Y", "Tilt Z" };
+                for (int k = 0; k < cbNames.Length; k++)
+                {
+                    int slot = k; // capture per iteration
+                    if (s.ParameterVariable[slot])
+                        Variables.Add(new VariableRowViewModel(num++, "CB " + cbNames[slot], s.Index,
+                            () => s.ParameterMin[slot], () => s.ParameterMax[slot],
+                            v => s.ParameterMin[slot] = v, v => s.ParameterMax[slot] = v));
+                }
+            }
         }
 
         // Config-specific variables (advanced edition): shown here with editable bounds. The Solve

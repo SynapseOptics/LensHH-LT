@@ -164,7 +164,8 @@ namespace LensHH.Core.IO
                     SourceSurfaceIndex = p.SourceSurfaceIndex,
                     SourceConfigurationIndex = p.SourceConfigurationIndex,
                     ScaleFactor = p.ScaleFactor,
-                    Offset = p.Offset
+                    Offset = p.Offset,
+                    ParameterIndex = p.ParameterIndex
                 });
             }
 

@@ -371,6 +371,142 @@
           </StackPanel>
         </ScrollViewer>
       </TabItem>
+
+      <!-- ═══ Coordinate Break Tab (PRO surface type) ═══ -->
+      <TabItem Header="Coordinate Break" IsVisible="{Binding IsCoordinateBreak}">
+        <ScrollViewer>
+          <StackPanel Margin="12" Spacing="12">
+            <TextBlock Text="Coordinate Break — decenter and tilt of the local coordinate frame."
+                       TextWrapping="Wrap" FontSize="12" Foreground="#666" />
+
+            <!-- Order -->
+            <Border BorderBrush="#CCC" BorderThickness="1" CornerRadius="4" Padding="12,8">
+              <DockPanel>
+                <TextBlock Text="Order:" Width="70" VerticalAlignment="Center" />
+                <ComboBox SelectedIndex="{Binding OrderIndex}" Width="230">
+                  <ComboBoxItem>Decenter then Tilt (0)</ComboBoxItem>
+                  <ComboBoxItem>Tilt then Decenter (1)</ComboBoxItem>
+                </ComboBox>
+              </DockPanel>
+            </Border>
+
+            <!-- Decenter X -->
+            <Border BorderBrush="#CCC" BorderThickness="1" CornerRadius="4" Padding="12,8">
+              <StackPanel Spacing="6">
+                <DockPanel>
+                  <TextBlock Text="Decenter X (mm):" Width="130" VerticalAlignment="Center" />
+                  <TextBox Text="{Binding DecenterXValue, UpdateSourceTrigger=LostFocus}" Width="160" />
+                </DockPanel>
+                <StackPanel Orientation="Horizontal" Spacing="20">
+                  <RadioButton Content="Fixed" IsChecked="{Binding DecenterXState.IsFixed}" GroupName="CbDecX" />
+                  <RadioButton Content="Variable" IsChecked="{Binding DecenterXState.IsVariable}" GroupName="CbDecX" />
+                  <RadioButton Content="Pickup" IsChecked="{Binding DecenterXState.IsPickupSelected}" GroupName="CbDecX" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding DecenterXState.IsPickup}">
+                  <TextBlock Text="Source Surf:" VerticalAlignment="Center" />
+                  <ComboBox ItemsSource="{Binding DecenterXState.AvailablePickupSurfaces}" SelectedItem="{Binding DecenterXState.PickupSourceSurface}" Width="70" />
+                  <TextBlock Text="Scale:" VerticalAlignment="Center" />
+                  <TextBox Text="{Binding DecenterXState.PickupScale, UpdateSourceTrigger=LostFocus}" Width="70" />
+                  <TextBlock Text="Offset:" VerticalAlignment="Center" />
+                  <TextBox Text="{Binding DecenterXState.PickupOffset, UpdateSourceTrigger=LostFocus}" Width="70" />
+                </StackPanel>
+              </StackPanel>
+            </Border>
+
+            <!-- Decenter Y -->
+            <Border BorderBrush="#CCC" BorderThickness="1" CornerRadius="4" Padding="12,8">
+              <StackPanel Spacing="6">
+                <DockPanel>
+                  <TextBlock Text="Decenter Y (mm):" Width="130" VerticalAlignment="Center" />
+                  <TextBox Text="{Binding DecenterYValue, UpdateSourceTrigger=LostFocus}" Width="160" />
+                </DockPanel>
+                <StackPanel Orientation="Horizontal" Spacing="20">
+                  <RadioButton Content="Fixed" IsChecked="{Binding DecenterYState.IsFixed}" GroupName="CbDecY" />
+                  <RadioButton Content="Variable" IsChecked="{Binding DecenterYState.IsVariable}" GroupName="CbDecY" />
+                  <RadioButton Content="Pickup" IsChecked="{Binding DecenterYState.IsPickupSelected}" GroupName="CbDecY" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding DecenterYState.IsPickup}">
+                  <TextBlock Text="Source Surf:" VerticalAlignment="Center" />
+                  <ComboBox ItemsSource="{Binding DecenterYState.AvailablePickupSurfaces}" SelectedItem="{Binding DecenterYState.PickupSourceSurface}" Width="70" />
+                  <TextBlock Text="Scale:" VerticalAlignment="Center" />
+                  <TextBox Text="{Binding DecenterYState.PickupScale, UpdateSourceTrigger=LostFocus}" Width="70" />
+                  <TextBlock Text="Offset:" VerticalAlignment="Center" />
+                  <TextBox Text="{Binding DecenterYState.PickupOffset, UpdateSourceTrigger=LostFocus}" Width="70" />
+                </StackPanel>
+              </StackPanel>
+            </Border>
+
+            <!-- Tilt X -->
+            <Border BorderBrush="#CCC" BorderThickness="1" CornerRadius="4" Padding="12,8">
+              <StackPanel Spacing="6">
+                <DockPanel>
+                  <TextBlock Text="Tilt X (deg):" Width="130" VerticalAlignment="Center" />
+                  <TextBox Text="{Binding TiltXValue, UpdateSourceTrigger=LostFocus}" Width="160" />
+                </DockPanel>
+                <StackPanel Orientation="Horizontal" Spacing="20">
+                  <RadioButton Content="Fixed" IsChecked="{Binding TiltXState.IsFixed}" GroupName="CbTiltX" />
+                  <RadioButton Content="Variable" IsChecked="{Binding TiltXState.IsVariable}" GroupName="CbTiltX" />
+                  <RadioButton Content="Pickup" IsChecked="{Binding TiltXState.IsPickupSelected}" GroupName="CbTiltX" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding TiltXState.IsPickup}">
+                  <TextBlock Text="Source Surf:" VerticalAlignment="Center" />
+                  <ComboBox ItemsSource="{Binding TiltXState.AvailablePickupSurfaces}" SelectedItem="{Binding TiltXState.PickupSourceSurface}" Width="70" />
+                  <TextBlock Text="Scale:" VerticalAlignment="Center" />
+                  <TextBox Text="{Binding TiltXState.PickupScale, UpdateSourceTrigger=LostFocus}" Width="70" />
+                  <TextBlock Text="Offset:" VerticalAlignment="Center" />
+                  <TextBox Text="{Binding TiltXState.PickupOffset, UpdateSourceTrigger=LostFocus}" Width="70" />
+                </StackPanel>
+              </StackPanel>
+            </Border>
+
+            <!-- Tilt Y -->
+            <Border BorderBrush="#CCC" BorderThickness="1" CornerRadius="4" Padding="12,8">
+              <StackPanel Spacing="6">
+                <DockPanel>
+                  <TextBlock Text="Tilt Y (deg):" Width="130" VerticalAlignment="Center" />
+                  <TextBox Text="{Binding TiltYValue, UpdateSourceTrigger=LostFocus}" Width="160" />
+                </DockPanel>
+                <StackPanel Orientation="Horizontal" Spacing="20">
+                  <RadioButton Content="Fixed" IsChecked="{Binding TiltYState.IsFixed}" GroupName="CbTiltY" />
+                  <RadioButton Content="Variable" IsChecked="{Binding TiltYState.IsVariable}" GroupName="CbTiltY" />
+                  <RadioButton Content="Pickup" IsChecked="{Binding TiltYState.IsPickupSelected}" GroupName="CbTiltY" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding TiltYState.IsPickup}">
+                  <TextBlock Text="Source Surf:" VerticalAlignment="Center" />
+                  <ComboBox ItemsSource="{Binding TiltYState.AvailablePickupSurfaces}" SelectedItem="{Binding TiltYState.PickupSourceSurface}" Width="70" />
+                  <TextBlock Text="Scale:" VerticalAlignment="Center" />
+                  <TextBox Text="{Binding TiltYState.PickupScale, UpdateSourceTrigger=LostFocus}" Width="70" />
+                  <TextBlock Text="Offset:" VerticalAlignment="Center" />
+                  <TextBox Text="{Binding TiltYState.PickupOffset, UpdateSourceTrigger=LostFocus}" Width="70" />
+                </StackPanel>
+              </StackPanel>
+            </Border>
+
+            <!-- Tilt Z -->
+            <Border BorderBrush="#CCC" BorderThickness="1" CornerRadius="4" Padding="12,8">
+              <StackPanel Spacing="6">
+                <DockPanel>
+                  <TextBlock Text="Tilt Z (deg):" Width="130" VerticalAlignment="Center" />
+                  <TextBox Text="{Binding TiltZValue, UpdateSourceTrigger=LostFocus}" Width="160" />
+                </DockPanel>
+                <StackPanel Orientation="Horizontal" Spacing="20">
+                  <RadioButton Content="Fixed" IsChecked="{Binding TiltZState.IsFixed}" GroupName="CbTiltZ" />
+                  <RadioButton Content="Variable" IsChecked="{Binding TiltZState.IsVariable}" GroupName="CbTiltZ" />
+                  <RadioButton Content="Pickup" IsChecked="{Binding TiltZState.IsPickupSelected}" GroupName="CbTiltZ" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding TiltZState.IsPickup}">
+                  <TextBlock Text="Source Surf:" VerticalAlignment="Center" />
+                  <ComboBox ItemsSource="{Binding TiltZState.AvailablePickupSurfaces}" SelectedItem="{Binding TiltZState.PickupSourceSurface}" Width="70" />
+                  <TextBlock Text="Scale:" VerticalAlignment="Center" />
+                  <TextBox Text="{Binding TiltZState.PickupScale, UpdateSourceTrigger=LostFocus}" Width="70" />
+                  <TextBlock Text="Offset:" VerticalAlignment="Center" />
+                  <TextBox Text="{Binding TiltZState.PickupOffset, UpdateSourceTrigger=LostFocus}" Width="70" />
+                </StackPanel>
+              </StackPanel>
+            </Border>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
     </TabControl>
   </DockPanel>
 </Window>
