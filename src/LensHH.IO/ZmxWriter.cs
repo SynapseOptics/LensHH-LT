@@ -158,6 +158,9 @@ namespace LensHH.Core.IO
                     case SurfaceType.Paraxial:
                         sb.AppendLine("  TYPE PARAXIAL");
                         break;
+                    case SurfaceType.CoordinateBreak:
+                        sb.AppendLine("  TYPE COORDBRK");
+                        break;
                 }
 
                 sb.AppendLine(FormatDouble("  CURV", surface.Curvature));
@@ -224,6 +227,20 @@ namespace LensHH.Core.IO
                     if (surface.FocalLengthVariable)
                         sb.AppendLine("  VPAR 1");
                     sb.AppendLine("  PARM 2 1");
+                }
+                else if (surface.Type == SurfaceType.CoordinateBreak)
+                {
+                    // ZEMAX Coordinate Break: PARM 1-5 = Decenter X, Decenter Y, Tilt X,
+                    // Tilt Y, Tilt Z (Surface.Parameters[0-4], 1-based here); PARM 6 =
+                    // Order (Settings[0]). A VPAR line marks each variable parameter so
+                    // an optimized design round-trips.
+                    for (int i = 1; i <= 5; i++)
+                    {
+                        sb.AppendLine($"  PARM {i} {surface.GetParameter(i).ToString("G17", CultureInfo.InvariantCulture)}");
+                        if (surface.ParameterVariable[i - 1])
+                            sb.AppendLine($"  VPAR {i}");
+                    }
+                    sb.AppendLine($"  PARM 6 {surface.GetSetting(1)}");
                 }
             }
         }

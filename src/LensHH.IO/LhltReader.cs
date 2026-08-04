@@ -137,6 +137,19 @@ namespace LensHH.Core.IO
                     Array.Copy(ls.AsphericMax, s.AsphericMax, len);
                 }
 
+                // Generic indexed parameters (PRO surface types). Length-clamped so a
+                // file authored with a different MaxParameters can't overrun the arrays.
+                if (ls.Parameters != null)
+                    Array.Copy(ls.Parameters, s.Parameters, Math.Min(ls.Parameters.Length, s.Parameters.Length));
+                if (ls.Settings != null)
+                    Array.Copy(ls.Settings, s.Settings, Math.Min(ls.Settings.Length, s.Settings.Length));
+                if (ls.ParameterVariable != null)
+                    Array.Copy(ls.ParameterVariable, s.ParameterVariable, Math.Min(ls.ParameterVariable.Length, s.ParameterVariable.Length));
+                if (ls.ParameterMin != null)
+                    Array.Copy(ls.ParameterMin, s.ParameterMin, Math.Min(ls.ParameterMin.Length, s.ParameterMin.Length));
+                if (ls.ParameterMax != null)
+                    Array.Copy(ls.ParameterMax, s.ParameterMax, Math.Min(ls.ParameterMax.Length, s.ParameterMax.Length));
+
                 system.Surfaces.Add(s);
             }
 

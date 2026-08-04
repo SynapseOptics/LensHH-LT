@@ -795,6 +795,11 @@ namespace LensHH.Core.IO
                 case "PARAXIAL":
                     // Ideal thin lens: PARM 1 = focal length (mm), PARM 2 = OPD mode.
                     return SurfaceType.Paraxial;
+                case "COORDBRK":
+                    // Coordinate break: PARM 1-5 = Decenter X, Decenter Y, Tilt X,
+                    // Tilt Y, Tilt Z; PARM 6 = Order. Maps onto Surface.Parameters[0-4]
+                    // + Settings[0]. (PRO trace; the format handling is public.)
+                    return SurfaceType.CoordinateBreak;
                 default:
                     // Unsupported surface types default to Standard
                     return SurfaceType.Standard;
@@ -813,6 +818,16 @@ namespace LensHH.Core.IO
                     if (surface.Type == SurfaceType.Paraxial)
                     {
                         if (paramIndex == 1) surface.FocalLength = val;
+                        return;
+                    }
+                    // Coordinate break: PARM 1-5 (1-based) → Parameters[0-4]
+                    // (DecX, DecY, TiltX, TiltY, TiltZ); PARM 6 → Order (Settings[0]).
+                    if (surface.Type == SurfaceType.CoordinateBreak)
+                    {
+                        if (paramIndex >= 1 && paramIndex <= 5)
+                            surface.SetParameter(paramIndex, val);
+                        else if (paramIndex == 6)
+                            surface.SetSetting(1, (int)System.Math.Round(val));
                         return;
                     }
                     // PARM 1-8 map to AsphericCoefficients[0-7]

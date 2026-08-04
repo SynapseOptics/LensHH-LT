@@ -114,6 +114,19 @@ namespace LensHH.Core.IO
                 if (s.AsphericMax != null && s.AsphericMax.Any(v => v.HasValue))
                     ls.AsphericMax = (double?[])s.AsphericMax.Clone();
 
+                // Generic indexed parameters — only written when actually used
+                // (keeps standard-surface files clean).
+                if (s.Parameters != null && s.Parameters.Any(p => p != 0))
+                    ls.Parameters = (double[])s.Parameters.Clone();
+                if (s.Settings != null && s.Settings.Any(v => v != 0))
+                    ls.Settings = (int[])s.Settings.Clone();
+                if (s.ParameterVariable != null && s.ParameterVariable.Any(v => v))
+                    ls.ParameterVariable = (bool[])s.ParameterVariable.Clone();
+                if (s.ParameterMin != null && s.ParameterMin.Any(v => v.HasValue))
+                    ls.ParameterMin = (double?[])s.ParameterMin.Clone();
+                if (s.ParameterMax != null && s.ParameterMax.Any(v => v.HasValue))
+                    ls.ParameterMax = (double?[])s.ParameterMax.Clone();
+
                 file.Surfaces.Add(ls);
             }
 

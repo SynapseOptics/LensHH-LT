@@ -138,6 +138,15 @@ namespace LensHH.Core.IO
         // Optimization bounds are on the power (diopters), not the focal length.
         public double? FocalPowerMin { get; set; }
         public double? FocalPowerMax { get; set; }
+
+        // Generic indexed parameters for PRO surface types (Coordinate Break, …).
+        // Null when unused (standard surfaces) to keep files clean. 0-based arrays;
+        // the UI/ZEMAX are 1-based. See Surface.Parameters/Settings.
+        public double[]? Parameters { get; set; }
+        public int[]? Settings { get; set; }
+        public bool[]? ParameterVariable { get; set; }
+        public double?[]? ParameterMin { get; set; }
+        public double?[]? ParameterMax { get; set; }
     }
 
     public class LhltWavelength
