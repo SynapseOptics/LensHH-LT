@@ -507,6 +507,108 @@
           </StackPanel>
         </ScrollViewer>
       </TabItem>
+
+      <!-- ═══ ABCD Tab (base ray-transfer-matrix surface) ═══ -->
+      <TabItem Header="ABCD" IsVisible="{Binding IsAbcd}">
+        <ScrollViewer>
+          <StackPanel Margin="12" Spacing="12">
+            <TextBlock Text="ABCD ray-transfer matrix — [x'; w'] = [[A,B],[C,D]]·[x; w] on ray height x and slope w (same in y). Phase analyses (OPD, MTF, Zernike) are unavailable while an ABCD surface is present."
+                       TextWrapping="Wrap" FontSize="12" Foreground="#666" />
+
+            <!-- A -->
+            <Border BorderBrush="#CCC" BorderThickness="1" CornerRadius="4" Padding="12,8">
+              <StackPanel Spacing="6">
+                <DockPanel>
+                  <TextBlock Text="A:" Width="130" VerticalAlignment="Center" />
+                  <TextBox Text="{Binding AValue, UpdateSourceTrigger=LostFocus}" Width="160" />
+                </DockPanel>
+                <StackPanel Orientation="Horizontal" Spacing="20">
+                  <RadioButton Content="Fixed" IsChecked="{Binding AState.IsFixed}" GroupName="AbcdA" />
+                  <RadioButton Content="Variable" IsChecked="{Binding AState.IsVariable}" GroupName="AbcdA" />
+                  <RadioButton Content="Pickup" IsChecked="{Binding AState.IsPickupSelected}" GroupName="AbcdA" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding AState.IsPickup}">
+                  <TextBlock Text="Source Surf:" VerticalAlignment="Center" />
+                  <ComboBox ItemsSource="{Binding AState.AvailablePickupSurfaces}" SelectedItem="{Binding AState.PickupSourceSurface}" Width="70" />
+                  <TextBlock Text="Scale:" VerticalAlignment="Center" />
+                  <TextBox Text="{Binding AState.PickupScale, UpdateSourceTrigger=LostFocus}" Width="70" />
+                  <TextBlock Text="Offset:" VerticalAlignment="Center" />
+                  <TextBox Text="{Binding AState.PickupOffset, UpdateSourceTrigger=LostFocus}" Width="70" />
+                </StackPanel>
+              </StackPanel>
+            </Border>
+
+            <!-- B -->
+            <Border BorderBrush="#CCC" BorderThickness="1" CornerRadius="4" Padding="12,8">
+              <StackPanel Spacing="6">
+                <DockPanel>
+                  <TextBlock Text="B:" Width="130" VerticalAlignment="Center" />
+                  <TextBox Text="{Binding BValue, UpdateSourceTrigger=LostFocus}" Width="160" />
+                </DockPanel>
+                <StackPanel Orientation="Horizontal" Spacing="20">
+                  <RadioButton Content="Fixed" IsChecked="{Binding BState.IsFixed}" GroupName="AbcdB" />
+                  <RadioButton Content="Variable" IsChecked="{Binding BState.IsVariable}" GroupName="AbcdB" />
+                  <RadioButton Content="Pickup" IsChecked="{Binding BState.IsPickupSelected}" GroupName="AbcdB" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding BState.IsPickup}">
+                  <TextBlock Text="Source Surf:" VerticalAlignment="Center" />
+                  <ComboBox ItemsSource="{Binding BState.AvailablePickupSurfaces}" SelectedItem="{Binding BState.PickupSourceSurface}" Width="70" />
+                  <TextBlock Text="Scale:" VerticalAlignment="Center" />
+                  <TextBox Text="{Binding BState.PickupScale, UpdateSourceTrigger=LostFocus}" Width="70" />
+                  <TextBlock Text="Offset:" VerticalAlignment="Center" />
+                  <TextBox Text="{Binding BState.PickupOffset, UpdateSourceTrigger=LostFocus}" Width="70" />
+                </StackPanel>
+              </StackPanel>
+            </Border>
+
+            <!-- C -->
+            <Border BorderBrush="#CCC" BorderThickness="1" CornerRadius="4" Padding="12,8">
+              <StackPanel Spacing="6">
+                <DockPanel>
+                  <TextBlock Text="C:" Width="130" VerticalAlignment="Center" />
+                  <TextBox Text="{Binding CValue, UpdateSourceTrigger=LostFocus}" Width="160" />
+                </DockPanel>
+                <StackPanel Orientation="Horizontal" Spacing="20">
+                  <RadioButton Content="Fixed" IsChecked="{Binding CState.IsFixed}" GroupName="AbcdC" />
+                  <RadioButton Content="Variable" IsChecked="{Binding CState.IsVariable}" GroupName="AbcdC" />
+                  <RadioButton Content="Pickup" IsChecked="{Binding CState.IsPickupSelected}" GroupName="AbcdC" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding CState.IsPickup}">
+                  <TextBlock Text="Source Surf:" VerticalAlignment="Center" />
+                  <ComboBox ItemsSource="{Binding CState.AvailablePickupSurfaces}" SelectedItem="{Binding CState.PickupSourceSurface}" Width="70" />
+                  <TextBlock Text="Scale:" VerticalAlignment="Center" />
+                  <TextBox Text="{Binding CState.PickupScale, UpdateSourceTrigger=LostFocus}" Width="70" />
+                  <TextBlock Text="Offset:" VerticalAlignment="Center" />
+                  <TextBox Text="{Binding CState.PickupOffset, UpdateSourceTrigger=LostFocus}" Width="70" />
+                </StackPanel>
+              </StackPanel>
+            </Border>
+
+            <!-- D -->
+            <Border BorderBrush="#CCC" BorderThickness="1" CornerRadius="4" Padding="12,8">
+              <StackPanel Spacing="6">
+                <DockPanel>
+                  <TextBlock Text="D:" Width="130" VerticalAlignment="Center" />
+                  <TextBox Text="{Binding DValue, UpdateSourceTrigger=LostFocus}" Width="160" />
+                </DockPanel>
+                <StackPanel Orientation="Horizontal" Spacing="20">
+                  <RadioButton Content="Fixed" IsChecked="{Binding DState.IsFixed}" GroupName="AbcdD" />
+                  <RadioButton Content="Variable" IsChecked="{Binding DState.IsVariable}" GroupName="AbcdD" />
+                  <RadioButton Content="Pickup" IsChecked="{Binding DState.IsPickupSelected}" GroupName="AbcdD" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding DState.IsPickup}">
+                  <TextBlock Text="Source Surf:" VerticalAlignment="Center" />
+                  <ComboBox ItemsSource="{Binding DState.AvailablePickupSurfaces}" SelectedItem="{Binding DState.PickupSourceSurface}" Width="70" />
+                  <TextBlock Text="Scale:" VerticalAlignment="Center" />
+                  <TextBox Text="{Binding DState.PickupScale, UpdateSourceTrigger=LostFocus}" Width="70" />
+                  <TextBlock Text="Offset:" VerticalAlignment="Center" />
+                  <TextBox Text="{Binding DState.PickupOffset, UpdateSourceTrigger=LostFocus}" Width="70" />
+                </StackPanel>
+              </StackPanel>
+            </Border>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
     </TabControl>
   </DockPanel>
 </Window>

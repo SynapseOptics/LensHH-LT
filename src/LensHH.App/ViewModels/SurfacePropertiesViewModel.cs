@@ -204,6 +204,9 @@ public partial class SurfacePropertiesViewModel : ObservableObject
     /// <summary>True for a Coordinate Break (PRO) surface — drives the Coordinate Break
     /// tab's visibility. Its shape is five generic params (decenter X/Y, tilt X/Y/Z) + Order.</summary>
     public bool IsCoordinateBreak => _surface.Type == SurfaceType.CoordinateBreak;
+    /// <summary>True for an ABCD ray-transfer-matrix surface (BASE — both editions) —
+    /// drives the ABCD tab's visibility. Its shape is the 4 matrix params A/B/C/D.</summary>
+    public bool IsAbcd => _surface.Type == SurfaceType.Abcd;
 
     // Variable/Pickup tab
     public ParameterStateViewModel CurvatureState { get; }
@@ -236,6 +239,13 @@ public partial class SurfacePropertiesViewModel : ObservableObject
     public ParameterStateViewModel TiltXState { get; }
     public ParameterStateViewModel TiltYState { get; }
     public ParameterStateViewModel TiltZState { get; }
+
+    // ABCD (base): four matrix params, each Fixed / Variable / Pickup.
+    // Slots 0..3 = A, B, C, D ("Parameter 1..4" to the user).
+    public ParameterStateViewModel AState { get; }
+    public ParameterStateViewModel BState { get; }
+    public ParameterStateViewModel CState { get; }
+    public ParameterStateViewModel DState { get; }
 
     /// <summary>
     /// Enable/disable model-glass mode. Toggling is where Glass ⇄ Model
@@ -333,6 +343,13 @@ public partial class SurfacePropertiesViewModel : ObservableObject
         get => _surface.Settings[0] == 1 ? 1 : 0;
         set { _surface.Settings[0] = value == 1 ? 1 : 0; OnPropertyChanged(); }
     }
+
+    // ── ABCD ray-transfer-matrix params (dimensionless). Stored 0-based in
+    //    Surface.Parameters[0..3] = A,B,C,D; the matrix acts on ray height + slope. ────
+    public double AValue { get => _surface.Parameters[0]; set { _surface.Parameters[0] = value; OnPropertyChanged(); } }
+    public double BValue { get => _surface.Parameters[1]; set { _surface.Parameters[1] = value; OnPropertyChanged(); } }
+    public double CValue { get => _surface.Parameters[2]; set { _surface.Parameters[2] = value; OnPropertyChanged(); } }
+    public double DValue { get => _surface.Parameters[3]; set { _surface.Parameters[3] = value; OnPropertyChanged(); } }
 
     /// <summary>Read-only optical power in diopters — the quantity the optimizer
     /// varies (set its min/max in the Variable Editor). 0 D = afocal.</summary>
@@ -475,6 +492,16 @@ public partial class SurfacePropertiesViewModel : ObservableObject
             PickupParameter.SurfaceParameter, () => surface.ParameterVariable[3], v => surface.ParameterVariable[3] = v, paramIndex: 3);
         TiltZState = new ParameterStateViewModel("Tilt Z", surface, session,
             PickupParameter.SurfaceParameter, () => surface.ParameterVariable[4], v => surface.ParameterVariable[4] = v, paramIndex: 4);
+
+        // ABCD params: slots 0..3 = A,B,C,D, same generic SurfaceParameter var/pickup path.
+        AState = new ParameterStateViewModel("A", surface, session,
+            PickupParameter.SurfaceParameter, () => surface.ParameterVariable[0], v => surface.ParameterVariable[0] = v, paramIndex: 0);
+        BState = new ParameterStateViewModel("B", surface, session,
+            PickupParameter.SurfaceParameter, () => surface.ParameterVariable[1], v => surface.ParameterVariable[1] = v, paramIndex: 1);
+        CState = new ParameterStateViewModel("C", surface, session,
+            PickupParameter.SurfaceParameter, () => surface.ParameterVariable[2], v => surface.ParameterVariable[2] = v, paramIndex: 2);
+        DState = new ParameterStateViewModel("D", surface, session,
+            PickupParameter.SurfaceParameter, () => surface.ParameterVariable[3], v => surface.ParameterVariable[3] = v, paramIndex: 3);
     }
 
     public void Apply()
@@ -488,11 +515,25 @@ public partial class SurfacePropertiesViewModel : ObservableObject
         ModelVdState.SavePickup();
         ModelDPgFState.SavePickup();
         FocalLengthState.SavePickup();
-        DecenterXState.SavePickup();
-        DecenterYState.SavePickup();
-        TiltXState.SavePickup();
-        TiltYState.SavePickup();
-        TiltZState.SavePickup();
+        // Coordinate Break and ABCD both key their generic SurfaceParameter pickups on
+        // Parameters slots (CB 0..4, ABCD 0..3), so save only the set that matches this
+        // surface's type — otherwise the OTHER type's states (IsPickup=false) would remove
+        // this type's slot pickups. A surface is exactly one of these types.
+        if (IsCoordinateBreak)
+        {
+            DecenterXState.SavePickup();
+            DecenterYState.SavePickup();
+            TiltXState.SavePickup();
+            TiltYState.SavePickup();
+            TiltZState.SavePickup();
+        }
+        else if (IsAbcd)
+        {
+            AState.SavePickup();
+            BState.SavePickup();
+            CState.SavePickup();
+            DState.SavePickup();
+        }
         _session.NotifySystemChanged("properties");
     }
 }

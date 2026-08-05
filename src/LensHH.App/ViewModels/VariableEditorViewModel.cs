@@ -242,6 +242,21 @@ public partial class VariableEditorViewModel : ObservableObject
                             v => s.ParameterMin[slot] = v, v => s.ParameterMax[slot] = v));
                 }
             }
+
+            // ABCD (base): each free matrix param (A,B,C,D = slots 0..3) varies with its
+            // own min/max bounds in Surface.ParameterMin/Max[slot].
+            if (s.Type == SurfaceType.Abcd)
+            {
+                string[] abcdNames = { "A", "B", "C", "D" };
+                for (int k = 0; k < abcdNames.Length; k++)
+                {
+                    int slot = k; // capture per iteration
+                    if (s.ParameterVariable[slot])
+                        Variables.Add(new VariableRowViewModel(num++, "ABCD " + abcdNames[slot], s.Index,
+                            () => s.ParameterMin[slot], () => s.ParameterMax[slot],
+                            v => s.ParameterMin[slot] = v, v => s.ParameterMax[slot] = v));
+                }
+            }
         }
 
         // Config-specific variables (advanced edition): shown here with editable bounds. The Solve
