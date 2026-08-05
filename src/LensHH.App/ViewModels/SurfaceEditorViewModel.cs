@@ -74,6 +74,17 @@ public partial class SurfaceRowViewModel : ObservableObject
             if (_surface.Type != newType)
             {
                 _surface.Type = newType;
+                // A fresh ABCD surface defaults to the IDENTITY matrix (A=D=1, B=C=0) so it
+                // passes rays through unchanged until the user edits it — an all-zero matrix
+                // would collapse every ray to the axis. Only seed when the 4 params are still
+                // zero (a genuinely new/unset ABCD), so we never clobber existing values.
+                if (newType == SurfaceType.Abcd
+                    && _surface.Parameters[0] == 0 && _surface.Parameters[1] == 0
+                    && _surface.Parameters[2] == 0 && _surface.Parameters[3] == 0)
+                {
+                    _surface.Parameters[0] = 1.0;  // A
+                    _surface.Parameters[3] = 1.0;  // D  (B = Parameters[1], C = Parameters[2] stay 0)
+                }
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(TypeDisplay));
                 // Paraxial, ABCD, and Coordinate Break all blank + disable
