@@ -800,6 +800,11 @@ namespace LensHH.Core.IO
                     // Tilt Y, Tilt Z; PARM 6 = Order. Maps onto Surface.Parameters[0-4]
                     // + Settings[0]. (PRO trace; the format handling is public.)
                     return SurfaceType.CoordinateBreak;
+                case "ABCDSURF":
+                    // ABCD ray-transfer-matrix surface. ZEMAX PARM 1-8 = Ax,Bx,Cx,Dx,
+                    // Ay,By,Cy,Dy; this implementation enforces x==y, so only PARM 1-4
+                    // (A,B,C,D) are read → Surface.Parameters[0-3]. Fixed values only.
+                    return SurfaceType.Abcd;
                 default:
                     // Unsupported surface types default to Standard
                     return SurfaceType.Standard;
@@ -828,6 +833,14 @@ namespace LensHH.Core.IO
                             surface.SetParameter(paramIndex, val);
                         else if (paramIndex == 6)
                             surface.SetSetting(1, (int)System.Math.Round(val));
+                        return;
+                    }
+                    // ABCD: PARM 1-4 = Ax,Bx,Cx,Dx → Parameters[0-3] (A,B,C,D). PARM 5-8
+                    // = Ay,By,Cy,Dy are ignored (this implementation enforces x==y).
+                    if (surface.Type == SurfaceType.Abcd)
+                    {
+                        if (paramIndex >= 1 && paramIndex <= 4)
+                            surface.SetParameter(paramIndex, val);
                         return;
                     }
                     // PARM 1-8 map to AsphericCoefficients[0-7]

@@ -1,4 +1,5 @@
 using System.IO;
+using System.Text;
 using LensHH.Core.Enums;
 using LensHH.Core.IO;
 using LensHH.Core.Models;
@@ -52,6 +53,80 @@ namespace LensHH.API.Tests
                 Assert.True(s.ParameterVariable[2]);
                 Assert.Equal(-0.2, s.ParameterMin[2]);
                 Assert.Equal(0.0, s.ParameterMax[2]);
+            }
+            finally { File.Delete(path); }
+        }
+
+        // ZEMAX ABCD surface format (pinned from a real ZEMAX file):
+        //   TYPE ABCDSURF; PARM 1-8 = Ax,Bx,Cx,Dx,Ay,By,Cy,Dy. Only PARM 1-4 (the x
+        //   set) are read into Parameters[0-3] = A,B,C,D (x==y enforced).
+        [Fact]
+        public void ZmxImport_Abcd_ReadsTypeAndParams()
+        {
+            var zmx = @"TITL ABCD
+ENPD 10
+FTYP 0 0 1 1 0 0 0 0 0
+WAVM 1 0.5876 1.0
+PWAV 1
+SURF 0
+  TYPE STANDARD
+  CURV 0
+  DISZ INFINITY
+SURF 1
+  TYPE ABCDSURF
+  CURV 0
+  PARM 1 0.98
+  PARM 2 0.01
+  PARM 3 0.02
+  PARM 4 0.97
+  PARM 5 0.98
+  PARM 6 0.01
+  PARM 7 0.02
+  PARM 8 0.97
+  DISZ 3
+SURF 2
+  TYPE STANDARD
+  CURV 0
+  DISZ 0
+";
+            var path = Path.GetTempFileName() + ".zmx";
+            File.WriteAllText(path, zmx, Encoding.UTF8);
+            try
+            {
+                var s = ZmxReader.Read(path).Surfaces[1];
+                Assert.Equal(SurfaceType.Abcd, s.Type);
+                Assert.Equal(0.98, s.GetParameter(1), 9);  // A
+                Assert.Equal(0.01, s.GetParameter(2), 9);  // B
+                Assert.Equal(0.02, s.GetParameter(3), 9);  // C
+                Assert.Equal(0.97, s.GetParameter(4), 9);  // D
+            }
+            finally { File.Delete(path); }
+        }
+
+        [Fact]
+        public void ZmxRoundTrip_PreservesAbcdParams_FixedOnly()
+        {
+            var s0 = new Surface { Type = SurfaceType.Abcd, Thickness = 3.0 };
+            s0.SetParameter(1, 0.98); s0.SetParameter(2, 0.01);
+            s0.SetParameter(3, 0.02); s0.SetParameter(4, 0.97);
+            // A variable flag must NOT be exported (spec: ZEMAX I/O is fixed-only).
+            s0.ParameterVariable[0] = true;
+            var sys = MinimalSystem(s0);
+
+            var path = Path.GetTempFileName() + ".zmx";
+            try
+            {
+                ZmxWriter.Write(sys, path);
+                var text = File.ReadAllText(path);
+                Assert.Contains("TYPE ABCDSURF", text);
+                Assert.DoesNotContain("VPAR", text);   // no variables exported to ZEMAX
+
+                var s = ZmxReader.Read(path).Surfaces[1];
+                Assert.Equal(SurfaceType.Abcd, s.Type);
+                Assert.Equal(0.98, s.GetParameter(1), 9);
+                Assert.Equal(0.01, s.GetParameter(2), 9);
+                Assert.Equal(0.02, s.GetParameter(3), 9);
+                Assert.Equal(0.97, s.GetParameter(4), 9);
             }
             finally { File.Delete(path); }
         }

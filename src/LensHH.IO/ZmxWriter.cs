@@ -161,6 +161,9 @@ namespace LensHH.Core.IO
                     case SurfaceType.CoordinateBreak:
                         sb.AppendLine("  TYPE COORDBRK");
                         break;
+                    case SurfaceType.Abcd:
+                        sb.AppendLine("  TYPE ABCDSURF");
+                        break;
                 }
 
                 sb.AppendLine(FormatDouble("  CURV", surface.Curvature));
@@ -241,6 +244,19 @@ namespace LensHH.Core.IO
                             sb.AppendLine($"  VPAR {i}");
                     }
                     sb.AppendLine($"  PARM 6 {surface.GetSetting(1)}");
+                }
+                else if (surface.Type == SurfaceType.Abcd)
+                {
+                    // ZEMAX ABCD surface: PARM 1-8 = Ax,Bx,Cx,Dx,Ay,By,Cy,Dy. This
+                    // implementation enforces x==y, so the x set (Parameters[0-3] =
+                    // A,B,C,D) is written to BOTH halves. FIXED values only — variables
+                    // and pickups are deliberately NOT emitted (per spec), so no VPAR.
+                    for (int i = 1; i <= 4; i++)
+                    {
+                        string v = surface.GetParameter(i).ToString("G17", CultureInfo.InvariantCulture);
+                        sb.AppendLine($"  PARM {i} {v}");       // Ax,Bx,Cx,Dx
+                        sb.AppendLine($"  PARM {i + 4} {v}");   // Ay,By,Cy,Dy (= x set)
+                    }
                 }
             }
         }
