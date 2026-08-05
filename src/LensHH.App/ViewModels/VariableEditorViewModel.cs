@@ -165,9 +165,17 @@ public partial class VariableEditorViewModel : ObservableObject
         foreach (var surf in _session.System.Surfaces)
         {
             var s = surf;   // per-iteration capture for the bound delegates
+            // Curvature/Conic apply only to Standard & Even Asphere; aspheric only to Even
+            // Asphere. Paraxial / Coordinate Break / ABCD have none — so a STALE variable flag
+            // left from a type change (e.g. a Standard surface with CurvatureVariable=true later
+            // switched to ABCD) must NOT show a bogus Curvature/Conic/Aspheric row. Mirrors the
+            // LocalOptimizer.CollectVariables gate. (For ABCD the aspheric slots alias A/B/C/D,
+            // so a stale AsphericVariable would also be wrong.)
+            bool usesCurvatureConic = s.Type == SurfaceType.Standard || s.Type == SurfaceType.EvenAsphere;
+            bool usesAspheric = s.Type == SurfaceType.EvenAsphere;
             // Skip base variables that are owned by the multi-configuration editor: their
             // variability + bounds live per configuration (shown as separate config rows below).
-            if (s.CurvatureVariable && !Owned(s.Index, SurfaceConfigParam.Curvature))
+            if (usesCurvatureConic && s.CurvatureVariable && !Owned(s.Index, SurfaceConfigParam.Curvature))
                 Variables.Add(new VariableRowViewModel(num++, "Curvature", s.Index,
                     () => s.CurvatureMin, () => s.CurvatureMax,
                     v => s.CurvatureMin = v, v => s.CurvatureMax = v));
@@ -175,18 +183,21 @@ public partial class VariableEditorViewModel : ObservableObject
                 Variables.Add(new VariableRowViewModel(num++, "Thickness", s.Index,
                     () => s.ThicknessMin, () => s.ThicknessMax,
                     v => s.ThicknessMin = v, v => s.ThicknessMax = v));
-            if (s.ConicVariable && !Owned(s.Index, SurfaceConfigParam.Conic))
+            if (usesCurvatureConic && s.ConicVariable && !Owned(s.Index, SurfaceConfigParam.Conic))
                 Variables.Add(new VariableRowViewModel(num++, "Conic", s.Index,
                     () => s.ConicMin, () => s.ConicMax,
                     v => s.ConicMin = v, v => s.ConicMax = v));
-            for (int j = 0; j < s.AsphericVariable.Length; j++)
+            if (usesAspheric)
             {
-                if (s.AsphericVariable[j])
+                for (int j = 0; j < s.AsphericVariable.Length; j++)
                 {
-                    int jj = j;
-                    Variables.Add(new VariableRowViewModel(num++, $"Asphere A{(jj + 1) * 2}", s.Index,
-                        () => s.AsphericMin[jj], () => s.AsphericMax[jj],
-                        v => s.AsphericMin[jj] = v, v => s.AsphericMax[jj] = v));
+                    if (s.AsphericVariable[j])
+                    {
+                        int jj = j;
+                        Variables.Add(new VariableRowViewModel(num++, $"Asphere A{(jj + 1) * 2}", s.Index,
+                            () => s.AsphericMin[jj], () => s.AsphericMax[jj],
+                            v => s.AsphericMin[jj] = v, v => s.AsphericMax[jj] = v));
+                    }
                 }
             }
 

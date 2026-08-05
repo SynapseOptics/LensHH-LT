@@ -85,6 +85,19 @@ public partial class SurfaceRowViewModel : ObservableObject
                     _surface.Parameters[0] = 1.0;  // A
                     _surface.Parameters[3] = 1.0;  // D  (B = Parameters[1], C = Parameters[2] stay 0)
                 }
+                // Curvature / Conic / aspheric coefficients don't exist for Paraxial,
+                // Coordinate Break, or ABCD — clear any stale variable flags so a type change
+                // doesn't leave them to be collected as bogus optimization variables (the
+                // "strange variables on an ABCD surface" bug). For ABCD especially, the aspheric
+                // slots alias the A/B/C/D params, so a leftover AsphericVariable would corrupt one.
+                if (newType == SurfaceType.Paraxial || newType == SurfaceType.CoordinateBreak
+                    || newType == SurfaceType.Abcd)
+                {
+                    _surface.CurvatureVariable = false;
+                    _surface.ConicVariable = false;
+                    for (int k = 0; k < _surface.AsphericVariable.Length; k++)
+                        _surface.AsphericVariable[k] = false;
+                }
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(TypeDisplay));
                 // Paraxial, ABCD, and Coordinate Break all blank + disable
