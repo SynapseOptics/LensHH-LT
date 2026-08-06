@@ -69,6 +69,9 @@ public partial class OperandRowViewModel : ObservableObject
         // (Surface1 = surface, Surface2 = 1-based parameter index).
         or OperandType.A or OperandType.B or OperandType.C or OperandType.D
         or OperandType.PRMV
+        // Seidel aberration contribution over a surface range (Surface1, Surface2 only; no Wave).
+        or OperandType.SPHS or OperandType.COMAS or OperandType.ASTGS
+        or OperandType.FCS or OperandType.DISTS or OperandType.ACS or OperandType.LCS
             => Category.System,
 
         // Boundary
@@ -99,11 +102,16 @@ public partial class OperandRowViewModel : ObservableObject
         or OperandType.C or OperandType.D;
     private bool IsMatrixOrParam => IsAbcdMatrix || _operand.Type == OperandType.PRMV;
 
+    // Seidel aberration contribution over a surface range: Surface1 + Surface2 only, no Wave.
+    private bool IsSeidel => _operand.Type is OperandType.SPHS or OperandType.COMAS
+        or OperandType.ASTGS or OperandType.FCS or OperandType.DISTS
+        or OperandType.ACS or OperandType.LCS;
+
     // Relevance flags
     private bool NeedsSurface => GetCategory() is Category.RayIntercept or Category.Boundary or Category.SurfaceProperty
-        || IsMatrixOrParam;
-    private bool NeedsSurface2 => GetCategory() is Category.Boundary || IsMatrixOrParam;
-    private bool NeedsWave => ((GetCategory() is Category.RayIntercept or Category.System) && !IsMatrixOrParam || IsAbcdMatrix)
+        || IsMatrixOrParam || IsSeidel;
+    private bool NeedsSurface2 => GetCategory() is Category.Boundary || IsMatrixOrParam || IsSeidel;
+    private bool NeedsWave => ((GetCategory() is Category.RayIntercept or Category.System) && !IsMatrixOrParam && !IsSeidel || IsAbcdMatrix)
         && _operand.Type != OperandType.ILL
         && _operand.Type != OperandType.DITAN
         && _operand.Type != OperandType.DITHETA
@@ -211,11 +219,22 @@ public partial class OperandRowViewModel : ObservableObject
         set
         {
             if (!NeedsSurface2 || !int.TryParse(value, out int v)) return;
-            int maxSurf = _session.System.Surfaces.Count - 1;
-            // Surface2 is boundary-only; accept the sentinel range -5..-1
-            // alongside literal [0, maxSurf] so users can type the auto-
-            // tracking placeholders directly into the merit-function grid.
-            if (v < -5 || v > maxSurf) return;
+            if (_operand.Type == OperandType.PRMV)
+            {
+                // For PRMV, Surface2 is the 1-based PARAMETER index (not a surface),
+                // so it must NOT be clamped to the surface range. Accept any positive
+                // index; the evaluator returns 0 for indices the surface type lacks.
+                if (v < 1) return;
+            }
+            else
+            {
+                int maxSurf = _session.System.Surfaces.Count - 1;
+                // Boundary ops accept the sentinel range -5..-1 alongside literal
+                // [0, maxSurf] so users can type the auto-tracking placeholders
+                // directly into the grid; A/B/C/D use Surface2 as the second
+                // surface of the sub-system.
+                if (v < -5 || v > maxSurf) return;
+            }
             _operand.Surface2 = v;
             OnPropertyChanged();
         }
@@ -539,6 +558,18 @@ public partial class MeritFunctionEditorViewModel : ObservableObject
 
         // System
         OperandType.EFL => "EFL — Effective focal length. Params: Wave (optional)",
+        OperandType.A => "A — Element A of the paraxial ray-transfer (ABCD) matrix of the sub-system from Surface1 to Surface2, [h';w'] = [[A,B],[C,D]]·[h;w] (w = geometric ray slope). For a single ABCD surface (Surface1 = Surface2) equals its stored A. Use to match a replacement lens group to an ABCD surface. Params: Surface1, Surface2, Wave (optional)",
+        OperandType.B => "B — Element B of the sub-system paraxial ABCD matrix from Surface1 to Surface2. For a single ABCD surface (Surface1 = Surface2) equals its stored B. Params: Surface1, Surface2, Wave (optional)",
+        OperandType.C => "C — Element C of the sub-system paraxial ABCD matrix from Surface1 to Surface2. For a single ABCD surface (Surface1 = Surface2) equals its stored C. Params: Surface1, Surface2, Wave (optional)",
+        OperandType.D => "D — Element D of the sub-system paraxial ABCD matrix from Surface1 to Surface2. For a single ABCD surface (Surface1 = Surface2) equals its stored D. Params: Surface1, Surface2, Wave (optional)",
+        OperandType.PRMV => "PRMV — Value of a surface parameter. Surface1 = the surface number. Surface2 = the 1-BASED PARAMETER INDEX (not a surface): ABCD 1–4 = A,B,C,D; Paraxial 1 = focal length; Even Asphere 1..N = the aspheric coefficients. Standard has no parameters. Out-of-range indices return 0. Params: Surface1 (surface), Surface2 (parameter index)",
+        OperandType.SPHS => "SPHS — Seidel spherical aberration (S1) summed over the surface range Surface1..Surface2. Same per-surface third-order coefficients the Seidel analysis reports; a full-range sum equals the analysis total. Primary wavelength; NO Wave input. Params: Surface1, Surface2",
+        OperandType.COMAS => "COMAS — Seidel coma (S2) summed over the surface range Surface1..Surface2. Matches the Seidel analysis. Primary wavelength; NO Wave input. Params: Surface1, Surface2",
+        OperandType.ASTGS => "ASTGS — Seidel astigmatism (S3) summed over the surface range Surface1..Surface2. Matches the Seidel analysis. Primary wavelength; NO Wave input. Params: Surface1, Surface2",
+        OperandType.FCS => "FCS — Seidel field curvature / Petzval (S4) summed over the surface range Surface1..Surface2. Matches the Seidel analysis. Primary wavelength; NO Wave input. Params: Surface1, Surface2",
+        OperandType.DISTS => "DISTS — Seidel distortion (S5) summed over the surface range Surface1..Surface2. Matches the Seidel analysis. Primary wavelength; NO Wave input. Params: Surface1, Surface2",
+        OperandType.ACS => "ACS — Axial (longitudinal) chromatic aberration (CL) summed over the surface range Surface1..Surface2. Uses the system's min/max wavelengths. Matches the Seidel analysis. NO Wave input. Params: Surface1, Surface2",
+        OperandType.LCS => "LCS — Lateral (transverse) chromatic aberration (CT) summed over the surface range Surface1..Surface2. Uses the system's min/max wavelengths. Matches the Seidel analysis. NO Wave input. Params: Surface1, Surface2",
         OperandType.BFL => "BFL — Paraxial back focal length: distance from last refractive surface to paraxial focus. For infinite conjugate matches the parallel-ray BFL; for finite conjugate equals the paraxial image distance from the last lens. Params: Wave (optional)",
         OperandType.MAG => "MAG — Paraxial magnification. Params: Wave (optional)",
         OperandType.AMAG => "AMAG — Angular magnification. Params: Wave (optional)",
