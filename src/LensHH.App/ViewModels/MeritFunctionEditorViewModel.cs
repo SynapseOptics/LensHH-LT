@@ -65,6 +65,10 @@ public partial class OperandRowViewModel : ObservableObject
         or OperandType.DITAN or OperandType.DITHETA
         or OperandType.DITANF or OperandType.DITHETAF or OperandType.LCF
         or OperandType.FCF or OperandType.ASTF
+        // Sub-system ABCD matrix element (Surface1, Surface2, Wave) + parameter value
+        // (Surface1 = surface, Surface2 = 1-based parameter index).
+        or OperandType.A or OperandType.B or OperandType.C or OperandType.D
+        or OperandType.PRMV
             => Category.System,
 
         // Boundary
@@ -89,10 +93,17 @@ public partial class OperandRowViewModel : ObservableObject
         _ => Category.RayIntercept
     };
 
+    // A/B/C/D (sub-system matrix element) + PRMV (parameter value): both use Surface1 and
+    // Surface2 (for PRMV, Surface2 is the 1-based parameter index). A/B/C/D also use Wave.
+    private bool IsAbcdMatrix => _operand.Type is OperandType.A or OperandType.B
+        or OperandType.C or OperandType.D;
+    private bool IsMatrixOrParam => IsAbcdMatrix || _operand.Type == OperandType.PRMV;
+
     // Relevance flags
-    private bool NeedsSurface => GetCategory() is Category.RayIntercept or Category.Boundary or Category.SurfaceProperty;
-    private bool NeedsSurface2 => GetCategory() is Category.Boundary;
-    private bool NeedsWave => (GetCategory() is Category.RayIntercept or Category.System)
+    private bool NeedsSurface => GetCategory() is Category.RayIntercept or Category.Boundary or Category.SurfaceProperty
+        || IsMatrixOrParam;
+    private bool NeedsSurface2 => GetCategory() is Category.Boundary || IsMatrixOrParam;
+    private bool NeedsWave => ((GetCategory() is Category.RayIntercept or Category.System) && !IsMatrixOrParam || IsAbcdMatrix)
         && _operand.Type != OperandType.ILL
         && _operand.Type != OperandType.DITAN
         && _operand.Type != OperandType.DITHETA
