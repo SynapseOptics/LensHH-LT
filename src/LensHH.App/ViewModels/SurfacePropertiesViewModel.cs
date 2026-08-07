@@ -234,18 +234,22 @@ public partial class SurfacePropertiesViewModel : ObservableObject
     // Coordinate Break (PRO): five generic params, each Fixed / Variable / Pickup.
     // Slots 0..4 = Decenter X, Decenter Y, Tilt X, Tilt Y, Tilt Z (0-based storage;
     // "Parameter 1..5" to the user). Order lives in Settings[0].
-    public ParameterStateViewModel DecenterXState { get; }
-    public ParameterStateViewModel DecenterYState { get; }
-    public ParameterStateViewModel TiltXState { get; }
-    public ParameterStateViewModel TiltYState { get; }
-    public ParameterStateViewModel TiltZState { get; }
+    // Nullable: CB and ABCD BOTH alias Surface.ParameterVariable[0..3], so only the set matching
+    // this surface's type is constructed (see the ctor). The other stays null; its (hidden) tab's
+    // bindings resolve to null harmlessly. This prevents the shared-slot clobber that silently
+    // reverted a just-set ABCD variable to Fixed.
+    public ParameterStateViewModel? DecenterXState { get; }
+    public ParameterStateViewModel? DecenterYState { get; }
+    public ParameterStateViewModel? TiltXState { get; }
+    public ParameterStateViewModel? TiltYState { get; }
+    public ParameterStateViewModel? TiltZState { get; }
 
     // ABCD (base): four matrix params, each Fixed / Variable / Pickup.
     // Slots 0..3 = A, B, C, D ("Parameter 1..4" to the user).
-    public ParameterStateViewModel AState { get; }
-    public ParameterStateViewModel BState { get; }
-    public ParameterStateViewModel CState { get; }
-    public ParameterStateViewModel DState { get; }
+    public ParameterStateViewModel? AState { get; }
+    public ParameterStateViewModel? BState { get; }
+    public ParameterStateViewModel? CState { get; }
+    public ParameterStateViewModel? DState { get; }
 
     /// <summary>
     /// Enable/disable model-glass mode. Toggling is where Glass ⇄ Model
@@ -479,29 +483,38 @@ public partial class SurfacePropertiesViewModel : ObservableObject
         FocalLengthState = new ParameterStateViewModel("Focal Length", surface, session,
             PickupParameter.FocalLength, () => surface.FocalLengthVariable, v => surface.FocalLengthVariable = v);
 
-        // Coordinate Break params: each slot 0..4 is Fixed / Variable / Pickup, keyed by
-        // the generic SurfaceParameter pickup + its slot. Variable flag lives in
-        // Surface.ParameterVariable[slot]; bounds (for the Variable Editor) in ParameterMin/Max[slot].
-        DecenterXState = new ParameterStateViewModel("Decenter X", surface, session,
-            PickupParameter.SurfaceParameter, () => surface.ParameterVariable[0], v => surface.ParameterVariable[0] = v, paramIndex: 0);
-        DecenterYState = new ParameterStateViewModel("Decenter Y", surface, session,
-            PickupParameter.SurfaceParameter, () => surface.ParameterVariable[1], v => surface.ParameterVariable[1] = v, paramIndex: 1);
-        TiltXState = new ParameterStateViewModel("Tilt X", surface, session,
-            PickupParameter.SurfaceParameter, () => surface.ParameterVariable[2], v => surface.ParameterVariable[2] = v, paramIndex: 2);
-        TiltYState = new ParameterStateViewModel("Tilt Y", surface, session,
-            PickupParameter.SurfaceParameter, () => surface.ParameterVariable[3], v => surface.ParameterVariable[3] = v, paramIndex: 3);
-        TiltZState = new ParameterStateViewModel("Tilt Z", surface, session,
-            PickupParameter.SurfaceParameter, () => surface.ParameterVariable[4], v => surface.ParameterVariable[4] = v, paramIndex: 4);
-
-        // ABCD params: slots 0..3 = A,B,C,D, same generic SurfaceParameter var/pickup path.
-        AState = new ParameterStateViewModel("A", surface, session,
-            PickupParameter.SurfaceParameter, () => surface.ParameterVariable[0], v => surface.ParameterVariable[0] = v, paramIndex: 0);
-        BState = new ParameterStateViewModel("B", surface, session,
-            PickupParameter.SurfaceParameter, () => surface.ParameterVariable[1], v => surface.ParameterVariable[1] = v, paramIndex: 1);
-        CState = new ParameterStateViewModel("C", surface, session,
-            PickupParameter.SurfaceParameter, () => surface.ParameterVariable[2], v => surface.ParameterVariable[2] = v, paramIndex: 2);
-        DState = new ParameterStateViewModel("D", surface, session,
-            PickupParameter.SurfaceParameter, () => surface.ParameterVariable[3], v => surface.ParameterVariable[3] = v, paramIndex: 3);
+        // Coordinate Break params (slots 0..4) and ABCD params (slots 0..3) BOTH alias the SAME
+        // generic Surface.ParameterVariable[]/Parameters[] slots — DecenterX and A both own slot 0,
+        // DecenterY and B slot 1, etc. A surface is EXACTLY ONE of these types, so construct ONLY the
+        // matching set. Constructing both left the OTHER type's state VM aliasing the same slots; on a
+        // hidden/collapsed tab its "Fixed" radio still bound and could write ParameterVariable[slot] =
+        // false through the shared setter — silently reverting the ABCD variable the user just set
+        // (the "ABCD variables won't stick / revert to Fixed" bug). Apply() already guarded the twin
+        // hazard for pickups; this closes it for the variable flag at the source.
+        if (IsCoordinateBreak)
+        {
+            DecenterXState = new ParameterStateViewModel("Decenter X", surface, session,
+                PickupParameter.SurfaceParameter, () => surface.ParameterVariable[0], v => surface.ParameterVariable[0] = v, paramIndex: 0);
+            DecenterYState = new ParameterStateViewModel("Decenter Y", surface, session,
+                PickupParameter.SurfaceParameter, () => surface.ParameterVariable[1], v => surface.ParameterVariable[1] = v, paramIndex: 1);
+            TiltXState = new ParameterStateViewModel("Tilt X", surface, session,
+                PickupParameter.SurfaceParameter, () => surface.ParameterVariable[2], v => surface.ParameterVariable[2] = v, paramIndex: 2);
+            TiltYState = new ParameterStateViewModel("Tilt Y", surface, session,
+                PickupParameter.SurfaceParameter, () => surface.ParameterVariable[3], v => surface.ParameterVariable[3] = v, paramIndex: 3);
+            TiltZState = new ParameterStateViewModel("Tilt Z", surface, session,
+                PickupParameter.SurfaceParameter, () => surface.ParameterVariable[4], v => surface.ParameterVariable[4] = v, paramIndex: 4);
+        }
+        else if (IsAbcd)
+        {
+            AState = new ParameterStateViewModel("A", surface, session,
+                PickupParameter.SurfaceParameter, () => surface.ParameterVariable[0], v => surface.ParameterVariable[0] = v, paramIndex: 0);
+            BState = new ParameterStateViewModel("B", surface, session,
+                PickupParameter.SurfaceParameter, () => surface.ParameterVariable[1], v => surface.ParameterVariable[1] = v, paramIndex: 1);
+            CState = new ParameterStateViewModel("C", surface, session,
+                PickupParameter.SurfaceParameter, () => surface.ParameterVariable[2], v => surface.ParameterVariable[2] = v, paramIndex: 2);
+            DState = new ParameterStateViewModel("D", surface, session,
+                PickupParameter.SurfaceParameter, () => surface.ParameterVariable[3], v => surface.ParameterVariable[3] = v, paramIndex: 3);
+        }
     }
 
     public void Apply()
@@ -521,18 +534,18 @@ public partial class SurfacePropertiesViewModel : ObservableObject
         // this type's slot pickups. A surface is exactly one of these types.
         if (IsCoordinateBreak)
         {
-            DecenterXState.SavePickup();
-            DecenterYState.SavePickup();
-            TiltXState.SavePickup();
-            TiltYState.SavePickup();
-            TiltZState.SavePickup();
+            DecenterXState?.SavePickup();
+            DecenterYState?.SavePickup();
+            TiltXState?.SavePickup();
+            TiltYState?.SavePickup();
+            TiltZState?.SavePickup();
         }
         else if (IsAbcd)
         {
-            AState.SavePickup();
-            BState.SavePickup();
-            CState.SavePickup();
-            DState.SavePickup();
+            AState?.SavePickup();
+            BState?.SavePickup();
+            CState?.SavePickup();
+            DState?.SavePickup();
         }
         _session.NotifySystemChanged("properties");
     }
