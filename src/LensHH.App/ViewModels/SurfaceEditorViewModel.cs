@@ -97,6 +97,13 @@ public partial class SurfaceRowViewModel : ObservableObject
                     _surface.ConicVariable = false;
                     for (int k = 0; k < _surface.AsphericVariable.Length; k++)
                         _surface.AsphericVariable[k] = false;
+                    // These types are index-transparent black boxes (no refractive medium), so a
+                    // leftover glass would corrupt the index array (making the next surface's n1
+                    // glass) and show up as a phantom substitutable glass in Glass Substitution.
+                    // Clear it (and any model-index) on conversion.
+                    _surface.Material = "";
+                    _surface.ModelIndexEnabled = false;
+                    OnPropertyChanged(nameof(Material));
                 }
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(TypeDisplay));

@@ -150,6 +150,19 @@ namespace LensHH.Core.IO
                 if (ls.ParameterMax != null)
                     Array.Copy(ls.ParameterMax, s.ParameterMax, Math.Min(ls.ParameterMax.Length, s.ParameterMax.Length));
 
+                // ABCD / Paraxial / Coordinate Break are index-transparent black boxes with no
+                // refractive medium. A glass name left over from a Standard->ABCD conversion (older
+                // files) is invalid: it would (wrongly) make the medium after the surface glass —
+                // corrupting the index array AND counting the surface as glass in CTG/DTRG/Glass-
+                // Substitution. Normalize it away on load so the loaded system is self-consistent.
+                if (s.Type is LensHH.Core.Enums.SurfaceType.Abcd
+                    or LensHH.Core.Enums.SurfaceType.Paraxial
+                    or LensHH.Core.Enums.SurfaceType.CoordinateBreak)
+                {
+                    s.Material = string.Empty;
+                    s.ModelIndexEnabled = false;
+                }
+
                 system.Surfaces.Add(s);
             }
 

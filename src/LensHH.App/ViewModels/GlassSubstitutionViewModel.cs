@@ -83,6 +83,11 @@ public partial class GlassSubstitutionViewModel : ObservableObject
             // so there is no catalog glass to substitute. Excluding it also prevents the
             // stale Material name (e.g. the glass it was seeded from) from appearing here.
             if (surf.ModelIndexEnabled) continue;
+            // ABCD / Paraxial / Coordinate Break are index-transparent black boxes with no glass;
+            // a Material left over from a Standard->ABCD type conversion must not appear here.
+            if (surf.Type is LensHH.Core.Enums.SurfaceType.Abcd
+                or LensHH.Core.Enums.SurfaceType.Paraxial
+                or LensHH.Core.Enums.SurfaceType.CoordinateBreak) continue;
 
             // Find or create a setting for this surface
             var setting = _session.System.GlassSubstitutions
