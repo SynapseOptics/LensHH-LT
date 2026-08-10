@@ -908,6 +908,18 @@ public partial class MainWindow : Window
         await dialog.ShowDialog(this);
     }
 
+    private async void SetClearSurfaceParameters_Click(object? sender, RoutedEventArgs e)
+    {
+        // Set/Clear a surface-type parameter as a VARIABLE (Even Asphere A2..A16 / Paraxial diopters
+        // / ABCD A/B/C/D) across a surface range — the exact analogue of Set/Clear Thickness/Curvature
+        // Variables (flag only, no bounds).
+        var dialog = new SetClearParameterVariablesDialog
+        {
+            DataContext = new SetClearParameterVariablesViewModel(VM.Session)
+        };
+        await dialog.ShowDialog(this);
+    }
+
     private async void SetClearAperture_Click(object? sender, RoutedEventArgs e)
     {
         var dialog = new SetClearApertureDialog

@@ -191,6 +191,8 @@
             <Border Width="1" Background="#CCC" Margin="4,2" />
             <Button Content="Set/Clear Thickness Variables" Click="SetClearThickness_Click" />
             <Button Content="Set/Clear Curvature Variables" Click="SetClearCurvature_Click" />
+            <Button Content="Set/Clear Surface Parameter Variables" Click="SetClearSurfaceParameters_Click"
+                    ToolTip.Tip="Bulk set/clear a surface-type parameter as a variable (Even Asphere A2..A16, Paraxial diopters, or ABCD A/B/C/D) across a surface range, with optional Min/Max bounds." />
             <Button Content="Clear All Variables" Click="ClearAllVariables_Click" />
             <Border Width="1" Background="#CCC" Margin="4,2" />
             <Button Content="Set CA %" Click="SetClearAperture_Click" />
