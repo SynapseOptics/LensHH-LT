@@ -183,7 +183,7 @@ Each row in the Lens Editor is one surface, ordered object → image:
 | Column | What it is |
 |---|---|
 | **Surf** | Surface number (`OBJ`, then `1, 2, …`, `IMG`). |
-| **Surface Type** | Standard (spherical), an aspheric type, or **Paraxial** (an ideal thin lens defined by a focal length — see below). |
+| **Surface Type** | Standard (spherical), an aspheric type, **Paraxial** (an ideal thin lens defined by a focal length), or **ABCD** (a ray-transfer-matrix black box) — see below. |
 | **Stop** | Checkbox marking the aperture stop. |
 | **Radius (mm)** | Radius of curvature (`Infinity` for a flat surface). |
 | **Thickness (mm)** | Axial distance to the next surface. |
@@ -204,6 +204,31 @@ immersed ideal lens of focal length *f* in medium *n* focuses at *n·f*. Paraxia
 surfaces are handy for representing a "perfect" element, a relay, or a stand-in
 for a subsystem you have not designed yet. They run on CPU only (never the GPU),
 and they are diffraction-limited: an on-axis WAVEX/OPD merit reads ≈ 0 at focus.
+
+**ABCD (ray-transfer-matrix) surfaces.** An **ABCD** surface is a first-order
+"black box" defined by four numbers — the paraxial ray-transfer matrix
+`[x'; ω'] = [[A, B], [C, D]] · [x; ω]` acting on ray height `x` and geometric
+slope `ω` (the same matrix applies in `y`). Like Paraxial, it has no radius,
+conic, or glass — the four elements **A, B, C, D** are edited on the **ABCD** tab
+of the surface **Properties** dialog, where each can be Fixed, Variable, or a
+Pickup. The identity matrix (`A = D = 1`, `B = C = 0`) passes rays through
+unchanged, which is the default for a new ABCD surface. It carries the
+surrounding medium unchanged and contributes no aberration of its own.
+
+ABCD surfaces are the tool for **first-order synthesis**: drop one (or several)
+in as an ideal stand-in for a group you haven't designed, optimize the matrix
+elements to meet your first-order and image-quality goals, then build real
+lenses that reproduce the resulting matrices — using the `A`/`B`/`C`/`D` and
+`DET` merit operands (see the [Merit Function Reference](merit-function.md)) to
+match a real group's matrix to the target. A lossless group in a single medium
+has determinant `A·D − B·C = 1`, so constrain **`DET = 1`** on each ABCD surface
+to keep the optimized matrix physically realizable, and bound the elements
+(especially `C`, the power) so the optimizer can't run them to infinity.
+
+ABCD surfaces run on CPU only. Because a ray-transfer matrix carries no
+wavefront/phase information, **analyses that require phase — OPD, MTF, Zernike,
+wavefront map — are unavailable while an ABCD surface is present**; ray-based
+analyses (layout, spot, ray fan, distortion, Seidel, first-order) still work.
 
 **Apertures — the Semi-Diameter, CA %, and Fixed SD columns.** These
 three work together to set each surface's clear aperture:
@@ -251,6 +276,18 @@ The fastest way to start. Above the Lens Editor table:
   surfaces fixed (you almost always want this on).
 
   ![Set/Clear Curvature Variables dialog](images/SetCurvatureVariable.png)
+
+- **Set/Clear Surface Parameter Variables** does the same for the
+  parameters of the special surface types. Choose a **Surface Type**
+  (Even Asphere, Paraxial, or ABCD) and a **Parameter** — an aspheric
+  coefficient `A2…A16`, a Paraxial focal length (`Diopters`), or an
+  ABCD element `A/B/C/D` — then a surface range and **Set / Clear**.
+  It applies to every surface of that type in the range, so you can,
+  say, make the `A` element a variable on all your ABCD surfaces in one
+  action. It only sets or clears the variable flag (no bounds — set
+  those in the Variable Editor).
+
+  ![Set/Clear Surface Parameter Variables dialog](images/SetClearSurfaceParameterVariables.png)
 
 Each tagged parameter shows a **V** indicator next to its value in
 the Lens Editor table:
@@ -362,6 +399,18 @@ bounded `[0.1, 100] mm`:
 ![Variable Editor after applying Glass thickness constraints](images/VariableEditorAfterSettingThicknessConstraints.png)
 
 ![Variable Editor after also applying Air thickness constraints](images/VariableEditorAfterSettingThicknssConstraintsAir.png)
+
+A third button, **Surface Parameter Constraints**, does the same for
+the parameters of the special surface types. Pick a **Surface Type**
+(Even Asphere, Paraxial, or ABCD) and a **Parameter** (an aspheric
+coefficient, the Paraxial diopters, or an ABCD `A/B/C/D` element), a
+surface range, a **Constraint** mode, and a `Min` / `Max` pair — the
+dialog sets that parameter as a variable *with* the chosen bounds on
+every surface of that type in the range. It's the one-step way to, for
+example, make every ABCD `C` element a variable bounded to a realizable
+power range across a whole synthesis stack.
+
+![Surface Parameter Constraints dialog](images/SurfaceParameterConstraints.png)
 
 ### Building a merit function
 

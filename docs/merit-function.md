@@ -432,6 +432,39 @@ Single value per system.
 
 ---
 
+## First-Order Matrix and Parameter Operands
+
+These read the paraxial **ray-transfer (ABCD) matrix** of the sub-system between
+two surfaces, or a stored surface parameter. They are the tools for *lens
+synthesis* — designing a real lens group to reproduce a target first-order
+matrix.
+
+The sub-system matrix maps ray height `y` and geometric slope `ω` from the ray
+**incident on** `Surface1` to the ray **exiting** `Surface2`:
+`[y'; ω'] = [[A, B], [C, D]] · [y; ω]`. Set `Surface1 = Surface2` to read a
+single surface's matrix.
+
+| Type | Meaning |
+|---|---|
+| `A`    | Element A of the sub-system matrix (Surface1 → Surface2). |
+| `B`    | Element B — units of length (mm). |
+| `C`    | Element C — units of 1/length (= −optical power). |
+| `D`    | Element D. |
+| `DET`  | Determinant `A·D − B·C`. A lossless group in a single medium has `DET = 1` — target `DET = 1` to keep a synthesized matrix physically realizable. |
+
+**Inputs:** `Surface1`, `Surface2`, and optional `Wave` (defaults to primary).
+
+| Type | Meaning |
+|---|---|
+| `PRMV` | Value of a surface parameter. `Surface1` = the surface; `Surface2` = the **1-based parameter index**. |
+
+`PRMV` reads the stored parameter selected by `Surface2`: the ABCD matrix
+elements (`1`–`4` = A, B, C, D), a Paraxial surface's focal length (`1`, in mm),
+or an Even Asphere coefficient (`1..N`). A Standard surface has no parameters
+(returns 0), and an out-of-range index returns 0.
+
+---
+
 ## Distortion and Lateral Color
 
 | Type | Meaning |
@@ -470,6 +503,35 @@ SPIE Proc. 10925, 1092502 (2019),
 `Rings` and `Arms` set a Gauss-Legendre pupil sampling identical to
 the geometric MTF — start with `Rings = 6, Arms = 12` and increase
 only if the operand value looks noisy iteration-to-iteration.
+
+---
+
+## Seidel Aberration Operands
+
+These target the third-order (Seidel) aberration contributions directly. Each
+returns the **sum over a surface range** (`Surface1` → `Surface2`) of the same
+per-surface coefficients the **Seidel** analysis reports — so a full-range sum
+equals the analysis total, and a sub-range gives that group's partial sum.
+
+| Type | Aberration | Seidel |
+|---|---|---|
+| `SPHS`  | Spherical aberration            | S1 |
+| `COMAS` | Coma                            | S2 |
+| `ASTGS` | Astigmatism                     | S3 |
+| `FCS`   | Field curvature (Petzval)       | S4 |
+| `DISTS` | Distortion                      | S5 |
+| `ACS`   | Axial (longitudinal) color      | — |
+| `LCS`   | Lateral (transverse) color      | — |
+
+**Inputs:** `Surface1`, `Surface2`. There is **no `Wave` input** — the
+monochromatic terms use the primary wavelength, and the color terms (`ACS`,
+`LCS`) use the system's shortest and longest wavelengths.
+
+Use these to balance a specific aberration across a chosen group of surfaces, or
+to drive a term toward zero (e.g. `FCS = 0` to flatten the field over the whole
+lens). A flat plate in collimated light contributes zero to every Seidel term —
+the operands only become non-zero where the rays are converging or the surfaces
+have power.
 
 ---
 
