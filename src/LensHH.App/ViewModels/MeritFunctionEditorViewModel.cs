@@ -68,6 +68,7 @@ public partial class OperandRowViewModel : ObservableObject
         // Sub-system ABCD matrix element (Surface1, Surface2, Wave) + parameter value
         // (Surface1 = surface, Surface2 = 1-based parameter index).
         or OperandType.A or OperandType.B or OperandType.C or OperandType.D
+        or OperandType.DET
         or OperandType.PRMV
         // Seidel aberration contribution over a surface range (Surface1, Surface2 only; no Wave).
         or OperandType.SPHS or OperandType.COMAS or OperandType.ASTGS
@@ -99,7 +100,7 @@ public partial class OperandRowViewModel : ObservableObject
     // A/B/C/D (sub-system matrix element) + PRMV (parameter value): both use Surface1 and
     // Surface2 (for PRMV, Surface2 is the 1-based parameter index). A/B/C/D also use Wave.
     private bool IsAbcdMatrix => _operand.Type is OperandType.A or OperandType.B
-        or OperandType.C or OperandType.D;
+        or OperandType.C or OperandType.D or OperandType.DET;
     private bool IsMatrixOrParam => IsAbcdMatrix || _operand.Type == OperandType.PRMV;
 
     // Seidel aberration contribution over a surface range: Surface1 + Surface2 only, no Wave.
@@ -562,6 +563,7 @@ public partial class MeritFunctionEditorViewModel : ObservableObject
         OperandType.B => "B — Element B of the sub-system paraxial ABCD matrix from Surface1 to Surface2. For a single ABCD surface (Surface1 = Surface2) equals its stored B. Params: Surface1, Surface2, Wave (optional)",
         OperandType.C => "C — Element C of the sub-system paraxial ABCD matrix from Surface1 to Surface2. For a single ABCD surface (Surface1 = Surface2) equals its stored C. Params: Surface1, Surface2, Wave (optional)",
         OperandType.D => "D — Element D of the sub-system paraxial ABCD matrix from Surface1 to Surface2. For a single ABCD surface (Surface1 = Surface2) equals its stored D. Params: Surface1, Surface2, Wave (optional)",
+        OperandType.DET => "DET — Determinant A·D − B·C of the sub-system paraxial ABCD matrix from Surface1 to Surface2. A lossless black box in one medium has determinant 1, so TARGET DET = 1 on an ABCD surface (Surface1 = Surface2 = that surface) to keep its optimized matrix physically realizable. Params: Surface1, Surface2, Wave (optional)",
         OperandType.PRMV => "PRMV — Value of a surface parameter. Surface1 = the surface number. Surface2 = the 1-BASED PARAMETER INDEX (not a surface): ABCD 1–4 = A,B,C,D; Paraxial 1 = focal length; Even Asphere 1..N = the aspheric coefficients. Standard has no parameters. Out-of-range indices return 0. Params: Surface1 (surface), Surface2 (parameter index)",
         OperandType.SPHS => "SPHS — Seidel spherical aberration (S1) summed over the surface range Surface1..Surface2. Same per-surface third-order coefficients the Seidel analysis reports; a full-range sum equals the analysis total. Primary wavelength; NO Wave input. Params: Surface1, Surface2",
         OperandType.COMAS => "COMAS — Seidel coma (S2) summed over the surface range Surface1..Surface2. Matches the Seidel analysis. Primary wavelength; NO Wave input. Params: Surface1, Surface2",
