@@ -2,9 +2,46 @@
 
 All notable changes to LensHH-LT and the LensHH-LT-Engine.
 
-## 1.0.141 — unreleased
+## 1.0.142 — 2026-08-10
+
+### Added
+- **ABCD ray-transfer-matrix surface type.** A first-order "black box" surface
+  defined by the four elements of a paraxial ray-transfer matrix
+  `[x'; ω'] = [[A, B], [C, D]]·[x; ω]`, edited on the surface Properties dialog's
+  **ABCD** tab (each element Fixed, Variable, or Pickup). It carries no radius,
+  conic, or glass and adds no aberration of its own — a stand-in for a subsystem
+  you haven't designed yet, for first-order synthesis. Runs on CPU; phase-based
+  analyses (OPD, MTF, Zernike, wavefront) are unavailable while an ABCD surface
+  is present.
+- **First-order matrix and parameter merit operands.** `A`, `B`, `C`, `D` read
+  the paraxial ray-transfer matrix of the sub-system between two surfaces; `DET`
+  is its determinant `A·D − B·C` (target `DET = 1` to keep a synthesized matrix
+  physically realizable). `PRMV` reads any stored surface parameter. All have C#,
+  native, and analytic-derivative support.
+- **Seidel aberration merit operands.** `SPHS`, `COMAS`, `ASTGS`, `FCS`, `DISTS`,
+  `ACS`, `LCS` — spherical, coma, astigmatism, field curvature, distortion, axial
+  color, and lateral color — each summed over a surface range and matching the
+  Seidel analysis. C#, native, and analytic-derivative support.
+- **Bulk surface-parameter variable tools.** A **Set/Clear Surface Parameter
+  Variables** button on the Lens Editor sets or clears a chosen parameter
+  (Even Asphere `A2`…`A16`, Paraxial diopters, or ABCD `A/B/C/D`) as a variable
+  across a surface range; a **Surface Parameter Constraints** button in the
+  Variable Editor does the same with Min/Max bounds in one step.
 
 ### Fixed
+- **ABCD parameter variables would not persist.** Marking an ABCD `A/B/C/D`
+  parameter as a variable could silently revert to Fixed. The parameter editors
+  for a surface's non-active families no longer share and clobber the variable
+  flags; the setting now sticks.
+- **Glass substitution no longer applies to air or non-glass surfaces.** A stale
+  "substitute" flag left on a surface that later became an air space (or a mirror
+  / non-refractive surface) could cause the optimizer to inject glass into an air
+  gap. Glass substitution now applies only to surfaces that currently hold a real
+  catalog glass.
+- **Stale glass on non-refractive surfaces.** ABCD and Paraxial surfaces are
+  index-transparent black boxes; a leftover glass name from a type change is now
+  cleared, so it no longer corrupts the index used by neighboring surfaces or
+  appears as substitutable glass.
 - **2D layout rendering of paraxial surfaces.** In a system containing paraxial
   (ideal thin lens) surfaces, the 2D layout could draw each field's rays crossing
   the paraxial surface at a different axial position, so the ray bundles appeared
