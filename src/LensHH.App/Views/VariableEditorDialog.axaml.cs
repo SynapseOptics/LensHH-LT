@@ -57,4 +57,14 @@ public partial class VariableEditorDialog : Window
         await dialog.ShowDialog(this);
         VM.Refresh();
     }
+
+    private async void ModelGlassConstraint_Click(object? sender, RoutedEventArgs e)
+    {
+        var dialog = new ModelGlassConstraintDialog
+        {
+            DataContext = new ModelGlassConstraintViewModel(VM.Session)
+        };
+        await dialog.ShowDialog(this);
+        VM.Refresh();
+    }
 }

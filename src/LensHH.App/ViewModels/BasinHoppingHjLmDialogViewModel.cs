@@ -367,9 +367,15 @@ public partial class BasinHoppingHjLmDialogViewModel : ObservableObject
                             if (p.CurrentGlasses.TryGetValue(row.SurfaceIndex, out var glass))
                                 row.CurrentGlass = glass;
 
-                        string tag = p.Phase == "Accept" ? "ACC" : "rej";
-                        string extra = p.GlassSwaps > 0 ? $"  glass-swaps={p.GlassSwaps}" : "";
-                        AppendLog($"Hop {p.Hop + 1,3} [{tag}] merit={p.CurrentMerit:E5}  best={p.BestMerit:E5}{extra}");
+                        // Improvement-only log: one line per new global best, in the
+                        // uniform "chain / RMSE / hop / time" format shared with the
+                        // multi-chain path and the CLI.
+                        if (p.BestMerit < _bestEverLogged - Math.Abs(_bestEverLogged) * 1e-9 - 1e-15)
+                        {
+                            _bestEverLogged = p.BestMerit;
+                            string swaps = p.GlassSwaps > 0 ? $"   glass-swaps={p.GlassSwaps}" : "";
+                            AppendLog($"chain {p.Chain}   RMSE={p.BestMerit:E6}   hop {p.ChainHop + 1}   {_stopwatch.Elapsed.ToString(@"hh\:mm\:ss")}{swaps}");
+                        }
                     });
 
                 result = await Task.Run(() => optimizer.Optimize(ct), ct);
@@ -404,7 +410,7 @@ public partial class BasinHoppingHjLmDialogViewModel : ObservableObject
                         {
                             _bestEverLogged = p.BestMerit;
                             BestMeritText = p.BestMerit.ToString("E6");
-                            AppendLog($"new global best  {p.BestMerit:E6}   (hop {p.Hop})");
+                            AppendLog($"chain {p.Chain}   RMSE={p.BestMerit:E6}   hop {p.ChainHop + 1}   {_stopwatch.Elapsed.ToString(@"hh\:mm\:ss")}");
                         }
                         if (headThrottle.ElapsedMilliseconds < 200) return;
                         headThrottle.Restart();

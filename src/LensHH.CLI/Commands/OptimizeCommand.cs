@@ -857,12 +857,24 @@ namespace LensHH.CLI.Commands
             // Throttle progress: with N chains, OnProgress fires from N threads on every
             // hop — print at most ~3×/s so the console isn't flooded (and timing is clean).
             var progressWatch = System.Diagnostics.Stopwatch.StartNew();
+            var runWatch = System.Diagnostics.Stopwatch.StartNew();   // run-elapsed (progressWatch is reset for throttling)
             object progressLock = new object();
+            double bestEverLogged = double.MaxValue;
             optimizer.OnProgress = p =>
             {
                 if (p.Hop <= 0) return;
                 lock (progressLock)
                 {
+                    // Improvement-only line (unthrottled — these are the events worth timing),
+                    // in the uniform chain / RMSE / hop / time format shared with the GUI.
+                    if (p.BestMerit < bestEverLogged - Math.Abs(bestEverLogged) * 1e-9 - 1e-15)
+                    {
+                        bestEverLogged = p.BestMerit;
+                        string swaps = settings.GlassSubstitution && p.GlassSwaps > 0 ? $"   glass-swaps={p.GlassSwaps}" : "";
+                        AnsiConsole.MarkupLine(
+                            $"  [green]chain {p.Chain}   RMSE={p.BestMerit:E6}   hop {p.ChainHop + 1}   {runWatch.Elapsed:hh\\:mm\\:ss}[/]{swaps}");
+                    }
+
                     if (progressWatch.ElapsedMilliseconds < 333) return;
                     progressWatch.Restart();
                     AnsiConsole.MarkupLine(

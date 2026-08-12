@@ -412,6 +412,21 @@ power range across a whole synthesis stack.
 
 ![Surface Parameter Constraints dialog](images/SurfaceParameterConstraints.png)
 
+A fourth button, **Model Glass Constraint**, does the same for the
+model-glass (fictitious-glass) parameters. Pick a **Variable Type** —
+`Nd` (refractive index), `Vd` (Abbe number), or `dPgF` (partial-dispersion
+deviation) — a surface range, a **Constraint** mode, and a `Min` / `Max`
+pair, and the dialog sets that parameter as a variable *with* the chosen
+bounds on every qualifying surface in the range. It applies **only to
+surfaces already in model-index mode** — a real catalog glass has no
+`Nd`/`Vd`/`dPgF` to vary, so it is skipped rather than converted. This is
+the one-step way to turn a stack of model glasses loose inside a
+manufacturable index / Abbe / partial-dispersion box before you substitute
+real catalog glasses (see [Glass catalogs](glass-catalogs.md) for how model
+glasses and substitution work):
+
+![Model Glass Constraint dialog set for glass: Variable Type Nd across a surface range, with Min/Max bounds](images/SetModelGlassConstraintsGlass.png)
+
 ### Building a merit function
 
 **Optimization → Merit Function**. Add operands via the **Insert**

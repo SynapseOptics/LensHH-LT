@@ -1,0 +1,54 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:LensHH.App.ViewModels"
+        x:Class="LensHH.App.Views.ModelGlassConstraintDialog"
+        x:DataType="vm:ModelGlassConstraintViewModel"
+        Title="{Binding Title}"
+        Icon="avares://LensHH.App/Assets/icon_256.png"
+        Width="340" Height="360"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False">
+
+  <StackPanel Margin="16" Spacing="10">
+
+    <!-- Variable Type -->
+    <Grid ColumnDefinitions="90,*" RowDefinitions="Auto">
+      <TextBlock Text="Variable Type:" VerticalAlignment="Center" />
+      <ComboBox Grid.Column="1" ItemsSource="{Binding VariableTypeOptions}"
+                SelectedIndex="{Binding VariableTypeIndex}" HorizontalAlignment="Stretch" />
+    </Grid>
+
+    <!-- Surface Range -->
+    <Grid ColumnDefinitions="Auto,8,60,20,Auto,8,60" RowDefinitions="Auto">
+      <TextBlock Text="Surface 1:" VerticalAlignment="Center" />
+      <TextBox Grid.Column="2" Text="{Binding Surface1}" />
+      <TextBlock Grid.Column="4" Text="Surface 2:" VerticalAlignment="Center" />
+      <TextBox Grid.Column="6" Text="{Binding Surface2}" />
+    </Grid>
+
+    <TextBlock Text="Applies to model-glass (model-index) surfaces within the range."
+               FontSize="11" Foreground="Gray" TextWrapping="Wrap" />
+
+    <!-- Constraint Type -->
+    <Grid ColumnDefinitions="90,*" RowDefinitions="Auto">
+      <TextBlock Text="Constraint:" VerticalAlignment="Center" />
+      <ComboBox Grid.Column="1" ItemsSource="{Binding ConstraintOptions}"
+                SelectedIndex="{Binding ConstraintTypeIndex}" HorizontalAlignment="Stretch" />
+    </Grid>
+
+    <!-- Min / Max -->
+    <Grid ColumnDefinitions="Auto,8,90,20,Auto,8,90" RowDefinitions="Auto">
+      <TextBlock Text="Min:" VerticalAlignment="Center" />
+      <TextBox Grid.Column="2" Text="{Binding MinText}" IsEnabled="{Binding IsMinEnabled}" />
+      <TextBlock Grid.Column="4" Text="Max:" VerticalAlignment="Center" />
+      <TextBox Grid.Column="6" Text="{Binding MaxText}" IsEnabled="{Binding IsMaxEnabled}" />
+    </Grid>
+
+    <!-- OK / Cancel -->
+    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,12,0,0">
+      <Button Content="OK" Click="OK_Click" Width="70" />
+      <Button Content="Cancel" Click="Cancel_Click" Width="70" IsCancel="True" />
+    </StackPanel>
+
+  </StackPanel>
+</Window>

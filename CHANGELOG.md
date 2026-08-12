@@ -2,6 +2,26 @@
 
 All notable changes to LensHH-LT and the LensHH-LT-Engine.
 
+## 1.0.143 — Unreleased
+
+### Added
+- **Model glass constraint bulk tool.** A **Model Glass Constraint** button in the
+  Variable Editor sets a chosen model-glass parameter (`Nd`, `Vd`, or `dPgF`) as an
+  optimization variable — with optional Min/Max bounds — across a surface range in one
+  step, applying only to surfaces already in model-index mode. Mirrors the Surface
+  Parameter Constraint tool for the fictitious-glass parameters.
+- **Multistart run log.** Each Multistart run now writes a per-run improvement log —
+  one line per new best (`trial #`, RMSE, wall-clock time) — to a text file under
+  `%LOCALAPPDATA%/SynapseOptics/LensHH-LT/logs/`, with the path shown on completion.
+  Useful for comparing runs when tuning settings.
+
+### Changed
+- **Basin-hopping log is now improvement-driven.** The optimizer log prints one line
+  per new global best — `chain`, RMSE, that chain's hop number, and elapsed time since
+  the run started — in both the single- and multi-chain runs (GUI) and the CLI,
+  replacing the previous per-hop noise. The chain index and per-chain hop are carried on
+  the shared progress data so every front-end reports them consistently.
+
 ## 1.0.142 — 2026-08-10
 
 ### Added

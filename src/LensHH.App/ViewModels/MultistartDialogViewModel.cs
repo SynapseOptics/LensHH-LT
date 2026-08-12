@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.IO;
 using System.Globalization;
 using System.Linq;
 using System.Threading;
@@ -150,6 +151,11 @@ public partial class MultistartDialogViewModel : ObservableObject
     [ObservableProperty] private string _currentMeritText = "";
     [ObservableProperty] private int _trialsAccepted;
 
+    // ── Improvement log (written to a text file, NOT shown in the GUI) ── one line per new
+    // best (Trial #, RMSE, wall-clock time), to compare runs when tuning default settings.
+    private double _bestEverLogged = double.MaxValue;
+    private string? _logFilePath;
+
     // ── Tables ──
     public ObservableCollection<MultistartVariableRow> VariableRows { get; } = new();
     public ObservableCollection<MultistartGlassRow> GlassRows { get; } = new();
@@ -290,6 +296,23 @@ public partial class MultistartDialogViewModel : ObservableObject
             BestMeritText = InitialMeritText;
             MeritText = $"Merit: {initialMerit:E6}";
 
+            // Open a per-run improvement log file (not shown in the GUI). Best-effort:
+            // a logging failure must never abort the optimization.
+            _bestEverLogged = double.MaxValue;
+            _logFilePath = null;
+            try
+            {
+                string logDir = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "SynapseOptics", "LensHH-LT", "logs");
+                Directory.CreateDirectory(logDir);
+                _logFilePath = Path.Combine(logDir, $"multistart-{DateTime.Now:yyyyMMdd-HHmmss}.log");
+                File.WriteAllText(_logFilePath,
+                    $"# Multistart run {DateTime.Now:yyyy-MM-dd HH:mm:ss}" + Environment.NewLine +
+                    $"# maxTrials={MaxTrials} lmPerTrial={LmIterationsPerTrial} hjSteps={HjStepsPerTrial} initialRMSE={initialMerit:E6}" + Environment.NewLine);
+            }
+            catch { _logFilePath = null; }
+
             bool variableRowsPopulated = false;
             bool optimizationDone = false;
 
@@ -316,6 +339,11 @@ public partial class MultistartDialogViewModel : ObservableObject
                     if (progress.CurrentMerit > 0)
                         CurrentMeritText = progress.CurrentMerit.ToString("E6");
 
+                    // Track improvements across both phases; emit a log line only for
+                    // trial-phase gains (Trial #, New RMSE, wall-clock time).
+                    bool improved = progress.BestMerit < _bestEverLogged - Math.Abs(_bestEverLogged) * 1e-9 - 1e-15;
+                    if (improved) _bestEverLogged = progress.BestMerit;
+
                     if (progress.IsInitialLm)
                     {
                         StatusText = $"Initial LM — iteration {progress.InitialLmIteration + 1}";
@@ -327,6 +355,8 @@ public partial class MultistartDialogViewModel : ObservableObject
                         StatusText = $"Trial {progress.Trial}/{progress.MaxTrials} — {progress.TrialsAccepted} accepted — σ {progress.Sigma:G3}";
                         TrailText = $"Trial {progress.Trial}/{progress.MaxTrials}";
                         MeritText = $"Best: {progress.BestMerit:E6}  ·  Current: {progress.CurrentMerit:E6}  ({progress.TrialsAccepted} accepted)";
+                        if (improved)
+                            WriteLogLine($"trial {progress.Trial}   RMSE={progress.BestMerit:E6}   {DateTime.Now:HH:mm:ss}");
                     }
 
                     // Update variable values
@@ -368,7 +398,10 @@ public partial class MultistartDialogViewModel : ObservableObject
             TrialsAccepted = result.TrialsAccepted;
 
             string status = result.Cancelled ? "Cancelled" : "Completed";
-            StatusText = $"{status} — {result.TrialsAccepted}/{result.TrialsRun} trials accepted";
+            WriteLogLine($"# {status} — {result.TrialsAccepted}/{result.TrialsRun} accepted — " +
+                         $"final RMSE={finalMerit:E6} — {_stopwatch.Elapsed.TotalSeconds:F1}s");
+            StatusText = $"{status} — {result.TrialsAccepted}/{result.TrialsRun} trials accepted" +
+                         (_logFilePath != null ? $"  ·  log: {_logFilePath}" : "");
             MeritText = $"Merit: {result.InitialMerit:E4} → {result.PostInitialLmMerit:E4} → {finalMerit:E4}";
             // Transparency: show the engine/module that actually ran (incl. any fallback).
             EngineText = $"Engine: {result.ComputePathDescription}";
@@ -392,4 +425,13 @@ public partial class MultistartDialogViewModel : ObservableObject
 
     // Workaround: CommunityToolkit generates TrailText from _trialText
     private string TrailText { set => TrialText = value; }
+
+    /// <summary>Append one line to the per-run improvement log file. Best-effort: never throws
+    /// (a logging failure must not disturb the optimization). No-op if the file couldn't be opened.</summary>
+    private void WriteLogLine(string line)
+    {
+        if (_logFilePath == null) return;
+        try { File.AppendAllText(_logFilePath, line + Environment.NewLine); }
+        catch { /* ignore — logging is best-effort */ }
+    }
 }

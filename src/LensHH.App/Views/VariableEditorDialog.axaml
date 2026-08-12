@@ -16,6 +16,7 @@
       <Button Content="Thickness Constraints" Click="ThicknessConstraints_Click" />
       <Button Content="Curvature Constraints" Click="CurvatureConstraints_Click" />
       <Button Content="Surface Parameter Constraint" Click="SurfaceParameterConstraint_Click" />
+      <Button Content="Model Glass Constraint" Click="ModelGlassConstraint_Click" />
       <Border Width="1" Background="#CCC" Margin="4,2" />
       <Button Content="OK" Click="OK_Click" Width="70" />
       <Button Content="Cancel" Click="Cancel_Click" Width="70" IsCancel="True" />
