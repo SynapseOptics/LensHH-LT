@@ -2,7 +2,26 @@
 
 All notable changes to LensHH-LT and the LensHH-LT-Engine.
 
-## 1.0.143 — Unreleased
+## 1.0.144 — Unreleased
+
+### Added
+- **"Total" (T) boundary merit operands.** A parallel family that sums the bound
+  *violation* across every qualifying surface in a range — value = √(Σ per-surface
+  hinge²), so every offending surface drives the optimizer, unlike the existing
+  worst-case operands (which report only the single worst surface). Full set:
+  `CTT/CTAT/CTGT` (center thickness), `ETT/EAT/EGT` (edge thickness),
+  `CVT/CVAT/CVGT` (curvature), `SDT` (semi-diameter), `DTRGT` (diameter/thickness
+  ratio), `RIT/RET` (chief-ray incidence/exitance angle), and the model-glass
+  `NDT/VDT/DPGFT` (Nd/Vd/dPgF over model-index surfaces). The plain operands are
+  unchanged, so existing designs reproduce exactly.
+
+### Changed
+- **Basin-hopping log now records every per-chain improvement.** In a parallel
+  (multi-chain) run the log prints a line whenever *any* chain betters its own best —
+  `chain N   RMSE=…   hop …   elapsed` — with a `★ global best` marker on the ones that
+  also set a new global best. Previously only global-best improvements were logged.
+
+## 1.0.143 — 2026-08-12
 
 ### Added
 - **Model glass constraint bulk tool.** A **Model Glass Constraint** button in the

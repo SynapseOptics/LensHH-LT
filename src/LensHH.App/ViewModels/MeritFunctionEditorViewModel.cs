@@ -81,6 +81,13 @@ public partial class OperandRowViewModel : ObservableObject
         or OperandType.ET or OperandType.EA or OperandType.EG
         or OperandType.SD or OperandType.DTRG
         or OperandType.RI or OperandType.RE
+        // "Total" (T) boundary operands — same Surface1/Surface2/Min/Max params.
+        or OperandType.CTT or OperandType.CTAT or OperandType.CTGT
+        or OperandType.ETT or OperandType.EAT or OperandType.EGT
+        or OperandType.CVT or OperandType.CVAT or OperandType.CVGT
+        or OperandType.SDT or OperandType.DTRGT
+        or OperandType.RIT or OperandType.RET
+        or OperandType.NDT or OperandType.VDT or OperandType.DPGFT
             => Category.Boundary,
 
         // Surface property
@@ -602,6 +609,26 @@ public partial class MeritFunctionEditorViewModel : ObservableObject
         OperandType.EG => "EG — Edge thickness of glass elements in range. Params: Surf, Surf2",
         OperandType.SD => "SD — Semi-diameter of surfaces in range. Params: Surf, Surf2",
         OperandType.DTRG => "DTRG — Diameter-to-thickness ratio (2·SD / |CT|) of glass elements in range. Fabrication constraint. Params: Surf, Surf2",
+
+        // "Total" (T) boundary operands — sum the Min/Max violation across EVERY qualifying
+        // surface in the range (value = √Σ hinge², 0 when all satisfied), so every offending
+        // surface drives the optimizer — vs the plain operands, which report only the worst one.
+        OperandType.CTT => "CTT — Total center-thickness violation over the range (all). Every out-of-bounds surface contributes. Params: Surf, Surf2, Min, Max",
+        OperandType.CTAT => "CTAT — Total center-thickness violation of air spaces in range. Params: Surf, Surf2, Min, Max",
+        OperandType.CTGT => "CTGT — Total center-thickness violation of glass elements in range. Params: Surf, Surf2, Min, Max",
+        OperandType.ETT => "ETT — Total edge-thickness violation over the range (all). Params: Surf, Surf2, Min, Max",
+        OperandType.EAT => "EAT — Total edge-thickness violation of air spaces in range. Params: Surf, Surf2, Min, Max",
+        OperandType.EGT => "EGT — Total edge-thickness violation of glass elements in range. Params: Surf, Surf2, Min, Max",
+        OperandType.CVT => "CVT — Total curvature violation over the range (all). Params: Surf, Surf2, Min, Max",
+        OperandType.CVAT => "CVAT — Total curvature violation of air spaces in range. Params: Surf, Surf2, Min, Max",
+        OperandType.CVGT => "CVGT — Total curvature violation of glass surfaces in range. Params: Surf, Surf2, Min, Max",
+        OperandType.SDT => "SDT — Total semi-diameter violation of surfaces in range. Params: Surf, Surf2, Min, Max",
+        OperandType.DTRGT => "DTRGT — Total diameter-to-thickness-ratio violation of glass elements in range. Params: Surf, Surf2, Min, Max",
+        OperandType.RIT => "RIT — Total chief-ray angle-of-incidence violation over the range. Params: Surf, Surf2, Min, Max",
+        OperandType.RET => "RET — Total chief-ray angle-of-exitance violation over the range. Params: Surf, Surf2, Min, Max",
+        OperandType.NDT => "NDT — Total model-glass index (Nd) violation over model-index surfaces in range. Params: Surf, Surf2, Min, Max",
+        OperandType.VDT => "VDT — Total model-glass Abbe (Vd) violation over model-index surfaces in range. Params: Surf, Surf2, Min, Max",
+        OperandType.DPGFT => "DPGFT — Total model-glass partial-dispersion (dPgF) violation over model-index surfaces in range. Params: Surf, Surf2, Min, Max",
 
         // Surface property
         OperandType.DM => "DM — Diameter (semi-diameter) of a single surface. Params: Surf",

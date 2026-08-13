@@ -177,7 +177,8 @@ public partial class BasinHoppingHjLmDialogViewModel : ObservableObject
     // Live per-chain status for a parallel run (empty for single-chain). Drives the "Chains" tab.
     public ObservableCollection<BasinHoppingChainRow> ChainRows { get; } = new();
     [ObservableProperty] private bool _isMultiChain;
-    private double _bestEverLogged = double.MaxValue;   // for "new global best" log lines
+    private double _bestEverLogged = double.MaxValue;   // global best (for the ★ marker + headline)
+    private double[]? _chainBestLogged;                 // per-chain best, so we log EVERY chain improvement
 
     public bool Accepted { get; private set; }
 
@@ -223,6 +224,7 @@ public partial class BasinHoppingHjLmDialogViewModel : ObservableObject
         ChainRows.Clear();
         IsMultiChain = false;
         _bestEverLogged = double.MaxValue;
+        _chainBestLogged = null;
         _stopwatch.Restart();
         _cts = new CancellationTokenSource();
 
@@ -404,14 +406,8 @@ public partial class BasinHoppingHjLmDialogViewModel : ObservableObject
                 _batch.FilteredCatalogSearchPaths = filteredDir != null ? new[] { filteredDir } : Array.Empty<string>();
                 _batch.OnProgress = p => Dispatcher.UIThread.Post(() =>
                     {
-                        // Log every genuine global-best improvement (not throttled — these are
-                        // the events the user cares about), and keep the headline merit current.
-                        if (p.BestMerit < _bestEverLogged - Math.Abs(_bestEverLogged) * 1e-9 - 1e-15)
-                        {
-                            _bestEverLogged = p.BestMerit;
-                            BestMeritText = p.BestMerit.ToString("E6");
-                            AppendLog($"chain {p.Chain}   RMSE={p.BestMerit:E6}   hop {p.ChainHop + 1}   {_stopwatch.Elapsed.ToString(@"hh\:mm\:ss")}");
-                        }
+                        // Per-chain improvement logging lives in OnChainsProgress (it carries each
+                        // chain's OWN best); here we only keep the throttled headline current.
                         if (headThrottle.ElapsedMilliseconds < 200) return;
                         headThrottle.Restart();
                         AcceptedCount = p.Accepted;
@@ -425,6 +421,28 @@ public partial class BasinHoppingHjLmDialogViewModel : ObservableObject
                     {
                         if (ChainRows.Count == 0)
                             for (int k = 0; k < snap.Length; k++) ChainRows.Add(new BasinHoppingChainRow(k));
+
+                        // Log EVERY chain that betters its OWN best (unthrottled — these are the
+                        // per-chain events the user tunes with); mark the ones that are also a new
+                        // global best with ★. snap carries each chain's own Best + Hops.
+                        if (_chainBestLogged == null || _chainBestLogged.Length != snap.Length)
+                        {
+                            _chainBestLogged = new double[snap.Length];
+                            for (int k = 0; k < snap.Length; k++) _chainBestLogged[k] = double.MaxValue;
+                        }
+                        for (int k = 0; k < snap.Length; k++)
+                        {
+                            double b = snap[k].Best;
+                            if (double.IsNaN(b)) continue;
+                            if (b < _chainBestLogged[k] - Math.Abs(_chainBestLogged[k]) * 1e-9 - 1e-15)
+                            {
+                                _chainBestLogged[k] = b;
+                                bool globalBest = b < _bestEverLogged - Math.Abs(_bestEverLogged) * 1e-9 - 1e-15;
+                                if (globalBest) { _bestEverLogged = b; BestMeritText = b.ToString("E6"); }
+                                AppendLog($"chain {snap[k].Chain}   RMSE={b:E6}   hop {snap[k].Hops + 1}   {_stopwatch.Elapsed.ToString(@"hh\:mm\:ss")}{(globalBest ? "   ★ global best" : "")}");
+                            }
+                        }
+
                         if (tableThrottle.ElapsedMilliseconds < 200) return;
                         tableThrottle.Restart();
                         for (int k = 0; k < snap.Length && k < ChainRows.Count; k++)

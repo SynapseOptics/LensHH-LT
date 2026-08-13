@@ -256,6 +256,16 @@ namespace LensHH.CLI.Commands
             table.AddRow("EG", "Edge thickness (glass only)", "surface1, surface2, min, max");
             table.AddRow("SD", "Semi-diameter", "surface1, surface2, min, max");
 
+            // "Total" (T) boundary operands — sum the violation over EVERY qualifying
+            // surface in the range (vs the plain ops above, which report only the worst).
+            table.AddRow("CTT/CTAT/CTGT", "Total center-thickness violation (all/air/glass)", "surface1, surface2, min, max");
+            table.AddRow("ETT/EAT/EGT", "Total edge-thickness violation (all/air/glass)", "surface1, surface2, min, max");
+            table.AddRow("CVT/CVAT/CVGT", "Total curvature violation (all/air/glass)", "surface1, surface2, min, max");
+            table.AddRow("SDT", "Total semi-diameter violation", "surface1, surface2, min, max");
+            table.AddRow("DTRGT", "Total diameter-to-thickness-ratio violation (glass)", "surface1, surface2, min, max");
+            table.AddRow("RIT/RET", "Total chief-ray incidence/exitance-angle violation", "surface1, surface2, min, max");
+            table.AddRow("NDT/VDT/DPGFT", "Total model-glass Nd/Vd/dPgF violation (model-index surfaces)", "surface1, surface2, min, max");
+
             // Surface property operands
             table.AddRow("DM", "Surface diameter", "surface1");
 

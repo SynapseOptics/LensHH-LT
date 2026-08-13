@@ -311,6 +311,40 @@ Penalize the optimizer when outside the bound.
 Glass-only variants walk only surfaces whose outgoing material is not
 air; air-only variants the complement; the plain variant both.
 
+### Total ("T") variants — sum every offending surface
+
+Every boundary and angle operand above has a **"total"** counterpart, formed by
+appending **`T`** to its name: `CTT`/`CTAT`/`CTGT`, `ETT`/`EAT`/`EGT`,
+`CVT`/`CVAT`/`CVGT`, `SDT`, `DTRGT`, and `RIT`/`RET`.
+
+Where the plain operand reduces a range to the **single worst surface**, a `T`
+operand sums the bound **violation of every qualifying surface** in the range:
+
+> value = √( Σᵢ [ max(0, Min − vᵢ)² + max(0, vᵢ − Max)² ] )
+
+It is **0 when every surface is within bounds**, and grows as violations
+accumulate. The residual is this aggregate against an implicit target of `0`, so
+you set `Min` / `Max` (the per-surface bounds) exactly as for the plain operand —
+there is no Target to set.
+
+**Why use it.** A worst-case operand only ever has a gradient on the one surface
+that is currently worst, so the optimizer fixes offenders one at a time and can
+stall when several surfaces violate at once. The `T` operand puts a gradient on
+*every* offending surface simultaneously, which converges more smoothly when a
+design drives many boundary constraints active. Same `Surface1` / `Surface2`
+inputs — reach for it wherever you'd use the plain operand but have several
+surfaces to keep in bounds.
+
+### Model-glass total operands
+
+`NDT`, `VDT`, `DPGFT` are `T`-style totals for the model-glass ("fictitious
+glass") parameters — refractive index `Nd`, Abbe number `Vd`, and
+partial-dispersion deviation `dPgF`. Each sums the Min/Max violation over the
+**model-index surfaces** in the range (a real catalog glass has no such
+parameter and is skipped). Use them to keep an optimized model-glass stack
+inside a manufacturable index / Abbe / partial-dispersion box before you
+substitute real catalog glasses. Inputs: `Surface1`, `Surface2`, `Min` / `Max`.
+
 ### Surface sentinel values
 
 `Surface1` and `Surface2` both accept either an **absolute surface
