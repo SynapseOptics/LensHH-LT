@@ -2,7 +2,25 @@
 
 All notable changes to LensHH-LT and the LensHH-LT-Engine.
 
-## 1.0.144 — Unreleased
+## 1.0.145 — 2026-08-16
+
+### Changed
+- **Relative illumination now accounts for the anamorphic off-axis exit pupil.**
+  At off-axis fields the exit pupil foreshortens into an ellipse; the previous
+  calculation used the entrance-pupil sampling geometry and overstated the
+  transmitted solid angle, reporting the illumination falloff as too gradual. It
+  now integrates the actual image-space ray-cone footprint. Both the Relative
+  Illumination analysis and the `ILL` merit operand use the corrected value and now
+  agree; a hand-tuned `ILL` target may need re-checking since `ILL` values shift
+  toward the true (lower) off-axis illumination. On-axis is unchanged.
+- **Off-axis FFT MTF now diffracts through the anamorphic exit pupil.** Off-axis
+  MTF now diffracts the wavefront through the real-ray numerical-aperture footprint
+  instead of a circular pupil with a scalar frequency scaling, correcting the
+  tangential (previously reported too high) and sagittal response for wide-field and
+  off-axis designs. On-axis results, wavefront (OPD) maps, and the FFT PSF are
+  unchanged.
+
+## 1.0.144 — 2026-08-13
 
 ### Added
 - **"Total" (T) boundary merit operands.** A parallel family that sums the bound
