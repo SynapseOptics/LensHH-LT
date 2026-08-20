@@ -956,12 +956,14 @@ namespace LensHH.Mcp.Tools
             "Each pooled design is written as a .lhlt to outputFolder with its seed in the filename; the merit-best design is auto-applied to the current system when the job completes. " +
             "Poll optimize_status(jobId) for progress (pool count / models-to-keep, best merit); call optimize_cancel(jobId) to stop early (the pool found so far is still written). " +
             "Reproducibility: the same baseSeed reproduces the same pool exactly; run baseSeed=1, then 2, then 3 to accumulate independent, non-overlapping batches of designs. " +
-            "Params: modelsToKeep (16), maxRestarts (48), maxTrialsPerRestart (3000), lmPerTrial (6000), stallAtCapBatches (1 — restart ends after this many no-improvement batches at the sigma cap), baseSeed (1), glassSubPercent (50), initialSigma (0.001), sigmaCap (0.01), prePolishLm (0 = perturb the raw start design; >0 LM-polishes it once first), rescaleOnGlassSwap (true), useNativeEngine (true), analyticDerivative (true), outputFolder ('global_search_results').")]
+            "Params: modelsToKeep (16), maxRestarts (48), maxTrialsPerRestart (3000), lmPerTrial (6000), stallAtCapBatches (1 — restart ends after this many no-improvement batches at the sigma cap), baseSeed (1), glassSubPercent (50), initialSigma (0.001), sigmaCap (0.01), prePolishLm (0 = perturb the raw start design; >0 LM-polishes it once first), rescaleOnGlassSwap (true), reducedDim (true), basinMemory (true), enableMetropolis (true), useNativeEngine (true), analyticDerivative (true), outputFolder ('global_search_results'). " +
+            "Convergence levers (same as optimize_multistart, default ON): reducedDim perturbs a random SUBSET of variables per trial to reach adjacent deeper basins; basinMemory archives distinct minima and restarts far from them after a cap-stall; enableMetropolis may accept a worse basin to escape mined ones (best is monotone).")]
         public string GlobalSearchStart(
             int modelsToKeep = 16, int maxRestarts = 48, int maxTrialsPerRestart = OptimizationDefaults.MultistartTrials,
             int lmPerTrial = OptimizationDefaults.LmIterations, int stallAtCapBatches = 1, int baseSeed = 1,
             double glassSubPercent = 50, double initialSigma = 0.001, double sigmaCap = 0.01,
             int prePolishLm = 0, bool rescaleOnGlassSwap = true,
+            bool reducedDim = true, bool basinMemory = true, bool enableMetropolis = true,
             bool useNativeEngine = true, bool analyticDerivative = true,
             string outputFolder = "global_search_results")
         {
@@ -990,6 +992,10 @@ namespace LensHH.Mcp.Tools
                     RescaleCurvatureOnGlassSwap = rescaleOnGlassSwap,
                     LmIterationsPerTrial = lmPerTrial,
                     InitialLmIterations = prePolishLm,
+                    // Convergence levers — same as optimize_multistart (default ON).
+                    ReducedDimPerturbation = reducedDim,
+                    BasinMemoryRestart = basinMemory,
+                    EnableMetropolis = enableMetropolis,
                 },
                 ArchiveWriter = (name, sys, m) =>
                 {

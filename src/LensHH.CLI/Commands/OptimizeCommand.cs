@@ -583,6 +583,10 @@ namespace LensHH.CLI.Commands
                     case "sigma": if (double.TryParse(val, NumberStyles.Float, CultureInfo.InvariantCulture, out double sgv)) gs.Multistart.InitialSigma = sgv; break;
                     case "cap": if (double.TryParse(val, NumberStyles.Float, CultureInfo.InvariantCulture, out double cpv)) gs.Multistart.SigmaCap = cpv; break;
                     case "glass": if (double.TryParse(val, NumberStyles.Float, CultureInfo.InvariantCulture, out double gv)) gs.Multistart.GlassSubstitutionProbability = gv / 100.0; break;
+                    // Convergence levers (default ON) — mirror optimize multistart; pass =off to disable.
+                    case "reduceddim": gs.Multistart.ReducedDimPerturbation = !IsOff(val); break;
+                    case "basinmemory": gs.Multistart.BasinMemoryRestart = !IsOff(val); break;
+                    case "metropolis": gs.Multistart.EnableMetropolis = !IsOff(val); break;
                     case "native": useNative = true; break;
                     case "analytic": analytic = true; break;
                     case "out": if (!string.IsNullOrEmpty(val)) outDir = val; break;

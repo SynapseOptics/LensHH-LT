@@ -81,6 +81,18 @@
           <StackPanel Margin="0,0,16,6" VerticalAlignment="Bottom">
             <CheckBox Content="Rescale on glass swap" IsChecked="{Binding RescaleOnGlassSwap}"/>
           </StackPanel>
+          <StackPanel Margin="0,0,16,6" VerticalAlignment="Bottom">
+            <CheckBox Content="Reduced-dim perturbation" IsChecked="{Binding ReducedDim}"
+                      ToolTip.Tip="On by default (same as Multistart). A fraction of trials perturb only a random SUBSET of variables (the rest stay centered), so the search moves along low-dimensional manifolds into adjacent, deeper basins that a full-dimension kick overshoots."/>
+          </StackPanel>
+          <StackPanel Margin="0,0,16,6" VerticalAlignment="Bottom">
+            <CheckBox Content="Basin memory / diverse restart" IsChecked="{Binding BasinMemory}"
+                      ToolTip.Tip="On by default (same as Multistart). Archives the distinct minima visited and, after stalling at the sigma cap, restarts far from every archived basin (with randomized glasses) to map new regions. The run-wide best is tracked separately and never lost."/>
+          </StackPanel>
+          <StackPanel Margin="0,0,16,6" VerticalAlignment="Bottom">
+            <CheckBox Content="Metropolis acceptance" IsChecked="{Binding Metropolis}"
+                      ToolTip.Tip="On by default (same as Multistart). Keeps a 'currentCenter' separate from 'best' and may accept a worse-than-best basin with probability exp(-dM/T) to walk out of mined basins. Best is updated by strict improvement only, so the returned design is monotone."/>
+          </StackPanel>
         </WrapPanel>
 
         <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto">

@@ -52,6 +52,10 @@ namespace LensHH.App.ViewModels
         // ── Inherited Multistart knobs exposed here ──
         [ObservableProperty] private double _glassSubstitutionProbability = 50.0; // percent
         [ObservableProperty] private bool _rescaleOnGlassSwap = true;
+        // Convergence levers — same as Multistart (default ON).
+        [ObservableProperty] private bool _reducedDim = true;
+        [ObservableProperty] private bool _basinMemory = true;
+        [ObservableProperty] private bool _metropolis = true;
         [ObservableProperty] private int _initialLmPolish; // 0 = don't polish the starting design (default)
         [ObservableProperty] private double _initialSigma = 0.001;
         [ObservableProperty] private double _sigmaCap = 0.01;
@@ -174,6 +178,10 @@ namespace LensHH.App.ViewModels
                         // 0 = perturb the raw starting design (no pre-polish); the
                         // service skips Phase-1 entirely. >0 = polish the start once.
                         InitialLmIterations = Math.Max(0, InitialLmPolish),
+                        // Convergence levers — same as standalone Multistart.
+                        ReducedDimPerturbation = ReducedDim,
+                        BasinMemoryRestart = BasinMemory,
+                        EnableMetropolis = Metropolis,
                     },
                 },
                 EngineMode = EngineModeIndex == 1 ? EngineMode.Native : EngineMode.CSharp,
