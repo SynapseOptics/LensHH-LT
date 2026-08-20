@@ -1073,6 +1073,7 @@ namespace LensHH.Mcp.Tools
             "Poll optimize_status(jobId) for progress (current hop, best merit, accepted/rejected, glass swaps); call optimize_cancel to stop. " +
             "Result auto-applies to the system when the job completes. " +
             "chains (default 0 = auto = one chain per physical core) runs that many independent hopping chains concurrently and returns the single global best (chains=1 = classic single chain). " +
+            "Exploration knobs: enableMetropolis (true — accept a worse design with probability exp(-dMerit/T) to walk between basins; false = greedy), metropolisTemperature (0 = autotune), restartAfterStalledHops (20 — full-range long-jump restart after this many hops with no new best; 0 = off), restartSigma (0.5 — magnitude of that jump). " +
             "Parameters mirror optimize_basin_hopping.")]
         public string BasinHoppingStart(
             int maxHops = OptimizationDefaults.MultistartTrials, int lmIterationsPerHop = OptimizationDefaults.LmIterations, int hjStepsPerHop = 30,
@@ -1080,7 +1081,10 @@ namespace LensHH.Mcp.Tools
             double lmTolerance = 1e-10, double lmInitialDamping = 1e-3, bool useBroydenUpdate = true,
             bool constrainedOnly = false,
             bool glassSubstitution = false, bool onlyPreferred = true, string catalogs = "",
-            int seed = 1234, int chains = 0, string saveChainsFolder = "", bool useGpuImageQuality = false)
+            int seed = 1234,
+            bool enableMetropolis = true, double metropolisTemperature = 0,
+            int restartAfterStalledHops = 20, double restartSigma = 0.5,
+            int chains = 0, string saveChainsFolder = "", bool useGpuImageQuality = false)
         {
             { var ge = _session.ValidateGlass(); if (ge != null) return ge; }
             if (_session.MeritFunction == null || _session.MeritFunction.Operands.Count == 0)
@@ -1101,6 +1105,10 @@ namespace LensHH.Mcp.Tools
                 GlassSubstitution = glassSubstitution,
                 OnlyPreferred = onlyPreferred,
                 Seed = seed,
+                EnableMetropolis = enableMetropolis,
+                MetropolisTemperature = metropolisTemperature,
+                RestartAfterStalledHops = restartAfterStalledHops,
+                RestartSigma = restartSigma,
             };
             if (!string.IsNullOrWhiteSpace(catalogs))
                 settings.GlassCatalogs = new System.Collections.Generic.List<string>(

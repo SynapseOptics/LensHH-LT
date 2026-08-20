@@ -848,6 +848,13 @@ namespace LensHH.CLI.Commands
                             val.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
                         break;
                     case "seed": if (int.TryParse(val, out int sd)) settings.Seed = sd; break;
+                    // Exploration knobs. metropolis=off → greedy walk; temp 0 = autotune;
+                    // restartstall=0 → no full-range long-jump restart.
+                    case "metropolis": settings.EnableMetropolis = !IsOff(val); break;
+                    case "temp": if (double.TryParse(val, NumberStyles.Float, CultureInfo.InvariantCulture, out double tp)) settings.MetropolisTemperature = tp; break;
+                    case "restartstall":
+                    case "restartafterstall": if (int.TryParse(val, out int ras)) settings.RestartAfterStalledHops = ras; break;
+                    case "restartsigma": if (double.TryParse(val, NumberStyles.Float, CultureInfo.InvariantCulture, out double rsg)) settings.RestartSigma = rsg; break;
                     // Parallel independent chains (each from its own perturbation seed); the
                     // single global best is returned. 1 = classic single chain; 0 = auto (physical cores).
                     case "chains": if (int.TryParse(val, out int ch)) settings.ParallelChains = ch; break;
@@ -906,6 +913,7 @@ namespace LensHH.CLI.Commands
             AnsiConsole.MarkupLine($"  Hops/chain: {settings.MaxHops}, LM/hop: {settings.LmIterationsPerHop}, HJ/hop: {settings.HjStepsPerHop}");
             AnsiConsole.MarkupLine($"  Initial sigma: {settings.InitialPerturbSigma:G3}, HJ step: {settings.HjInitialStep:G3}");
             AnsiConsole.MarkupLine($"  Glass substitution: {(settings.GlassSubstitution ? "ON (" + string.Join(", ", settings.GlassCatalogs) + ")" : "OFF")}");
+            AnsiConsole.MarkupLine($"  Metropolis walk: {(settings.EnableMetropolis ? $"ON (T={(settings.MetropolisTemperature > 0 ? settings.MetropolisTemperature.ToString("G3") : "autotune")})" : "OFF (greedy)")}   Restart@stall: {(settings.RestartAfterStalledHops > 0 ? $"{settings.RestartAfterStalledHops} hops, σ={settings.RestartSigma:G3}" : "off")}");
             AnsiConsole.MarkupLine("");
 
             try
