@@ -76,3 +76,6 @@ catalogs/Lenses/ThorLabs/zemaxcatalog/
 
 # Avalonia XAML compiler build cache (not source)
 **/.avalonia-build-tasks/
+
+# Installer build logs (transient)
+installer/*.log
