@@ -249,6 +249,8 @@ namespace LensHH.CLI.Commands
                     case "trials": if (int.TryParse(val, out int t)) settings.MaxTrials = t; break;
                     case "lm": if (int.TryParse(val, out int l)) settings.LmIterationsPerTrial = l; break;
                     case "initlm": if (int.TryParse(val, out int il)) settings.InitialLmIterations = il; break;
+                    case "inithj": if (int.TryParse(val, out int ihj)) settings.InitialHjSteps = ihj; break;
+                    case "physicalhj": settings.PhysicalTrialHj = !IsOff(val); break;
                     case "sigma": if (double.TryParse(val, NumberStyles.Float, CultureInfo.InvariantCulture, out double sg)) settings.InitialSigma = sg; break;
                     case "growth": if (double.TryParse(val, NumberStyles.Float, CultureInfo.InvariantCulture, out double gr)) settings.SigmaGrowth = gr; break;
                     case "cap": if (double.TryParse(val, NumberStyles.Float, CultureInfo.InvariantCulture, out double cp)) settings.SigmaCap = cp; break;
@@ -269,6 +271,9 @@ namespace LensHH.CLI.Commands
                         settings.UseBroydenUpdate = b == "true" || b == "1" || b == "yes" || b == "y";
                         break;
                     case "refresh": if (int.TryParse(val, out int rf)) settings.BroydenRefreshInterval = rf; break;
+                    // Convergence levers (default ON) — pass reduceddim=off / basinmemory=off to disable.
+                    case "reduceddim": settings.ReducedDimPerturbation = !IsOff(val); break;
+                    case "basinmemory": settings.BasinMemoryRestart = !IsOff(val); break;
                     // GPU pre-screen (sieve candidates on the GPU) + 1.0.128 difference gate.
                     case "gpu": settings.UseGpuPreScreen = true; break;
                     case "mincurvchange":
@@ -332,6 +337,7 @@ namespace LensHH.CLI.Commands
                 AnsiConsole.MarkupLine($"  Initial Merit:  {result.InitialMerit:E6}");
                 AnsiConsole.MarkupLine($"  Post-LM Merit:  {result.PostInitialLmMerit:E6}");
                 AnsiConsole.MarkupLine($"  Final Merit:    {result.FinalMerit:E6}");
+                AnsiConsole.MarkupLine($"  Evaluations:    {result.EvaluationCount:N0}   Elapsed: {result.Elapsed.TotalSeconds:F2} s");
                 AnsiConsole.MarkupLine($"  Trials: {result.TrialsRun}, Accepted: {result.TrialsAccepted}");
                 AnsiConsole.MarkupLine($"  Engine:         {Markup.Escape(result.ComputePathDescription)}");
                 AnsiConsole.MarkupLine($"  {Markup.Escape(result.Message)}");
@@ -535,6 +541,13 @@ namespace LensHH.CLI.Commands
 
         // Surface label for the conditioner inputs (-1 = auto).
         private static string SurfLabel(int s) => s < 0 ? "auto" : s.ToString();
+
+        /// <summary>Parse an off-switch value: off/false/0/no/n → true (feature disabled).</summary>
+        private static bool IsOff(string val)
+        {
+            var v = val.Trim().ToLowerInvariant();
+            return v == "off" || v == "false" || v == "0" || v == "no" || v == "n";
+        }
 
         private void RunGlobalSearch(Session session, string[] args)
         {
@@ -893,6 +906,7 @@ namespace LensHH.CLI.Commands
 
             try
             {
+                LensHH.Core.MeritFunction.MeritFunctionEvaluator.ParallelFireCount = 0;   // INSTRUMENTATION (temp)
                 var result = optimizer.Optimize(_cts.Token);
 
                 AnsiConsole.MarkupLine("");
@@ -900,6 +914,8 @@ namespace LensHH.CLI.Commands
                 AnsiConsole.MarkupLine($"  Initial Merit: {result.InitialMerit:E6}");
                 AnsiConsole.MarkupLine($"  Final Merit:   {result.FinalMerit:E6}");
                 AnsiConsole.MarkupLine($"  Chains: {optimizer.ChainsRun}, total hops: {result.Hops}, Accepted: {result.Accepted}, Rejected: {result.Rejected}, Glass Swaps: {result.GlassSwaps}");
+                AnsiConsole.MarkupLine($"  Evaluations: {result.EvaluationCount:N0}");
+                AnsiConsole.MarkupLine($"  Parallel-eval fires: {LensHH.Core.MeritFunction.MeritFunctionEvaluator.ParallelFireCount:N0}");
                 AnsiConsole.MarkupLine($"  Wall time: {result.Elapsed.TotalSeconds:F2} s");
                 if (!string.IsNullOrEmpty(result.Message))
                     AnsiConsole.MarkupLine($"  {Markup.Escape(result.Message)}");

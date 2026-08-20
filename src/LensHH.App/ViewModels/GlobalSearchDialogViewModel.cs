@@ -100,6 +100,10 @@ namespace LensHH.App.ViewModels
         //  Run / Cancel
         // ─────────────────────────────────────────────────────────────────────
 
+        // Per-run on-disk improvement log (globalsearch-*.log), mirroring Multistart.
+        private string? _logFilePath;
+        private double _bestEverLogged = double.MaxValue;
+
         [RelayCommand]
         private async Task Run()
         {
@@ -117,13 +121,34 @@ namespace LensHH.App.ViewModels
             _elapsedTimer.Start();
 
             // Initial merit for context.
+            double initialMeritVal = double.NaN;
             try
             {
                 var ev = AppExtensions.CreateMeritEvaluator(_session.System, _session.GlassCatalog);
                 ev.ParallelEvaluation = true;
-                InitialMeritText = ev.Evaluate(_session.MeritFunction).ToString("E4");
+                initialMeritVal = ev.Evaluate(_session.MeritFunction);
+                InitialMeritText = initialMeritVal.ToString("E4");
             }
             catch { InitialMeritText = "—"; }
+
+            // Per-run improvement log on disk (mirrors Multistart's). Best-effort —
+            // a logging failure must never abort the run. This is the log the user
+            // noticed was missing for Global Multistart.
+            _bestEverLogged = double.MaxValue;
+            _logFilePath = null;
+            try
+            {
+                string logDir = System.IO.Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "SynapseOptics", "LensHH-LT", "logs");
+                System.IO.Directory.CreateDirectory(logDir);
+                _logFilePath = System.IO.Path.Combine(logDir, $"globalsearch-{DateTime.Now:yyyyMMdd-HHmmss}.log");
+                System.IO.File.WriteAllText(_logFilePath,
+                    $"# Global Multistart run {DateTime.Now:yyyy-MM-dd HH:mm:ss}" + Environment.NewLine +
+                    $"# modelsToKeep={ModelsToKeep} maxRestarts={MaxRestarts} maxTrialsPerRestart={MaxTrialsPerRestart} " +
+                    $"lmPerTrial={LmIterationsPerTrial} initialRMSE={initialMeritVal:E6}" + Environment.NewLine);
+            }
+            catch { _logFilePath = null; }
 
             LensHH.Core.NativeInterop.GpuActivity.Reset();   // live GPU-activity chip
             var svc = new GlobalSearchService(
@@ -163,7 +188,20 @@ namespace LensHH.App.ViewModels
             {
                 ProgressText = p.StatusMessage;
                 ProgressFraction = Math.Min(1.0, (double)p.PoolCount / Math.Max(1, p.ModelsToKeep));
-                if (!double.IsNaN(p.BestMerit)) BestMeritText = p.BestMerit.ToString("E4");
+                if (!double.IsNaN(p.BestMerit))
+                {
+                    BestMeritText = p.BestMerit.ToString("E4");
+                    if (p.BestMerit < _bestEverLogged - 1e-12 && _logFilePath != null)
+                    {
+                        _bestEverLogged = p.BestMerit;
+                        try
+                        {
+                            System.IO.File.AppendAllText(_logFilePath,
+                                $"restart {p.RestartIndex + 1,3}   RMSE={p.BestMerit:E6}   {DateTime.Now:HH:mm:ss}" + Environment.NewLine);
+                        }
+                        catch { /* best-effort */ }
+                    }
+                }
                 StatusText = $"Pool {p.PoolCount}/{p.ModelsToKeep} · restart {p.RestartIndex + 1}/{p.MaxRestarts}";
             });
 
@@ -180,6 +218,15 @@ namespace LensHH.App.ViewModels
                 IsRunning = false;
                 return;
             }
+
+            if (_logFilePath != null)
+                try
+                {
+                    System.IO.File.AppendAllText(_logFilePath,
+                        $"# Completed — pool {result.Models.Count} — best RMSE={(result.Best?.Merit ?? double.NaN):E6} — "
+                        + $"{_stopwatch.Elapsed.TotalSeconds:F1}s" + Environment.NewLine);
+                }
+                catch { /* best-effort */ }
 
             // Build the gallery cards (layout thumbnails are rendered off-thread).
             var glass = _session.GlassCatalog;

@@ -6,10 +6,10 @@
         x:DataType="vm:MultistartDialogViewModel"
         Title="Multi Start Optimization"
         Icon="avares://LensHH.App/Assets/icon_256.png"
-        Width="950" Height="700"
+        Width="1050" Height="700"
         WindowStartupLocation="CenterOwner"
         CanResize="True"
-        MinWidth="800" MinHeight="550">
+        MinWidth="980" MinHeight="550">
 
   <DockPanel Margin="12">
 
@@ -61,6 +61,20 @@
                     PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"
                     GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
         </StackPanel>
+        <!-- Per-trial Hooke-Jeeves knobs (moved here 2026-08-20 to declutter the main panel). The
+             SEED HJ is now automatic for constrained designs; these only affect the OPTIONAL per-trial HJ. -->
+        <StackPanel Orientation="Horizontal" Spacing="12">
+          <TextBlock Text="HJ Steps:" VerticalAlignment="Center" />
+          <TextBox Width="60" Text="{Binding HjStepsPerTrial, UpdateSourceTrigger=LostFocus}" IsEnabled="{Binding !IsRunning}"
+                   Tag="Hooke-Jeeves probe steps used by the OPTIONAL 'Physical HJ per trial' pass (to its right). HJ doesn't use Jacobians, so it can cross merit discontinuities (vignetting, ray-trace failures) where LM stalls. Only used when 'Physical HJ per trial' is on. Default 10."
+                   PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"
+                   GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
+          <CheckBox Content="Physical HJ per trial (constrained)"
+                    IsChecked="{Binding PhysicalTrialHj}" IsEnabled="{Binding !IsRunning}" VerticalAlignment="Center" Margin="12,0,0,0"
+                    Tag="ADVANCED, rarely needed. The SEED is already polished automatically for constrained designs (a physical Hooke-Jeeves pass, like BH's hop-0). This adds a physical HJ pre-step on EVERY trial before its LM — only helps if the per-trial random restarts keep landing pinned against bounds. COSTS TIME per trial; leave OFF unless trials are visibly stalling on a bounded design."
+                    PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"
+                    GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
+        </StackPanel>
         <TextBlock Text="Defaults reflect the engine bedrock as of 1.0.115. Most users do not need to change these."
                    FontSize="10" Foreground="#777" FontStyle="Italic" />
       </StackPanel>
@@ -70,7 +84,7 @@
     <Border DockPanel.Dock="Top" BorderBrush="#CCC" BorderThickness="1"
             CornerRadius="4" Padding="10,6" Margin="0,0,0,6">
       <Grid ColumnDefinitions="Auto,6,70,16,Auto,6,60,16,Auto,6,60,16,Auto,6,70,16,Auto,6,60,*"
-            RowDefinitions="Auto,6,Auto,6,Auto">
+            RowDefinitions="Auto,6,Auto,6,Auto,6,Auto">
         <!-- Row 0 -->
         <TextBlock Grid.Row="0" Grid.Column="0" Text="Trials:" VerticalAlignment="Center" />
         <TextBox Grid.Row="0" Grid.Column="2" Text="{Binding MaxTrials, UpdateSourceTrigger=LostFocus}" IsEnabled="{Binding !IsRunning}"
@@ -134,11 +148,7 @@
                   PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"
                   GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
 
-        <TextBlock Grid.Row="2" Grid.Column="16" Text="HJ Steps:" VerticalAlignment="Center" />
-        <TextBox Grid.Row="2" Grid.Column="18" Text="{Binding HjStepsPerTrial, UpdateSourceTrigger=LostFocus}" IsEnabled="{Binding !IsRunning}"
-                 Tag="Hooke-Jeeves probe steps run before the LM in each trial. HJ doesn't use Jacobians, so it can navigate merit-function discontinuities (vignetting, ray-trace failures, glass-boundary jumps) where LM gets trapped. After HJ has nudged the design across a ridge, LM finishes on the smooth side. Default 15. Set 0 to disable."
-                 PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"
-                 GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
+        <!-- HJ Steps moved to Advanced 2026-08-20 (it only drives the optional per-trial HJ). -->
 
         <!-- Row 4: LM tunables -->
         <TextBlock Grid.Row="4" Grid.Column="0" Text="Init Damp:" VerticalAlignment="Center" />
@@ -147,11 +157,30 @@
                  PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"
                  GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
 
+        <!-- Init HJ control removed 2026-08-20: the seed Hooke-Jeeves pre-polish now runs AUTOMATICALLY
+             for constrained designs (any bounded variable), mirroring BH's hop-0. See
+             MultistartOptimizer.AutoSeedHjSteps. InitialHjSteps remains a CLI/advanced override. -->
+
         <CheckBox Grid.Row="4" Grid.Column="8" Grid.ColumnSpan="5" Content="Rescale on Glass Swap"
                   IsChecked="{Binding RescaleOnGlassSwap}" IsEnabled="{Binding !IsRunning}" VerticalAlignment="Center"
                   Tag="Experimental: when a glass is swapped, rescale that element's curvatures by (n_old-1)/(n_new-1) so its optical power is preserved to first order. Keeps the swapped design feasible instead of broken, which improves the typical (median) result. Validated to help Multistart; off by default."
                   PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"
                   GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
+
+        <StackPanel Grid.Row="6" Grid.Column="0" Grid.ColumnSpan="13" Orientation="Horizontal" Spacing="24">
+          <CheckBox Content="Reduced-dim perturbation"
+                    IsChecked="{Binding ReducedDimPerturbation}" IsEnabled="{Binding !IsRunning}" VerticalAlignment="Center"
+                    Tag="On by default. The plain perturbation kicks EVERY variable each trial; a full-dimension jump is usually yanked straight back to the nearest basin by LM. With this on, a fraction of trials perturb only a random SUBSET of the variables (leaving the rest at center), so the search can move along low-dimensional manifolds into ADJACENT, deeper basins a full-dim kick overshoots. Turn off for a specific design if needed."
+                    PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"
+                    GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
+          <CheckBox Content="Basin memory / diverse restart"
+                    IsChecked="{Binding BasinMemoryRestart}" IsEnabled="{Binding !IsRunning}" VerticalAlignment="Center"
+                    Tag="On by default. The plain walk is a SINGLE chain anchored to one best; once sigma saturates at the cap it keeps flailing around that same best. With this on, the run keeps an archive of the distinct minima it has visited and, after stalling at the cap, RESTARTS the walk from a fresh point FAR from every archived basin — with randomized glasses — mapping new regions like ZEMAX Global Search. The run-wide best is tracked separately and never lost. Turn off for a specific design if needed."
+                    PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"
+                    GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
+          <!-- Physical HJ per trial moved to the Advanced expander 2026-08-20 (rarely needed; the seed
+               HJ is automatic). -->
+        </StackPanel>
       </Grid>
     </Border>
 

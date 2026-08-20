@@ -425,7 +425,8 @@ namespace LensHH.Mcp.Tools
             int hjStepsPerTrial = 50, double hjInitialStep = 0.1, int glassSwapLmMultiplier = 4,
             double glassSubPercent = 50, bool constrainedOnly = false,
             double tolerance = 1e-10, double dampingFactor = 1e-6,
-            bool useBroyden = true, int broydenRefreshInterval = 5)
+            bool useBroyden = true, int broydenRefreshInterval = 5,
+            bool reducedDim = true, bool basinMemory = true, int initialHj = 0, bool physicalHj = false)
         {
             { var ge = _session.ValidateGlass(); if (ge != null) return ge; }
             if (_session.MeritFunction == null || _session.MeritFunction.Operands.Count == 0)
@@ -436,6 +437,8 @@ namespace LensHH.Mcp.Tools
                 MaxTrials = maxTrials,
                 LmIterationsPerTrial = lmPerTrial,
                 InitialLmIterations = initialLm,
+                InitialHjSteps = initialHj,
+                PhysicalTrialHj = physicalHj,
                 InitialSigma = initialSigma,
                 SigmaGrowth = sigmaGrowth,
                 SigmaCap = sigmaCap,
@@ -450,6 +453,8 @@ namespace LensHH.Mcp.Tools
                 InitialDamping = dampingFactor,
                 UseBroydenUpdate = useBroyden,
                 BroydenRefreshInterval = broydenRefreshInterval,
+                ReducedDimPerturbation = reducedDim,
+                BasinMemoryRestart = basinMemory,
             };
 
             var optimizer = new MultistartOptimizer(_session.System, _session.MeritFunction, _session.GlassCatalog)
@@ -866,7 +871,8 @@ namespace LensHH.Mcp.Tools
             double tolerance = 1e-10, double dampingFactor = 1e-6,
             bool useBroyden = true, int broydenRefreshInterval = 5,
             bool useGpuPreScreen = false, double gpuMinCurvatureChangePercent = 2.0,
-            double gpuPreScreenFill = 1.0, bool useGpuImageQuality = false)
+            double gpuPreScreenFill = 1.0, bool useGpuImageQuality = false,
+            bool reducedDim = true, bool basinMemory = true, int initialHj = 0, bool physicalHj = false)
         {
             { var ge = _session.ValidateGlass(); if (ge != null) return ge; }
             if (_session.MeritFunction == null || _session.MeritFunction.Operands.Count == 0)
@@ -894,6 +900,10 @@ namespace LensHH.Mcp.Tools
                 UseGpuPreScreen = useGpuPreScreen,
                 GpuPreScreenMinCurvatureChangePercent = gpuMinCurvatureChangePercent,
                 GpuPreScreenFill = gpuPreScreenFill,
+                ReducedDimPerturbation = reducedDim,
+                BasinMemoryRestart = basinMemory,
+                InitialHjSteps = initialHj,
+                PhysicalTrialHj = physicalHj,
             };
 
             var job = new RunningJob(kind: "multistart") { MaxTrials = maxTrials };

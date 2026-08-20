@@ -75,6 +75,14 @@ public partial class MultistartDialogViewModel : ObservableObject
     // fully optimized in Phase 2. Raise it only if you specifically want a thorough (single-threaded)
     // pre-polish; skippable entirely via the Skip Init LM box.
     [ObservableProperty] private int _initialLmIterations = 200;
+    // Optional one-time Hooke-Jeeves pre-polish of the seed before the Phase-1 LM.
+    // 0 = off. Set > 0 (e.g. 50) for constrained designs where a pure-LM seed polish
+    // stalls (LM's transformed Jacobian collapses at the bounds; HJ is gradient-free).
+    [ObservableProperty] private int _initialHjSteps = 0;
+    // For CONSTRAINED designs: run a physical-space HJ pre-step on EVERY trial (like BH's
+    // per-hop HJ) so the search keeps improving past where a pure LM stalls at the bounds.
+    // Costs time per trial — default off.
+    [ObservableProperty] private bool _physicalTrialHj = false;
     /// <summary>When true, MultistartOptimizer skips Phase 1 entirely (the
     /// one-time LM pass on the seed before any randomization). Use when the
     /// seed design is already converged and Phase 1 is pure waste — LM can't
@@ -97,6 +105,13 @@ public partial class MultistartDialogViewModel : ObservableObject
     // preserve its optical power — keeps swaps feasible. Default ON since 1.0.121
     // (validated); no-op when glass substitution is off.
     [ObservableProperty] private bool _rescaleOnGlassSwap = true;
+
+    // Convergence levers (2026-08-17, default ON) — reach deeper basins.
+    // #7 reduced-dim: perturb a random subset of variables on a fraction of trials.
+    // #6 basin memory: archive visited minima and restart far from them (with fresh
+    //    glasses) when the walk stalls at the sigma cap.
+    [ObservableProperty] private bool _reducedDimPerturbation = true;
+    [ObservableProperty] private bool _basinMemoryRestart = true;
     // Default lowered from 50 → 10 on 2026-05-31. HJ pre-step now also
     // runs only on glass-swap trials (MultistartSettings.HjOnGlassSwapOnly
     // default = true). Previously HJ ran every trial × 50 outer iters ×
@@ -253,6 +268,8 @@ public partial class MultistartDialogViewModel : ObservableObject
                     MaxTrials = MaxTrials,
                     LmIterationsPerTrial = LmIterationsPerTrial,
                     InitialLmIterations = SkipInitialLm ? 0 : InitialLmIterations,
+                    InitialHjSteps = InitialHjSteps,
+                    PhysicalTrialHj = PhysicalTrialHj,
                     InitialSigma = InitialSigma,
                     SigmaCap = SigmaCap,
                     EnableMetropolis = EnableMetropolis,
@@ -271,6 +288,8 @@ public partial class MultistartDialogViewModel : ObservableObject
                     // Experimental (1.0.120): rescale an element's curvatures by
                     // (n_old-1)/(n_new-1) on a glass swap so its power is preserved.
                     RescaleCurvatureOnGlassSwap = RescaleOnGlassSwap,
+                    ReducedDimPerturbation = ReducedDimPerturbation,
+                    BasinMemoryRestart = BasinMemoryRestart,
                 };
             // Phase 10a — DEV engine selection from the dialog.
             optimizer.EngineMode = (EngineModeIndex == 1) ? EngineMode.Native : EngineMode.CSharp;
@@ -321,6 +340,20 @@ public partial class MultistartDialogViewModel : ObservableObject
                 Dispatcher.UIThread.Post(() =>
                 {
                     if (optimizationDone) return;
+
+                    // Per-batch parallel-timing diagnostic line (eff% = core utilization;
+                    // straggler = slowest/mean trial; serial = between-batch walk update).
+                    if (progress.IsBatchTiming)
+                    {
+                        double straggler = progress.TrialMaxMs / Math.Max(0.001, progress.TrialMeanMs);
+                        WriteLogLine(
+                            $"  batch {progress.BatchIndex}  wall={progress.BatchWallMs:F0}ms  " +
+                            $"trials={progress.BatchTrials} thr={progress.BatchThreads}  " +
+                            $"trial[mean/max]={progress.TrialMeanMs:F0}/{progress.TrialMaxMs:F0}ms  " +
+                            $"eff={progress.ParallelEfficiencyPct:F0}%  straggler={straggler:F1}x  " +
+                            $"serial={progress.SerialMs:F1}ms");
+                        return;
+                    }
 
                     // Populate tables on first callback
                     if (!variableRowsPopulated && optimizer.Variables.Count > 0)

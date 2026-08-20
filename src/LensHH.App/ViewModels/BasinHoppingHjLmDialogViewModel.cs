@@ -90,6 +90,18 @@ public partial class BasinHoppingHjLmDialogViewModel : ObservableObject
     [ObservableProperty] private bool _rescaleOnGlassSwap = false;
     [ObservableProperty] private int _seed = 1234;
 
+    // ── Exploration knobs (greedy ↔ Metropolis walk). Exposed 1.0.146 so speed vs
+    //    convergence can be A/B-tested. Metropolis OFF makes the walk GREEDY (accept
+    //    only a new best, else restore to best) — the fast, original behavior that
+    //    converges quickly but can stick. Metropolis ON accepts worse moves to walk
+    //    between basins (thorough but slower). RestartAfterStalledHops = 0 disables
+    //    the full-range "long jump" restart (pure local walk); >0 teleports after
+    //    that many stalled hops. Defaults mirror BasinHoppingSettings.
+    [ObservableProperty] private bool _enableMetropolis = true;
+    [ObservableProperty] private double _metropolisTemperature = 0.0;   // 0 = autotune
+    [ObservableProperty] private int _restartAfterStalledHops = 20;     // 0 = off (local walk only)
+    [ObservableProperty] private double _restartSigma = 0.5;
+
     // Parallel independent chains: each a full hop walk from its own perturbation seed;
     // the single global best is returned. 0 = auto (physical core count). 1 = the classic
     // single chain (full live per-variable trace). >1 fills the cores and explores N basins
@@ -294,6 +306,10 @@ public partial class BasinHoppingHjLmDialogViewModel : ObservableObject
             Seed = Seed,
             ParallelChains = ParallelChains,
             NoImprovementTimeoutSeconds = NoImprovementEnabled ? NoImprovementTimeoutSeconds : 0.0,
+            EnableMetropolis = EnableMetropolis,
+            MetropolisTemperature = MetropolisTemperature,
+            RestartAfterStalledHops = RestartAfterStalledHops,
+            RestartSigma = RestartSigma,
         };
 
         var ct = _cts.Token;
