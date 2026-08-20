@@ -646,6 +646,7 @@ namespace LensHH.Mcp.Tools
             "Runs N chains (N = physical cores, FIXED — not settable) of basin-hopping; whenever a chain's no-improvement watchdog fires or it exhausts its hops, that chain RESTARTS seeded with the best design found by the OTHER chains, until the global time limit elapses or you cancel — a cooperative deep-dive that pools the best basin across chains. " +
             "Poll optimize_status(jobId) for progress (global best merit, restarts, hops); call optimize_cancel(jobId) to stop early. When the job completes the global-best design is auto-applied to the system. " +
             "Per-chain HJ-LM settings: maxHops (3000), lmIterationsPerHop (6000), hjStepsPerHop (30), initialPerturbSigma (0.001), useBroydenUpdate (true), constrainedOnly (false — when true, only randomize bounded variables), glassSubstitution (false), rescaleOnGlassSwap (false), onlyPreferred (true), catalogs (''), seed (1234). " +
+            "Exploration knobs (same defaults as single-chain basin_hopping): enableMetropolis (true — each chain accepts a worse design with probability exp(-dMerit/T) to walk between basins; false = greedy), metropolisTemperature (0 = autotune T from the first few uphill dMerit samples), restartAfterStalledHops (20 — after this many hops with no new global best a chain re-randomizes its shape variables full-range off the best; 0 = off), restartSigma (0.5 — magnitude of that long-jump kick). " +
             "Mandatory no-improvement watchdog: noImprovementTimeoutSeconds (default 600; values <=0 are forced to 600 — it cannot be disabled). Global wall-clock budget: globalTimeoutMinutes (default 120; <=0 = run until cancelled). " +
             "Chain export: saveChainsFolder ('') — when set, every chain's best design is written there as a separate .lhlt (best-merit first).")]
         public string GlobalBasinHoppingStart(
@@ -653,7 +654,10 @@ namespace LensHH.Mcp.Tools
             double initialPerturbSigma = 0.001, bool useBroydenUpdate = true,
             bool constrainedOnly = false, bool glassSubstitution = false,
             bool rescaleOnGlassSwap = false, bool onlyPreferred = true, string catalogs = "",
-            int seed = 1234, double noImprovementTimeoutSeconds = 600, double globalTimeoutMinutes = 120,
+            int seed = 1234,
+            bool enableMetropolis = true, double metropolisTemperature = 0,
+            int restartAfterStalledHops = 20, double restartSigma = 0.5,
+            double noImprovementTimeoutSeconds = 600, double globalTimeoutMinutes = 120,
             string saveChainsFolder = "")
         {
             { var ge = _session.ValidateGlass(); if (ge != null) return ge; }
@@ -676,6 +680,11 @@ namespace LensHH.Mcp.Tools
                     OnlyPreferred = onlyPreferred,
                     Seed = seed,
                     NoImprovementTimeoutSeconds = noImprovementTimeoutSeconds,
+                    // Exploration knobs — same defaults as single-chain basin_hopping_start.
+                    EnableMetropolis = enableMetropolis,
+                    MetropolisTemperature = metropolisTemperature,
+                    RestartAfterStalledHops = restartAfterStalledHops,
+                    RestartSigma = restartSigma,
                 },
             };
             if (!string.IsNullOrWhiteSpace(catalogs))

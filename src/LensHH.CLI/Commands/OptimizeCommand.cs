@@ -993,6 +993,13 @@ namespace LensHH.CLI.Commands
                         s.GlassCatalogs = new System.Collections.Generic.List<string>(
                             val.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
                         break;
+                    // Exploration knobs (same defaults as single-chain basin-hopping).
+                    // metropolis=off → greedy walk; temp 0 = autotune; restartstall=0 → no long-jump.
+                    case "metropolis": s.EnableMetropolis = !IsOff(val); break;
+                    case "temp": if (double.TryParse(val, NumberStyles.Float, CultureInfo.InvariantCulture, out double tp)) s.MetropolisTemperature = tp; break;
+                    case "restartstall":
+                    case "restartafterstall": if (int.TryParse(val, out int ras)) s.RestartAfterStalledHops = ras; break;
+                    case "restartsigma": if (double.TryParse(val, NumberStyles.Float, CultureInfo.InvariantCulture, out double rsg)) s.RestartSigma = rsg; break;
                     // No-improvement watchdog (mandatory ON) in seconds; ≤0 → engine default 600.
                     case "timeout":
                     case "noimprovement": if (double.TryParse(val, NumberStyles.Float, CultureInfo.InvariantCulture, out double to)) s.NoImprovementTimeoutSeconds = to; break;
@@ -1040,6 +1047,7 @@ namespace LensHH.CLI.Commands
             AnsiConsole.MarkupLine($"  Hops/episode: {s.MaxHops}, LM/hop: {s.LmIterationsPerHop}, HJ/hop: {s.HjStepsPerHop}, sigma: {s.InitialPerturbSigma:G3}");
             AnsiConsole.MarkupLine($"  No-improvement timeout: {watchdog:F0} s (mandatory)   Global limit: {gs.GlobalTimeoutMinutes:F0} min");
             AnsiConsole.MarkupLine($"  Glass substitution: {(s.GlassSubstitution ? "ON" : "OFF")}{(s.GlassSubstitution && s.RescaleCurvatureOnGlassSwap ? " (rescale on swap)" : "")}");
+            AnsiConsole.MarkupLine($"  Metropolis walk: {(s.EnableMetropolis ? $"ON (T={(s.MetropolisTemperature > 0 ? s.MetropolisTemperature.ToString("G3") : "autotune")})" : "OFF (greedy)")}   Restart@stall: {(s.RestartAfterStalledHops > 0 ? $"{s.RestartAfterStalledHops} hops, σ={s.RestartSigma:G3}" : "off")}");
             AnsiConsole.MarkupLine("[grey]Press Ctrl+C to stop early.[/]");
             AnsiConsole.MarkupLine("");
 

@@ -49,6 +49,16 @@ public partial class GlobalBasinHoppingDialogViewModel : ObservableObject
     [ObservableProperty] private bool _rescaleOnGlassSwap = false;
     [ObservableProperty] private int _seed = 1234;
 
+    // ── Exploration knobs (greedy ↔ Metropolis walk; long-jump restart). Same
+    //    defaults as single-chain Basin-Hopping. Metropolis OFF makes each chain
+    //    GREEDY (accept only a new best, else restore to best); ON accepts worse
+    //    moves with probability exp(−ΔMerit/T) to walk between basins.
+    //    RestartAfterStalledHops = 0 disables the full-range long-jump restart. ──
+    [ObservableProperty] private bool _enableMetropolis = true;
+    [ObservableProperty] private double _metropolisTemperature = 0.0;   // 0 = autotune
+    [ObservableProperty] private int _restartAfterStalledHops = 20;     // 0 = off (local walk only)
+    [ObservableProperty] private double _restartSigma = 0.5;
+
     // ── Mandatory no-improvement watchdog (toggle is locked ON; only the timeout is editable) ──
     [ObservableProperty] private double _noImprovementTimeoutSeconds = GlobalBasinHoppingSettings.DefaultChainTimeoutSeconds;
     // ── Global wall-clock budget (minutes) ──
@@ -194,6 +204,10 @@ public partial class GlobalBasinHoppingDialogViewModel : ObservableObject
                 OnlyPreferred = !useFiltered && OnlyPreferred,
                 Seed = Seed,
                 NoImprovementTimeoutSeconds = NoImprovementTimeoutSeconds,   // mandatory watchdog
+                EnableMetropolis = EnableMetropolis,
+                MetropolisTemperature = MetropolisTemperature,
+                RestartAfterStalledHops = RestartAfterStalledHops,
+                RestartSigma = RestartSigma,
             },
         };
 
