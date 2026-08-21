@@ -158,8 +158,8 @@
                  GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
 
         <!-- Seed — reproducible runs for studying settings (1.0.147). -->
-        <TextBlock Grid.Row="4" Grid.Column="4" Text="Seed:" VerticalAlignment="Center" />
-        <TextBox Grid.Row="4" Grid.Column="6" Text="{Binding Seed, UpdateSourceTrigger=LostFocus}" IsEnabled="{Binding !IsRunning}"
+        <TextBlock Grid.Row="4" Grid.Column="16" Text="Seed:" VerticalAlignment="Center" />
+        <TextBox Grid.Row="4" Grid.Column="18" Text="{Binding Seed, UpdateSourceTrigger=LostFocus}" IsEnabled="{Binding !IsRunning}"
                  Tag="RNG seed. The same seed with the same settings reproduces a run bit-for-bit — ideal for studying how one setting changes the result. Change it (1, 2, 3, …) for a genuinely independent run."
                  PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"
                  GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
