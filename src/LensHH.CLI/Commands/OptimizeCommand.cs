@@ -235,6 +235,7 @@ namespace LensHH.CLI.Commands
             session.ValidateGlass();
 
             var settings = new MultistartSettings();
+            settings.Seed = 1;   // reproducible by default (for studying settings); override with seed=N
             bool gpuImage = false;   // task #26: GPU image-quality trace (SPOT/WAVE/SENS)
 
             // Parse args: trials=N, lm=N, initlm=N, sigma=V, cap=V, growth=V, glass=V, constrained
@@ -274,6 +275,8 @@ namespace LensHH.CLI.Commands
                     // Convergence levers (default ON) — pass reduceddim=off / basinmemory=off to disable.
                     case "reduceddim": settings.ReducedDimPerturbation = !IsOff(val); break;
                     case "basinmemory": settings.BasinMemoryRestart = !IsOff(val); break;
+                    // RNG seed — reproducible run for studying settings. Default 1; change for an independent run.
+                    case "seed": if (int.TryParse(val, out int sdv)) settings.Seed = sdv; break;
                     // GPU pre-screen (sieve candidates on the GPU) + 1.0.128 difference gate.
                     case "gpu": settings.UseGpuPreScreen = true; break;
                     case "mincurvchange":

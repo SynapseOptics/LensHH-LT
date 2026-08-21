@@ -296,6 +296,14 @@ namespace LensHH.API
             _system!.RayAiming = mode;
         }
 
+        /// <summary>Set how bounded optimization variables are mapped to the optimizer's
+        /// search space (Sigmoid or Reflect). System-level; applies to every optimizer.</summary>
+        public void SetBoundHandling(BoundHandlingMode mode)
+        {
+            EnsureSystem();
+            _system!.BoundHandling = mode;
+        }
+
         /// <summary>Set afocal mode on or off.</summary>
         public void SetAfocal(bool afocal)
         {

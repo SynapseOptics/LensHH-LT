@@ -25,6 +25,7 @@ namespace LensHH.CLI.Commands
   [green]system set-afocal on|off[/]                 Set afocal mode
   [green]system set-penalize-vignetting on|off[/]    Penalize all vignetted rays (incl. off-axis) during optimization
   [green]system set-ray-aiming off|real|robust[/]   Set ray aiming mode
+  [green]system set-bound-handling sigmoid|reflect[/] Bounded-variable mapping for the optimizer
   [green]system set-catalogs <cat1> <cat2> ...[/]   Set preferred glass catalogs (e.g. SCHOTT OHARA)";
 
         public void Execute(Session session, string[] args)
@@ -72,6 +73,9 @@ namespace LensHH.CLI.Commands
                 case "set-ray-aiming":
                     SetRayAiming(session, args);
                     break;
+                case "set-bound-handling":
+                    SetBoundHandling(session, args);
+                    break;
                 case "set-catalogs":
                     SetCatalogs(session, args);
                     break;
@@ -92,6 +96,7 @@ namespace LensHH.CLI.Commands
             AnsiConsole.MarkupLine($"[bold]Telecentric Object Space:[/] {(sys.TelecentricObjectSpace ? "On" : "Off")}");
             AnsiConsole.MarkupLine($"[bold]Penalize Vignetting:[/] {(sys.PenalizeVignetting ? "On" : "Off")}");
             AnsiConsole.MarkupLine($"[bold]Ray Aiming:[/] {sys.RayAiming}");
+            AnsiConsole.MarkupLine($"[bold]Bound Handling:[/] {sys.BoundHandling}");
             AnsiConsole.MarkupLine($"[bold]Glass Catalogs:[/] {(sys.GlassCatalogs.Count > 0 ? string.Join(", ", sys.GlassCatalogs) : "(none)")}");
 
             var wlTable = new Table();
@@ -354,6 +359,32 @@ namespace LensHH.CLI.Commands
             }
 
             AnsiConsole.MarkupLine($"[green]Ray aiming set to {sys.RayAiming}[/]");
+        }
+
+        private void SetBoundHandling(Session session, string[] args)
+        {
+            var sys = session.EnsureSystem();
+            if (args.Length < 2)
+            {
+                AnsiConsole.MarkupLine($"[bold]Bound Handling:[/] {sys.BoundHandling}");
+                AnsiConsole.MarkupLine("[dim]Usage: system set-bound-handling sigmoid|reflect[/]");
+                return;
+            }
+
+            switch (args[1].ToLowerInvariant())
+            {
+                case "sigmoid":
+                    sys.BoundHandling = BoundHandlingMode.Sigmoid;
+                    break;
+                case "reflect":
+                    sys.BoundHandling = BoundHandlingMode.Reflect;
+                    break;
+                default:
+                    AnsiConsole.MarkupLine("[red]Use 'sigmoid' or 'reflect'.[/]");
+                    return;
+            }
+
+            AnsiConsole.MarkupLine($"[green]Bound handling set to {sys.BoundHandling}[/]");
         }
 
         private void SetAfocal(Session session, string[] args)

@@ -29,6 +29,7 @@ namespace LensHH.Core.IO
         public List<LhltPickup> Pickups { get; set; } = new List<LhltPickup>();
         public RayAimingMode RayAiming { get; set; }
         public bool IsAfocal { get; set; }
+        public BoundHandlingMode BoundHandling { get; set; }
         /// <summary>Object-space telecentric (entrance pupil at infinity). Only meaningful with the
         /// Object Space NA aperture. Default false = conventional (non-telecentric).</summary>
         public bool TelecentricObjectSpace { get; set; }

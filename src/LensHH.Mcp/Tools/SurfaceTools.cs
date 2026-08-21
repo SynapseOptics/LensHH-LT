@@ -884,6 +884,7 @@ namespace LensHH.Mcp.Tools
                 IsAfocal           = srcSys.IsAfocal,
                 PenalizeVignetting = srcSys.PenalizeVignetting,
                 RayAiming          = srcSys.RayAiming,
+                BoundHandling      = srcSys.BoundHandling,
             };
 
             double origObjT   = srcSys.Surfaces[0].Thickness;
@@ -942,6 +943,7 @@ namespace LensHH.Mcp.Tools
                 IsAfocal           = src.IsAfocal,
                 PenalizeVignetting = src.PenalizeVignetting,
                 RayAiming          = src.RayAiming,
+                BoundHandling      = src.BoundHandling,
             };
             foreach (var s in src.Surfaces) dst.Surfaces.Add(LensHH.Core.IO.LensInsertHelpers.CloneSurface(s));
             dst.Wavelengths.AddRange(src.Wavelengths);

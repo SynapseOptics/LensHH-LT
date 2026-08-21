@@ -148,7 +148,17 @@ public partial class SystemEditorViewModel : ObservableObject
         }
     }
 
+    /// <summary>How bounded optimization variables are mapped between physical and
+    /// optimizer space. Sigmoid is the historical default; Reflect keeps a constant
+    /// gradient at the bounds. Applies to every optimizer and is saved with the design.</summary>
+    public BoundHandlingMode BoundHandling
+    {
+        get => _session.System.BoundHandling;
+        set { _session.System.BoundHandling = value; OnPropertyChanged(); }
+    }
+
     public ApertureType[] ApertureTypes => new[] { ApertureType.EPD, ApertureType.FNumber, ApertureType.ObjectSpaceNA };
+    public BoundHandlingMode[] BoundHandlingModes => new[] { BoundHandlingMode.Sigmoid, BoundHandlingMode.Reflect };
     public FieldType[] FieldTypes => new[] { FieldType.ObjectAngle, FieldType.ObjectHeight };
 
     private bool IsInfiniteConjugate

@@ -70,6 +70,15 @@
     <CheckBox Content="Robust Ray Aiming (wide angle)" IsChecked="{Binding RobustRayAiming}"
               IsEnabled="{Binding RayAiming}" Margin="20,0,0,0" />
 
+    <!-- Bound Handling (optimizer variable bounds) -->
+    <DockPanel>
+      <TextBlock Text="Bound Handling:" Width="120" VerticalAlignment="Center" />
+      <ComboBox ItemsSource="{Binding BoundHandlingModes}"
+                SelectedItem="{Binding BoundHandling}"
+                HorizontalAlignment="Stretch"
+                ToolTip.Tip="How bounded optimization variables (those with a Min and/or Max) are mapped into the optimizer&apos;s search space. Sigmoid is the historical default: smooth, but its gradient vanishes at a bound, so a variable pushed to a limit stops responding. Reflect keeps the variable in physical units and folds out-of-range values back inside, so the gradient never collapses at the bounds — usually better for constrained and stochastic search." />
+    </DockPanel>
+
     <!-- Buttons -->
     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,8,0,0">
       <Button Content="OK" Click="OK_Click" Width="80" />

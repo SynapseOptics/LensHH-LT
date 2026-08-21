@@ -57,6 +57,7 @@ namespace LensHH.Core.IO
                 FieldType = file.FieldType,
                 RayAiming = file.RayAiming,
                 IsAfocal = file.IsAfocal,
+                BoundHandling = file.BoundHandling,
                 TelecentricObjectSpace = file.TelecentricObjectSpace,
                 PenalizeVignetting = file.PenalizeVignetting,
                 UseAutomaticVignettingFactors = file.UseAutomaticVignettingFactors,

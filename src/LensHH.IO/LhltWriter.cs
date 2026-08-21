@@ -49,6 +49,7 @@ namespace LensHH.Core.IO
                 FieldType = system.FieldType,
                 RayAiming = system.RayAiming,
                 IsAfocal = system.IsAfocal,
+                BoundHandling = system.BoundHandling,
                 TelecentricObjectSpace = system.TelecentricObjectSpace,
                 PenalizeVignetting = system.PenalizeVignetting,
                 UseAutomaticVignettingFactors = system.UseAutomaticVignettingFactors,

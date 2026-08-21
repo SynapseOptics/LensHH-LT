@@ -152,6 +152,7 @@ namespace LensHH.Mcp.Tools
             sb.AppendLine($"Aperture: {sys.Aperture.Type} = {sys.Aperture.Value}");
             sb.AppendLine($"Field Type: {sys.FieldType}");
             sb.AppendLine($"Ray Aiming: {sys.RayAiming}");
+            sb.AppendLine($"Bound Handling: {sys.BoundHandling}");
             sb.AppendLine($"Afocal: {sys.IsAfocal}");
             sb.AppendLine($"Telecentric Object Space: {sys.TelecentricObjectSpace}");
             sb.AppendLine($"Penalize Vignetting: {sys.PenalizeVignetting}");
@@ -327,6 +328,20 @@ namespace LensHH.Mcp.Tools
                 return $"Unknown ray aiming mode '{mode}'. Use 'Off', 'Real', or 'Robust'.";
 
             return $"Ray aiming set to {sys.RayAiming}.";
+        }
+
+        [McpServerTool, Description("Set how bounded optimization variables are mapped into the optimizer's search space. mode must be 'Sigmoid' or 'Reflect'. Sigmoid (default) is smooth but its gradient vanishes at a bound, so a variable pushed to a limit stops responding to the optimizer. Reflect keeps the variable in physical units and folds out-of-range values back inside, so |gradient| stays constant at the bounds — usually better for constrained and stochastic search. System-level: applies to every optimizer and is saved with the design.")]
+        public string SetBoundHandling(string mode)
+        {
+            var sys = _session.System;
+            if (mode.Equals("Sigmoid", StringComparison.OrdinalIgnoreCase))
+                sys.BoundHandling = Core.Enums.BoundHandlingMode.Sigmoid;
+            else if (mode.Equals("Reflect", StringComparison.OrdinalIgnoreCase))
+                sys.BoundHandling = Core.Enums.BoundHandlingMode.Reflect;
+            else
+                return $"Unknown bound handling mode '{mode}'. Use 'Sigmoid' or 'Reflect'.";
+
+            return $"Bound handling set to {sys.BoundHandling}.";
         }
 
         [McpServerTool, Description("Set afocal mode on or off. Afocal systems have no finite focal length (e.g. telescopes, beam expanders). afocal=true for afocal, false for focal.")]

@@ -112,6 +112,9 @@ public partial class MultistartDialogViewModel : ObservableObject
     //    glasses) when the walk stalls at the sigma cap.
     [ObservableProperty] private bool _reducedDimPerturbation = true;
     [ObservableProperty] private bool _basinMemoryRestart = true;
+    // RNG seed — exposed so a run is reproducible for studying settings. Same seed +
+    // same settings => bit-identical run; change it (1, 2, 3, …) for an independent run.
+    [ObservableProperty] private int _seed = 1;
     // Default lowered from 50 → 10 on 2026-05-31. HJ pre-step now also
     // runs only on glass-swap trials (MultistartSettings.HjOnGlassSwapOnly
     // default = true). Previously HJ ran every trial × 50 outer iters ×
@@ -290,6 +293,7 @@ public partial class MultistartDialogViewModel : ObservableObject
                     RescaleCurvatureOnGlassSwap = RescaleOnGlassSwap,
                     ReducedDimPerturbation = ReducedDimPerturbation,
                     BasinMemoryRestart = BasinMemoryRestart,
+                    Seed = Seed,
                 };
             // Phase 10a — DEV engine selection from the dialog.
             optimizer.EngineMode = (EngineModeIndex == 1) ? EngineMode.Native : EngineMode.CSharp;

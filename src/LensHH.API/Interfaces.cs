@@ -76,6 +76,7 @@ namespace LensHH.API
         void SetAperture(ApertureType type, double value);
         void SetFieldType(FieldType fieldType);
         void SetRayAiming(RayAimingMode mode);
+        void SetBoundHandling(BoundHandlingMode mode);
         void SetAfocal(bool afocal);
         void SetTelecentricObjectSpace(bool telecentric);
         void SetPenalizeVignetting(bool penalize);
