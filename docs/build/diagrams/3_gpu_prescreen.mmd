@@ -1,41 +1,62 @@
+---
+config:
+  theme: base
+  flowchart:
+    curve: basis
+    nodeSpacing: 48
+    rankSpacing: 52
+    padding: 8
+  themeVariables:
+    fontFamily: "Segoe UI, Helvetica, Arial, sans-serif"
+    fontSize: 15px
+    lineColor: "#8a8a8a"
+---
 flowchart TD
-    Start(["User clicks Optimize"]) --> Init["Initialize variables, sigma, T<br>Upload static data to GPU<br>template, operands, fields,<br>glass catalog - once per session"]
-    Init --> Ph1Check{"Initial LM<br>enabled?"}
-    Ph1Check -- Yes --> Ph1LM["PHASE 1: Initial LM<br>(single-threaded, unchanged)"]
-    Ph1Check -- No --> Skip1["Use raw starting merit"]
-    Ph1LM --> CaptureBest["Capture best M_star<br>center = M_star"]
-    Skip1 --> CaptureBest
-    CaptureBest --> LoopCheck{"All trials done?<br>completed >= MaxTrials"}
-    LoopCheck -- Yes --> Return(["Return best lens"])
-    LoopCheck -- No --> Gen["GENERATE N candidates<br>N = 1,000 to 10,000<br>random perturbation off center<br>(curv, thick, conic + optional<br>glass-swap variant)"]
-    Gen --> GPU["GPU PRE-SCREEN<br>cuda_run_merit_value(N)<br>1 launch, all N designs<br>~60 us per design on 4060"]
-    GPU --> Sort["Sort N by merit<br>keep TOP-K<br>K = N_CPU (typically 16)"]
-    Sort --> ParTrial["PHASE 2: HJ-LM on K candidates<br>(parallel, N_CPU workers)"]
-    ParTrial --> Trial
-    subgraph Trial["Per-trial HJ-LM x K (full polish)"]
-        direction TB
-        T1["Seed from pre-screened<br>candidate"] --> T2{"Glass-swap<br>candidate?"}
-        T2 -- Yes --> T5["HJ + LM"]
-        T2 -- No --> T6["LM only"]
-        T5 --> T7["Report trial merit"]
-        T6 --> T7
+    Start(["Optimize &middot; GPU pre-screen on"]) --> Init["Initialize variables, sigma, T<br/>upload template, operands, fields,<br/>glass catalog to the GPU<br/>(once per session)"]
+    Init --> Ph1{"Initial LM?"}
+    Ph1 -- yes --> Ph1LM["Phase 1 &middot; Initial LM"]
+    Ph1 -- no --> Skip["use raw start merit"]
+    Ph1LM --> Best["best = M* &nbsp; center = best"]
+    Skip --> Best
+    Best --> Loop{"trials remaining?"}
+    Loop -- no --> Done(["Return best design"])
+    Loop -- yes --> Gen["generate N candidates off center<br/>N = 1,000 to 10,000 &middot; curv/thick/conic<br/>+ optional glass-swap variant<br/><b>reduced-dim:</b> many kick a random subset"]
+    Gen --> GPU["GPU pre-screen<br/>one launch, all N designs<br/>~60 us each on a 4060"]
+    GPU --> Sort["sort by merit &middot; keep top-K<br/>K = N_CPU (typically 16)"]
+    Sort --> Trial
+
+    subgraph Trial["Phase 2 &middot; HJ-LM on the K survivors &nbsp; (parallel)"]
+      direction TB
+      S1["seed from survivor"] --> S2{"glass-swap<br/>candidate?"}
+      S2 -- yes --> S5["HJ + LM"]
+      S2 -- no --> S6["LM only"]
+      S5 --> S7["trial merit"]
+      S6 --> S7
     end
-    Trial --> Merge["Merge K results<br>best of batch M_b"]
-    Merge --> Acc{"M_b less than best?"}
-    Acc -- Yes --> Accept["ACCEPT<br>best = M_b<br>sigma reset to sigma_init"]
-    Acc -- No --> Metro{"Metropolis<br>on center?"}
-    Metro -- Accept --> MetroAcc["MOVE CENTER"]
-    Metro -- Reject --> Reject["REJECT<br>sigma grows by factor"]
-    Accept --> LoopCheck
-    MetroAcc --> LoopCheck
-    Reject --> LoopCheck
-    classDef expensive fill:#fff4d6,stroke:#e6a23c,stroke-width:2px,color:#000
-    classDef phase fill:#cce5ff,stroke:#0066cc,stroke-width:2px,color:#000
-    classDef decision fill:#ffe4e1,stroke:#cc0066,stroke-width:2px,color:#000
-    classDef terminal fill:#d4edda,stroke:#28a745,stroke-width:3px,color:#000
-    classDef gpu fill:#e0c3ff,stroke:#7c3aed,stroke-width:3px,color:#000
-    class T5,T6 expensive
-    class Ph1LM,ParTrial phase
-    class Ph1Check,LoopCheck,Acc,Metro,T2 decision
-    class Start,Return terminal
-    class Init,Gen,GPU,Sort gpu
+
+    Trial --> Merge["best of batch = Mb"]
+    Merge --> Acc{"Mb better<br/>than best?"}
+    Acc -- yes --> Accept["Accept &middot; best = Mb<br/>archive basin &middot; reset sigma"]
+    Acc -- no --> Metro{"<b>Metropolis</b> accept?"}
+    Metro -- yes --> Move["move center = Mb"]
+    Metro -- no --> Rej["Reject &middot; grow sigma toward cap"]
+    Rej --> Stall{"stalled at cap?<br/><b>basin memory</b>"}
+    Stall -- yes --> Restart["<b>Diverse restart</b><br/>far from archived basins"]
+    Accept --> Next["begin next trial"]
+    Move --> Next
+    Restart --> Next
+    Stall -- no --> Next
+    Next --> Loop
+
+    classDef term  fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#14311b
+    classDef phase fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d2b4e
+    classDef dec   fill:#fff8e1,stroke:#f6a821,stroke-width:1.5px,color:#4a3610
+    classDef work  fill:#f5f5f5,stroke:#adadad,stroke-width:1.5px,color:#2a2a2a
+    classDef gpu   fill:#ede7f6,stroke:#5e35b1,stroke-width:2.5px,color:#2e1065
+    classDef lever fill:#ede7f6,stroke:#5e35b1,stroke-width:2.5px,color:#2e1065
+    class Start,Done term
+    class Ph1LM,S5,S6 phase
+    class Ph1,Loop,Acc,Metro,S2,Stall dec
+    class Init,Skip,Best,Sort,S1,S7,Merge,Next work
+    class Gen,GPU gpu
+    class Move,Restart lever

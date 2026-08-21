@@ -2,6 +2,51 @@
 
 All notable changes to LensHH-LT and the LensHH-LT-Engine.
 
+## 1.0.146 — 2026-08-21
+
+### Added
+- **Convergence levers in Multistart and Global Multi Start.** Multistart now
+  defaults to *reduced-dimensionality perturbation* (a share of trials kick only a
+  random subset of variables, reaching adjacent basins a full-variable kick
+  overshoots) and *basin memory / diverse restart* (remembers the minima visited and,
+  on stalling, restarts far from all of them). With Metropolis acceptance these three
+  levers are checkboxes in the Multistart and Global Multi Start dialogs, on by
+  default, and can be turned off for the previous kick-and-polish behaviour.
+- **Basin-Hopping exploration controls in more places.** The Metropolis walk (and its
+  temperature), the restart-at-stall trigger, and the restart jump magnitude are now
+  available in Global Basin Hopping and from the CLI and MCP, matching the Basin
+  Hopping dialog.
+
+### Changed
+- **Continuous vignetting penalty.** The penalty on a design that clips rays is now
+  proportional to how many rays are lost and how far they miss, instead of a flat
+  wall. A design that drifts into heavy vignetting no longer freezes — Multistart and
+  Basin Hopping get a gradient back out toward a vignetting-free solution.
+- **Reflective perturbation for constrained variables.** A perturbation that would
+  push a bounded variable past its limit now reflects back into range instead of
+  pinning to the boundary (a pinned variable stops responding to the search), so
+  constrained Multistart and Basin Hopping converge better.
+- **Simpler Multistart dialog.** Hooke-Jeeves seeding is now automatic (the manual
+  control was removed); low-level LM and engine settings moved to an Advanced
+  disclosure.
+- **Faster first Basin-Hopping hop** via a parallelized initial refinement.
+
+### Fixed
+- **Exit-pupil wavefront for systems with the exit pupil in front of the image**
+  (e.g. conoscopes). The wavefront (OPD) map, OPD fan, and RMS wavefront (`WAVEX`)
+  operand were collapsing the image-plane defocus term and under-reporting the
+  wavefront error; the optical-path difference is now measured along the true ray.
+  On-axis results and ordinary systems are unchanged.
+- **RMS wavefront on vignetted designs.** The `WAVEX` tilt-removal step is now
+  correctly normalized for partially vignetted pupils, which had over-reported the
+  wavefront error on designs that clip rays.
+- **Relative Illumination analysis on designs brighter off-axis.** When a design's
+  off-axis illumination exceeds on-axis (a lower effective F/# off-axis), the analysis
+  previously clamped the curve to 1.0 and drew a flat line; it now plots the true
+  curve, normalized to the brightest field, so on-axis can read below 1.0 and the
+  curve peaks off-axis. (The `ILL` merit operand was already correct.)
+- **Stability during parallel glass substitution** across Basin-Hopping chains.
+
 ## 1.0.145 — 2026-08-16
 
 ### Changed

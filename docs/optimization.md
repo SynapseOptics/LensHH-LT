@@ -221,7 +221,7 @@ basin — escalating exploration gradually as the search stalls.
 
 ![Multistart architecture](images/optimization/multistart_architecture.png)
 
-The HJ-LM atom (orange boxes in the parallel block above) is
+The HJ-LM atom (the Hooke-Jeeves and Levenberg-Marquardt steps in the per-trial block above) is
 where each trial actually does its work. Hooke-Jeeves is a
 derivative-free pattern search that climbs gracefully across
 discontinuities (vignetting, ray-trace failures, glass-boundary
@@ -233,6 +233,8 @@ continuous perturbations on its own) — flip
 pre-1.0.115 always-HJ behaviour.
 
 ![HJ-LM trial detail](images/optimization/hj_lm_trial.png)
+
+![The Multi Start Optimization dialog. The **Advanced** disclosure at the top holds the engine, derivative, and LM-internals knobs; the main strip carries the trial and LM budgets, the perturbation-sigma schedule, glass substitution, and the three **convergence levers** — **Metropolis Acceptance**, **Reduced-dim perturbation**, and **Basin memory / diverse restart** — all on by default.](images/MultiStartSettings.png)
 
 | Setting | Default | Meaning |
 |---|---|---|
@@ -247,7 +249,16 @@ pre-1.0.115 always-HJ behaviour.
 | **Rescale on Glass Swap** | on | When a glass is swapped, also rescale that element's curvatures by `(n_old−1)/(n_new−1)` so its optical power is preserved to first order — keeps the swapped design feasible instead of broken, which improves the typical (median) result. **Only has any effect when glass substitution is active** (Glass Sub % > 0 with substitutable surfaces); on fixed-glass designs it is a no-op. (Basin Hopping keeps this off — its small-step trajectory is over-perturbed by the per-swap curvature jump.) |
 | **Constrained Only** | off | If on, only perturb variables that have `Min`/`Max` bounds. Useful when you want unbounded variables held fixed (e.g., a fixed-radius element). |
 | **Broyden Update** | on | Same meaning as for Local LM. Leave on. |
-| **Metropolis Acceptance** | on | When on, Multistart keeps a *current centre* state separate from *best* and may accept a worse-than-best trial as the next centre with probability `exp(−ΔM/T)` (T autotunes from early `|ΔM|` samples). Lets the search walk out of basins it has already mined. *Best* is always strict-improvement; the returned design is monotone. |
+| **Metropolis Acceptance** | on | When on, Multistart keeps a *current centre* state separate from *best* and may accept a worse-than-best trial as the next centre with probability `exp(−ΔM/T)` (T autotunes from early `\|ΔM\|` samples). Lets the search walk out of basins it has already mined. *Best* is always strict-improvement; the returned design is monotone. |
+| **Reduced-dim perturbation** | on | About half of trials perturb only a random *subset* of the variables — up to roughly a third of them — leaving the rest at their centre values, instead of kicking every variable at once. A full-dimension kick is usually pulled straight back to the same basin by LM; moving along these lower-dimensional manifolds lets the search slip into *adjacent* basins a full kick overshoots. |
+| **Basin memory / diverse restart** | on | Keeps an archive of the distinct minima the walk has visited. Once sigma has saturated at the cap for several batches with no new best, the walk *restarts* from a fresh point chosen to lie far from every archived basin (with its glasses randomized), systematically mapping new regions instead of circling the same minimum. The run-wide best is tracked separately and is never lost — it, not the current region's best, is the reported answer. |
+
+**Convergence levers.** The last three rows — Metropolis Acceptance,
+Reduced-dim perturbation, and Basin memory / diverse restart — are the
+convergence levers, all on by default. Together they turn Multistart from
+independent small kicks into a memory-guided walk that reaches deeper basins;
+leave them on unless you are deliberately reproducing the older
+kick-and-polish behaviour, in which case turn all three off.
 
 Multistart's strength is variability — it's the cheapest way to
 sample several glass sets and several nearby basins with only modest
@@ -479,6 +490,8 @@ merit tolerance) the restart is discarded as a duplicate, otherwise it is kept.
 The search stops when it has collected **Models** distinct forms, exhausted
 **Max Restarts**, or stalled (no new distinct form for several restarts).
 
+![The Global Multi Start Optimization dialog. Alongside the pool controls (Models to keep, Max restarts, Max trials / restart, Stall-at-cap batches, Base seed) and the shared Multistart budgets, the bottom strip carries the same three **convergence levers** as Multistart — **Reduced-dim perturbation**, **Basin memory / diverse restart**, and **Metropolis acceptance** — because every restart is itself a Multistart run.](images/GlobalMultiStartSettings.png)
+
 | Setting | Default | Meaning |
 |---|---|---|
 | **Models** | 16 | Target number of distinct designs to collect in the gallery. |
@@ -487,6 +500,7 @@ The search stops when it has collected **Models** distinct forms, exhausted
 | **Base Seed** | 1 | Restart *i* uses `BaseSeed × 100000 + i`. Run base seed 1, then 2, … for genuinely independent extra batches that never re-walk the same seeds. |
 | **Dedup tolerance** | 0.02 | Two designs of the same form within this relative merit count as the same gallery entry. |
 | Sigma, Glass Sub %, LM/Trial, Rescale on Glass Swap, … | | Inherited from Multistart — each restart *is* a Multistart run. |
+| **Reduced-dim perturbation**, **Basin memory / diverse restart**, **Metropolis acceptance** | on | The three [convergence levers](#multistart), exposed here as their own checkboxes. Because each restart is a full Multistart run they behave exactly as in Multistart; on by default. |
 | **GPU pre-screen** + **GPU min change (%)** / **GPU population ×** | off / 2 % / 1× | Same GPU sieve and tuning knobs as the Multistart dialog (1.0.128). Applied to every restart, so the gallery search gets the same basin-escape pre-screen. See [GPU pre-screen](#gpu-pre-screen-beta-new-in-10115-tuning-knobs-added-10128). |
 
 ![Global Multi Start Optimization dialog with the 1.0.128 GPU pre-screen controls — the `GPU pre-screen` checkbox plus `GPU min change (%)` and `GPU population ×`, which enable when the checkbox is ticked. Every restart inherits these, so the whole gallery search uses the GPU sieve.](images/GlobalMultistartGPUScreening.png)
@@ -648,6 +662,8 @@ Glass swaps and continuous-variable hops cooperate: a swap that
 gets accepted often stays in the design while later hops fine-tune
 curvatures and thicknesses around it.
 
+![The Basin-Hopping HJ+LM dialog. Below the hop / LM / HJ budgets and the glass-substitution controls, the **exploration** row governs how the walk moves between basins — **Metropolis walk** with its **Temp**, and the full-range long-jump restart tuned by **Restart@stall** and **Restart σ**. **Chains** sets how many independent walks run in parallel (0 = one per physical core).](images/BasinHoppingSettings.png)
+
 | Setting | Default | Meaning |
 |---|---|---|
 | **Hops** | 3000 | Outer-loop cap **per chain**. With **Stop on no improvement** on (the usual mode) a chain plateaus and stops long before this — the cap is just a backstop. Lower it only if you want a hard wall on runtime. |
@@ -661,6 +677,10 @@ curvatures and thicknesses around it.
 | **Glass Substitution** | off | Enable glass swaps. Pick the source from the **Glass Source** dropdown — filtered catalogs (small curated lists, cheap) or one of the loaded full catalogs (broad exploration, slower). |
 | **Glass Source** | first filtered catalog | Pool used when Glass Substitution is on. Filtered catalogs in `<install>/catalogs/Filtered/` are typically 30–100 glasses curated by status, manufacturer, refractive-index range, etc. See [Glass Catalogs](glass-catalogs.md). |
 | **Stop on no improvement / Timeout (s)** | off / 600 | Per-chain watchdog. When on, a chain ends early if *its own* best merit hasn't improved within this many seconds — see [Stop on no improvement](#stop-on-no-improvement). |
+| **Metropolis walk** | on | Governs how a *non-improving* hop is handled. **On** (default): the chain may still accept a *worse* design as its next centre with probability `exp(−ΔMerit/T)`, so it can step through a worse basin to reach a better one — thorough exploration. **Off**: *greedy* hopping — every non-improving hop is rejected and the chain restores to its best. Greedy converges quickly but can stick in the first basin. |
+| **Temp** | 0 (autotune) | Metropolis temperature *T* in `exp(−ΔMerit/T)`. **0** autotunes it to the mean of the first several uphill `\|ΔMerit\|` samples. Larger *T* accepts more worse moves (more exploration). Ignored when Metropolis walk is off. |
+| **Restart@stall** | 20 | Full-range "long-jump" restart trigger (see [Escaping a stalled search](#escaping-a-stalled-search-full-range-restarts) below). After this many consecutive hops with no new global best, the chain re-randomizes its *shape* variables across their whole range and continues from there. **0** disables it — a pure local walk that only reaches basins near the start. |
+| **Restart σ** | 0.5 | Magnitude of that long-jump kick, in the same units as Multistart's Sigma Cap. **1.0** spans a variable's full bound half-range, like a Multistart trial; smaller values land on a traceable design more often. Only used when Restart@stall > 0. |
 | **Save chains to** | (empty) | Folder to write every chain's final design (one `.lhlt` each) when the run finishes. Empty = keep only the global best in the workspace. See [Saving every chain's design](#saving-every-chains-design). |
 
 ### Escaping a stalled search (full-range restarts)
@@ -681,7 +701,10 @@ refinement. In practice a Basin-Hopping run — especially with several
 [parallel chains](#parallel-chains) — now reaches the deep basins Multistart
 finds *and* polishes each one it visits, so it is competitive with (and
 often beats) Multistart on the same design instead of freezing at the first
-local minimum. Restarts are automatic; there is nothing to configure.
+local minimum. The restart is on by default and needs no setup; since 1.0.146
+you can tune *when* it fires (**Restart@stall**, in hops) and *how far* it
+jumps (**Restart σ**) from the dialog, or disable it entirely by setting
+**Restart@stall** to 0.
 
 ### Parallel chains
 
@@ -1009,8 +1032,12 @@ chain has to be *allowed to stall* in order to jump to a better basin.
 
 The per-chain HJ-LM knobs are the **same as Basin Hopping** — Hops, LM/Hop, HJ
 Steps, Sigma, Seed, Broyden update, Glass substitution, Rescale on glass swap,
-Only-randomize-constrained, and the Glass Source — and behave identically *inside*
-each episode. The differences are the three controls that govern the global loop:
+Only-randomize-constrained, the Glass Source, the **Metropolis walk** (with its
+**Temp**), and the full-range restart (**Restart@stall**, **Restart σ**) — and
+behave identically *inside* each episode. The differences are the three controls
+that govern the global loop:
+
+![The Global Basin-Hopping HJ+LM dialog. The per-chain knobs match Basin Hopping — including the **Metropolis walk** / **Temp** and the **Restart@stall** / **Restart σ** long-jump restart — while **Global (min)** caps the whole run and **Stop on no improvement** is locked on (only its Timeout is editable), because the restart-from-elite migration between chains depends on episodes being allowed to stall.](images/GlobalBasinHoppingSettings.png)
 
 | Setting | Default | Meaning |
 |---|---|---|

@@ -1,41 +1,62 @@
+---
+config:
+  theme: base
+  flowchart:
+    curve: basis
+    nodeSpacing: 48
+    rankSpacing: 52
+    padding: 8
+  themeVariables:
+    fontFamily: "Segoe UI, Helvetica, Arial, sans-serif"
+    fontSize: 15px
+    lineColor: "#8a8a8a"
+---
 flowchart TD
-    Start(["User clicks Optimize"]) --> Init["Initialize variables and bounds<br>sigma = sigma_init, T = T_init"]
-    Init --> Ph1Check{"Initial LM<br>enabled?"}
-    Ph1Check -- Yes --> Ph1LM["PHASE 1: Initial LM<br>refine user start<br>single-threaded"]
-    Ph1Check -- No --> Skip1["Use raw starting merit"]
-    Ph1LM --> CaptureBest["Capture best M_star<br>center = M_star"]
-    Skip1 --> CaptureBest
-    CaptureBest --> LoopCheck{"All trials done?<br>completed >= MaxTrials"}
-    LoopCheck -- Yes --> Return(["Return best lens"])
-    LoopCheck -- No --> StartBatch["PHASE 2: spawn N_CPU trials in parallel"]
-    StartBatch --> Trial
-    subgraph Trial["Per-trial HJ-LM worker x N_CPU in parallel"]
-        direction TB
-        T1["Clone system and merit"] --> T2{"Roll dice<br>swap glass?<br>p = P_swap"}
-        T2 -- Yes --> T3a["GLASS SWAP<br>1. Pick one eligible surface<br>2. Pick random glass from its candidate list<br>3. Keep variables equal to center"]
-        T2 -- No --> T3b["CONTINUOUS PERTURB<br>x_new = center + sigma times N(0,1)<br>per active variable<br>glasses unchanged"]
-        T3a --> T5["Hooke-Jeeves<br>pattern search<br>HjStepsPerTrial"]
-        T3b --> T6["Levenberg-Marquardt<br>HJ skipped by default<br>for continuous trials<br>HjOnGlassSwapOnly true since 2026-05-31"]
-        T5 --> T6b["Levenberg-Marquardt<br>LmIterationsPerTrial<br>x glass-swap multiplier"]
-        T6 --> T7["Report trial merit"]
-        T6b --> T7
+    Start(["Optimize"]) --> Init["Initialize variables and bounds<br/>sigma = sigma0 &nbsp; T = T0"]
+    Init --> Ph1{"Initial LM?"}
+    Ph1 -- yes --> Ph1LM["Phase 1 &middot; Initial LM<br/>polish the user's start"]
+    Ph1 -- no --> Skip["use raw start merit"]
+    Ph1LM --> Best["best = M* &nbsp; center = best"]
+    Skip --> Best
+    Best --> Loop{"trials remaining?"}
+    Loop -- no --> Done(["Return best design"])
+    Loop -- yes --> Batch["Phase 2 &middot; spawn N_CPU trials in parallel"]
+    Batch --> Trial
+
+    subgraph Trial["Per-trial HJ-LM worker &nbsp; (x N_CPU)"]
+      direction TB
+      C1["clone system + merit"] --> C2{"swap glass?<br/>p = P_swap"}
+      C2 -- yes --> Gswap["Glass swap<br/>random glass on one<br/>eligible surface"]
+      C2 -- no --> Pert["Perturb off center<br/>x = center + sigma &middot; N(0,1)<br/><b>reduced-dim:</b> ~half of trials<br/>kick a random subset only"]
+      Gswap --> HJ["Hooke-Jeeves<br/>pattern search"]
+      Pert --> LM["Levenberg-Marquardt<br/>polish the basin"]
+      HJ --> LM
+      LM --> Rep["trial merit"]
     end
-    Trial --> Merge["Merge batch results<br>best of batch M_b"]
-    Merge --> Acc{"M_b less than best?"}
-    Acc -- Yes --> Accept["ACCEPT<br>best = M_b<br>sigma reset to sigma_init"]
-    Acc -- No --> Metro{"Metropolis on center?<br>p = exp(minus deltaM over T)"}
-    Metro -- Accept --> MetroAcc["MOVE CENTER<br>center = M_b<br>sigma NOT reset (only a new best resets)"]
-    Metro -- Reject --> Reject["REJECT<br>grow sigma x1.5 toward sigma_cap<br>after a no-improvement streak (patience)"]
-    Accept --> LoopCheck
-    MetroAcc --> LoopCheck
-    Reject --> LoopCheck
-    classDef expensive fill:#fff4d6,stroke:#e6a23c,stroke-width:2px,color:#000
-    classDef phase fill:#cce5ff,stroke:#0066cc,stroke-width:2px,color:#000
-    classDef decision fill:#ffe4e1,stroke:#cc0066,stroke-width:2px,color:#000
-    classDef terminal fill:#d4edda,stroke:#28a745,stroke-width:3px,color:#000
-    classDef glass fill:#e1f5fe,stroke:#0277bd,stroke-width:2px,color:#000
-    class T5,T6,T6b expensive
-    class Ph1LM,StartBatch phase
-    class T2,Acc,Metro,LoopCheck,Ph1Check decision
-    class Start,Return terminal
-    class T3a glass
+
+    Trial --> Merge["best of batch = Mb"]
+    Merge --> Acc{"Mb better<br/>than best?"}
+    Acc -- yes --> Accept["Accept &middot; best = Mb<br/>archive basin<br/>reset sigma = sigma0"]
+    Acc -- no --> Metro{"<b>Metropolis</b> accept?<br/>p = exp(-dM / T)"}
+    Metro -- yes --> Move["move center = Mb<br/>(sigma not reset)"]
+    Metro -- no --> Rej["Reject<br/>grow sigma x1.5 toward cap"]
+    Rej --> Stall{"stalled at cap?<br/><b>basin memory</b>"}
+    Stall -- yes --> Restart["<b>Diverse restart</b><br/>jump far from every<br/>archived basin"]
+    Accept --> Next["begin next trial"]
+    Move --> Next
+    Restart --> Next
+    Stall -- no --> Next
+    Next --> Loop
+
+    classDef term  fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#14311b
+    classDef phase fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d2b4e
+    classDef dec   fill:#fff8e1,stroke:#f6a821,stroke-width:1.5px,color:#4a3610
+    classDef work  fill:#f5f5f5,stroke:#adadad,stroke-width:1.5px,color:#2a2a2a
+    classDef glass fill:#e1f5fe,stroke:#0277bd,stroke-width:2px,color:#083a52
+    classDef lever fill:#ede7f6,stroke:#5e35b1,stroke-width:2.5px,color:#2e1065
+    class Start,Done term
+    class Ph1LM,Batch,HJ,LM phase
+    class Ph1,Loop,C2,Acc,Metro,Stall dec
+    class Init,Skip,Best,C1,Merge,Rep,Next work
+    class Gswap glass
+    class Pert,Move,Restart lever
