@@ -2,6 +2,35 @@
 
 All notable changes to LensHH-LT and the LensHH-LT-Engine.
 
+## 1.0.147 — 2026-08-21
+
+### Added
+- **Reproducible Multistart runs.** Multistart now takes an RNG **Seed**, in the
+  Multi Start dialog and from the CLI (`seed=N`) and MCP. It defaults to **1**, so
+  a run now repeats exactly by default — which is what lets you change *one*
+  setting and attribute the difference to that setting instead of to luck. Change
+  the seed (1, 2, 3, …) for a genuinely independent run. Note that runs using the
+  **GPU pre-screen** are not yet reproducible: that path still draws its candidates
+  from an unseeded generator.
+- **Bound handling — Sigmoid or Reflect.** A new system-level setting
+  (**System → System Editor → Bound Handling**) chooses how variables with
+  `Min`/`Max` bounds are mapped into the optimizer's search space. **Sigmoid**
+  (the default, and the historical behaviour) is smooth, but its gradient flattens
+  toward zero at a bound, so a variable pushed onto its limit quietly stops
+  responding. **Reflect** keeps the variable in physical units and folds
+  out-of-range values back inside, giving a constant gradient magnitude and no dead
+  zone — usually better on constrained designs, where several variables genuinely
+  want to sit against their limits, and on the stochastic searches, whose kicks
+  routinely land out of range. The setting applies to every optimizer, is saved in
+  `.lhlt`, and is available as `system set-bound-handling` in the CLI and
+  `set_bound_handling` in MCP.
+
+  This is *not* the same as the reflective **perturbation** added in 1.0.146. That
+  change reflects a random kick back into range before the trial starts; this one
+  changes the coordinate mapping the optimizer works in for **every step it takes**,
+  including the derivatives it computes. Variables with no bounds are unaffected by
+  either mode.
+
 ## 1.0.146 — 2026-08-21
 
 ### Added

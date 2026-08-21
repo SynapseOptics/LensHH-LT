@@ -191,6 +191,18 @@ system info                         # shows Aperture, Field Type, Telecentric Ob
 Object Space NA and ray aiming is Off. See
 [System Aperture & Object-Space Telecentric](getting-started.md#system-aperture--object-space-telecentric).
 
+**Bound handling and a reproducible Multistart** (new in 1.0.147):
+
+```bash
+system set-bound-handling reflect   # or sigmoid (default); system info shows it
+optimize multistart trials=500 seed=1
+optimize multistart trials=500 seed=2   # an independent run, same settings
+```
+
+Bound handling is a system-level setting saved in `.lhlt`, so it travels with the
+design. The Multistart `seed` defaults to 1 — a run repeats exactly unless you
+change it. See [Bound handling](optimization.md#bound-handling-sigmoid-or-reflect-new-in-10147).
+
 **Paraxial (ideal thin lens) surfaces.** Set a surface to an ideal lens by
 giving it a focal length, then optimise its power (diopters):
 
@@ -315,20 +327,24 @@ pick the right one for the task at hand.
 
 All tools operate on a single implicit session (`McpSession`) shared
 across the server process. Loading a new system replaces the one in
-the session. The ~123 tools group as:
+the session. The ~174 tools group as:
 
 | Category               | Tool count | Examples |
 |------------------------|-----------:|----------|
-| **System** (`SystemTools`)      | 25 | `system_new`, `system_load`, `system_save`, `system_import_zmx`, `system_set_aperture` (type `EPD` / `FNumber` / `ObjectSpaceNA`), `system_set_telecentric_object_space`, `system_set_wavelengths`, `system_set_fields`, `system_get_info`. |
-| **Surface** (`SurfaceTools`)    |  7 | `surface_add`, `surface_insert`, `surface_remove`, `surface_set`, `surface_list`, `surface_set_asphere`. |
-| **Glass** (`GlassTools`)        |  9 | `glass_load_catalogs`, `glass_list_catalogs`, `glass_search`, `glass_get_info`, `glass_get_index`, `glass_set_substitution`, `glass_generate_filtered_catalog`. |
-| **Pickup** (`PickupTools`)      |  4 | `pickup_add`, `pickup_remove`, `pickup_list`, `pickup_clear`. |
-| **Optimization** (`OptimizationTools`) | 17 | `merit_add_operand`, `merit_list`, `merit_edit_operand`, `merit_evaluate`, `variable_add`, `variable_list`, `optimize_local`, `optimize_multistart_start`, `optimize_global_search_start`, `optimize_basin_hopping_start`, `optimize_status`. |
-| **Analysis** (`AnalysisTools`)  | 20 | `trace_ray`, `spot_diagram`, `ray_fan`, `pupil_aberration_fan`, `opd_fan`, `seidel`, `wavefront_map`, `fft_psf`, `fft_mtf_vs_freq`/`vs_field`/`through_focus`, `geo_mtf_*`, `zernike_standard`, `zernike_fringe`, `lateral_color`, `relative_illumination`, `chromatic_focal_shift`, `field_curvature_distortion`. |
-| **Rendering** (`RenderingTools`)| 42 | `render_analysis_png`, `render_layout_png`, and per-analysis text-export tools (one `analysis_name_text` tool per analysis). |
-| **License** (`LicenseTools`)    |  1 | `license_status` — shows activation/trial state. |
+| **System** (`SystemTools`)      | 28 | `system_new`, `system_load`, `system_save`, `system_import_zmx`, `system_set_aperture` (type `EPD` / `FNumber` / `ObjectSpaceNA`), `system_set_telecentric_object_space`, `system_set_wavelengths`, `system_set_fields`, `system_set_bound_handling` (`Sigmoid` / `Reflect`), `system_get_info`. |
+| **Surface** (`SurfaceTools`)    | 11 | `surface_add`, `surface_insert`, `surface_remove`, `surface_set`, `surface_list`, `surface_set_asphere`. |
+| **Glass** (`GlassTools`)        | 11 | `glass_load_catalogs`, `glass_list_catalogs`, `glass_search`, `glass_get_info`, `glass_get_index`, `glass_set_substitution`, `glass_generate_filtered_catalog`. |
+| **Pickup** (`PickupTools`)      |  5 | `pickup_add`, `pickup_remove`, `pickup_list`, `pickup_clear`. |
+| **Optimization** (`OptimizationTools`) | 28 | `merit_add_operand`, `merit_list`, `merit_edit_operand`, `merit_evaluate`, `variable_add`, `variable_list`, `optimize_local`, `optimize_multistart_start`, `optimize_global_search_start`, `optimize_basin_hopping_start`, `optimize_status`. |
+| **Analysis** (`AnalysisTools`)  | 22 | `trace_ray`, `spot_diagram`, `ray_fan`, `pupil_aberration_fan`, `opd_fan`, `seidel`, `wavefront_map`, `fft_psf`, `fft_mtf_vs_freq`/`vs_field`/`through_focus`, `geo_mtf_*`, `zernike_standard`, `zernike_fringe`, `lateral_color`, `relative_illumination`, `chromatic_focal_shift`, `field_curvature_distortion`. |
+| **Rendering** (`RenderingTools`)| 45 | `render_analysis_png`, `render_layout_png`, and per-analysis text-export tools (one `analysis_name_text` tool per analysis). |
+| **Stock lenses** (`StockLensTools`) |  6 | `search_stock_lenses`, `insert_stock_lens`, `find_matching_stock`, `replace_element`. |
+| **Batch design search** (`BatchDesignSearchTools`) |  6 | `batch_design_search_start`, `batch_design_search_status`, `batch_design_search_keep`. |
+| **Sasian design** (`SasianDesignTools`) |  5 | `sasian_design_start`, `sasian_design_status`, `sasian_design_discard`. |
+| **DE pipeline** (`DePipelineTools`) |  5 | `de_pipeline_start`, `de_pipeline_status`, `de_pipeline_discard`. |
+| **License** (`LicenseTools`)    |  2 | `license_status` — shows activation/trial state. |
 
-**Total:** ~123 tools.
+**Total:** ~174 tools.
 
 Every tool has an `[McpServerTool, Description(...)]` attribute with a
 plain-English description of what it does and what each parameter

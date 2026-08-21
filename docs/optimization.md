@@ -64,6 +64,41 @@ bounds are never violated and the optimizer can't crash by trying
 illegal values; the practical effect is that pushing against a
 bound shows up as a vanishing gradient, not a hard wall.
 
+### Bound handling: Sigmoid or Reflect (new in 1.0.147)
+
+That vanishing gradient is a real limitation, and you can now choose the
+mapping that produces it. **System → System Editor → Bound Handling** offers
+two modes; the setting is system-level (it applies to every optimizer — Local,
+Multistart, Basin Hopping, the evolutionary searches) and is saved in `.lhlt`.
+
+| Mode | Mapping | Behaviour at a bound |
+|---|---|---|
+| **Sigmoid** (default) | Scaled logit/sigmoid between the bounds | Smooth and monotonic, but the slope flattens toward zero as the variable approaches `Min` or `Max`. A variable pushed onto a limit effectively stops responding to the optimizer. |
+| **Reflect** | The variable stays in physical units; out-of-range values fold back inside (a triangle wave) | The slope magnitude is always exactly 1, so there is no dead zone. A variable sitting on a limit keeps its full sensitivity. The cost is a kink in the derivative at each fold point. |
+
+**When to switch to Reflect.** Use it on *constrained* problems — designs where
+several variables genuinely want to sit against their limits (edge and centre
+thickness floors, a maximum diameter, a bounded focal power). Under Sigmoid
+those variables go quiet one by one as they reach their bounds and the search
+loses dimensions it still needs; under Reflect they keep contributing. It also
+helps the stochastic searches, whose random kicks routinely land out of range.
+
+**When to stay on Sigmoid.** Unconstrained or lightly constrained designs, where
+nothing spends time on a limit, gain nothing from Reflect — and Sigmoid's
+smoothness is friendlier to LM's quadratic model. Sigmoid remains the default so
+existing designs reproduce exactly.
+
+> **Note.** Variables with *no* `Min`/`Max` are unaffected: with nothing to fold
+> against, both modes are the identity. If switching to Reflect changes nothing
+> on your design, check whether your variables actually carry bounds — a design
+> that constrains thicknesses with `CT`/`CTA`/`CTG` *penalty operands* rather than
+> variable bounds has unbounded variables, and bound handling does not apply.
+
+![The System Editor dialog. **Bound Handling** sits below the ray-aiming checkboxes and applies to every optimizer.](images/SystemEditorBoundHandling.png)
+
+Outside the GUI: `system set-bound-handling sigmoid|reflect` in the CLI, and
+`set_bound_handling` in MCP; `system info` reports the current mode.
+
 See [Getting Started → Your First Optimization](getting-started.md)
 for the GUI workflow of marking variables and setting bounds.
 
@@ -234,7 +269,7 @@ pre-1.0.115 always-HJ behaviour.
 
 ![HJ-LM trial detail](images/optimization/hj_lm_trial.png)
 
-![The Multi Start Optimization dialog. The **Advanced** disclosure at the top holds the engine, derivative, and LM-internals knobs; the main strip carries the trial and LM budgets, the perturbation-sigma schedule, glass substitution, and the three **convergence levers** — **Metropolis Acceptance**, **Reduced-dim perturbation**, and **Basin memory / diverse restart** — all on by default.](images/MultiStartSettings.png)
+![The Multi Start Optimization dialog. The **Advanced** disclosure at the top holds the engine, derivative, and LM-internals knobs; the main strip carries the trial and LM budgets, the perturbation-sigma schedule, glass substitution, the **Seed** that makes a run reproducible, and the three **convergence levers** — **Metropolis Acceptance**, **Reduced-dim perturbation**, and **Basin memory / diverse restart** — all on by default.](images/MultiStartSettings.png)
 
 | Setting | Default | Meaning |
 |---|---|---|
@@ -243,12 +278,12 @@ pre-1.0.115 always-HJ behaviour.
 | **Init LM** | 4000 | One LM polish from the *current* design before the first random perturbation. Set to 0 to skip. |
 | **Init Sigma** | 0.001 | Starting (and reset) value of the Gaussian-perturbation scale, relative to each variable's natural scale. σ starts here, **grows on rejection** toward **Sigma Cap** to escape, and resets here on every accepted improvement. The small default keeps each kick within LM's capture radius — it still escapes because σ grows when the search stalls. |
 | **Sigma Cap** | 0.1 | Upper bound on σ — the largest kick the escape phase reaches. On a rejection streak σ grows ×1.5 per rejection up to this cap; any acceptance resets σ to **Init Sigma**. Raise it for wider exploration when refinement stalls. |
-| **HJ Steps** | 50 | Hooke-Jeeves probe steps per trial (derivative-free) before LM takes over. HJ is good at climbing out of merit-function discontinuities (vignetting, ray-trace failures, glass-boundary jumps) where LM gets trapped. Set 0 to disable. |
 | **Init Damp** | 1e-3 | LM initial damping for every trial's per-trial LM run. Same meaning and default as the Local Optimizer's Init Damp. |
 | **Glass Sub %** | 50 | Probability that a trial picks a fresh random glass for each substitution-eligible surface. 0 = never; 100 = every trial. The pool comes from the per-surface Glass Substitution Settings (each surface can draw from a different filtered catalog) — see [Glass Substitution During Optimization](glass-catalogs.md#glass-substitution-during-optimization). |
 | **Rescale on Glass Swap** | on | When a glass is swapped, also rescale that element's curvatures by `(n_old−1)/(n_new−1)` so its optical power is preserved to first order — keeps the swapped design feasible instead of broken, which improves the typical (median) result. **Only has any effect when glass substitution is active** (Glass Sub % > 0 with substitutable surfaces); on fixed-glass designs it is a no-op. (Basin Hopping keeps this off — its small-step trajectory is over-perturbed by the per-swap curvature jump.) |
 | **Constrained Only** | off | If on, only perturb variables that have `Min`/`Max` bounds. Useful when you want unbounded variables held fixed (e.g., a fixed-radius element). |
 | **Broyden Update** | on | Same meaning as for Local LM. Leave on. |
+| **Seed** | 1 | RNG seed for the run. The same seed with the same settings and the same starting design reproduces a run exactly — which is what makes it possible to change *one* setting and attribute the difference to that setting rather than to luck. Change it (1, 2, 3, …) for a genuinely independent run. *Caveat:* the GPU pre-screen draws its candidates from an unseeded generator, so runs with the GPU sieve enabled are not reproducible even with a seed set. |
 | **Metropolis Acceptance** | on | When on, Multistart keeps a *current centre* state separate from *best* and may accept a worse-than-best trial as the next centre with probability `exp(−ΔM/T)` (T autotunes from early `\|ΔM\|` samples). Lets the search walk out of basins it has already mined. *Best* is always strict-improvement; the returned design is monotone. |
 | **Reduced-dim perturbation** | on | About half of trials perturb only a random *subset* of the variables — up to roughly a third of them — leaving the rest at their centre values, instead of kicking every variable at once. A full-dimension kick is usually pulled straight back to the same basin by LM; moving along these lower-dimensional manifolds lets the search slip into *adjacent* basins a full kick overshoots. |
 | **Basin memory / diverse restart** | on | Keeps an archive of the distinct minima the walk has visited. Once sigma has saturated at the cap for several batches with no new best, the walk *restarts* from a fresh point chosen to lie far from every archived basin (with its glasses randomized), systematically mapping new regions instead of circling the same minimum. The run-wide best is tracked separately and is never lost — it, not the current region's best, is the reported answer. |
