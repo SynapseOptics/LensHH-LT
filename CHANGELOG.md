@@ -2,6 +2,36 @@
 
 All notable changes to LensHH-LT and the LensHH-LT-Engine.
 
+## 1.0.148 — 2026-08-22
+
+### Fixed
+- **Wavefront error (`WAVEX`/`OPDX`) on defocused designs.** 1.0.146 corrected the
+  exit-pupil wavefront for systems whose exit pupil lies *in front of* the image
+  plane, but the correction was applied to every system — including the ordinary
+  geometry where the exit pupil lies *behind* the image. On those designs the
+  wavefront error was severely under-reported once the design moved away from best
+  focus: a conoscope whose real RMS spot was 2.3 mm reported 0.29 waves, where both
+  ZEMAX and 1.0.145 report 30.2.
+
+  Because the error only appears away from best focus — exactly where an optimizer
+  explores — a `WAVEX`-driven run could be pulled into it and report an excellent
+  merit for a design that is badly out of focus. **If you ran an optimization on
+  1.0.146 or 1.0.147 and the result looked far better than its spot diagram or
+  MTF suggests, re-evaluate it on this release.** Systems at or near focus were
+  affected only in the third decimal and need no attention.
+
+  The fix carries the sign of the exit-pupil position through the wavefront
+  calculation so the correct form is used on each side of the image plane, in the
+  C#, native, analytic and GPU engines alike. Designs with the exit pupil in front
+  of the image — the case 1.0.146 addressed — are unchanged.
+
+### Documentation
+- Added a wavefront regression guard that needs no external reference data: it
+  sweeps the image plane and requires the wavefront minimum to coincide with the
+  geometric spot minimum. The existing ZEMAX comparisons all sit at best focus,
+  where the two competing formulations agree, which is why this class of error
+  could pass them.
+
 ## 1.0.147 — 2026-08-21
 
 ### Added
