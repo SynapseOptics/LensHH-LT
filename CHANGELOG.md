@@ -10,8 +10,8 @@ All notable changes to LensHH-LT and the LensHH-LT-Engine.
   plane, but the correction was applied to every system — including the ordinary
   geometry where the exit pupil lies *behind* the image. On those designs the
   wavefront error was severely under-reported once the design moved away from best
-  focus: a conoscope whose real RMS spot was 2.3 mm reported 0.29 waves, where both
-  ZEMAX and 1.0.145 report 30.2.
+  focus: a conoscope whose real RMS spot was 2.3 mm reported 0.29 waves, where the
+  correct figure — the one 1.0.145 reported — is 30.2.
 
   Because the error only appears away from best focus — exactly where an optimizer
   explores — a `WAVEX`-driven run could be pulled into it and report an excellent
@@ -28,7 +28,7 @@ All notable changes to LensHH-LT and the LensHH-LT-Engine.
 ### Documentation
 - Added a wavefront regression guard that needs no external reference data: it
   sweeps the image plane and requires the wavefront minimum to coincide with the
-  geometric spot minimum. The existing ZEMAX comparisons all sit at best focus,
+  geometric spot minimum. The existing wavefront comparison fixtures sit at best focus,
   where the two competing formulations agree, which is why this class of error
   could pass them.
 
