@@ -117,13 +117,22 @@ public static class RenderAppClient
             // Installed layout: CLI at {app}\cli\, RenderApp at {app}\renderapp\
             Path.Combine(baseDir, "..", "renderapp", ExeName),
             Path.Combine(baseDir, "..", "LensHH.RenderApp", ExeName),
-            Path.Combine(baseDir, "..", "..", "..", "..", "LensHH.RenderApp",
-                "bin", "Debug", "net8.0", ExeName),
-            Path.Combine(baseDir, "..", "..", "..", "..", "LensHH.RenderApp",
-                "bin", "Release", "net8.0", ExeName),
         };
 
-        var exePath = candidates.Select(Path.GetFullPath).FirstOrDefault(File.Exists);
+        // Dev fallback: LensHH.RenderApp\bin\{Debug,Release}\net8.0. Probe the more
+        // RECENTLY BUILT of the two rather than fixing Debug first. A dev box commonly has
+        // both, and an old Debug build carries an old LensHH.Core.dll — which silently
+        // renders analyses from a stale engine. That is invisible in the output (the plot
+        // looks perfectly normal, the numbers are just wrong) and it is exactly how a
+        // stale figure gets captured. Installed layouts never reach here.
+        var devCandidates = new[] { "Debug", "Release" }
+            .Select(cfg => Path.GetFullPath(Path.Combine(baseDir, "..", "..", "..", "..",
+                "LensHH.RenderApp", "bin", cfg, "net8.0", ExeName)))
+            .Where(File.Exists)
+            .OrderByDescending(File.GetLastWriteTimeUtc);
+
+        var exePath = candidates.Select(Path.GetFullPath).FirstOrDefault(File.Exists)
+                      ?? devCandidates.FirstOrDefault();
         if (exePath == null)
             throw new FileNotFoundException(
                 $"Cannot find {ExeName}. Build the LensHH.RenderApp project first.");
