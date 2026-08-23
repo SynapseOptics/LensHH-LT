@@ -46,9 +46,9 @@ ray). In the Cooke triplet above:
 
 | Field | RMS | GEO |
 |---|---|---|
-| 0.0° | 4.34 µm | 8.07 µm |
-| 14.0° | 17.73 µm | 45.39 µm |
-| 20.0° | 14.27 µm | 43.27 µm |
+| 0.0° | 3.76 µm | 8.07 µm |
+| 14.0° | 15.41 µm | 46.05 µm |
+| 20.0° | 12.53 µm | 43.42 µm |
 
 The crosshair marks the chief ray; the star marks the centroid.
 The on-axis spot is dominated by spherochromatism (the 0.48 µm blue

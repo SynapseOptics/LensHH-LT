@@ -1383,22 +1383,25 @@ between the corrected points.
 **Spot size — RMS radius (µm), polychromatic**
 
 The spot radii are tabulated rather than shown as diagrams (the
-per-field spot images are hard to read at print size). Note the
-trade the added fields force: the on-axis spot grows a little
-(3.15 → 4.49 µm) while the 20° edge improves by ~38 %
-(11.59 → 7.21 µm). The design is redistributed for uniformity
-across the field instead of being peaked on-axis — which is what
-keeps the MTF-vs-field curve flat.
+per-field spot images are hard to read at print size). Every field
+improves, and the two stages contribute in different places: the
+asphere does most of the work from the axis out to mid-field (8°:
+2.97 → 2.17 µm), while Basin Hopping spends its remaining freedom on
+the outer field, where the asphere alone left the most on the table
+(17°: 4.02 → 3.09 µm; 20°: 6.17 → 5.30 µm). End to end the on-axis
+spot tightens from 3.15 to 2.73 µm and the 20° edge by ~30 %, from
+7.62 to 5.30 µm — the outer field improving fastest is what keeps the
+MTF-vs-field curve flat.
 
 | Field (°) | Before | After asphere | After asphere + BH |
 |---:|---:|---:|---:|
-| 0  |  3.15 | 3.34 | 4.49 |
-| 5  |  3.02 | 2.87 | 4.16 |
-| 8  |  2.92 | 2.33 | 3.64 |
-| 11 |  3.22 | 2.33 | 2.92 |
-| 14 |  4.60 | 3.63 | 2.56 |
-| 17 |  7.40 | 6.03 | 4.03 |
-| 20 | 11.59 | 9.21 | 7.21 |
+| 0  | 3.15 | 2.83 | 2.73 |
+| 5  | 3.09 | 2.54 | 2.55 |
+| 8  | 2.97 | 2.17 | 2.28 |
+| 11 | 2.86 | 1.99 | 1.94 |
+| 14 | 3.20 | 2.55 | 1.94 |
+| 17 | 4.72 | 4.02 | 3.09 |
+| 20 | 7.62 | 6.17 | 5.30 |
 
 ![RMS spot radius vs field](images/AsphereExploration/AsphereSpotVsField.png)
 

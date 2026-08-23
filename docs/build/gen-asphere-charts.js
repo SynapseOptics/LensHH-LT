@@ -12,14 +12,20 @@ const series = [
   { key: 'After asphere + BH',        color: '#9bbb59' },
 ];
 // [before, afterAsphere, afterBH] per field
+// Regenerated 2026-08-23 for 1.0.149, in which the spot analysis switched to the same
+// Gauss-Legendre pupil quadrature the SPOT/SPOTM merit macros already used. The previous
+// figures came from the old display-pattern average, which over-weighted the pupil rim and
+// so read high — most at the outer field, where aberration is rim-peaked (20 deg was 11.59,
+// is 7.62). Values below are 'analysis spot <field>' on the three sample designs in
+// samples/UserGuide/LensFilesForManual/, and match the recaptured spot diagrams exactly.
 const spot = {  // RMS spot radius, µm (polychromatic)
-  0:  [3.147, 3.342, 4.489],
-  5:  [3.021, 2.867, 4.157],
-  8:  [2.922, 2.333, 3.636],
-  11: [3.222, 2.328, 2.918],
-  14: [4.601, 3.628, 2.561],
-  17: [7.397, 6.035, 4.030],
-  20: [11.594, 9.214, 7.207],
+  0:  [3.147, 2.833, 2.728],
+  5:  [3.089, 2.541, 2.552],
+  8:  [2.969, 2.173, 2.282],
+  11: [2.856, 1.986, 1.944],
+  14: [3.201, 2.552, 1.945],
+  17: [4.717, 4.023, 3.091],
+  20: [7.620, 6.175, 5.296],
 };
 const wfe = {   // RMS wavefront error, waves (polychromatic weighted-RMS over 0.48/0.55/0.65 µm)
   0:  [0.086, 0.067, 0.045],
@@ -78,7 +84,7 @@ function chart(data, { title, yLabel, yMax, yTicks }) {
 
 const outDir = path.join(__dirname, '..', 'images', 'AsphereExploration');
 fs.writeFileSync(path.join(outDir, 'AsphereSpotVsField.svg'),
-  chart(spot, { title: 'RMS spot radius vs field', yLabel: 'RMS spot radius (µm)', yMax: 12, yTicks: 6 }));
+  chart(spot, { title: 'RMS spot radius vs field', yLabel: 'RMS spot radius (µm)', yMax: 8, yTicks: 4 }));
 fs.writeFileSync(path.join(outDir, 'AsphereWfeVsField.svg'),
   chart(wfe, { title: 'RMS wavefront error vs field (polychromatic)', yLabel: 'RMS WFE (waves)', yMax: 0.24, yTicks: 6 }));
 console.log('Wrote AsphereSpotVsField.svg + AsphereWfeVsField.svg to', outDir);
