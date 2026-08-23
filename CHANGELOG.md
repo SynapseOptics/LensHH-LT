@@ -2,6 +2,73 @@
 
 All notable changes to LensHH-LT and the LensHH-LT-Engine.
 
+## 1.0.149 — 2026-08-23
+
+### Fixed
+- **Surface normal on rays that strike a steeply curved surface beyond its equator.**
+  The normal of a spherical or conic surface was reconstructed from the sag
+  derivative using only the ray's `(x, y)` at the intersection, which always
+  produces the normal for the *near*, vertex-side sheet of the surface. On a
+  near-hemispherical surface — one whose clear aperture approaches its radius of
+  curvature — a steep ray's first intersection can land *past* the equator, on the
+  far sheet, where the true normal's axial component has the opposite sign. Such a
+  ray refracted in the wrong direction.
+
+  The intersection point itself was always correct; only the normal was wrong, and
+  only for rays crossing the equator. In practice that means a handful of rim rays
+  at the extreme field of a design with a very deeply curved element: on one
+  conoscope the 60° RMS spot read 122 µm where the correct figure is 12.8 µm, with
+  visibly divergent rays in the layout, while every other field and every other ray
+  was unaffected. Refraction re-orients the normal against the ray direction, which
+  hides a pure sign error but cannot repair a wrong-sheet one, so nothing downstream
+  caught it.
+
+  The normal is now taken as the gradient of the conic's implicit form, which reads
+  the actual intersection point and is therefore correct on both sheets. On ordinary
+  rays it is algebraically identical to the previous formula, so designs that never
+  put a ray past an equator are unchanged. As a side benefit it removes a numerical
+  degeneracy the old form had at the very rim of a steeply curved surface. The fix
+  is applied identically in the C#, native, analytic-derivative and GPU engines,
+  which are verified against each other on every build.
+
+  Aspheric surfaces keep the previous formulation for now; the same situation is
+  possible there but needs a different treatment, since an asphere is not a conic.
+
+### Changed
+- **The spot diagram analysis now integrates the pupil the same way the merit
+  function does.** `SpotDiagram`'s ring pattern was designed as a *display* layout:
+  it placed ring *k* at `rho = k/rings` — the outer edge of each annulus, with the
+  last ring exactly on the pupil rim — and then took a plain unweighted average over
+  the rays it had drawn. That is a right-endpoint rectangle rule. For a design whose
+  aberration climbs steeply toward the pupil edge it over-weights the rim, and the
+  reported RMS spot radius came out roughly 15–50% high.
+
+  The RMS and centroid are now computed from a Gauss-Legendre quadrature over the
+  pupil (`rho = sqrt(u)`), which is exactly the rule the `SPOT` and `SPOTM` merit
+  macros have always used. The analysis and the merit function now agree by
+  construction rather than by coincidence.
+
+  **Reported RMS spot radii will decrease** — by around 15–20% on typical designs,
+  more where aberration is concentrated at the rim. Nothing about any design has
+  changed; the previously reported number was too large.
+
+  **Merit function operands are NOT affected.** `SPOT`, `SPOTM`, `SPOTR` and
+  `SPOTMR` — and the wavefront macros alongside them — are untouched: they already
+  used this quadrature, which is why they and the spot report disagreed. Optimizer
+  results, merit values and saved designs are unchanged, and no design needs
+  re-optimizing because of this.
+
+  The geometric (maximum) radius and the drawn spot pattern are also unchanged: the
+  pupil rim is still traced, it simply carries no weight in the RMS. The
+  rectangular-grid spot mode is unchanged.
+
+### Added
+- **A ray-trace parity harness.** The existing comparison fixtures check the
+  *wavefront*; a design can match on wavefront and still trace a rim ray wrongly,
+  which is precisely what happened above. The new harness compares transverse ray
+  aberration ray-for-ray across both principal sections of the pupil, every field
+  and every wavelength, and is verified to fail on the defect it guards.
+
 ## 1.0.148 — 2026-08-22
 
 ### Fixed

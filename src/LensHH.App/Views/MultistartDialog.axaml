@@ -182,7 +182,7 @@
                     GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
           <CheckBox Content="Basin memory / diverse restart"
                     IsChecked="{Binding BasinMemoryRestart}" IsEnabled="{Binding !IsRunning}" VerticalAlignment="Center"
-                    Tag="On by default. The plain walk is a SINGLE chain anchored to one best; once sigma saturates at the cap it keeps flailing around that same best. With this on, the run keeps an archive of the distinct minima it has visited and, after stalling at the cap, RESTARTS the walk from a fresh point FAR from every archived basin — with randomized glasses — mapping new regions like ZEMAX Global Search. The run-wide best is tracked separately and never lost. Turn off for a specific design if needed."
+                    Tag="On by default. The plain walk is a SINGLE chain anchored to one best; once sigma saturates at the cap it keeps flailing around that same best. With this on, the run keeps an archive of the distinct minima it has visited and, after stalling at the cap, RESTARTS the walk from a fresh point FAR from every archived basin — with randomized glasses — mapping new regions instead of circling one minimum. The run-wide best is tracked separately and never lost. Turn off for a specific design if needed."
                     PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"
                     GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
           <!-- Physical HJ per trial moved to the Advanced expander 2026-08-20 (rarely needed; the seed

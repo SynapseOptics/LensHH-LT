@@ -1759,9 +1759,8 @@ public partial class MainWindow : Window
         VM.SelectedTabIndex = 0;
     }
 
-    // Diffraction Encircled Energy, Geometric Encircled Energy, and Line/Edge Spread
-    // have been archived. Code preserved in the SynapseOptics/LensHH-LT-Archive
-    // private repository.
+    // Diffraction Encircled Energy, Geometric Encircled Energy and Line/Edge Spread
+    // are not exposed in this build - there are deliberately no tabs or handlers for them.
 
     private async void LateralColor_Click(object? sender, RoutedEventArgs e)
     {
