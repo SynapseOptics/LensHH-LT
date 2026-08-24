@@ -2,6 +2,50 @@
 
 All notable changes to LensHH-LT and the LensHH-LT-Engine.
 
+## 1.0.150 — 2026-08-24
+
+### Added
+- **An alternative local-optimizer step: PSD (pseudo-second-derivative).** Damped least
+  squares adds a single damping value to every variable's diagonal term. That one number
+  has to stand in for each variable's actual curvature — and in a real lens those curvatures
+  differ by many orders of magnitude, so the same damping that steadies a strongly nonlinear
+  variable throttles a nearly linear one. It is a classic cause of an optimizer slowing to a
+  crawl while still some way from a minimum.
+
+  PSD estimates each variable's curvature directly, for almost nothing, by comparing the
+  derivatives from two successive iterations, and uses that in place of the single damping
+  value. Two variants are offered: **PSD II** and **PSD III**, the latter being the stronger
+  of the two.
+
+  Select it with the new **LM Step** control in the Local Optimization, Multistart, Basin
+  Hopping and Global Basin Hopping dialogs; `step=lm|psd2|psd3` in the CLI; `stepMethod` in
+  the MCP tools. **The default is unchanged**, so existing work behaves exactly as before
+  unless you choose otherwise.
+
+  **When it is worth trying.** The benefit grows with the number of variables, because that
+  is what widens the spread of curvatures a single damping value cannot cover. On a
+  12-variable triplet it changes nothing measurable. On a 21-variable double Gauss it
+  reaches minima 5–15% lower. On a 93-variable conoscope the difference is starker: the
+  standard step stalled — damping climbing until the steps stopped being useful, giving up
+  after 2948 iterations at a merit of 6.25e-2 — where PSD III converged properly at
+  iteration 1054 to 6.05e-2, using roughly a third of the work.
+
+  **Where it does not help.** In a full Basin Hopping run on smaller designs it has so far
+  performed *worse* than the standard step — reaching poorer minima and having more of its
+  hops rejected. It converges quickly to a nearby minimum, which is an asset when refining
+  one design and a liability when a search relies on wandering. Treat it as something to try
+  on large, stubborn designs rather than as a general replacement, and compare against the
+  standard step on your own work before adopting it.
+
+  Selecting PSD switches Broyden Jacobian updates off, because PSD needs two consecutive
+  freshly-computed Jacobians to compare. The checkbox updates to show this, and you can turn
+  it back on if you want to.
+
+### Changed
+- Synthesis by SPC previously forced Broyden updates on internally. It now follows the
+  selected step method, which leaves its behaviour identical under the default and lets PSD
+  work correctly when chosen.
+
 ## 1.0.149 — 2026-08-23
 
 ### Fixed

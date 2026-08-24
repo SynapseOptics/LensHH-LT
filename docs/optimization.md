@@ -126,6 +126,67 @@ optimum). LM gracefully transitions between the two.
 | **Use Broyden Update** | on | Reuse a rank-1 Jacobian update between full finite-difference recomputes. A full J is rebuilt every 5 *accepted* steps; rejections reuse the existing J because `x` hasn't moved. The Broyden rank-1 step is applied only on accepts, using the actual old-x → new-x residual difference. Roughly 3–5× faster than a full Jacobian per step and matches results in almost all cases. Turn off if a run looks stuck or for very small systems where the speedup doesn't matter. |
 | **Init Damp** | 1e-3 | Starting value of λ. The default is robust on aspheric mixes and well-conditioned problems alike. Drop to 1e-6 for gauss-newton-like behavior on very smooth, well-scaled designs; raise to 1e-2 if the optimizer keeps rejecting steps early. |
 
+
+### LM Step: damping or PSD (new in 1.0.150)
+
+Step 2 above adds `λ` to every variable's diagonal term. That single number is standing in
+for something that is not single: each variable's own curvature. In a real lens those
+curvatures differ enormously — a nearly linear airspace and a strongly nonlinear surface
+curvature can be many orders of magnitude apart — so whatever `λ` steadies the nonlinear
+variable will throttle the linear one, and vice versa. The usual symptom is a run that slows
+to a crawl, or reports convergence, while still some way from the minimum.
+
+The **LM Step** control offers an alternative. Instead of one damping value, **PSD**
+(pseudo-second-derivative) estimates each variable's curvature directly and uses that on the
+diagonal. The estimate is nearly free: it comes from comparing the derivatives already
+computed on two successive iterations. **PSD III** is the stronger of the two variants
+offered; PSD II is the simpler earlier form.
+
+| Setting | Default | Meaning |
+|---|---|---|
+| **LM Step** | LM | `LM` uses one damping value for all variables. `PSD II` / `PSD III` estimate per-variable curvature instead. |
+
+**When it helps.** The benefit grows with variable count, because that is what widens the
+spread of curvatures a single `λ` cannot cover:
+
+| design | variables | outcome |
+|---|---|---|
+| Cooke triplet | 12 | no measurable difference |
+| double Gauss | 21 | reaches minima 5–15% lower |
+| conoscope | 93 | LM stalls; PSD III converges 9.9% lower |
+
+On that conoscope the standard step with Broyden on reported convergence after 188
+iterations at 6.71e-2 — it had stopped improving, not arrived. PSD III converged properly at
+6.05e-2. PSD III also passed LM's *final* answer within about 50 iterations, so most of the
+gain arrives early.
+
+**Effect on glass substitution.** A glass swap is a large, discrete jump that leaves the
+design far from its basin. On a 23-glass conoscope, substituting one glass raised the merit
+from 8.9e-2 to 1.08; PSD III recovered it within 50 iterations and finished *better* than
+the original design, while the standard step did not recover it at 50, 200, 800 or 2000
+iterations. Where glass substitution matters, this can decide whether candidate glasses are
+ever accepted at all.
+
+**When it does not help.** In Basin Hopping on smaller designs, PSD has performed *worse*
+than the standard step — reaching poorer minima with more hops rejected. It converges
+quickly to a nearby minimum, which is an asset when refining one design and a liability when
+a search depends on wandering. Treat it as something to try on large, stubborn designs, and
+compare against the standard step on your own work before adopting it.
+
+**Broyden.** Selecting PSD switches **Use Broyden Update** off, because PSD compares
+derivatives from two successive iterations and a Broyden update is an approximation rather
+than a fresh computation. The checkbox updates to show this and you can turn it back on. In
+practice this costs less than it appears: on the conoscope PSD III needed roughly a third of
+the iterations the standard step needed without Broyden.
+
+**Init Damp under PSD.** `λ` is still used, but only as a fallback — on the first iteration
+before any curvature estimate exists, for variables whose estimated curvature is zero, and
+to shrink the step after a rejection. Once curvature is engaged it has little effect.
+
+**Iteration budgets.** Because PSD III converges in far fewer iterations, the large
+per-trial iteration counts used elsewhere (6000 in Basin Hopping) are usually unnecessary
+with it, and a much smaller budget buys many more trials for the same time.
+
 The merit-change tolerance (1e-10) and damping bounds are handled
 internally — you don't normally tune them.
 
@@ -283,6 +344,7 @@ pre-1.0.115 always-HJ behaviour.
 | **Rescale on Glass Swap** | on | When a glass is swapped, also rescale that element's curvatures by `(n_old−1)/(n_new−1)` so its optical power is preserved to first order — keeps the swapped design feasible instead of broken, which improves the typical (median) result. **Only has any effect when glass substitution is active** (Glass Sub % > 0 with substitutable surfaces); on fixed-glass designs it is a no-op. (Basin Hopping keeps this off — its small-step trajectory is over-perturbed by the per-swap curvature jump.) |
 | **Constrained Only** | off | If on, only perturb variables that have `Min`/`Max` bounds. Useful when you want unbounded variables held fixed (e.g., a fixed-radius element). |
 | **Broyden Update** | on | Same meaning as for Local LM. Leave on. |
+| **LM Step** | LM | Same meaning as for Local LM: `PSD II` / `PSD III` estimate per-variable curvature instead of using one damping value. Worth trying on designs with many variables, and where glass substitution matters. Selecting PSD turns Broyden Update off. |
 | **Seed** | 1 | RNG seed for the run. The same seed with the same settings and the same starting design reproduces a run exactly — which is what makes it possible to change *one* setting and attribute the difference to that setting rather than to luck. Change it (1, 2, 3, …) for a genuinely independent run. *Caveat:* the GPU pre-screen draws its candidates from an unseeded generator, so runs with the GPU sieve enabled are not reproducible even with a seed set. |
 | **Metropolis Acceptance** | on | When on, Multistart keeps a *current centre* state separate from *best* and may accept a worse-than-best trial as the next centre with probability `exp(−ΔM/T)` (T autotunes from early `\|ΔM\|` samples). Lets the search walk out of basins it has already mined. *Best* is always strict-improvement; the returned design is monotone. |
 | **Reduced-dim perturbation** | on | About half of trials perturb only a random *subset* of the variables — up to roughly a third of them — leaving the rest at their centre values, instead of kicking every variable at once. A full-dimension kick is usually pulled straight back to the same basin by LM; moving along these lower-dimensional manifolds lets the search slip into *adjacent* basins a full kick overshoots. |
@@ -708,6 +770,7 @@ curvatures and thicknesses around it.
 | **Seed** | 1234 | RNG seed. Change it to get a different random trajectory while keeping all other knobs identical — useful for confirming a result isn't a fluke. |
 | **Chains** | 0 (auto) | Number of independent hopping chains run in parallel; the single best design across all of them is returned. **0** = automatic, one chain per physical CPU core. **1** = the classic single chain with the full live per-variable trace. Higher values fill the CPU and explore more basins at once — see [Parallel chains](#parallel-chains). |
 | **Broyden Update** | on | Same as Local LM. |
+| **LM Step** | LM | Same meaning as for Local LM: `PSD II` / `PSD III` estimate per-variable curvature instead of using one damping value. Worth trying on designs with many variables, and where glass substitution matters. Selecting PSD turns Broyden Update off. |
 | **Only randomize constrained variables** | off | Limit perturbation to bounded variables. Useful for surgical exploration when most variables are already where you want them. |
 | **Glass Substitution** | off | Enable glass swaps. Pick the source from the **Glass Source** dropdown — filtered catalogs (small curated lists, cheap) or one of the loaded full catalogs (broad exploration, slower). |
 | **Glass Source** | first filtered catalog | Pool used when Glass Substitution is on. Filtered catalogs in `<install>/catalogs/Filtered/` are typically 30–100 glasses curated by status, manufacturer, refractive-index range, etc. See [Glass Catalogs](glass-catalogs.md). |
