@@ -31,7 +31,17 @@
     <Border DockPanel.Dock="Top" BorderBrush="#CCC" BorderThickness="1"
             CornerRadius="4" Padding="10,6" Margin="0,0,0,6">
       <Grid ColumnDefinitions="Auto,6,60,16,Auto,6,60,16,Auto,6,60,*,Auto"
-            RowDefinitions="Auto,6,Auto,6,Auto,6,Auto,6,Auto,6,Auto">
+            RowDefinitions="Auto,6,Auto,6,Auto,6,Auto,6,Auto,6,Auto,6,Auto">
+        <!-- Row 12: local-step method -->
+        <TextBlock Grid.Row="12" Grid.Column="0" Text="LM Step:" VerticalAlignment="Center" />
+        <CheckBox Grid.Row="12" Grid.Column="8" Grid.ColumnSpan="5" Content="Broyden Update"
+                  IsChecked="{Binding UseBroydenUpdate}" VerticalAlignment="Center"
+                  ToolTip.Tip="Reuse a rank-1 Broyden Jacobian update between full recomputes instead of rebuilding the Jacobian every step. Faster, and the default for LM. Selecting a PSD step turns it OFF automatically, because PSD estimates curvature by differencing two successive FRESH Jacobians and an approximation degrades that -- re-tick this if you want the combination anyway." />
+        <ComboBox Grid.Row="12" Grid.Column="2" Grid.ColumnSpan="5" HorizontalAlignment="Stretch"
+                  ItemsSource="{Binding StepOptions}" SelectedItem="{Binding SelectedStep}"
+                  IsEnabled="{Binding !IsRunning}" VerticalAlignment="Center"
+                  ToolTip.Tip="Diagonal added to the Gauss-Newton matrix inside the LM. LM uses one damping value for every variable; PSD estimates each variable&apos;s own curvature from successive Jacobians, converging deeper on designs with many variables and recovering far better from glass substitution. PSD III is the stronger variant. Selecting PSD turns Broyden off, because PSD needs successive FRESH Jacobians." />
+
         <!-- Row 0 -->
         <TextBlock Grid.Row="0" Grid.Column="0" Text="Max Splits:" VerticalAlignment="Center" />
         <TextBox Grid.Row="0" Grid.Column="2" Text="{Binding MaxSplits, UpdateSourceTrigger=LostFocus}" IsEnabled="{Binding !IsRunning}"

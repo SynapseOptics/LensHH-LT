@@ -25,6 +25,16 @@
             <TextBlock Text="Generations" FontSize="11"/>
             <NumericUpDown Value="{Binding Generations, UpdateSourceTrigger=LostFocus}" Minimum="1" Maximum="1000000" Increment="500" FormatString="0"/>
           </StackPanel>
+          <StackPanel Margin="0,0,16,6" Width="150" VerticalAlignment="Bottom">
+            <CheckBox Content="Broyden Update" IsChecked="{Binding UseBroydenUpdate}"
+                      ToolTip.Tip="Reuse a rank-1 Broyden Jacobian update between full recomputes instead of rebuilding the Jacobian every step. Faster, and the default for LM. Selecting a PSD step turns it OFF automatically, because PSD estimates curvature by differencing two successive FRESH Jacobians and an approximation degrades that — re-tick this if you want the combination anyway."/>
+          </StackPanel>
+          <StackPanel Margin="0,0,16,6" Width="180">
+            <TextBlock Text="LM Step" FontSize="11"/>
+            <ComboBox HorizontalAlignment="Stretch"
+                      ItemsSource="{Binding StepOptions}" SelectedItem="{Binding SelectedStep}"
+                      ToolTip.Tip="Diagonal added to the Gauss-Newton matrix inside the LM refinement. LM uses one damping value for every variable; PSD estimates each variable's own curvature from successive Jacobians, converging deeper on designs with many variables and recovering far better from glass substitution. PSD III is the stronger variant. Selecting PSD turns Broyden off, because PSD needs successive FRESH Jacobians."/>
+          </StackPanel>
           <StackPanel Margin="0,0,16,6" Width="160">
             <TextBlock Text="Population (CPU; GPU auto)" FontSize="11"/>
             <NumericUpDown Value="{Binding PopulationSize, UpdateSourceTrigger=LostFocus}" Minimum="4" Maximum="100000" Increment="16" FormatString="0"/>

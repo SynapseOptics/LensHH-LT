@@ -60,10 +60,15 @@ namespace LensHH.Mcp.Tools
             int seedsToEmit = 16,
             int baseSeed = 1,
             int lmIterations = OptimizationDefaults.LmIterations,
-            string? polishFolder = null)
+            string? polishFolder = null,
+            string stepMethod = "lm",
+            bool? useBroydenUpdate = null)
         {
             try
             {
+                if (!OptimizationTools.TryParseStepMethod(stepMethod, out var step))
+                    return $"Unknown stepMethod \"{stepMethod}\" - expected lm, psd2 or psd3.";
+
                 var data = new DeJobData
                 {
                     OutputDir = outputDir,
@@ -81,6 +86,8 @@ namespace LensHH.Mcp.Tools
                     BaseSeed = baseSeed,
                     LmIterations = lmIterations,
                     PolishFolder = polishFolder,
+                    Step = step,
+                    UseBroydenUpdate = useBroydenUpdate,
                 };
                 var job = _session.DePipeline.Start(_session, data);
                 return $"Started de_pipeline. jobId={job.JobId}; engine={(gpu ? "GPU if available (population fills the device)" : "CPU")}, "

@@ -120,6 +120,8 @@ step approaches gradient descent (safe but slow); when λ is small
 the step approaches Gauss-Newton (fast but only valid near the
 optimum). LM gracefully transitions between the two.
 
+![The Local Optimizer dialog before a run. **LM Step** selects the diagonal added to the Gauss-Newton matrix (LM damping, PSD II or PSD III) and **Broyden Update** controls Jacobian reuse; picking a PSD step clears the checkbox automatically.](images/LocalOptimizationSettings.png)
+
 | Setting | Default | Meaning |
 |---|---|---|
 | **Max Iterations** | 4000 | Hard cap. The solver normally hits its tolerance long before this. |
@@ -145,6 +147,61 @@ offered; PSD II is the simpler earlier form.
 | Setting | Default | Meaning |
 |---|---|---|
 | **LM Step** | LM | `LM` uses one damping value for all variables. `PSD II` / `PSD III` estimate per-variable curvature instead. |
+
+**Where the damping term really belongs.** Damped least squares builds the
+normal-equation matrix as
+
+```
+L_jk = Σ_i (∂f_i/∂x_j)(∂f_i/∂x_k)  +  D²  (on the diagonal, j = k)
+```
+
+The exact Gauss-Newton-plus-curvature matrix wants a second-derivative term in
+that same slot:
+
+```
+L_jk = Σ_i (∂f_i/∂x_j)(∂f_i/∂x_k)  +  Σ_i f_i ∂²f_i/∂x_j∂x_k
+```
+
+Dilworth's observation is that `D` exists *only* as a stand-in for that unknown
+curvature — it occupies precisely the place where the second derivative should
+be added — and that a usable estimate is already available for free: difference
+the first derivatives of two successive iterations and divide by the step taken.
+That is the PSD I method:
+
+```
+∂²f_i/∂x_j²  ≈  ( ∂f_i/∂x_j |Δx_j  −  ∂f_i/∂x_j ) / ( Δx_j + ε )
+```
+
+PSD I needs the stabiliser `ε`, because a variable that barely moved on an
+iteration yields an enormous spurious curvature and is then damped so hard it can
+never move again. **PSD II** replaces that arbitrary constant with the step
+actually taken by all the *other* variables — scale-aware and self-tuning:
+
+```
+∂²f_i/∂x_j²  ≈  ( ∂f_i/∂x_j |Δx_j  −  ∂f_i/∂x_j ) / ( |Δx_j| + √(Σ_(k≠j) Δx_k²) )
+```
+
+**PSD III** goes further. The mixed partial is taken as roughly equal to the
+homogeneous one, but that involves both `j` and `k`; the two are combined by the
+ratio of the previous iteration's second-order terms, with
+`sec_j = Σ_i f_i ∂²f_i/∂x_j∂x_k` evaluated at `k = j`:
+
+```
+∂²f_i/∂x_j²  ≈  ( ∂f_i/∂x_j |Δx_j  −  ∂f_i/∂x_j ) / ( |Δx_j| + √(Σ_(k≠j) Δx_k² · sec_k/sec_j) )
+```
+
+This is why the benefit tracks variable count. The term that lands on the
+diagonal now differs from one variable to the next by as much as fourteen orders
+of magnitude, where classical DLS applies one constant `D` to all of them.
+
+**References.**
+
+- D C Dilworth, "Pseudo-second-derivative matrix and its application to
+  automatic lens design", *Appl. Opt.* **17**(21), 3372–3375 (1 November 1978).
+- D C Dilworth, "Improved convergence with the pseudo-second-derivative (PSD)
+  optimization method", *Proc. SPIE* **399**, 159 (1983).
+- D C Dilworth, *Lens Design*, appendix B.3 "The PSD methods" — the derivation
+  above follows this account, which introduces PSD III.
 
 **When it helps.** The benefit grows with variable count, because that is what widens the
 spread of curvatures a single `λ` cannot cover:
@@ -381,12 +438,6 @@ Multistart, not a hold-current placeholder.
 
 ### GPU pre-screen (Beta, new in 1.0.115; tuning knobs added 1.0.128)
 
-> **Note (1.0.138):** GPU acceleration is now enabled globally in
-> **Editors → Preferences** rather than through per-dialog checkboxes, and each
-> optimizer dialog shows a live **⚡ GPU** status chip — see
-> [GPU Acceleration](gpu-acceleration.md). The dialog controls described below
-> reflect an earlier layout and are being updated.
-
 Most random perturbations produce designs that are strictly
 worse than the current best — running the full HJ-LM cycle on
 them is wasted work. The **GPU pre-screen** filter, available
@@ -399,27 +450,33 @@ the 50–300 LM iterations a full trial would cost.
 
 ![GPU pre-screen architecture](images/optimization/gpu_prescreen_architecture.png)
 
-**How to enable.** In the Multistart dialog, look at the
-**Hardware acceleration** strip at the top:
+**How to enable.** Since 1.0.138 the pre-screen is a *global*
+setting rather than a per-dialog checkbox:
 
-- If a CUDA device is detected, the **`Use GPU pre-screen (Beta)`**
-  checkbox is enabled.
+- Tick **`Multistart GPU pre-screen (Beta)`** under
+  **Editors ▸ Preferences ▸ GPU acceleration**. Multistart and
+  Global Multi Start both read it, so every restart of a gallery
+  search inherits the same sieve — see
+  [GPU Acceleration](gpu-acceleration.md).
+- With no CUDA device the whole GPU acceleration group in
+  Preferences is disabled and the status line above it says why.
+- Every optimizer dialog carries a live **⚡ GPU** status chip, so
+  you can confirm at a glance that work is reaching the device.
 - If your design uses **aspheric, FieldY, or ConfigValue**
-  variables, the checkbox is greyed out and the status line
-  tells you which variable type is the blocker. The GPU kernel
-  takes only curvature, thickness, and conic coefficients per
-  design; aspheric-variable designs fall back to the CPU path
-  with no UI surprises.
-- With no compatible GPU, the checkbox is greyed out and the
-  status line says so.
+  variables the GPU kernel cannot accept it — it takes only
+  curvature, thickness, and conic coefficients per design. The run
+  falls back to the CPU path and the result line reports
+  `GPU pre-screen requested but inactive (non-supported variable
+  types (aspheric/field/config))`.
 
-![Multistart running with the GPU pre-screen strip — `Use GPU pre-screen (Beta)`, `Min change (%)`, and `Population ×` at the top, with the trial table updating live below.](images/MultipStartGPUSettingsRunning.png)
+**Tuning the sieve (1.0.128).** Two knobs turn the pre-screen
+from a *refiner* into a *basin-escape* tool. The GUI runs them at
+their defaults (2 % and 1×); the CLI and MCP expose both, and the
+CLI also turns the sieve on per-run (`optimize multistart … gpu
+mincurvchange=5 gpufill=10`), as does MCP via `useGpuPreScreen`:
 
-**Tuning the sieve (1.0.128).** Two knobs sit next to the
-checkbox; they turn the pre-screen from a *refiner* into a
-*basin-escape* tool:
-
-- **`Min change (%)`** — the *difference gate* plus the
+- **`Min change (%)`** (CLI `mincurvchange=`, MCP
+  `gpuMinCurvatureChangePercent`) — the *difference gate* plus the
   *survivor-distinctness* threshold. A candidate is only worth
   GPU-evaluating if it is structurally different from the
   running best: a glass swap (|Δn_d| > 0.001) **or** a
@@ -431,7 +488,8 @@ checkbox; they turn the pre-screen from a *refiner* into a
   point. Survivors are still ranked by merit. `0` disables the
   gate. Default 2 %; values around 5–10 % give the most
   aggressive escape.
-- **`Population ×`** — the sieve evaluates this many *times* the
+- **`Population ×`** (CLI `gpufill=`, MCP `gpuPreScreenFill`) — the
+  sieve evaluates this many *times* the
   GPU's device-fill candidate count per batch (default 1 = one
   device fill, ≈6,000 designs on an RTX 4060). The GPU is
   otherwise idle, so a larger pool — e.g. 10× — is a near-free
@@ -598,9 +656,8 @@ The search stops when it has collected **Models** distinct forms, exhausted
 | **Dedup tolerance** | 0.02 | Two designs of the same form within this relative merit count as the same gallery entry. |
 | Sigma, Glass Sub %, LM/Trial, Rescale on Glass Swap, … | | Inherited from Multistart — each restart *is* a Multistart run. |
 | **Reduced-dim perturbation**, **Basin memory / diverse restart**, **Metropolis acceptance** | on | The three [convergence levers](#multistart), exposed here as their own checkboxes. Because each restart is a full Multistart run they behave exactly as in Multistart; on by default. |
-| **GPU pre-screen** + **GPU min change (%)** / **GPU population ×** | off / 2 % / 1× | Same GPU sieve and tuning knobs as the Multistart dialog (1.0.128). Applied to every restart, so the gallery search gets the same basin-escape pre-screen. See [GPU pre-screen](#gpu-pre-screen-beta-new-in-10115-tuning-knobs-added-10128). |
+| **GPU pre-screen** | off | Turned on globally in **Editors ▸ Preferences ▸ GPU acceleration** (`Multistart GPU pre-screen (Beta)`), not in this dialog. Every restart inherits the setting, so the gallery search gets the same basin-escape sieve. See [GPU pre-screen](#gpu-pre-screen-beta-new-in-10115-tuning-knobs-added-10128). |
 
-![Global Multi Start Optimization dialog with the 1.0.128 GPU pre-screen controls — the `GPU pre-screen` checkbox plus `GPU min change (%)` and `GPU population ×`, which enable when the checkbox is ticked. Every restart inherits these, so the whole gallery search uses the GPU sieve.](images/GlobalMultistartGPUScreening.png)
 
 Every gallery entry is a complete, loadable `.lhlt` design. From the CLI the
 pool is written to `out=DIR` (default `global_search_results`), one file per
@@ -652,9 +709,11 @@ is identical either way.
 
 ### Settings
 
+![The Global Evolutionary Optimization dialog. The DE budgets sit at the top, the focus+EFL conditioner in the middle, and the polish stage at the bottom; **LM Step** and **Broyden Update** apply to whichever polish path you select.](images/EvolutionarySettings.png)
+
 | Setting | Default | Meaning |
 |---|---|---|
-| **Use GPU** | on if available | Run the population on a CUDA device, sized to fill it. Off / no device → CPU at the **Population** you set. |
+| **GPU-resident DE** | on if available | Turned on in **Editors ▸ Preferences ▸ GPU acceleration** (`GPU-resident Differential Evolution`), not in this dialog. On → the population runs on a CUDA device, sized to fill it. Off / no device → CPU at the **Population** you set. |
 | **Generations** | 10000 | DE generations — the dominant cost knob. Reduce on CPU. |
 | **Population** | GPU auto / 256 CPU | CPU population size. Ignored on GPU (auto-filled to device occupancy). |
 | **Seeds to emit** | 16 | How many distinct seeds the DE keeps for polishing. |
@@ -1220,6 +1279,8 @@ Both Multistart phases auto-advance after a configurable idle
 window (`Skip phase if no improvement for (s)` — default 600 s)
 so a stuck phase doesn't block the run.
 
+![The Split Element dialog before a run. Below the thickness and glass-trial bounds, **LM Step** and **Broyden Update** govern every LM phase of the split — the glass trials, both Multistart phases, and the final polish.](images/SplitElementSettings.png)
+
 | Setting | Default | Meaning |
 |---|---|---|
 | **Max Splits** | 1 | Number of split passes. Each pass picks the highest-aberration surface from the *current* state and splits it. |
@@ -1328,6 +1389,8 @@ A run does four things in order:
 4. **Final LM polish** (`Final LM` iterations) runs on the
    composite design (now with N aspheric surfaces simultaneously
    variable) to pick up the cross-coupling gain.
+
+![The Search Best Asphere Surface dialog before a run. **LM Step** and **Broyden Update** apply to both the per-surface ranking trials and the final polish.](images/AsphereSearchSettings.png)
 
 | Setting | Default | Meaning |
 |---|---|---|

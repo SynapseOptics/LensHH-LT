@@ -29,6 +29,10 @@ namespace LensHH.Mcp
         public int SeedsToEmit { get; set; } = 16;
         public int BaseSeed { get; set; } = 1;
         public int LmIterations { get; set; } = OptimizationDefaults.LmIterations;
+        /// <summary>Diagonal added to the Gauss-Newton matrix in every LM phase of the pipeline.</summary>
+        public StepMethod Step { get; set; } = StepMethod.LevenbergMarquardt;
+        /// <summary>Null = let the step method decide (true for LM, false for PSD).</summary>
+        public bool? UseBroydenUpdate { get; set; }
         /// <summary>When set, polish a previously-saved DE result folder (every *.lhlt) and skip
         /// the DE search. The files must match the loaded design's structure.</summary>
         public string? PolishFolder { get; set; }
@@ -96,6 +100,7 @@ namespace LensHH.Mcp
                     UseGpu = data.UseGpu,
                     PolishCandidateCount = data.PolishCount,
                     LmIterations = data.LmIterations,
+                    Step = data.Step,
                     PolishMethod = data.PolishMethod.ToLowerInvariant() switch
                     {
                         "none" => DePolishMethod.None,
@@ -113,6 +118,7 @@ namespace LensHH.Mcp
                 pset.De.SeedsToEmit = data.SeedsToEmit;
                 pset.De.BaseSeed = data.BaseSeed;
                 if (data.PopulationSize > 0) pset.De.PopulationSize = data.PopulationSize;
+                if (data.UseBroydenUpdate.HasValue) pset.UseBroydenUpdate = data.UseBroydenUpdate.Value;
 
                 var pipeline = new DeOptimizationPipeline(system, mf, glassMgr)
                 {

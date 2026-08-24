@@ -175,7 +175,7 @@ namespace LensHH.Mcp.Tools
         /// unrecognised so the caller is TOLD rather than silently getting LM -- the
         /// difference between PSD II and PSD III is real and a typo would be invisible.
         /// </summary>
-        private static bool TryParseStepMethod(string raw, out StepMethod step)
+        internal static bool TryParseStepMethod(string raw, out StepMethod step)
         {
             step = StepMethod.LevenbergMarquardt;
             switch ((raw ?? "lm").Trim().ToLowerInvariant())
@@ -459,14 +459,17 @@ namespace LensHH.Mcp.Tools
             double tolerance = 1e-10, double dampingFactor = 1e-6,
             bool useBroyden = true, int broydenRefreshInterval = 5,
             bool reducedDim = true, bool basinMemory = true, int initialHj = 0, bool physicalHj = false,
-            int seed = 1)
+            int seed = 1, string stepMethod = "lm", bool? useBroydenUpdate = null)
         {
             { var ge = _session.ValidateGlass(); if (ge != null) return ge; }
             if (_session.MeritFunction == null || _session.MeritFunction.Operands.Count == 0)
                 return "No operands in merit function. Add operands first.";
 
+            if (!TryParseStepMethod(stepMethod, out var __step))
+                return $"Unknown stepMethod \"{stepMethod}\" - expected lm, psd2 or psd3.";
             var settings = new MultistartSettings
             {
+                Step = __step,
                 MaxTrials = maxTrials,
                 LmIterationsPerTrial = lmPerTrial,
                 InitialLmIterations = initialLm,
@@ -489,6 +492,7 @@ namespace LensHH.Mcp.Tools
                 ReducedDimPerturbation = reducedDim,
                 BasinMemoryRestart = basinMemory,
             };
+            if (useBroydenUpdate.HasValue) settings.UseBroydenUpdate = useBroydenUpdate.Value;
 
             var optimizer = new MultistartOptimizer(_session.System, _session.MeritFunction, _session.GlassCatalog)
             {
@@ -532,14 +536,17 @@ namespace LensHH.Mcp.Tools
             double tolerance = 1e-10, double dampingFactor = 1e-6,
             bool useBroyden = true, int broydenRefreshInterval = 5,
             bool skipGlassTrials = false,
-            string catalogs = "")
+            string catalogs = "", string stepMethod = "lm", bool? useBroydenUpdate = null)
         {
             { var ge = _session.ValidateGlass(); if (ge != null) return ge; }
             if (_session.MeritFunction == null || _session.MeritFunction.Operands.Count == 0)
                 return "No merit function defined. Add operands first.";
 
+            if (!TryParseStepMethod(stepMethod, out var __step))
+                return $"Unknown stepMethod \"{stepMethod}\" - expected lm, psd2 or psd3.";
             var settings = new SplitElementSettings
             {
+                Step = __step,
                 MaxSplits = maxSplits,
                 GlassTrials = glassTrials,
                 LmIterationsPerTrial = lmPerTrial,
@@ -563,6 +570,7 @@ namespace LensHH.Mcp.Tools
                 BroydenRefreshInterval = broydenRefreshInterval,
                 SkipGlassTrials = skipGlassTrials,
             };
+            if (useBroydenUpdate.HasValue) settings.UseBroydenUpdate = useBroydenUpdate.Value;
 
             if (!string.IsNullOrWhiteSpace(catalogs))
                 settings.GlassCatalogs = new System.Collections.Generic.List<string>(
@@ -602,7 +610,7 @@ namespace LensHH.Mcp.Tools
             "Basin-hopping optimization: a global-ish search that combines a Hooke-Jeeves pattern step + a Levenberg-Marquardt local refinement, with a random Gaussian kick (sigma) between hops to break out of local minima. Optionally substitutes glasses between hops, drawing from filtered or loaded catalogs (same model as Split Element). " +
             "Hop budget: maxHops (default 3000). Per-hop LM iterations: lmIterationsPerHop (default 6000). Per-hop Hooke-Jeeves steps: hjStepsPerHop (default 30). " +
             "Kick magnitude: initialPerturbSigma (default 0.001 = 0.1%). HJ step bounds: hjInitialStep (default 0.25), hjMinStep (default 1e-4). " +
-            "LM tunables: lmTolerance (1e-10), lmInitialDamping (1e-3), useBroydenUpdate (true). " +
+            "LM tunables: lmTolerance (1e-10), lmInitialDamping (1e-3), useBroydenUpdate (unset = true for lm, false for psd2/psd3; pass explicitly to override). " +
             "Variable filtering: constrainedOnly (false) — when true, only variables with min/max are perturbed. " +
             "Glass substitution: glassSubstitution (false). When true, the catalogs string must resolve to at least one glass; an empty string with no catalogs loaded throws. onlyPreferred (true) restricts loaded catalogs to Status<=1 glasses (filtered catalogs are already curated). " +
             "Determinism: seed (default 1234). " +
@@ -612,17 +620,20 @@ namespace LensHH.Mcp.Tools
         public string BasinHopping(
             int maxHops = OptimizationDefaults.MultistartTrials, int lmIterationsPerHop = OptimizationDefaults.LmIterations, int hjStepsPerHop = 30,
             double initialPerturbSigma = 0.001, double hjInitialStep = 0.25, double hjMinStep = 1e-4,
-            double lmTolerance = 1e-10, double lmInitialDamping = 1e-3, bool useBroydenUpdate = true,
+            double lmTolerance = 1e-10, double lmInitialDamping = 1e-3, bool? useBroydenUpdate = null,
             bool constrainedOnly = false,
             bool glassSubstitution = false, bool onlyPreferred = true, string catalogs = "",
-            int seed = 1234, int chains = 0, string saveChainsFolder = "")
+            int seed = 1234, int chains = 0, string saveChainsFolder = "", string stepMethod = "lm")
         {
             { var ge = _session.ValidateGlass(); if (ge != null) return ge; }
             if (_session.MeritFunction == null || _session.MeritFunction.Operands.Count == 0)
                 return "No operands in merit function. Add operands first.";
 
+            if (!TryParseStepMethod(stepMethod, out var __step))
+                return $"Unknown stepMethod \"{stepMethod}\" - expected lm, psd2 or psd3.";
             var settings = new BasinHoppingSettings
             {
+                Step = __step,
                 MaxHops = maxHops,
                 LmIterationsPerHop = lmIterationsPerHop,
                 HjStepsPerHop = hjStepsPerHop,
@@ -631,12 +642,12 @@ namespace LensHH.Mcp.Tools
                 HjMinStep = hjMinStep,
                 LmTolerance = lmTolerance,
                 LmInitialDamping = lmInitialDamping,
-                UseBroydenUpdate = useBroydenUpdate,
                 ConstrainedOnly = constrainedOnly,
                 GlassSubstitution = glassSubstitution,
                 OnlyPreferred = onlyPreferred,
                 Seed = seed,
             };
+            if (useBroydenUpdate.HasValue) settings.UseBroydenUpdate = useBroydenUpdate.Value;
 
             if (!string.IsNullOrWhiteSpace(catalogs))
                 settings.GlassCatalogs = new System.Collections.Generic.List<string>(
@@ -678,35 +689,38 @@ namespace LensHH.Mcp.Tools
             "Start GLOBAL Basin-Hopping HJ+LM in the background and return a job-id immediately (non-blocking). " +
             "Runs N chains (N = physical cores, FIXED — not settable) of basin-hopping; whenever a chain's no-improvement watchdog fires or it exhausts its hops, that chain RESTARTS seeded with the best design found by the OTHER chains, until the global time limit elapses or you cancel — a cooperative deep-dive that pools the best basin across chains. " +
             "Poll optimize_status(jobId) for progress (global best merit, restarts, hops); call optimize_cancel(jobId) to stop early. When the job completes the global-best design is auto-applied to the system. " +
-            "Per-chain HJ-LM settings: maxHops (3000), lmIterationsPerHop (6000), hjStepsPerHop (30), initialPerturbSigma (0.001), useBroydenUpdate (true), constrainedOnly (false — when true, only randomize bounded variables), glassSubstitution (false), rescaleOnGlassSwap (false), onlyPreferred (true), catalogs (''), seed (1234). " +
+            "Per-chain HJ-LM settings: maxHops (3000), lmIterationsPerHop (6000), hjStepsPerHop (30), initialPerturbSigma (0.001), useBroydenUpdate (unset = true for lm, false for psd2/psd3; pass explicitly to override), constrainedOnly (false — when true, only randomize bounded variables), glassSubstitution (false), rescaleOnGlassSwap (false), onlyPreferred (true), catalogs (''), seed (1234). " +
             "Exploration knobs (same defaults as single-chain basin_hopping): enableMetropolis (true — each chain accepts a worse design with probability exp(-dMerit/T) to walk between basins; false = greedy), metropolisTemperature (0 = autotune T from the first few uphill dMerit samples), restartAfterStalledHops (20 — after this many hops with no new global best a chain re-randomizes its shape variables full-range off the best; 0 = off), restartSigma (0.5 — magnitude of that long-jump kick). " +
             "Mandatory no-improvement watchdog: noImprovementTimeoutSeconds (default 600; values <=0 are forced to 600 — it cannot be disabled). Global wall-clock budget: globalTimeoutMinutes (default 120; <=0 = run until cancelled). " +
             "Chain export: saveChainsFolder ('') — when set, every chain's best design is written there as a separate .lhlt (best-merit first).")]
         public string GlobalBasinHoppingStart(
             int maxHops = OptimizationDefaults.MultistartTrials, int lmIterationsPerHop = OptimizationDefaults.LmIterations, int hjStepsPerHop = 30,
-            double initialPerturbSigma = 0.001, bool useBroydenUpdate = true,
+            double initialPerturbSigma = 0.001, bool? useBroydenUpdate = null,
             bool constrainedOnly = false, bool glassSubstitution = false,
             bool rescaleOnGlassSwap = false, bool onlyPreferred = true, string catalogs = "",
             int seed = 1234,
             bool enableMetropolis = true, double metropolisTemperature = 0,
             int restartAfterStalledHops = 20, double restartSigma = 0.5,
             double noImprovementTimeoutSeconds = 600, double globalTimeoutMinutes = 120,
-            string saveChainsFolder = "")
+            string saveChainsFolder = "", string stepMethod = "lm")
         {
             { var ge = _session.ValidateGlass(); if (ge != null) return ge; }
             if (_session.MeritFunction == null || _session.MeritFunction.Operands.Count == 0)
                 return "No operands in merit function. Add operands first.";
+
+            if (!TryParseStepMethod(stepMethod, out var __step))
+                return $"Unknown stepMethod \"{stepMethod}\" - expected lm, psd2 or psd3.";
 
             var gs = new GlobalBasinHoppingSettings
             {
                 GlobalTimeoutMinutes = globalTimeoutMinutes,
                 Chain = new BasinHoppingSettings
                 {
+                    Step = __step,
                     MaxHops = maxHops,
                     LmIterationsPerHop = lmIterationsPerHop,
                     HjStepsPerHop = hjStepsPerHop,
                     InitialPerturbSigma = initialPerturbSigma,
-                    UseBroydenUpdate = useBroydenUpdate,
                     ConstrainedOnly = constrainedOnly,
                     GlassSubstitution = glassSubstitution,
                     RescaleCurvatureOnGlassSwap = rescaleOnGlassSwap,
@@ -720,6 +734,7 @@ namespace LensHH.Mcp.Tools
                     RestartSigma = restartSigma,
                 },
             };
+            if (useBroydenUpdate.HasValue) gs.Chain.UseBroydenUpdate = useBroydenUpdate.Value;
             if (!string.IsNullOrWhiteSpace(catalogs))
                 gs.Chain.GlassCatalogs = new System.Collections.Generic.List<string>(
                     catalogs.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
@@ -818,14 +833,17 @@ namespace LensHH.Mcp.Tools
             int initialLmIterations = 50,
             bool archiveIntermediate = true,
             string archiveDirectory = "",
-            int? maxDop = null)
+            int? maxDop = null, string stepMethod = "lm", bool? useBroydenUpdate = null)
         {
             { var ge = _session.ValidateGlass(); if (ge != null) return ge; }
             if (_session.MeritFunction == null || _session.MeritFunction.Operands.Count == 0)
                 return "No merit function defined. Add operands first.";
 
+            if (!TryParseStepMethod(stepMethod, out var __step))
+                return $"Unknown stepMethod \"{stepMethod}\" - expected lm, psd2 or psd3.";
             var settings = new SpcSynthesisSettings
             {
+                Step = __step,
                 MaxElements = maxElements,
                 TopN = topN,
                 ScanMin = scanMin,
@@ -850,6 +868,7 @@ namespace LensHH.Mcp.Tools
                 MaxDegreeOfParallelism = maxDop,
                 FilteredCatalogSearchPaths = FindFilteredCatalogPaths(),
             };
+            if (useBroydenUpdate.HasValue) settings.UseBroydenUpdate = useBroydenUpdate.Value;
 
             if (!string.IsNullOrWhiteSpace(catalogs))
                 settings.GlassCatalogs = new System.Collections.Generic.List<string>(
@@ -915,14 +934,17 @@ namespace LensHH.Mcp.Tools
             bool useGpuPreScreen = false, double gpuMinCurvatureChangePercent = 2.0,
             double gpuPreScreenFill = 1.0, bool useGpuImageQuality = false,
             bool reducedDim = true, bool basinMemory = true, int initialHj = 0, bool physicalHj = false,
-            int seed = 1)
+            int seed = 1, string stepMethod = "lm", bool? useBroydenUpdate = null)
         {
             { var ge = _session.ValidateGlass(); if (ge != null) return ge; }
             if (_session.MeritFunction == null || _session.MeritFunction.Operands.Count == 0)
                 return "No operands in merit function. Add operands first.";
 
+            if (!TryParseStepMethod(stepMethod, out var __step))
+                return $"Unknown stepMethod \"{stepMethod}\" - expected lm, psd2 or psd3.";
             var settings = new MultistartSettings
             {
+                Step = __step,
                 MaxTrials = maxTrials,
                 LmIterationsPerTrial = lmPerTrial,
                 InitialLmIterations = initialLm,
@@ -949,6 +971,7 @@ namespace LensHH.Mcp.Tools
                 PhysicalTrialHj = physicalHj,
                 Seed = seed,
             };
+            if (useBroydenUpdate.HasValue) settings.UseBroydenUpdate = useBroydenUpdate.Value;
 
             var job = new RunningJob(kind: "multistart") { MaxTrials = maxTrials };
             var optimizer = new MultistartOptimizer(_session.System, _session.MeritFunction, _session.GlassCatalog)
@@ -1009,7 +1032,7 @@ namespace LensHH.Mcp.Tools
             int prePolishLm = 0, bool rescaleOnGlassSwap = true,
             bool reducedDim = true, bool basinMemory = true, bool enableMetropolis = true,
             bool useNativeEngine = true, bool analyticDerivative = true,
-            string outputFolder = "global_search_results")
+            string outputFolder = "global_search_results", string stepMethod = "lm", bool? useBroydenUpdate = null)
         {
             { var ge = _session.ValidateGlass(); if (ge != null) return ge; }
             if (_session.MeritFunction == null || _session.MeritFunction.Operands.Count == 0)
@@ -1021,6 +1044,8 @@ namespace LensHH.Mcp.Tools
 
             var mf = _session.MeritFunction;
 
+            if (!TryParseStepMethod(stepMethod, out var __step))
+                return $"Unknown stepMethod \"{stepMethod}\" - expected lm, psd2 or psd3.";
             var settings = new GlobalSearchSettings
             {
                 ModelsToKeep = modelsToKeep,
@@ -1030,6 +1055,7 @@ namespace LensHH.Mcp.Tools
                 BaseSeed = baseSeed,
                 Multistart = new MultistartSettings
                 {
+                    Step = __step,
                     InitialSigma = initialSigma,
                     SigmaCap = sigmaCap,
                     GlassSubstitutionProbability = glassSubPercent / 100.0,
@@ -1047,6 +1073,7 @@ namespace LensHH.Mcp.Tools
                     catch { /* best-effort archive */ }
                 },
             };
+            if (useBroydenUpdate.HasValue) settings.Multistart.UseBroydenUpdate = useBroydenUpdate.Value;
 
             var job = new RunningJob(kind: "global_search") { MaxTrials = modelsToKeep };
             var svc = new GlobalSearchService(_session.System, mf, _session.GlassCatalog)
@@ -1113,20 +1140,23 @@ namespace LensHH.Mcp.Tools
         public string BasinHoppingStart(
             int maxHops = OptimizationDefaults.MultistartTrials, int lmIterationsPerHop = OptimizationDefaults.LmIterations, int hjStepsPerHop = 30,
             double initialPerturbSigma = 0.001, double hjInitialStep = 0.25, double hjMinStep = 1e-4,
-            double lmTolerance = 1e-10, double lmInitialDamping = 1e-3, bool useBroydenUpdate = true,
+            double lmTolerance = 1e-10, double lmInitialDamping = 1e-3, bool? useBroydenUpdate = null,
             bool constrainedOnly = false,
             bool glassSubstitution = false, bool onlyPreferred = true, string catalogs = "",
             int seed = 1234,
             bool enableMetropolis = true, double metropolisTemperature = 0,
             int restartAfterStalledHops = 20, double restartSigma = 0.5,
-            int chains = 0, string saveChainsFolder = "", bool useGpuImageQuality = false)
+            int chains = 0, string saveChainsFolder = "", bool useGpuImageQuality = false, string stepMethod = "lm")
         {
             { var ge = _session.ValidateGlass(); if (ge != null) return ge; }
             if (_session.MeritFunction == null || _session.MeritFunction.Operands.Count == 0)
                 return "No operands in merit function. Add operands first.";
 
+            if (!TryParseStepMethod(stepMethod, out var __step))
+                return $"Unknown stepMethod \"{stepMethod}\" - expected lm, psd2 or psd3.";
             var settings = new BasinHoppingSettings
             {
+                Step = __step,
                 MaxHops = maxHops,
                 LmIterationsPerHop = lmIterationsPerHop,
                 HjStepsPerHop = hjStepsPerHop,
@@ -1135,7 +1165,6 @@ namespace LensHH.Mcp.Tools
                 HjMinStep = hjMinStep,
                 LmTolerance = lmTolerance,
                 LmInitialDamping = lmInitialDamping,
-                UseBroydenUpdate = useBroydenUpdate,
                 ConstrainedOnly = constrainedOnly,
                 GlassSubstitution = glassSubstitution,
                 OnlyPreferred = onlyPreferred,
@@ -1145,6 +1174,7 @@ namespace LensHH.Mcp.Tools
                 RestartAfterStalledHops = restartAfterStalledHops,
                 RestartSigma = restartSigma,
             };
+            if (useBroydenUpdate.HasValue) settings.UseBroydenUpdate = useBroydenUpdate.Value;
             if (!string.IsNullOrWhiteSpace(catalogs))
                 settings.GlassCatalogs = new System.Collections.Generic.List<string>(
                     catalogs.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
@@ -1222,14 +1252,17 @@ namespace LensHH.Mcp.Tools
             double tolerance = 1e-10, double dampingFactor = 1e-6,
             bool useBroyden = true, int broydenRefreshInterval = 5,
             bool skipGlassTrials = false,
-            string catalogs = "")
+            string catalogs = "", string stepMethod = "lm", bool? useBroydenUpdate = null)
         {
             { var ge = _session.ValidateGlass(); if (ge != null) return ge; }
             if (_session.MeritFunction == null || _session.MeritFunction.Operands.Count == 0)
                 return "No merit function defined. Add operands first.";
 
+            if (!TryParseStepMethod(stepMethod, out var __step))
+                return $"Unknown stepMethod \"{stepMethod}\" - expected lm, psd2 or psd3.";
             var settings = new SplitElementSettings
             {
+                Step = __step,
                 MaxSplits = maxSplits,
                 GlassTrials = glassTrials,
                 LmIterationsPerTrial = lmPerTrial,
@@ -1254,6 +1287,7 @@ namespace LensHH.Mcp.Tools
                 SkipGlassTrials = skipGlassTrials,
                 FilteredCatalogSearchPaths = FindFilteredCatalogPaths(),
             };
+            if (useBroydenUpdate.HasValue) settings.UseBroydenUpdate = useBroydenUpdate.Value;
             if (!string.IsNullOrWhiteSpace(catalogs))
                 settings.GlassCatalogs = new System.Collections.Generic.List<string>(
                     catalogs.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
@@ -1322,14 +1356,17 @@ namespace LensHH.Mcp.Tools
             string nullElementGlass = "N-BK7",
             bool runInitialLm = false, int initialLmIterations = 50,
             bool archiveIntermediate = true, string archiveDirectory = "",
-            int? maxDop = null)
+            int? maxDop = null, string stepMethod = "lm", bool? useBroydenUpdate = null)
         {
             { var ge = _session.ValidateGlass(); if (ge != null) return ge; }
             if (_session.MeritFunction == null || _session.MeritFunction.Operands.Count == 0)
                 return "No merit function defined. Add operands first.";
 
+            if (!TryParseStepMethod(stepMethod, out var __step))
+                return $"Unknown stepMethod \"{stepMethod}\" - expected lm, psd2 or psd3.";
             var settings = new SpcSynthesisSettings
             {
+                Step = __step,
                 MaxElements = maxElements,
                 TopN = topN,
                 ScanMin = scanMin,
@@ -1354,6 +1391,7 @@ namespace LensHH.Mcp.Tools
                 MaxDegreeOfParallelism = maxDop,
                 FilteredCatalogSearchPaths = FindFilteredCatalogPaths(),
             };
+            if (useBroydenUpdate.HasValue) settings.UseBroydenUpdate = useBroydenUpdate.Value;
             if (!string.IsNullOrWhiteSpace(catalogs))
                 settings.GlassCatalogs = new System.Collections.Generic.List<string>(
                     catalogs.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));

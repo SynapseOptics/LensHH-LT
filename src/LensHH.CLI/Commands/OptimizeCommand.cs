@@ -26,10 +26,10 @@ namespace LensHH.CLI.Commands
   [green]optimize basin [[hops=N]] [[lm=N]] [[hj=N]] [[sigma=V]] [[hjstep=V]] [[hjmin=V]] [[tol=V]] [[damping=V]] [[step=lm|psd2|psd3]] [[broyden=true|false]] [[constrained]] [[glasssub=true|false]] [[onlypreferred=true|false]] [[catalog=NAME]] [[seed=N]] [[gpuimage]][/]  Basin hopping (Hooke-Jeeves + LM with random kicks between hops). gpuimage = trace image-quality operands (SPOT/WAVE/SENS) on the GPU (needs off-axis fields, ray-aiming off).
   [green]optimize global-basin [[hops=N]] [[lm=N]] [[hj=N]] [[sigma=V]] [[step=lm|psd2|psd3]] [[broyden=true|false]] [[glasssub=true|false]] [[rescale=true|false]] [[constrained]] [[onlypreferred=true|false]] [[catalog=NAME]] [[seed=N]] [[timeout=SEC]] [[globalmin=MIN]] [[savechains=DIR]] [[apply=N]][/]  Global Basin Hopping HJ+LM: chains=physical cores (fixed); each chain restarts from the best of the OTHER chains when its no-improvement watchdog (timeout, default 600s) fires or hops are exhausted, until the global limit (globalmin, default 120) elapses or you cancel. savechains: write every chain's best design; apply=N: apply chain N's design instead of the global best.
   [green]optimize split [[splits=N]] [[trials=N]] [[lm=N]] [[postlm=N]] [[preglass=N]] [[postglass=N]] [[sigma=V]] [[constrained]] [[onlypreferred=true|false]] [[minglass=V]] [[maxglass=V]] [[minair=V]] [[maxair=V]] [[minedge=V]] [[skipsec=V]] [[tol=V]] [[damping=V]] [[step=lm|psd2|psd3]] [[broyden=true|false]] [[refresh=N]] [[catalog=NAME]] [[noglass]][/]  Split element synthesis. catalog: AGF name (e.g. catalog=S1_GLASS); resolved against catalogs\FilteredGlassCatalogues. noglass: skip the glass-trials phase entirely (split + LM polish only).
-  [green]optimize spc [[elements=N]] [[topn=N]] [[scanmin=V]] [[scanmax=V]] [[steps=N]] [[epsilon=V]] [[glass=N]] [[lm=N]] [[postlm=N]] [[catalog=NAME]] [[archive=true|false]] [[archivedir=PATH]] [[dop=N]] [[nullglass=NAME]] [[runinitlm=true|false]] [[initlm=N]] [[onlypreferred=true|false]] [[minglass=V]] [[maxglass=V]] [[minair=V]] [[maxair=V]] [[minedge=V]] [[constraintweight=V]][/]  Synthesis by SPC. catalog is mandatory (single AGF name or comma-separated list).
-  [green]optimize global [[models=N]] [[restarts=N]] [[trials=N]] [[lm=N]] [[stall=N]] [[seed=N]] [[prepolish=N]] [[sigma=V]] [[cap=V]] [[glass=V]] [[native]] [[analytic]] [[out=DIR]][/]  Global Search: many seeded restarts from the start design; writes a pool of distinct .lhlt designs to DIR (default global_search_results). seed: base seed (run 1, then 2, … for independent batches). prepolish=0 (default) perturbs the raw start.
-  [green]optimize deseed [[pop=N]] [[gens=N]] [[stall=N]] [[f=V]] [[cr=V]] [[glass=V]] [[curvlimit=V]] [[gpu]] [[seed=N]] [[emit=N]] [[refine=N]] [[out=DIR]][/]  Differential-Evolution seed generator: evolve a population from ranges (geometry + glass), then LM-refine each seed; writes refined seeds to DIR. glass = per-candidate glass-swap probability (%); curvlimit = curvature seed limit (0=auto); gpu = run the per-generation merit eval on the GPU (host DE loop). Prints a CPU/GPU timing breakdown.
-  [green]optimize memetic [[rounds=N]] [[gens=N]] [[polish-count=N]] [[polish=lm|multistart]] [[pop=N]] [[f=V]] [[cr=V]] [[clones=N]] [[sigma=V]] [[niche=V]] [[lm-iters=N]] [[seed=N]] [[gpu]] [[out=DIR]] [[resume=DIR]][/]  EXPERIMENTAL memetic DE: interleaves DE bursts (gens) with niched-best polish + reseed for `rounds`, returning `polish-count` diverse designs. gpu = population resident on the device. out: writes best/*.lhlt + population.json (restart with resume=DIR).
+  [green]optimize spc [[elements=N]] [[topn=N]] [[scanmin=V]] [[scanmax=V]] [[steps=N]] [[epsilon=V]] [[glass=N]] [[lm=N]] [[step=lm|psd2|psd3]] [[broyden=true|false]] [[postlm=N]] [[catalog=NAME]] [[archive=true|false]] [[archivedir=PATH]] [[dop=N]] [[nullglass=NAME]] [[runinitlm=true|false]] [[initlm=N]] [[onlypreferred=true|false]] [[minglass=V]] [[maxglass=V]] [[minair=V]] [[maxair=V]] [[minedge=V]] [[constraintweight=V]][/]  Synthesis by SPC. catalog is mandatory (single AGF name or comma-separated list).
+  [green]optimize global [[models=N]] [[restarts=N]] [[trials=N]] [[lm=N]] [[step=lm|psd2|psd3]] [[broyden=true|false]] [[stall=N]] [[seed=N]] [[prepolish=N]] [[sigma=V]] [[cap=V]] [[glass=V]] [[native]] [[analytic]] [[out=DIR]][/]  Global Search: many seeded restarts from the start design; writes a pool of distinct .lhlt designs to DIR (default global_search_results). seed: base seed (run 1, then 2, … for independent batches). prepolish=0 (default) perturbs the raw start.
+  [green]optimize deseed [[pop=N]] [[step=lm|psd2|psd3]] [[broyden=true|false]] [[gens=N]] [[stall=N]] [[f=V]] [[cr=V]] [[glass=V]] [[curvlimit=V]] [[gpu]] [[seed=N]] [[emit=N]] [[refine=N]] [[out=DIR]][/]  Differential-Evolution seed generator: evolve a population from ranges (geometry + glass), then LM-refine each seed; writes refined seeds to DIR. glass = per-candidate glass-swap probability (%); curvlimit = curvature seed limit (0=auto); gpu = run the per-generation merit eval on the GPU (host DE loop). Prints a CPU/GPU timing breakdown.
+  [green]optimize memetic [[rounds=N]] [[gens=N]] [[polish-count=N]] [[polish=lm|multistart]] [[pop=N]] [[step=lm|psd2|psd3]] [[broyden=true|false]] [[f=V]] [[cr=V]] [[clones=N]] [[sigma=V]] [[niche=V]] [[lm-iters=N]] [[seed=N]] [[gpu]] [[out=DIR]] [[resume=DIR]][/]  EXPERIMENTAL memetic DE: interleaves DE bursts (gens) with niched-best polish + reseed for `rounds`, returning `polish-count` diverse designs. gpu = population resident on the device. out: writes best/*.lhlt + population.json (restart with resume=DIR).
   [green]optimize cancel[/]                                     Cancel running optimization
   [green]optimize variables[/]                                  List current variables";
 
@@ -390,6 +390,14 @@ namespace LensHH.CLI.Commands
                 switch (key)
                 {
                     case "pop": if (int.TryParse(val, out int p)) pset.De.PopulationSize = p; break;
+                    case "broyden":
+                        var bDe = val.Trim().ToLowerInvariant();
+                        pset.UseBroydenUpdate = bDe == "true" || bDe == "1" || bDe == "yes" || bDe == "y";
+                        break;
+                    case "step":
+                        if (TryParseStep(val, out var stepDe)) pset.Step = stepDe;
+                        else AnsiConsole.MarkupLine($"[yellow]Unknown step '{Markup.Escape(val)}' - expected lm, psd2 or psd3. Keeping {pset.Step}.[/]");
+                        break;
                     case "gens": if (int.TryParse(val, out int g)) pset.De.MaxGenerations = g; break;
                     case "stall": if (int.TryParse(val, out int st)) pset.De.StallGenerations = st; break;
                     case "f": if (double.TryParse(val, NumberStyles.Float, CultureInfo.InvariantCulture, out double fv)) pset.De.F = fv; break;
@@ -620,6 +628,14 @@ namespace LensHH.CLI.Commands
                 switch (key)
                 {
                     case "models": if (int.TryParse(val, out int mk)) gs.ModelsToKeep = mk; break;
+                    case "broyden":
+                        var bGs = val.Trim().ToLowerInvariant();
+                        gs.Multistart.UseBroydenUpdate = bGs == "true" || bGs == "1" || bGs == "yes" || bGs == "y";
+                        break;
+                    case "step":
+                        if (TryParseStep(val, out var stepGs)) gs.Multistart.Step = stepGs;
+                        else AnsiConsole.MarkupLine($"[yellow]Unknown step '{Markup.Escape(val)}' - expected lm, psd2 or psd3. Keeping {gs.Multistart.Step}.[/]");
+                        break;
                     case "restarts": if (int.TryParse(val, out int mr)) gs.MaxRestarts = mr; break;
                     case "trials": if (int.TryParse(val, out int t)) gs.MaxTrialsPerRestart = t; break;
                     case "lm": if (int.TryParse(val, out int l)) gs.Multistart.LmIterationsPerTrial = l; break;
@@ -730,6 +746,14 @@ namespace LensHH.CLI.Commands
                     case "gens": if (int.TryParse(val, out int gg)) mset.GenerationsPerRound = gg; break;
                     case "polish-count": case "zzz": if (int.TryParse(val, out int zz)) mset.PolishCount = zz; break;
                     case "pop": if (int.TryParse(val, out int pp)) mset.PopulationSize = pp; break;
+                    case "broyden":
+                        var bMem = val.Trim().ToLowerInvariant();
+                        mset.UseBroydenUpdate = bMem == "true" || bMem == "1" || bMem == "yes" || bMem == "y";
+                        break;
+                    case "step":
+                        if (TryParseStep(val, out var stepMem)) mset.Step = stepMem;
+                        else AnsiConsole.MarkupLine($"[yellow]Unknown step '{Markup.Escape(val)}' - expected lm, psd2 or psd3. Keeping {mset.Step}.[/]");
+                        break;
                     case "f": if (double.TryParse(val, NumberStyles.Float, CultureInfo.InvariantCulture, out double fv)) mset.F = fv; break;
                     case "cr": if (double.TryParse(val, NumberStyles.Float, CultureInfo.InvariantCulture, out double cv)) mset.CR = cv; break;
                     case "clones": if (int.TryParse(val, out int cl)) mset.ClonesPerElite = cl; break;
@@ -1306,6 +1330,14 @@ namespace LensHH.CLI.Commands
                 {
                     case "elements": if (int.TryParse(val, out int e)) settings.MaxElements = e; break;
                     case "topn": if (int.TryParse(val, out int tn)) settings.TopN = tn; break;
+                    case "broyden":
+                        var bSpc = val.Trim().ToLowerInvariant();
+                        settings.UseBroydenUpdate = bSpc == "true" || bSpc == "1" || bSpc == "yes" || bSpc == "y";
+                        break;
+                    case "step":
+                        if (TryParseStep(val, out var stepSpc)) settings.Step = stepSpc;
+                        else AnsiConsole.MarkupLine($"[yellow]Unknown step '{Markup.Escape(val)}' - expected lm, psd2 or psd3. Keeping {settings.Step}.[/]");
+                        break;
                     case "scanmin": if (double.TryParse(val, NumberStyles.Float, CultureInfo.InvariantCulture, out double sa)) settings.ScanMin = sa; break;
                     case "scanmax": if (double.TryParse(val, NumberStyles.Float, CultureInfo.InvariantCulture, out double sb)) settings.ScanMax = sb; break;
                     case "steps": if (int.TryParse(val, out int st)) settings.ScanSteps = st; break;

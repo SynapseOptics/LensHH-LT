@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Globalization;
@@ -38,6 +39,36 @@ public partial class GeneticVariableRow : ObservableObject
 
 public partial class GeneticDialogViewModel : ObservableObject
 {
+
+    /// <summary>Step-method choices for the dropdown. ToString is the label, so the ComboBox
+    /// needs no template or converter.</summary>
+    public sealed record StepOption(string Label, StepMethod Value)
+    {
+        public override string ToString() => Label;
+    }
+
+    public static IReadOnlyList<StepOption> StepOptions { get; } = new[]
+    {
+        new StepOption("LM (Marquardt damping)", StepMethod.LevenbergMarquardt),
+        new StepOption("PSD II",  StepMethod.PsdII),
+        new StepOption("PSD III", StepMethod.PsdIII),
+    };
+
+    // Seeded to LM so the dropdown never shows blank and the default is explicit.
+    [ObservableProperty] private StepOption _selectedStep = StepOptions[0];
+    [ObservableProperty] private bool _useBroydenUpdate = true;
+
+    /// <summary>
+    /// Changing the step method resets the Broyden checkbox to that method-s default, so the
+    /// rule is visible in the UI rather than applied invisibly at run time. PSD estimates
+    /// curvature by differencing two successive FRESH Jacobians, which a rank-1 Broyden update
+    /// is not. The user can re-tick the box and that choice sticks until the method changes.
+    /// </summary>
+    partial void OnSelectedStepChanged(StepOption value)
+    {
+        if (value != null) UseBroydenUpdate = value.Value == StepMethod.LevenbergMarquardt;
+    }
+
     private readonly GuiSession _session;
     private CancellationTokenSource _cts;
     
@@ -94,6 +125,8 @@ public partial class GeneticDialogViewModel : ObservableObject
             {
                 Settings = new GeneticSettings
                 {
+                    Step = SelectedStep?.Value ?? StepMethod.LevenbergMarquardt,
+                    UseBroydenUpdate = UseBroydenUpdate,
                     PopulationSize = PopulationSize,
                     Generations = Generations,
                     MutationRate = MutationRate / 100.0,
