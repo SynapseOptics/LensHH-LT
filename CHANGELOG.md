@@ -17,10 +17,12 @@ All notable changes to LensHH-LT and the LensHH-LT-Engine.
   value. Two variants are offered: **PSD II** and **PSD III**, the latter being the stronger
   of the two.
 
-  Select it with the new **LM Step** control in the Local Optimization, Multistart, Basin
-  Hopping and Global Basin Hopping dialogs; `step=lm|psd2|psd3` in the CLI; `stepMethod` in
-  the MCP tools. **The default is unchanged**, so existing work behaves exactly as before
-  unless you choose otherwise.
+  Select it with the new **LM Step** control, which appears in every optimizer: Local
+  Optimization, Multistart, Basin Hopping, Global Basin Hopping, Global Multi Start,
+  Global Evolutionary Optimization, Split Element, Synthesis by SPC, Search Best Asphere
+  Surface and Genetic Optimization. In the CLI it is `step=lm|psd2|psd3` on every
+  `optimize` subcommand; in the MCP tools it is `stepMethod`. **The default is
+  unchanged**, so existing work behaves exactly as before unless you choose otherwise.
 
   **When it is worth trying.** The benefit grows with the number of variables, because that
   is what widens the spread of curvatures a single damping value cannot cover. On a
@@ -40,6 +42,19 @@ All notable changes to LensHH-LT and the LensHH-LT-Engine.
   Selecting PSD switches Broyden Jacobian updates off, because PSD needs two consecutive
   freshly-computed Jacobians to compare. The checkbox updates to show this, and you can turn
   it back on if you want to.
+
+- **Broyden Update is now a visible setting in every optimizer**, alongside LM Step, rather
+  than an internal default in most of them. It is `broyden=true|false` on every `optimize`
+  subcommand and `useBroydenUpdate` on every optimizer MCP tool. Leave it unset and it
+  follows the step method — on for the standard step, off for PSD.
+
+### Fixed
+- Three MCP tools (`basin_hopping`, `basin_hopping_start`, `global_basin_hopping_start`)
+  applied Broyden updates unconditionally, so choosing a PSD step through the MCP interface
+  ran a combination the dialogs would not have chosen. All optimizer tools now leave the
+  setting to the step method unless it is passed explicitly.
+- `de_pipeline_start` accepted neither `stepMethod` nor `useBroydenUpdate`, though its
+  dialog and `optimize deseed` both offered them. It now accepts both.
 
 ### Changed
 - Synthesis by SPC previously forced Broyden updates on internally. It now follows the
