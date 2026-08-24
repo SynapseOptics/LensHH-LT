@@ -17,6 +17,9 @@ All notable changes to LensHH-LT and the LensHH-LT-Engine.
   value. Two variants are offered: **PSD II** and **PSD III**, the latter being the stronger
   of the two.
 
+  The method is Donald C. Dilworth's, first published in 1978 and refined into the PSD II
+  and PSD III variants; the User Guide derives it and cites the original papers.
+
   Select it with the new **LM Step** control, which appears in every optimizer: Local
   Optimization, Multistart, Basin Hopping, Global Basin Hopping, Global Multi Start,
   Global Evolutionary Optimization, Split Element, Synthesis by SPC, Search Best Asphere
