@@ -20,12 +20,12 @@ namespace LensHH.CLI.Commands
         public string Description => "Optimization: run, cancel, status";
 
         public string Help => @"[bold]optimize[/] - Optimization operations
-  [green]optimize run [[maxiter=N]] [[tol=V]] [[damping=V]] [[broyden=true|false]] [[refresh=N]][/]  Run local optimization (auto-applies result to the system)
-  [green]optimize try [[maxiter=N]] [[tol=V]] [[damping=V]] [[broyden=true|false]] [[refresh=N]][/]  Run local optimization and prompt to keep or revert
-  [green]optimize multistart [[trials=N]] [[lm=N]] [[initlm=N]] [[sigma=V]] [[cap=V]] [[growth=V]] [[glass=V]] [[constrained]] [[tol=V]] [[damping=V]] [[broyden=true|false]] [[refresh=N]] [[gpu]] [[mincurvchange=V]] [[gpufill=V]] [[gpuimage]][/]  Multistart optimization. gpu = sieve candidates on the GPU. mincurvchange (default 2) = GPU difference gate: only feed designs that differ from the running best by a glass swap or this % refractive-surface curvature change (0 = off; stops the GPU sieve acting as a pure refiner). gpufill (default 1) = population/device-fill multiplier: candidates per batch = gpufill × device-fill count (1 = fill the GPU once, 2 = double the cloud). gpuimage = trace the merit's image-quality operands (SPOT/WAVE/SENS) on the GPU each trial (separate from the pre-screen; needs a CUDA device, off-axis fields, ray-aiming off).
-  [green]optimize basin [[hops=N]] [[lm=N]] [[hj=N]] [[sigma=V]] [[hjstep=V]] [[hjmin=V]] [[tol=V]] [[damping=V]] [[broyden=true|false]] [[constrained]] [[glasssub=true|false]] [[onlypreferred=true|false]] [[catalog=NAME]] [[seed=N]] [[gpuimage]][/]  Basin hopping (Hooke-Jeeves + LM with random kicks between hops). gpuimage = trace image-quality operands (SPOT/WAVE/SENS) on the GPU (needs off-axis fields, ray-aiming off).
-  [green]optimize global-basin [[hops=N]] [[lm=N]] [[hj=N]] [[sigma=V]] [[broyden=true|false]] [[glasssub=true|false]] [[rescale=true|false]] [[constrained]] [[onlypreferred=true|false]] [[catalog=NAME]] [[seed=N]] [[timeout=SEC]] [[globalmin=MIN]] [[savechains=DIR]] [[apply=N]][/]  Global Basin Hopping HJ+LM: chains=physical cores (fixed); each chain restarts from the best of the OTHER chains when its no-improvement watchdog (timeout, default 600s) fires or hops are exhausted, until the global limit (globalmin, default 120) elapses or you cancel. savechains: write every chain's best design; apply=N: apply chain N's design instead of the global best.
-  [green]optimize split [[splits=N]] [[trials=N]] [[lm=N]] [[postlm=N]] [[preglass=N]] [[postglass=N]] [[sigma=V]] [[constrained]] [[onlypreferred=true|false]] [[minglass=V]] [[maxglass=V]] [[minair=V]] [[maxair=V]] [[minedge=V]] [[skipsec=V]] [[tol=V]] [[damping=V]] [[broyden=true|false]] [[refresh=N]] [[catalog=NAME]] [[noglass]][/]  Split element synthesis. catalog: AGF name (e.g. catalog=S1_GLASS); resolved against catalogs\FilteredGlassCatalogues. noglass: skip the glass-trials phase entirely (split + LM polish only).
+  [green]optimize run [[maxiter=N]] [[tol=V]] [[damping=V]] [[step=lm|psd2|psd3]] [[broyden=true|false]] [[refresh=N]][/]  Run local optimization (auto-applies result to the system)
+  [green]optimize try [[maxiter=N]] [[tol=V]] [[damping=V]] [[step=lm|psd2|psd3]] [[broyden=true|false]] [[refresh=N]][/]  Run local optimization and prompt to keep or revert
+  [green]optimize multistart [[trials=N]] [[lm=N]] [[initlm=N]] [[sigma=V]] [[cap=V]] [[growth=V]] [[glass=V]] [[constrained]] [[tol=V]] [[damping=V]] [[step=lm|psd2|psd3]] [[broyden=true|false]] [[refresh=N]] [[gpu]] [[mincurvchange=V]] [[gpufill=V]] [[gpuimage]][/]  Multistart optimization. gpu = sieve candidates on the GPU. mincurvchange (default 2) = GPU difference gate: only feed designs that differ from the running best by a glass swap or this % refractive-surface curvature change (0 = off; stops the GPU sieve acting as a pure refiner). gpufill (default 1) = population/device-fill multiplier: candidates per batch = gpufill × device-fill count (1 = fill the GPU once, 2 = double the cloud). gpuimage = trace the merit's image-quality operands (SPOT/WAVE/SENS) on the GPU each trial (separate from the pre-screen; needs a CUDA device, off-axis fields, ray-aiming off).
+  [green]optimize basin [[hops=N]] [[lm=N]] [[hj=N]] [[sigma=V]] [[hjstep=V]] [[hjmin=V]] [[tol=V]] [[damping=V]] [[step=lm|psd2|psd3]] [[broyden=true|false]] [[constrained]] [[glasssub=true|false]] [[onlypreferred=true|false]] [[catalog=NAME]] [[seed=N]] [[gpuimage]][/]  Basin hopping (Hooke-Jeeves + LM with random kicks between hops). gpuimage = trace image-quality operands (SPOT/WAVE/SENS) on the GPU (needs off-axis fields, ray-aiming off).
+  [green]optimize global-basin [[hops=N]] [[lm=N]] [[hj=N]] [[sigma=V]] [[step=lm|psd2|psd3]] [[broyden=true|false]] [[glasssub=true|false]] [[rescale=true|false]] [[constrained]] [[onlypreferred=true|false]] [[catalog=NAME]] [[seed=N]] [[timeout=SEC]] [[globalmin=MIN]] [[savechains=DIR]] [[apply=N]][/]  Global Basin Hopping HJ+LM: chains=physical cores (fixed); each chain restarts from the best of the OTHER chains when its no-improvement watchdog (timeout, default 600s) fires or hops are exhausted, until the global limit (globalmin, default 120) elapses or you cancel. savechains: write every chain's best design; apply=N: apply chain N's design instead of the global best.
+  [green]optimize split [[splits=N]] [[trials=N]] [[lm=N]] [[postlm=N]] [[preglass=N]] [[postglass=N]] [[sigma=V]] [[constrained]] [[onlypreferred=true|false]] [[minglass=V]] [[maxglass=V]] [[minair=V]] [[maxair=V]] [[minedge=V]] [[skipsec=V]] [[tol=V]] [[damping=V]] [[step=lm|psd2|psd3]] [[broyden=true|false]] [[refresh=N]] [[catalog=NAME]] [[noglass]][/]  Split element synthesis. catalog: AGF name (e.g. catalog=S1_GLASS); resolved against catalogs\FilteredGlassCatalogues. noglass: skip the glass-trials phase entirely (split + LM polish only).
   [green]optimize spc [[elements=N]] [[topn=N]] [[scanmin=V]] [[scanmax=V]] [[steps=N]] [[epsilon=V]] [[glass=N]] [[lm=N]] [[postlm=N]] [[catalog=NAME]] [[archive=true|false]] [[archivedir=PATH]] [[dop=N]] [[nullglass=NAME]] [[runinitlm=true|false]] [[initlm=N]] [[onlypreferred=true|false]] [[minglass=V]] [[maxglass=V]] [[minair=V]] [[maxair=V]] [[minedge=V]] [[constraintweight=V]][/]  Synthesis by SPC. catalog is mandatory (single AGF name or comma-separated list).
   [green]optimize global [[models=N]] [[restarts=N]] [[trials=N]] [[lm=N]] [[stall=N]] [[seed=N]] [[prepolish=N]] [[sigma=V]] [[cap=V]] [[glass=V]] [[native]] [[analytic]] [[out=DIR]][/]  Global Search: many seeded restarts from the start design; writes a pool of distinct .lhlt designs to DIR (default global_search_results). seed: base seed (run 1, then 2, … for independent batches). prepolish=0 (default) perturbs the raw start.
   [green]optimize deseed [[pop=N]] [[gens=N]] [[stall=N]] [[f=V]] [[cr=V]] [[glass=V]] [[curvlimit=V]] [[gpu]] [[seed=N]] [[emit=N]] [[refine=N]] [[out=DIR]][/]  Differential-Evolution seed generator: evolve a population from ranges (geometry + glass), then LM-refine each seed; writes refined seeds to DIR. glass = per-candidate glass-swap probability (%); curvlimit = curvature seed limit (0=auto); gpu = run the per-generation merit eval on the GPU (host DE loop). Prints a CPU/GPU timing breakdown.
@@ -106,6 +106,11 @@ namespace LensHH.CLI.Commands
             double tol = 1e-10;
             double damping = 0.001;
             bool useBroyden = true;
+            // Tracks whether the user actually passed broyden=. Without this we could not tell
+            // "user wants Broyden on" from "the default happens to be on", and would clobber
+            // the step-implied default (PSD wants Broyden OFF) on every single run.
+            bool broydenExplicit = false;
+            var step = StepMethod.LevenbergMarquardt;
             int broydenRefresh = 5;
 
             // 'optimize try' captures a snapshot up-front so we can revert
@@ -132,6 +137,11 @@ namespace LensHH.CLI.Commands
                         // Accept true/false/1/0/yes/no for ergonomics.
                         var b = kv[1].Trim().ToLowerInvariant();
                         useBroyden = b == "true" || b == "1" || b == "yes" || b == "y";
+                        broydenExplicit = true;
+                        break;
+                    case "step":
+                        if (TryParseStep(kv[1], out var stepLocal)) step = stepLocal;
+                        else AnsiConsole.MarkupLine($"[yellow]Unknown step '{Markup.Escape(kv[1])}' — expected lm, psd2 or psd3. Keeping {step}.[/]");
                         break;
                     case "refresh":
                         int.TryParse(kv[1], out broydenRefresh);
@@ -144,7 +154,7 @@ namespace LensHH.CLI.Commands
                 MaxIterations = maxIter,
                 Tolerance = tol,
                 InitialDamping = damping,
-                UseBroydenUpdate = useBroyden,
+                Step = step,
                 BroydenRefreshInterval = broydenRefresh,
                 ParallelEvaluation = true,
                 // Native C++ analytic Jacobian (bedrock path); auto-falls-back to C# for
@@ -152,6 +162,10 @@ namespace LensHH.CLI.Commands
                 EngineMode = LensHH.Core.MeritFunction.EngineMode.Native,
                 NativeDerivativeMode = LensHH.Core.NativeInterop.MeritDerivativeMode.Analytic
             };
+
+            // Only assign Broyden when the user actually asked; otherwise leave it unset so
+            // LocalOptimizer applies the step-implied default (on for LM, off for PSD).
+            if (broydenExplicit) optimizer.UseBroydenUpdate = useBroyden;
 
             optimizer.CollectVariables();
 
@@ -270,6 +284,10 @@ namespace LensHH.CLI.Commands
                     case "broyden":
                         var b = val.Trim().ToLowerInvariant();
                         settings.UseBroydenUpdate = b == "true" || b == "1" || b == "yes" || b == "y";
+                        break;
+                    case "step":
+                        if (TryParseStep(val, out var stepMs)) settings.Step = stepMs;
+                        else AnsiConsole.MarkupLine($"[yellow]Unknown step '{Markup.Escape(val)}' — expected lm, psd2 or psd3. Keeping {settings.Step}.[/]");
                         break;
                     case "refresh": if (int.TryParse(val, out int rf)) settings.BroydenRefreshInterval = rf; break;
                     // Convergence levers (default ON) — pass reduceddim=off / basinmemory=off to disable.
@@ -543,6 +561,31 @@ namespace LensHH.CLI.Commands
         }
 
         // Surface label for the conditioner inputs (-1 = auto).
+        /// <summary>
+        /// Parse a <c>step=</c> value into a <see cref="StepMethod"/>. Accepts lm / psd2 /
+        /// psd3 plus the obvious spellings.
+        /// </summary>
+        /// <remarks>
+        /// Returns false on anything unrecognised so the caller can SAY SO rather than
+        /// silently falling back to LM. The difference between PSD II and PSD III is real, and
+        /// a typo that quietly ran a different algorithm would be invisible in the results.
+        /// </remarks>
+        private static bool TryParseStep(string raw, out StepMethod step)
+        {
+            step = StepMethod.LevenbergMarquardt;
+            switch ((raw ?? string.Empty).Trim().ToLowerInvariant())
+            {
+                case "lm": case "dls": case "levenberg": case "marquardt":
+                    step = StepMethod.LevenbergMarquardt; return true;
+                case "psd2": case "psdii": case "psd-ii":
+                    step = StepMethod.PsdII; return true;
+                case "psd3": case "psdiii": case "psd-iii": case "psd":
+                    step = StepMethod.PsdIII; return true;
+                default:
+                    return false;
+            }
+        }
+
         private static string SurfLabel(int s) => s < 0 ? "auto" : s.ToString();
 
         /// <summary>Parse an off-switch value: off/false/0/no/n → true (feature disabled).</summary>
@@ -837,6 +880,10 @@ namespace LensHH.CLI.Commands
                         var b = val.Trim().ToLowerInvariant();
                         settings.UseBroydenUpdate = b == "true" || b == "1" || b == "yes" || b == "y";
                         break;
+                    case "step":
+                        if (TryParseStep(val, out var stepBh)) settings.Step = stepBh;
+                        else AnsiConsole.MarkupLine($"[yellow]Unknown step '{Markup.Escape(val)}' — expected lm, psd2 or psd3. Keeping {settings.Step}.[/]");
+                        break;
                     case "glasssub":
                         var gs = val.Trim().ToLowerInvariant();
                         settings.GlassSubstitution = gs == "true" || gs == "1" || gs == "yes" || gs == "y";
@@ -986,6 +1033,10 @@ namespace LensHH.CLI.Commands
                     case "broyden":
                         var b = val.Trim().ToLowerInvariant();
                         s.UseBroydenUpdate = b == "true" || b == "1" || b == "yes" || b == "y";
+                        break;
+                    case "step":
+                        if (TryParseStep(val, out var stepGb)) s.Step = stepGb;
+                        else AnsiConsole.MarkupLine($"[yellow]Unknown step '{Markup.Escape(val)}' — expected lm, psd2 or psd3. Keeping {s.Step}.[/]");
                         break;
                     case "glasssub":
                         var g = val.Trim().ToLowerInvariant();
@@ -1167,6 +1218,10 @@ namespace LensHH.CLI.Commands
                     case "broyden":
                         var b = parts[1].Trim().ToLowerInvariant();
                         settings.UseBroydenUpdate = b == "true" || b == "1" || b == "yes" || b == "y";
+                        break;
+                    case "step":
+                        if (TryParseStep(parts[1], out var stepDe)) settings.Step = stepDe;
+                        else AnsiConsole.MarkupLine($"[yellow]Unknown step '{Markup.Escape(parts[1])}' — expected lm, psd2 or psd3. Keeping {settings.Step}.[/]");
                         break;
                     case "refresh": if (int.TryParse(parts[1], out int rf)) settings.BroydenRefreshInterval = rf; break;
                     case "catalog":

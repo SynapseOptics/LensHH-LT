@@ -170,9 +170,29 @@ namespace LensHH.Mcp.Tools
             return $"Loaded {mf.Operands.Count} operands from {filePath}.";
         }
 
-        [McpServerTool, Description("Run local optimization (damped least squares). Auto-applies the result to the live system — caller will not get a chance to revert. Use optimize_try if you want a keep-or-revert decision after seeing the merit. maxIterations defaults to 6000 (LM normally converges well before this), tolerance to 1e-10, dampingFactor to 0.001. useBroydenUpdate (default true) uses a rank-1 Jacobian update between full rebuilds — disable to force a full finite-difference Jacobian every step (slower but more robust on stiff designs). broydenRefreshInterval (default 5) is the number of accepted steps between forced Jacobian rebuilds. Returns the final merit value.")]
+        /// <summary>
+        /// Parse a stepMethod string into a StepMethod. Returns false on anything
+        /// unrecognised so the caller is TOLD rather than silently getting LM -- the
+        /// difference between PSD II and PSD III is real and a typo would be invisible.
+        /// </summary>
+        private static bool TryParseStepMethod(string raw, out StepMethod step)
+        {
+            step = StepMethod.LevenbergMarquardt;
+            switch ((raw ?? "lm").Trim().ToLowerInvariant())
+            {
+                case "": case "lm": case "dls": case "levenberg": case "marquardt":
+                    step = StepMethod.LevenbergMarquardt; return true;
+                case "psd2": case "psdii": case "psd-ii":
+                    step = StepMethod.PsdII; return true;
+                case "psd3": case "psdiii": case "psd-iii": case "psd":
+                    step = StepMethod.PsdIII; return true;
+                default: return false;
+            }
+        }
+
+        [McpServerTool, Description("Run local optimization (damped least squares). Auto-applies the result to the live system — caller will not get a chance to revert. Use optimize_try if you want a keep-or-revert decision after seeing the merit. maxIterations defaults to 6000 (LM normally converges well before this), tolerance to 1e-10, dampingFactor to 0.001. useBroydenUpdate (default true) uses a rank-1 Jacobian update between full rebuilds — disable to force a full finite-difference Jacobian every step (slower but more robust on stiff designs). broydenRefreshInterval (default 5) is the number of accepted steps between forced Jacobian rebuilds. stepMethod (default lm) selects the diagonal added to the Gauss-Newton matrix: lm = Marquardt damping, psd2/psd3 = Dilworth pseudo-second-derivative, which estimates per-variable curvature from successive Jacobians and converges deeper on high-variable-count designs. PSD turns Broyden OFF by default because it needs successive FRESH Jacobians; pass useBroydenUpdate explicitly to override. Returns the final merit value.")]
         public string Optimize(int maxIterations = OptimizationDefaults.LmIterations, double tolerance = 1e-10, double dampingFactor = 0.001,
-            bool useBroydenUpdate = true, int broydenRefreshInterval = 5)
+            bool? useBroydenUpdate = null, int broydenRefreshInterval = 5, string stepMethod = "lm")
         {
             { var ge = _session.ValidateGlass(); if (ge != null) return ge; }
             if (_session.MeritFunction == null || _session.MeritFunction.Operands.Count == 0)
@@ -183,7 +203,13 @@ namespace LensHH.Mcp.Tools
             optimizer.MaxIterations = maxIterations;
             optimizer.Tolerance = tolerance;
             optimizer.InitialDamping = dampingFactor;
-            optimizer.UseBroydenUpdate = useBroydenUpdate;
+            if (!TryParseStepMethod(stepMethod, out var step))
+                return $"Unknown stepMethod \"{stepMethod}\" - expected lm, psd2 or psd3.";
+            optimizer.Step = step;
+            // Assign Broyden only when the caller actually specified it, so PSD keeps its
+            // step-implied default (off) rather than being forced back on by a parameter
+            // default the caller never set.
+            if (useBroydenUpdate.HasValue) optimizer.UseBroydenUpdate = useBroydenUpdate.Value;
             optimizer.BroydenRefreshInterval = broydenRefreshInterval;
             // Native C++ analytic Jacobian (bedrock path); auto-falls-back to C# for variable
             // types native can't handle (SD / CA% / model-glass / multi-config).
@@ -209,7 +235,7 @@ namespace LensHH.Mcp.Tools
 
         [McpServerTool, Description("Run local optimization but stage the result for the user to keep or revert. Snapshots the system before running, mutates it in place during the run, then awaits a follow-up call to optimize_keep_result (commit) or optimize_revert_result (restore the pre-run snapshot). Returns the merit comparison and explicit instructions for the next call. Same parameters as optimize, including useBroydenUpdate / broydenRefreshInterval.")]
         public string OptimizeTry(int maxIterations = OptimizationDefaults.LmIterations, double tolerance = 1e-10, double dampingFactor = 0.001,
-            bool useBroydenUpdate = true, int broydenRefreshInterval = 5)
+            bool? useBroydenUpdate = null, int broydenRefreshInterval = 5, string stepMethod = "lm")
         {
             { var ge = _session.ValidateGlass(); if (ge != null) return ge; }
             if (_session.MeritFunction == null || _session.MeritFunction.Operands.Count == 0)
@@ -226,7 +252,13 @@ namespace LensHH.Mcp.Tools
             optimizer.MaxIterations = maxIterations;
             optimizer.Tolerance = tolerance;
             optimizer.InitialDamping = dampingFactor;
-            optimizer.UseBroydenUpdate = useBroydenUpdate;
+            if (!TryParseStepMethod(stepMethod, out var step))
+                return $"Unknown stepMethod \"{stepMethod}\" - expected lm, psd2 or psd3.";
+            optimizer.Step = step;
+            // Assign Broyden only when the caller actually specified it, so PSD keeps its
+            // step-implied default (off) rather than being forced back on by a parameter
+            // default the caller never set.
+            if (useBroydenUpdate.HasValue) optimizer.UseBroydenUpdate = useBroydenUpdate.Value;
             optimizer.BroydenRefreshInterval = broydenRefreshInterval;
             // Native C++ analytic Jacobian (bedrock path); auto-falls-back to C# for variable
             // types native can't handle (SD / CA% / model-glass / multi-config).

@@ -23,7 +23,7 @@
     <!-- ═══ Top: Settings + Controls ═══ -->
     <Border DockPanel.Dock="Top" BorderBrush="#CCC" BorderThickness="1"
             CornerRadius="4" Padding="12,8" Margin="0,0,0,8">
-      <Grid ColumnDefinitions="Auto,12,Auto,40,Auto,40,Auto,12,Auto,*,Auto" RowDefinitions="Auto">
+      <Grid ColumnDefinitions="Auto,12,Auto,40,Auto,40,Auto,12,Auto,*,Auto" RowDefinitions="Auto,6,Auto">
         <!-- Max Iterations -->
         <TextBlock Grid.Column="0" Text="Max Iterations:" VerticalAlignment="Center" />
         <TextBox Grid.Column="2" Text="{Binding MaxIterations, UpdateSourceTrigger=LostFocus}" Width="70"
@@ -49,6 +49,13 @@
                   IsEnabled="{Binding IsRunning}" Width="80" />
         </StackPanel>
 
+
+        <!-- Row 2: local-step method -->
+        <TextBlock Grid.Row="2" Grid.Column="0" Text="LM Step:" VerticalAlignment="Center" />
+        <ComboBox Grid.Row="2" Grid.Column="2" Grid.ColumnSpan="3" HorizontalAlignment="Stretch"
+                  ItemsSource="{Binding StepOptions}" SelectedItem="{Binding SelectedStep}"
+                  IsEnabled="{Binding !IsRunning}" VerticalAlignment="Center"
+                  ToolTip.Tip="Diagonal added to the Gauss-Newton matrix. LM applies one scalar damping to every variable. PSD (Dilworth pseudo-second-derivative) estimates each variable&apos;s own curvature by differencing successive Jacobians, which converges deeper on designs with many variables; PSD III is the stronger variant. Selecting PSD turns Broyden off, because PSD needs successive FRESH Jacobians - re-enable it if you want." />
       </Grid>
     </Border>
 

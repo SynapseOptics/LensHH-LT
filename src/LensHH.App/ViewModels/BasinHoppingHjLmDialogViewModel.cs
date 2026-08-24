@@ -83,6 +83,36 @@ public partial class BasinHoppingHjLmDialogViewModel : ObservableObject
     [ObservableProperty] private double _initialPerturbSigma = 0.001;
     [ObservableProperty] private bool _constrainedOnly = false;
     [ObservableProperty] private bool _useBroydenUpdate = true;
+
+    /// <summary>Step-method choices for the dropdown. ToString is the label, so the ComboBox
+    /// needs no template or converter.</summary>
+    public sealed record StepOption(string Label, StepMethod Value)
+    {
+        public override string ToString() => Label;
+    }
+
+    public static IReadOnlyList<StepOption> StepOptions { get; } = new[]
+    {
+        new StepOption("LM (Marquardt damping)", StepMethod.LevenbergMarquardt),
+        new StepOption("PSD II",  StepMethod.PsdII),
+        new StepOption("PSD III", StepMethod.PsdIII),
+    };
+
+    // Seeded to LM so the dropdown never shows blank and the default is explicit.
+    [ObservableProperty] private StepOption _selectedStep = StepOptions[0];
+
+    /// <summary>
+    /// Changing the step method resets the Broyden checkbox to that method's default, so the
+    /// rule is visible in the UI instead of being applied invisibly at run time. PSD estimates
+    /// curvature by differencing two successive FRESH Jacobians, which a rank-1 Broyden update
+    /// is not. The user can re-tick the box afterwards and that choice sticks until the step
+    /// method changes again.
+    /// </summary>
+    partial void OnSelectedStepChanged(StepOption value)
+    {
+        if (value != null) UseBroydenUpdate = value.Value == StepMethod.LevenbergMarquardt;
+    }
+
     [ObservableProperty] private bool _glassSubstitution = false;
     // On a glass swap, rescale the element's curvatures by (n_old-1)/(n_new-1) to
     // preserve power. Default OFF for basin hopping — testing showed the per-swap
@@ -298,6 +328,7 @@ public partial class BasinHoppingHjLmDialogViewModel : ObservableObject
             HjStepsPerHop = HjStepsPerHop,
             InitialPerturbSigma = InitialPerturbSigma,
             UseBroydenUpdate = UseBroydenUpdate,
+                    Step = SelectedStep?.Value ?? StepMethod.LevenbergMarquardt,
             ConstrainedOnly = ConstrainedOnly,
             GlassSubstitution = GlassSubstitution,
             RescaleCurvatureOnGlassSwap = RescaleOnGlassSwap,

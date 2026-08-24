@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Globalization;
@@ -50,6 +51,36 @@ public partial class OptimizationDialogViewModel : ObservableObject
     // ── Settings ──
     [ObservableProperty] private int _maxIterations = OptimizationDefaults.LmIterations;
     [ObservableProperty] private bool _useBroydenUpdate = true;
+
+    /// <summary>Step-method choices for the dropdown. ToString is the label, so the ComboBox
+    /// needs no template or converter.</summary>
+    public sealed record StepOption(string Label, StepMethod Value)
+    {
+        public override string ToString() => Label;
+    }
+
+    public static IReadOnlyList<StepOption> StepOptions { get; } = new[]
+    {
+        new StepOption("LM (Marquardt damping)", StepMethod.LevenbergMarquardt),
+        new StepOption("PSD II",  StepMethod.PsdII),
+        new StepOption("PSD III", StepMethod.PsdIII),
+    };
+
+    // Seeded to LM so the dropdown never shows blank and the default is explicit.
+    [ObservableProperty] private StepOption _selectedStep = StepOptions[0];
+
+    /// <summary>
+    /// Changing the step method resets the Broyden checkbox to that method's default, so the
+    /// rule is visible in the UI instead of being applied invisibly at run time. PSD estimates
+    /// curvature by differencing two successive FRESH Jacobians, which a rank-1 Broyden update
+    /// is not. The user can re-tick the box afterwards and that choice sticks until the step
+    /// method changes again.
+    /// </summary>
+    partial void OnSelectedStepChanged(StepOption value)
+    {
+        if (value != null) UseBroydenUpdate = value.Value == StepMethod.LevenbergMarquardt;
+    }
+
 
     // Local Optimization never uses the GPU — it runs ParallelEvaluation=true (all
     // CPU cores on the operands), which serves a single LM chain well. The GPU is
@@ -111,6 +142,7 @@ public partial class OptimizationDialogViewModel : ObservableObject
                 _session.System, _session.MeritFunction, _session.GlassCatalog);
             optimizer.MaxIterations = MaxIterations;
             optimizer.UseBroydenUpdate = UseBroydenUpdate;
+            optimizer.Step = SelectedStep?.Value ?? StepMethod.LevenbergMarquardt;
             optimizer.InitialDamping = InitialDamping;
             optimizer.ParallelEvaluation = true;
 

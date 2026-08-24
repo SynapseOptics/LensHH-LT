@@ -124,6 +124,36 @@ public partial class MultistartDialogViewModel : ObservableObject
     [ObservableProperty] private bool _constrainedOnly = false;
     [ObservableProperty] private double _glassSubstitutionProbability = 50; // display as %
     [ObservableProperty] private bool _useBroydenUpdate = true;
+
+    /// <summary>Step-method choices for the dropdown. ToString is the label, so the ComboBox
+    /// needs no template or converter.</summary>
+    public sealed record StepOption(string Label, StepMethod Value)
+    {
+        public override string ToString() => Label;
+    }
+
+    public static IReadOnlyList<StepOption> StepOptions { get; } = new[]
+    {
+        new StepOption("LM (Marquardt damping)", StepMethod.LevenbergMarquardt),
+        new StepOption("PSD II",  StepMethod.PsdII),
+        new StepOption("PSD III", StepMethod.PsdIII),
+    };
+
+    // Seeded to LM so the dropdown never shows blank and the default is explicit.
+    [ObservableProperty] private StepOption _selectedStep = StepOptions[0];
+
+    /// <summary>
+    /// Changing the step method resets the Broyden checkbox to that method's default, so the
+    /// rule is visible in the UI instead of being applied invisibly at run time. PSD estimates
+    /// curvature by differencing two successive FRESH Jacobians, which a rank-1 Broyden update
+    /// is not. The user can re-tick the box afterwards and that choice sticks until the step
+    /// method changes again.
+    /// </summary>
+    partial void OnSelectedStepChanged(StepOption value)
+    {
+        if (value != null) UseBroydenUpdate = value.Value == StepMethod.LevenbergMarquardt;
+    }
+
     /// <summary>LM Marquardt damping starting value. 1e-3 (default) is the
     /// across-the-board default — robust on aspheric mixes and well-
     /// conditioned problems alike. Drop to 1e-6 for gauss-newton-like
@@ -281,6 +311,7 @@ public partial class MultistartDialogViewModel : ObservableObject
                     ConstrainedOnly = ConstrainedOnly,
                     GlassSubstitutionProbability = GlassSubstitutionProbability / 100.0,
                     UseBroydenUpdate = UseBroydenUpdate,
+                    Step = SelectedStep?.Value ?? StepMethod.LevenbergMarquardt,
                     InitialDamping = InitialDamping,
                     // Pre-screen on/off comes from the global Preferences ▸ GPU setting.
                     UseGpuPreScreen = AppPreferences.GpuPreScreen,
