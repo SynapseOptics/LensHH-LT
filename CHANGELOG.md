@@ -2,6 +2,47 @@
 
 All notable changes to LensHH-LT and the LensHH-LT-Engine.
 
+## 1.0.151 — 2026-08-26
+
+### Fixed
+
+- **Edge thickness was measured at the wrong height, and always read too healthy.**
+  `ET` / `EA` / `EG` — and the `ETT` / `EAT` / `EGT` totals — take the edge thickness of the gap
+  that starts at a surface: the distance from the rim of that surface to the rim of the next. Both
+  sags were being evaluated at a single height, the larger of the two semi-diameters, rather than
+  each surface at its own rim.
+
+  Where two adjacent semi-diameters differ, that height can fall outside the smaller surface's own
+  aperture — the sag is then taken where the surface does not exist, and the result stops being an
+  edge thickness at all. The error ran one way: it reported edges as **healthier** than they are.
+  On a 47-element conoscope the worst glass edge read 0.99 mm against a true 0.376 mm, so a 62%
+  violation of a 1 mm floor was reported as satisfied; where the apertures differ most it read 147
+  against 80.
+
+  **Constrained designs may now show edge violations they did not show before.** Those violations
+  were always present in the design — the operand simply could not see them. A design you have been
+  treating as manufacturable on the strength of a satisfied `EG` or `EA` operand is worth
+  re-checking. Designs whose adjacent semi-diameters happen to be equal are unaffected, since the
+  two formulas agree there.
+
+  The corrected values are pinned by a reference test carrying independently computed edge
+  thicknesses for that design, which the new form reproduces to within 9e-16 and the previous form
+  matched at none of them. The existing cross-engine parity suite could never have caught this:
+  all four engines computed the same wrong thing, and parity proves only that they agree with each
+  other.
+
+  Corrected in all four engines together: managed, native CPU, GPU, and the analytic derivative
+  paths. The derivative paths gain something beyond the value: they previously routed the gradient
+  through whichever of the pair had the larger semi-diameter, so it jumped discontinuously whenever
+  the two crossed. Each surface now carries its own derivative.
+
+- **Merit function editor: the Contribution column was overstated for image-quality operands.**
+  Macro operands (`WAVEX`, `SPOT` and relatives) had their residual scaled by the weight instead of
+  its square root, and Contribution squares the residual — so the figure shown was a factor of the
+  weight too large, ten-fold at the weight of 10 these operands usually carry. Image-quality
+  operands therefore looked far more dominant against boundary penalties than they were. **Merit
+  values, optimization and every result were unaffected**; only the displayed column was wrong.
+
 ## 1.0.150 — 2026-08-24
 
 ### Added
