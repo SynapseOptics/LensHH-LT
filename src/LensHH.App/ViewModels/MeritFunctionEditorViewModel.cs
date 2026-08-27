@@ -73,6 +73,18 @@ public partial class OperandRowViewModel : ObservableObject
         // Seidel aberration contribution over a surface range (Surface1, Surface2 only; no Wave).
         or OperandType.SPHS or OperandType.COMAS or OperandType.ASTGS
         or OperandType.FCS or OperandType.DISTS or OperandType.ACS or OperandType.LCS
+        // Third-order totals: whole system, no surface range.
+        or OperandType.SPHT or OperandType.COMAT or OperandType.ASTGT
+        or OperandType.FCT or OperandType.DISTT or OperandType.ACT or OperandType.LCT
+        // Fifth/seventh-order Buchdahl/Rimmer, span (S) and total (T) forms.
+        or OperandType.B5S or OperandType.F1S or OperandType.F2S
+        or OperandType.M1S or OperandType.M2S or OperandType.M3S
+        or OperandType.N1S or OperandType.N2S or OperandType.N3S
+        or OperandType.C5S or OperandType.PI5S or OperandType.E5S or OperandType.B7S
+        or OperandType.B5T or OperandType.F1T or OperandType.F2T
+        or OperandType.M1T or OperandType.M2T or OperandType.M3T
+        or OperandType.N1T or OperandType.N2T or OperandType.N3T
+        or OperandType.C5T or OperandType.PI5T or OperandType.E5T or OperandType.B7T
             => Category.System,
 
         // Boundary
@@ -110,10 +122,17 @@ public partial class OperandRowViewModel : ObservableObject
         or OperandType.C or OperandType.D or OperandType.DET;
     private bool IsMatrixOrParam => IsAbcdMatrix || _operand.Type == OperandType.PRMV;
 
-    // Seidel aberration contribution over a surface range: Surface1 + Surface2 only, no Wave.
+    // Aberration-coefficient operands that take a surface range: Surface1 + Surface2
+    // only, no Wave. The TOTAL forms (SPHT..LCT, B5T..B7T) deliberately do NOT appear
+    // here - they span the whole system, so offering surface inputs would invite the
+    // user to set values that are then ignored.
     private bool IsSeidel => _operand.Type is OperandType.SPHS or OperandType.COMAS
         or OperandType.ASTGS or OperandType.FCS or OperandType.DISTS
-        or OperandType.ACS or OperandType.LCS;
+        or OperandType.ACS or OperandType.LCS
+        or OperandType.B5S or OperandType.F1S or OperandType.F2S
+        or OperandType.M1S or OperandType.M2S or OperandType.M3S
+        or OperandType.N1S or OperandType.N2S or OperandType.N3S
+        or OperandType.C5S or OperandType.PI5S or OperandType.E5S or OperandType.B7S;
 
     // Relevance flags
     private bool NeedsSurface => GetCategory() is Category.RayIntercept or Category.Boundary or Category.SurfaceProperty
@@ -579,6 +598,44 @@ public partial class MeritFunctionEditorViewModel : ObservableObject
         OperandType.DISTS => "DISTS — Seidel distortion (S5) summed over the surface range Surface1..Surface2. Matches the Seidel analysis. Primary wavelength; NO Wave input. Params: Surface1, Surface2",
         OperandType.ACS => "ACS — Axial (longitudinal) chromatic aberration (CL) summed over the surface range Surface1..Surface2. Uses the system's min/max wavelengths. Matches the Seidel analysis. NO Wave input. Params: Surface1, Surface2",
         OperandType.LCS => "LCS — Lateral (transverse) chromatic aberration (CT) summed over the surface range Surface1..Surface2. Uses the system's min/max wavelengths. Matches the Seidel analysis. NO Wave input. Params: Surface1, Surface2",
+        // Third-order TOTALS: same quantities as SPHS..LCS over the whole system.
+        OperandType.SPHT => "SPHT — Seidel spherical aberration (S1), summed over the WHOLE system. Same value as the Seidel analysis total and as the matching S operand over its full range; no surface arguments. Primary wavelength (the colour terms use the wavelength spread). NO Wave input. Params: none",
+        OperandType.COMAT => "COMAT — Seidel coma (S2), summed over the WHOLE system. Same value as the Seidel analysis total and as the matching S operand over its full range; no surface arguments. Primary wavelength (the colour terms use the wavelength spread). NO Wave input. Params: none",
+        OperandType.ASTGT => "ASTGT — Seidel astigmatism (S3), summed over the WHOLE system. Same value as the Seidel analysis total and as the matching S operand over its full range; no surface arguments. Primary wavelength (the colour terms use the wavelength spread). NO Wave input. Params: none",
+        OperandType.FCT => "FCT — Seidel field curvature / Petzval (S4), summed over the WHOLE system. Same value as the Seidel analysis total and as the matching S operand over its full range; no surface arguments. Primary wavelength (the colour terms use the wavelength spread). NO Wave input. Params: none",
+        OperandType.DISTT => "DISTT — Seidel distortion (S5), summed over the WHOLE system. Same value as the Seidel analysis total and as the matching S operand over its full range; no surface arguments. Primary wavelength (the colour terms use the wavelength spread). NO Wave input. Params: none",
+        OperandType.ACT => "ACT — axial (longitudinal) chromatic aberration (CL), summed over the WHOLE system. Same value as the Seidel analysis total and as the matching S operand over its full range; no surface arguments. Primary wavelength (the colour terms use the wavelength spread). NO Wave input. Params: none",
+        OperandType.LCT => "LCT — lateral (transverse) chromatic aberration (CT), summed over the WHOLE system. Same value as the Seidel analysis total and as the matching S operand over its full range; no surface arguments. Primary wavelength (the colour terms use the wavelength spread). NO Wave input. Params: none",
+
+        // Fifth/seventh-order Buchdahl/Rimmer coefficients. S = surface span, T = whole
+        // system. NOTE: here the trailing S means span, not Seidel - fifth order is not
+        // Seidel. Transverse coefficients, scaled by the working F/number.
+        OperandType.B5S => "B5S — fifth-order spherical aberration (Buchdahl/Rimmer), summed over the surface range Surface1..Surface2. Each surface's contribution includes its induced interaction with every preceding surface, so a range starting mid-system is well defined but is not a property of those surfaces alone. Primary wavelength. NO Wave input. Params: Surface1, Surface2",
+        OperandType.F1S => "F1S — fifth-order coma (first form) (Buchdahl/Rimmer), summed over the surface range Surface1..Surface2. Each surface's contribution includes its induced interaction with every preceding surface, so a range starting mid-system is well defined but is not a property of those surfaces alone. Primary wavelength. NO Wave input. Params: Surface1, Surface2",
+        OperandType.F2S => "F2S — fifth-order coma (second form) (Buchdahl/Rimmer), summed over the surface range Surface1..Surface2. Each surface's contribution includes its induced interaction with every preceding surface, so a range starting mid-system is well defined but is not a property of those surfaces alone. Primary wavelength. NO Wave input. Params: Surface1, Surface2",
+        OperandType.M1S => "M1S — oblique spherical aberration (first form) (Buchdahl/Rimmer), summed over the surface range Surface1..Surface2. Each surface's contribution includes its induced interaction with every preceding surface, so a range starting mid-system is well defined but is not a property of those surfaces alone. Primary wavelength. NO Wave input. Params: Surface1, Surface2",
+        OperandType.M2S => "M2S — oblique spherical aberration (second form) (Buchdahl/Rimmer), summed over the surface range Surface1..Surface2. Each surface's contribution includes its induced interaction with every preceding surface, so a range starting mid-system is well defined but is not a property of those surfaces alone. Primary wavelength. NO Wave input. Params: Surface1, Surface2",
+        OperandType.M3S => "M3S — oblique spherical aberration (third form) (Buchdahl/Rimmer), summed over the surface range Surface1..Surface2. Each surface's contribution includes its induced interaction with every preceding surface, so a range starting mid-system is well defined but is not a property of those surfaces alone. Primary wavelength. NO Wave input. Params: Surface1, Surface2",
+        OperandType.N1S => "N1S — elliptical coma (first form) (Buchdahl/Rimmer), summed over the surface range Surface1..Surface2. Each surface's contribution includes its induced interaction with every preceding surface, so a range starting mid-system is well defined but is not a property of those surfaces alone. Primary wavelength. NO Wave input. Params: Surface1, Surface2",
+        OperandType.N2S => "N2S — elliptical coma (second form) (Buchdahl/Rimmer), summed over the surface range Surface1..Surface2. Each surface's contribution includes its induced interaction with every preceding surface, so a range starting mid-system is well defined but is not a property of those surfaces alone. Primary wavelength. NO Wave input. Params: Surface1, Surface2",
+        OperandType.N3S => "N3S — elliptical coma (third form) (Buchdahl/Rimmer), summed over the surface range Surface1..Surface2. Each surface's contribution includes its induced interaction with every preceding surface, so a range starting mid-system is well defined but is not a property of those surfaces alone. Primary wavelength. NO Wave input. Params: Surface1, Surface2",
+        OperandType.C5S => "C5S — fifth-order astigmatism (Buchdahl/Rimmer), summed over the surface range Surface1..Surface2. Each surface's contribution includes its induced interaction with every preceding surface, so a range starting mid-system is well defined but is not a property of those surfaces alone. Primary wavelength. NO Wave input. Params: Surface1, Surface2",
+        OperandType.PI5S => "PI5S — fifth-order field curvature (Petzval) (Buchdahl/Rimmer), summed over the surface range Surface1..Surface2. Each surface's contribution includes its induced interaction with every preceding surface, so a range starting mid-system is well defined but is not a property of those surfaces alone. Primary wavelength. NO Wave input. Params: Surface1, Surface2",
+        OperandType.E5S => "E5S — fifth-order distortion (Buchdahl/Rimmer), summed over the surface range Surface1..Surface2. Each surface's contribution includes its induced interaction with every preceding surface, so a range starting mid-system is well defined but is not a property of those surfaces alone. Primary wavelength. NO Wave input. Params: Surface1, Surface2",
+        OperandType.B7S => "B7S — seventh-order spherical aberration (Buchdahl/Rimmer), summed over the surface range Surface1..Surface2. Each surface's contribution includes its induced interaction with every preceding surface, so a range starting mid-system is well defined but is not a property of those surfaces alone. Primary wavelength. NO Wave input. Params: Surface1, Surface2",
+        OperandType.B5T => "B5T — fifth-order spherical aberration (Buchdahl/Rimmer) for the WHOLE system. Equals the matching S operand over its full range; no surface arguments. Primary wavelength. NO Wave input. Params: none",
+        OperandType.F1T => "F1T — fifth-order coma (first form) (Buchdahl/Rimmer) for the WHOLE system. Equals the matching S operand over its full range; no surface arguments. Primary wavelength. NO Wave input. Params: none",
+        OperandType.F2T => "F2T — fifth-order coma (second form) (Buchdahl/Rimmer) for the WHOLE system. Equals the matching S operand over its full range; no surface arguments. Primary wavelength. NO Wave input. Params: none",
+        OperandType.M1T => "M1T — oblique spherical aberration (first form) (Buchdahl/Rimmer) for the WHOLE system. Equals the matching S operand over its full range; no surface arguments. Primary wavelength. NO Wave input. Params: none",
+        OperandType.M2T => "M2T — oblique spherical aberration (second form) (Buchdahl/Rimmer) for the WHOLE system. Equals the matching S operand over its full range; no surface arguments. Primary wavelength. NO Wave input. Params: none",
+        OperandType.M3T => "M3T — oblique spherical aberration (third form) (Buchdahl/Rimmer) for the WHOLE system. Equals the matching S operand over its full range; no surface arguments. Primary wavelength. NO Wave input. Params: none",
+        OperandType.N1T => "N1T — elliptical coma (first form) (Buchdahl/Rimmer) for the WHOLE system. Equals the matching S operand over its full range; no surface arguments. Primary wavelength. NO Wave input. Params: none",
+        OperandType.N2T => "N2T — elliptical coma (second form) (Buchdahl/Rimmer) for the WHOLE system. Equals the matching S operand over its full range; no surface arguments. Primary wavelength. NO Wave input. Params: none",
+        OperandType.N3T => "N3T — elliptical coma (third form) (Buchdahl/Rimmer) for the WHOLE system. Equals the matching S operand over its full range; no surface arguments. Primary wavelength. NO Wave input. Params: none",
+        OperandType.C5T => "C5T — fifth-order astigmatism (Buchdahl/Rimmer) for the WHOLE system. Equals the matching S operand over its full range; no surface arguments. Primary wavelength. NO Wave input. Params: none",
+        OperandType.PI5T => "PI5T — fifth-order field curvature (Petzval) (Buchdahl/Rimmer) for the WHOLE system. Equals the matching S operand over its full range; no surface arguments. Primary wavelength. NO Wave input. Params: none",
+        OperandType.E5T => "E5T — fifth-order distortion (Buchdahl/Rimmer) for the WHOLE system. Equals the matching S operand over its full range; no surface arguments. Primary wavelength. NO Wave input. Params: none",
+        OperandType.B7T => "B7T — seventh-order spherical aberration (Buchdahl/Rimmer) for the WHOLE system. Equals the matching S operand over its full range; no surface arguments. Primary wavelength. NO Wave input. Params: none",
         OperandType.BFL => "BFL — Paraxial back focal length: distance from last refractive surface to paraxial focus. For infinite conjugate matches the parallel-ray BFL; for finite conjugate equals the paraxial image distance from the last lens. Params: Wave (optional)",
         OperandType.MAG => "MAG — Paraxial magnification. Params: Wave (optional)",
         OperandType.AMAG => "AMAG — Angular magnification. Params: Wave (optional)",

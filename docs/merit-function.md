@@ -567,6 +567,83 @@ lens). A flat plate in collimated light contributes zero to every Seidel term �
 the operands only become non-zero where the rays are converging or the surfaces
 have power.
 
+### Whole-system totals
+
+The seven operands above take a surface range. Their `T` counterparts cover the
+whole system and take **no surface arguments**:
+
+| Span | Total | Aberration |
+|---|---|---|
+| `SPHS`  | `SPHT`  | Spherical aberration (S1) |
+| `COMAS` | `COMAT` | Coma (S2) |
+| `ASTGS` | `ASTGT` | Astigmatism (S3) |
+| `FCS`   | `FCT`   | Field curvature / Petzval (S4) |
+| `DISTS` | `DISTT` | Distortion (S5) |
+| `ACS`   | `ACT`   | Axial (longitudinal) color |
+| `LCS`   | `LCT`   | Lateral (transverse) color |
+
+A `T` operand returns exactly what the matching `S` operand returns over its full
+range, and exactly what the Seidel analysis reports as the total — they share one
+calculation.
+
+Prefer the `T` form when you mean "the whole lens". A span authored as
+`Surface1 = 1, Surface2 = 8` does **not** widen when you insert a surface, so it
+quietly stops covering the system it was written for; the `T` form cannot go
+stale that way.
+
+---
+
+## Fifth- and Seventh-Order Aberration Coefficients
+
+Buchdahl/Rimmer coefficients, following Rimmer (1962). These are transverse
+coefficients scaled by the working F/number, and they need no ray tracing — which
+makes them practical for screening many candidate designs quickly.
+
+Each comes in two forms: **`S`** sums over a surface range, **`T`** covers the
+whole system.
+
+| Span | Total | Aberration |
+|---|---|---|
+| `B5S` | `B5T` | Fifth-order spherical aberration |
+| `F1S` | `F1T` | Fifth-order coma (first form) |
+| `F2S` | `F2T` | Fifth-order coma (second form) |
+| `M1S` | `M1T` | Oblique spherical aberration (first form) |
+| `M2S` | `M2T` | Oblique spherical aberration (second form) |
+| `M3S` | `M3T` | Oblique spherical aberration (third form) |
+| `N1S` | `N1T` | Elliptical coma (first form) |
+| `N2S` | `N2T` | Elliptical coma (second form) |
+| `N3S` | `N3T` | Elliptical coma (third form) |
+| `C5S` | `C5T` | Fifth-order astigmatism |
+| `PI5S` | `PI5T` | Fifth-order field curvature (Petzval) |
+| `E5S` | `E5T` | Fifth-order distortion |
+| `B7S` | `B7T` | Seventh-order spherical aberration |
+
+**Inputs:** `Surface1`, `Surface2` for the `S` forms; none for the `T` forms.
+There is **no `Wave` input** — the primary wavelength is used.
+
+> **The trailing `S` here means *span*, not *Seidel*.** In `SPHS`…`LCS` it reads
+> as Seidel, but fifth order is not Seidel, so the letter is reused with the
+> plainer meaning. `B5S` is "fifth-order spherical over a span", not "Seidel B5".
+
+**Aspheric surfaces are fully supported** — conic constants and the `A4`, `A6`
+and `A8` even-asphere coefficients all contribute. Higher orders cannot reach
+seventh order and are ignored: a deformation term in `r^2m` first contributes at
+transverse order `2m − 1`, so `A4` reaches third order, `A6` fifth and `A8`
+seventh, while `A10` and beyond start at ninth.
+
+The **`A2` (r²) coefficient is not included** in these coefficients, though it is
+part of the surface sag everywhere else. If you use `A2` on a surface, treat the
+fifth- and seventh-order values for that surface as approximate.
+
+### Choosing a span
+
+A surface's contribution to the fifth-order totals includes its *induced*
+interaction with every surface ahead of it — that is inherent to the theory, not
+an implementation choice. So a span beginning mid-system is well defined and the
+spans still add up to the total, but such a value is not a property of those
+surfaces in isolation the way a third-order span is. When in doubt, use the `T`
+form.
+
 ---
 
 ## Arithmetic Operands
