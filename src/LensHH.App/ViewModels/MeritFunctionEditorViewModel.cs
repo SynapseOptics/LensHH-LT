@@ -85,6 +85,9 @@ public partial class OperandRowViewModel : ObservableObject
         or OperandType.M1T or OperandType.M2T or OperandType.M3T
         or OperandType.N1T or OperandType.N2T or OperandType.N3T
         or OperandType.C5T or OperandType.PI5T or OperandType.E5T or OperandType.B7T
+        // Paraxial screening: aperture adequacy and the paraxial RMS spot.
+        or OperandType.PSD or OperandType.PSDT or OperandType.SDR or OperandType.SDRT
+        or OperandType.PRMS
             => Category.System,
 
         // Boundary
@@ -132,7 +135,8 @@ public partial class OperandRowViewModel : ObservableObject
         or OperandType.B5S or OperandType.F1S or OperandType.F2S
         or OperandType.M1S or OperandType.M2S or OperandType.M3S
         or OperandType.N1S or OperandType.N2S or OperandType.N3S
-        or OperandType.C5S or OperandType.PI5S or OperandType.E5S or OperandType.B7S;
+        or OperandType.C5S or OperandType.PI5S or OperandType.E5S or OperandType.B7S
+        or OperandType.PSD or OperandType.PSDT or OperandType.SDR or OperandType.SDRT;
 
     // Relevance flags
     private bool NeedsSurface => GetCategory() is Category.RayIntercept or Category.Boundary or Category.SurfaceProperty
@@ -154,7 +158,8 @@ public partial class OperandRowViewModel : ObservableObject
     private bool NeedsRayCoords => GetCategory() is Category.RayIntercept;
     private bool NeedsHyOnly => _operand.Type is OperandType.ILL
         or OperandType.DITANF or OperandType.DITHETAF or OperandType.LCF
-        or OperandType.FCF or OperandType.ASTF;
+        or OperandType.FCF or OperandType.ASTF
+        or OperandType.PRMS;
     private bool NeedsRingsArms => GetCategory() is Category.Macro;
     // RELI/ILL borrows the Arms column for pupil-boundary directions; Rings
     // doesn't apply (the binary search is the radial sample). Macro
@@ -636,6 +641,14 @@ public partial class MeritFunctionEditorViewModel : ObservableObject
         OperandType.PI5T => "PI5T — fifth-order field curvature (Petzval) (Buchdahl/Rimmer) for the WHOLE system. Equals the matching S operand over its full range; no surface arguments. Primary wavelength. NO Wave input. Params: none",
         OperandType.E5T => "E5T — fifth-order distortion (Buchdahl/Rimmer) for the WHOLE system. Equals the matching S operand over its full range; no surface arguments. Primary wavelength. NO Wave input. Params: none",
         OperandType.B7T => "B7T — seventh-order spherical aberration (Buchdahl/Rimmer) for the WHOLE system. Equals the matching S operand over its full range; no surface arguments. Primary wavelength. NO Wave input. Params: none",
+
+        // Paraxial screening operands. No ray tracing: these read the paraxial marginal
+        // and chief heights, which the aberration coefficients already compute.
+        OperandType.PSD => "PSD — Paraxial required semi-diameter: the largest |y_marginal| + |y_chief| at maximum field over Surface1..Surface2, i.e. the semi-diameter the beam actually needs there. Bound it with Maximum to cap element size for packaging and cost, or with Minimum to stop a design collapsing to a beam that passes no light. No ray tracing. Params: Surface1, Surface2",
+        OperandType.PSDT => "PSDT — Additive form of PSD: sqrt(sum of per-surface bound violations) over Surface1..Surface2, against an implicit target of 0. Every offending surface contributes gradient rather than only the worst one. Params: Surface1, Surface2",
+        OperandType.SDR => "SDR — Aperture adequacy: actual semi-diameter divided by the paraxial requirement, worst case over Surface1..Surface2. 1.0 means the aperture exactly accommodates the beam; below 1 the beam is being cut. Bound with Minimum near 1. Its gradient points the right way — the optimizer cannot satisfy it by shrinking apertures, only by making the geometry pass the beam. MEANINGLESS when Auto Diameters is set to Paraxial: there the semi-diameter IS the requirement, so the ratio is always 1 — use PSD instead. Params: Surface1, Surface2",
+        OperandType.SDRT => "SDRT — Additive form of SDR: sqrt(sum of per-surface bound violations) over Surface1..Surface2, against an implicit target of 0, so every inadequate surface contributes gradient. Same caveat as SDR: meaningless when Auto Diameters is Paraxial. Params: Surface1, Surface2",
+        OperandType.PRMS => "PRMS — Paraxial RMS spot radius at field Hy, computed from the third-, fifth- and seventh-order aberration coefficients rather than from traced rays. One scalar in place of a dozen individually weighted coefficient operands, and far better conditioned. TWO LIMITATIONS: it is referenced to the paraxial image plane, so it CANNOT see defocus — a design away from paraxial focus will have a real spot much larger than this reports; and the fifth-order field terms are not included (only their rotationally symmetric siblings B5 and B7), so accuracy falls off with field — measured against ZEMAX at paraxial focus: 0.0004% on axis, 0.35% at 2 degrees, 0.72% at 6 degrees. NO Wave input. Params: Hy",
         OperandType.BFL => "BFL — Paraxial back focal length: distance from last refractive surface to paraxial focus. For infinite conjugate matches the parallel-ray BFL; for finite conjugate equals the paraxial image distance from the last lens. Params: Wave (optional)",
         OperandType.MAG => "MAG — Paraxial magnification. Params: Wave (optional)",
         OperandType.AMAG => "AMAG — Angular magnification. Params: Wave (optional)",
