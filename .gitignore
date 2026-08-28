@@ -79,3 +79,6 @@ catalogs/Lenses/ThorLabs/zemaxcatalog/
 
 # Installer build logs (transient)
 installer/*.log
+
+# MCP registry signing keys - never commit
+*.pem

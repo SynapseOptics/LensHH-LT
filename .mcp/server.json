@@ -1,0 +1,12 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-10-17/server.schema.json",
+  "name": "com.synapseoptics/lenshh-lt",
+  "title": "LensHH-LT Optical Design",
+  "description": "Drive real optical lens design: ray tracing, optimization, MTF and aberration analysis.",
+  "version": "1.0.151",
+  "websiteUrl": "https://synapseoptics.com/products/lenshh-lt.html",
+  "repository": {
+    "url": "https://github.com/SynapseOptics/LensHH-LT",
+    "source": "github"
+  }
+}
