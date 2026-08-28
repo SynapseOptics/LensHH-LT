@@ -152,6 +152,7 @@ namespace LensHH.Mcp.Tools
             sb.AppendLine($"Aperture: {sys.Aperture.Type} = {sys.Aperture.Value}");
             sb.AppendLine($"Field Type: {sys.FieldType}");
             sb.AppendLine($"Ray Aiming: {sys.RayAiming}");
+            sb.AppendLine($"Auto Semi-Diameters: {sys.SemiDiameterSolve}");
             sb.AppendLine($"Bound Handling: {sys.BoundHandling}");
             sb.AppendLine($"Afocal: {sys.IsAfocal}");
             sb.AppendLine($"Telecentric Object Space: {sys.TelecentricObjectSpace}");
@@ -328,6 +329,24 @@ namespace LensHH.Mcp.Tools
                 return $"Unknown ray aiming mode '{mode}'. Use 'Off', 'Real', or 'Robust'.";
 
             return $"Ray aiming set to {sys.RayAiming}.";
+        }
+        [McpServerTool, Description("Set how Auto semi-diameters are derived. mode must be 'RealRay' or 'Paraxial'. RealRay (default, historical) sizes each surface to whichever real traced rays survive. Paraxial sizes it to the beam the design actually needs (|marginal| + |chief| height at max field) with no ray tracing, so nothing can fail or be vignetted. Paraxial suits fast paraxial-only screening, and it also keeps edge-thickness and semi-diameter constraints meaningful on a design that has stopped passing light: under RealRay the apertures shrink to fit the surviving rays, which quietly SATISFIES those constraints instead of violating them. SYSTEM-LEVEL and orthogonal to the per-surface Auto/Fixed mode - surfaces set to Fixed are unaffected either way. Switching an existing design to Paraxial will move its ET/EA/EG/SD operand values, sometimes substantially.")]
+        public string SetAutoDiameterSolve(string mode)
+        {
+            var sys = _session.System;
+            if (mode.Equals("RealRay", StringComparison.OrdinalIgnoreCase)
+                || mode.Equals("Real", StringComparison.OrdinalIgnoreCase))
+                sys.SemiDiameterSolve = Core.Enums.SemiDiameterSolve.RealRay;
+            else if (mode.Equals("Paraxial", StringComparison.OrdinalIgnoreCase))
+                sys.SemiDiameterSolve = Core.Enums.SemiDiameterSolve.Paraxial;
+            else
+                return $"Unknown semi-diameter solve '{mode}'. Use 'RealRay' or 'Paraxial'.";
+
+            string note = sys.SemiDiameterSolve == Core.Enums.SemiDiameterSolve.Paraxial
+                ? " Auto apertures now follow the beam the design needs rather than the rays that"
+                  + " survive, so ET/EA/EG/SD values will change."
+                : "";
+            return $"Auto semi-diameter solve set to {sys.SemiDiameterSolve}.{note}";
         }
 
         [McpServerTool, Description("Set how bounded optimization variables are mapped into the optimizer's search space. mode must be 'Sigmoid' or 'Reflect'. Sigmoid (default) is smooth but its gradient vanishes at a bound, so a variable pushed to a limit stops responding to the optimizer. Reflect keeps the variable in physical units and folds out-of-range values back inside, so |gradient| stays constant at the bounds — usually better for constrained and stochastic search. System-level: applies to every optimizer and is saved with the design.")]

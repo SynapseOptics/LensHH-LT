@@ -26,6 +26,7 @@ namespace LensHH.CLI.Commands
   [green]system set-penalize-vignetting on|off[/]    Penalize all vignetted rays (incl. off-axis) during optimization
   [green]system set-ray-aiming off|real|robust[/]   Set ray aiming mode
   [green]system set-bound-handling sigmoid|reflect[/] Bounded-variable mapping for the optimizer
+  [green]system set-auto-diameters realray|paraxial[/] How Auto semi-diameters are derived
   [green]system set-catalogs <cat1> <cat2> ...[/]   Set preferred glass catalogs (e.g. SCHOTT OHARA)";
 
         public void Execute(Session session, string[] args)
@@ -76,6 +77,9 @@ namespace LensHH.CLI.Commands
                 case "set-bound-handling":
                     SetBoundHandling(session, args);
                     break;
+                case "set-auto-diameters":
+                    SetAutoDiameters(session, args);
+                    break;
                 case "set-catalogs":
                     SetCatalogs(session, args);
                     break;
@@ -97,6 +101,7 @@ namespace LensHH.CLI.Commands
             AnsiConsole.MarkupLine($"[bold]Penalize Vignetting:[/] {(sys.PenalizeVignetting ? "On" : "Off")}");
             AnsiConsole.MarkupLine($"[bold]Ray Aiming:[/] {sys.RayAiming}");
             AnsiConsole.MarkupLine($"[bold]Bound Handling:[/] {sys.BoundHandling}");
+            AnsiConsole.MarkupLine($"[bold]Auto Semi-Diameters:[/] {sys.SemiDiameterSolve}");
             AnsiConsole.MarkupLine($"[bold]Glass Catalogs:[/] {(sys.GlassCatalogs.Count > 0 ? string.Join(", ", sys.GlassCatalogs) : "(none)")}");
 
             var wlTable = new Table();
@@ -385,6 +390,40 @@ namespace LensHH.CLI.Commands
             }
 
             AnsiConsole.MarkupLine($"[green]Bound handling set to {sys.BoundHandling}[/]");
+        }
+
+        /// <summary>How Auto semi-diameters are derived. Orthogonal to the per-surface
+        /// Auto/Fixed mode: Fixed surfaces are unaffected either way.</summary>
+        private void SetAutoDiameters(Session session, string[] args)
+        {
+            var sys = session.EnsureSystem();
+            if (args.Length < 2)
+            {
+                AnsiConsole.MarkupLine($"[bold]Auto semi-diameters:[/] {sys.SemiDiameterSolve}");
+                AnsiConsole.MarkupLine("[dim]Usage: system set-auto-diameters realray|paraxial[/]");
+                AnsiConsole.MarkupLine("[dim]  realray  - size each surface to whichever real rays survive (default)[/]");
+                AnsiConsole.MarkupLine("[dim]  paraxial - size to the beam the design needs (marginal + chief height)[/]");
+                return;
+            }
+
+            switch (args[1].ToLowerInvariant())
+            {
+                case "realray":
+                case "real":
+                    sys.SemiDiameterSolve = SemiDiameterSolve.RealRay;
+                    break;
+                case "paraxial":
+                    sys.SemiDiameterSolve = SemiDiameterSolve.Paraxial;
+                    break;
+                default:
+                    AnsiConsole.MarkupLine("[red]Use 'realray' or 'paraxial'.[/]");
+                    return;
+            }
+
+            AnsiConsole.MarkupLine($"[green]Auto semi-diameters set to {sys.SemiDiameterSolve}[/]");
+            if (sys.SemiDiameterSolve == SemiDiameterSolve.Paraxial)
+                AnsiConsole.MarkupLine("[yellow]Note: this will move ET/EA/EG/SD values on an existing design — "
+                    + "Auto apertures now follow the beam the design needs, not the rays that survive.[/]");
         }
 
         private void SetAfocal(Session session, string[] args)

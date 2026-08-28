@@ -157,6 +157,18 @@ public partial class SystemEditorViewModel : ObservableObject
         set { _session.System.BoundHandling = value; OnPropertyChanged(); }
     }
 
+    /// <summary>How Auto semi-diameters are derived. RealRay (default, historical) sizes
+    /// each surface to whichever real rays survive; Paraxial sizes it to the beam the design
+    /// actually needs. Surfaces set to Fixed are unaffected either way.</summary>
+    public SemiDiameterSolve SemiDiameterSolve
+    {
+        get => _session.System.SemiDiameterSolve;
+        set { _session.System.SemiDiameterSolve = value; OnPropertyChanged(); }
+    }
+
+    public SemiDiameterSolve[] SemiDiameterSolveModes =>
+        new[] { SemiDiameterSolve.RealRay, SemiDiameterSolve.Paraxial };
+
     public ApertureType[] ApertureTypes => new[] { ApertureType.EPD, ApertureType.FNumber, ApertureType.ObjectSpaceNA };
     public BoundHandlingMode[] BoundHandlingModes => new[] { BoundHandlingMode.Sigmoid, BoundHandlingMode.Reflect };
     public FieldType[] FieldTypes => new[] { FieldType.ObjectAngle, FieldType.ObjectHeight };

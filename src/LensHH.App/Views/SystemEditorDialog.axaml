@@ -70,6 +70,15 @@
     <CheckBox Content="Robust Ray Aiming (wide angle)" IsChecked="{Binding RobustRayAiming}"
               IsEnabled="{Binding RayAiming}" Margin="20,0,0,0" />
 
+    <!-- Semi-diameter solve (how Auto diameters are derived) -->
+    <DockPanel>
+      <TextBlock Text="Auto Diameters:" Width="120" VerticalAlignment="Center" />
+      <ComboBox ItemsSource="{Binding SemiDiameterSolveModes}"
+                SelectedItem="{Binding SemiDiameterSolve}"
+                HorizontalAlignment="Stretch"
+                ToolTip.Tip="How Auto semi-diameters are derived. Real Ray sizes each surface to whichever real rays survive — the historical behaviour. Paraxial sizes it to the beam the design actually needs (marginal + chief height), with no ray tracing, so nothing can fail or be vignetted. Paraxial suits fast screening, and it also keeps edge-thickness and semi-diameter constraints meaningful on a design that has stopped passing light: with Real Ray the apertures shrink to fit the surviving rays, which quietly satisfies those constraints instead of violating them. Surfaces set to Fixed are unaffected. Changing this will move ET/EA/EG/SD values on an existing design." />
+    </DockPanel>
+
     <!-- Bound Handling (optimizer variable bounds) -->
     <DockPanel>
       <TextBlock Text="Bound Handling:" Width="120" VerticalAlignment="Center" />
