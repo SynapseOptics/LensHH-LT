@@ -42,6 +42,18 @@ namespace LensHH.Core.IO
         public bool PenalizeVignetting { get; set; }
 
         /// <summary>
+        /// How Auto semi-diameters are derived: from real traced rays (RealRay, the default and
+        /// the historical behaviour) or from the paraxial beam footprint (Paraxial). SYSTEM-WIDE,
+        /// and orthogonal to the per-surface Auto/Fixed mode — Fixed surfaces are unaffected.
+        /// </summary>
+        /// <remarks>
+        /// Absent from files written before 1.0.152, where it deserializes to RealRay (0) and the
+        /// design behaves exactly as it always did. Serialized by NAME via JsonStringEnumConverter,
+        /// so the enum can be reordered without breaking saved files.
+        /// </remarks>
+        public SemiDiameterSolve SemiDiameterSolve { get; set; } = SemiDiameterSolve.RealRay;
+
+        /// <summary>
         /// When true, per-field vignetting factors are auto-computed after each semi-diameter solve
         /// and applied as an entrance-pupil remap. The factors themselves are derived state and are
         /// NOT serialized — only this flag is; the factors are recomputed on load. See

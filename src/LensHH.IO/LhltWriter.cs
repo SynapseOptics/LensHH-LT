@@ -52,6 +52,7 @@ namespace LensHH.Core.IO
                 BoundHandling = system.BoundHandling,
                 TelecentricObjectSpace = system.TelecentricObjectSpace,
                 PenalizeVignetting = system.PenalizeVignetting,
+                SemiDiameterSolve = system.SemiDiameterSolve,
                 UseAutomaticVignettingFactors = system.UseAutomaticVignettingFactors,
                 GlassCatalogs = system.GlassCatalogs
             };

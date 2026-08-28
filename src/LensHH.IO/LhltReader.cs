@@ -60,6 +60,7 @@ namespace LensHH.Core.IO
                 BoundHandling = file.BoundHandling,
                 TelecentricObjectSpace = file.TelecentricObjectSpace,
                 PenalizeVignetting = file.PenalizeVignetting,
+                SemiDiameterSolve = file.SemiDiameterSolve,
                 UseAutomaticVignettingFactors = file.UseAutomaticVignettingFactors,
                 GlassCatalogs = file.GlassCatalogs ?? new System.Collections.Generic.List<string>()
             };
