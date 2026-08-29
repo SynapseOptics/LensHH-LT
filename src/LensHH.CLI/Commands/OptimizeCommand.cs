@@ -43,6 +43,12 @@ namespace LensHH.CLI.Commands
                 return;
             }
 
+            // Per-iteration LM trace (accept/reject, lambda, |step|, |grad|) to a file. Off unless
+            // LENSHH_LM_DEBUG is set. Set for EVERY subcommand, not just 'run': the inner LM of a
+            // basin/multistart hop is exactly where a stall needs to be observed.
+            var lmDebug = Environment.GetEnvironmentVariable("LENSHH_LM_DEBUG");
+            if (!string.IsNullOrEmpty(lmDebug)) LocalOptimizer.DebugLogPath = lmDebug;
+
             switch (args[0].ToLowerInvariant())
             {
                 case "run":
@@ -195,11 +201,6 @@ namespace LensHH.CLI.Commands
             var runDeriv = MeritDerivativeMode.Analytic;
             ParseEngineArgs(args, ref runEngine, ref runDeriv);
 
-            // Per-iteration LM trace (accept/reject, lambda, |step|, |grad|) to a file. Off unless
-            // LENSHH_LM_DEBUG is set — diagnosing a stall needs the ramp history, and inferring it
-            // from the final message alone is guesswork.
-            var lmDebug = Environment.GetEnvironmentVariable("LENSHH_LM_DEBUG");
-            if (!string.IsNullOrEmpty(lmDebug)) LocalOptimizer.DebugLogPath = lmDebug;
 
             // 'optimize try' captures a snapshot up-front so we can revert
             // if the user doesn't like the result. 'optimize run' skips
