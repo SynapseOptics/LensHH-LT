@@ -548,6 +548,7 @@ public partial class BasinHoppingHjLmDialogViewModel : ObservableObject
             // C# — which every chain silently takes for certain operands or variables — was
             // invisible from the dialog.
             AppendLog($"Engine: {result.ComputePathDescription}");
+            AppendLog($"Stalls: {result.StallSummary()}");
 
             // Re-evaluate to match what other panels show (config-aware in PRO via the factory)
             LensHH.Core.Analysis.SemiDiameterSolver.Solve(_session.System, _session.GlassCatalog, accurateApertures: true);

@@ -1115,6 +1115,7 @@ namespace LensHH.CLI.Commands
                 AnsiConsole.MarkupLine($"  Final Merit:   {result.FinalMerit:E6}");
                 AnsiConsole.MarkupLine($"  Chains: {optimizer.ChainsRun}, total hops: {result.Hops}, Accepted: {result.Accepted}, Rejected: {result.Rejected}, Glass Swaps: {result.GlassSwaps}");
                 AnsiConsole.MarkupLine($"  Engine:        {Markup.Escape(result.ComputePathDescription)}");
+                AnsiConsole.MarkupLine($"  Stalls:        {Markup.Escape(result.StallSummary())}");
                 AnsiConsole.MarkupLine($"  Evaluations: {result.EvaluationCount:N0}");
                 AnsiConsole.MarkupLine($"  Parallel-eval fires: {LensHH.Core.MeritFunction.MeritFunctionEvaluator.ParallelFireCount:N0}");
                 AnsiConsole.MarkupLine($"  Wall time: {result.Elapsed.TotalSeconds:F2} s");
