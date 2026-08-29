@@ -28,7 +28,7 @@
       <controls:GpuStatusChip Grid.Column="2" HorizontalAlignment="Left"
                               Margin="14,0,0,0" VerticalAlignment="Center" />
 
-      <Button Grid.Column="3" Content="Preview" Click="Preview_Click" Width="90" Margin="0,0,8,0"
+      <Button Grid.Column="3" Content="Preview" IsEnabled="{Binding !IsRunning}" Click="Preview_Click" Width="90" Margin="0,0,8,0"
               Tag="Show which merit/Jacobian engine this run will actually use, and why — before starting it."
               PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited" />
       <Button Grid.Column="4" Content="OK — Accept Results" Click="OK_Click" Width="180"

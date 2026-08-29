@@ -191,6 +191,10 @@ namespace LensHH.CLI.Commands
             var step = StepMethod.LevenbergMarquardt;
             int broydenRefresh = 5;
 
+            var runEngine = EngineMode.Native;
+            var runDeriv = MeritDerivativeMode.Analytic;
+            ParseEngineArgs(args, ref runEngine, ref runDeriv);
+
             // 'optimize try' captures a snapshot up-front so we can revert
             // if the user doesn't like the result. 'optimize run' skips
             // this — it's the auto-commit path, same as before.
@@ -237,8 +241,9 @@ namespace LensHH.CLI.Commands
                 ParallelEvaluation = true,
                 // Native C++ analytic Jacobian (bedrock path); auto-falls-back to C# for
                 // variable types native can't handle (SD / CA% / model-glass / multi-config).
-                EngineMode = LensHH.Core.MeritFunction.EngineMode.Native,
-                NativeDerivativeMode = LensHH.Core.NativeInterop.MeritDerivativeMode.Analytic
+                // engine=/analytic= override it — needed to A/B the two paths on one design.
+                EngineMode = runEngine,
+                NativeDerivativeMode = runDeriv
             };
 
             // Only assign Broyden when the user actually asked; otherwise leave it unset so

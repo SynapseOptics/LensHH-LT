@@ -15,7 +15,7 @@
     <!-- Bottom Buttons -->
     <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal"
                 HorizontalAlignment="Right" Spacing="8" Margin="0,6,0,0">
-      <Button Content="Preview" Click="Preview_Click" Width="90"
+      <Button Content="Preview" IsEnabled="{Binding !IsRunning}" Click="Preview_Click" Width="90"
               Tag="Show which merit/Jacobian engine this run will actually use, and why — before starting it."
               PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited" />
       <Button Content="OK — Accept Results" Click="OK_Click" Width="180"
