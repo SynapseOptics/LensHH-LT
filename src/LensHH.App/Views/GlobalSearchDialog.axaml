@@ -130,11 +130,13 @@
     </Border>
 
     <!-- ── Action bar ── -->
-    <Grid DockPanel.Dock="Bottom" ColumnDefinitions="Auto,*,Auto" Margin="0,8,0,0">
+    <Grid DockPanel.Dock="Bottom" ColumnDefinitions="Auto,*,Auto,Auto" Margin="0,8,0,0">
       <Button Grid.Column="0" Content="Save all…" Click="SaveAll_Click" IsEnabled="{Binding CanSaveAll}"/>
       <TextBlock Grid.Column="1" VerticalAlignment="Center" Margin="12,0" FontSize="11" Foreground="#888888"
                  Text="Click a card's Apply button to load that design into your system."/>
-      <Button Grid.Column="2" Content="Close" Width="90" Click="Close_Click"/>
+      <Button Grid.Column="2" Content="Preview" Width="90" Margin="0,0,8,0" Click="Preview_Click"
+              ToolTip.Tip="Show which merit/Jacobian engine this run will actually use, and why — before starting it."/>
+      <Button Grid.Column="3" Content="Close" Width="90" Click="Close_Click"/>
     </Grid>
 
     <!-- ── Gallery ── -->

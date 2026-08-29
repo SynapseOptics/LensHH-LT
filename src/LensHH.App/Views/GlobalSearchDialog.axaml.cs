@@ -45,6 +45,12 @@ namespace LensHH.App.Views
             }
         }
 
+        private async void Preview_Click(object? sender, RoutedEventArgs e)
+        {
+            if (DataContext is GlobalSearchDialogViewModel vm)
+                await ComputePathPreview.ShowAsync(this, vm.BuildComputePathPreview());
+        }
+
         private void Close_Click(object? sender, RoutedEventArgs e) => Close();
     }
 }

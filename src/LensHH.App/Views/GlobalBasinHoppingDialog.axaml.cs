@@ -25,6 +25,12 @@ public partial class GlobalBasinHoppingDialog : Window
         Close();
     }
 
+    private async void Preview_Click(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is GlobalBasinHoppingDialogViewModel vm)
+            await ComputePathPreview.ShowAsync(this, vm.BuildComputePathPreview());
+    }
+
     private void Cancel_Click(object? sender, RoutedEventArgs e)
     {
         VM.Stop();

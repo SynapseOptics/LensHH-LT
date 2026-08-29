@@ -157,6 +157,24 @@ public partial class GlobalBasinHoppingDialogViewModel : ObservableObject
         SelectedGlassSourceIndex = 0;
     }
 
+    /// <summary>
+    /// Text for the Preview button: what THIS dialog's current settings will actually run.
+    /// Delegates to ComputePathPlanner — the same code the optimizer uses to pick its path —
+    /// so the preview cannot disagree with the run.
+    /// </summary>
+    public string BuildComputePathPreview()
+        => LensHH.App.Views.ComputePathPreview.Build(
+            _session,
+            "Global Basin Hopping (Hooke-Jeeves + " + (SelectedStep?.Value ?? StepMethod.LevenbergMarquardt) + ")",
+            (EngineModeIndex == 1) ? EngineMode.Native : EngineMode.CSharp,
+            (DerivativeModeIndex == 1)
+                ? LensHH.Core.NativeInterop.MeritDerivativeMode.Analytic
+                : LensHH.Core.NativeInterop.MeritDerivativeMode.FiniteDifference,
+            UseBroydenUpdate,
+            gpuImageOperands: false,
+            "Every chain builds its local optimizer from these settings, so the path above is "
+          + "the path all chains take.");
+
     [RelayCommand]
     public async Task Start()
     {
@@ -310,6 +328,8 @@ public partial class GlobalBasinHoppingDialogViewModel : ObservableObject
         if (result != null)
         {
             _lastResult = result;
+            // What actually ran, so a silent fallback to C# is visible after the fact too.
+            AppendLog($"Engine: {result.ComputePathDescription}");
             LensHH.Core.Analysis.SemiDiameterSolver.Solve(_session.System, _session.GlassCatalog, accurateApertures: true);
             var freshEval = AppExtensions.CreateMeritEvaluator(_session.System, _session.GlassCatalog);
             double finalMerit = freshEval.Evaluate(_session.MeritFunction);

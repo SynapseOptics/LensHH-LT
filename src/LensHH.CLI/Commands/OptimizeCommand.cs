@@ -28,7 +28,7 @@ namespace LensHH.CLI.Commands
   [green]optimize global-basin [[hops=N]] [[lm=N]] [[hj=N]] [[sigma=V]] [[step=lm|psd2|psd3]] [[broyden=true|false]] [[glasssub=true|false]] [[rescale=true|false]] [[constrained]] [[onlypreferred=true|false]] [[catalog=NAME]] [[seed=N]] [[timeout=SEC]] [[globalmin=MIN]] [[savechains=DIR]] [[apply=N]] [[engine=native|csharp]] [[analytic=true|false]][/]  Global Basin Hopping HJ+LM: chains=physical cores (fixed); each chain restarts from the best of the OTHER chains when its no-improvement watchdog (timeout, default 600s) fires or hops are exhausted, until the global limit (globalmin, default 120) elapses or you cancel. savechains: write every chain's best design; apply=N: apply chain N's design instead of the global best.
   [green]optimize split [[splits=N]] [[trials=N]] [[lm=N]] [[postlm=N]] [[preglass=N]] [[postglass=N]] [[sigma=V]] [[constrained]] [[onlypreferred=true|false]] [[minglass=V]] [[maxglass=V]] [[minair=V]] [[maxair=V]] [[minedge=V]] [[skipsec=V]] [[tol=V]] [[damping=V]] [[step=lm|psd2|psd3]] [[broyden=true|false]] [[refresh=N]] [[catalog=NAME]] [[noglass]][/]  Split element synthesis. catalog: AGF name (e.g. catalog=S1_GLASS); resolved against catalogs\FilteredGlassCatalogues. noglass: skip the glass-trials phase entirely (split + LM polish only).
   [green]optimize spc [[elements=N]] [[topn=N]] [[scanmin=V]] [[scanmax=V]] [[steps=N]] [[epsilon=V]] [[glass=N]] [[lm=N]] [[step=lm|psd2|psd3]] [[broyden=true|false]] [[postlm=N]] [[catalog=NAME]] [[archive=true|false]] [[archivedir=PATH]] [[dop=N]] [[nullglass=NAME]] [[runinitlm=true|false]] [[initlm=N]] [[onlypreferred=true|false]] [[minglass=V]] [[maxglass=V]] [[minair=V]] [[maxair=V]] [[minedge=V]] [[constraintweight=V]][/]  Synthesis by SPC. catalog is mandatory (single AGF name or comma-separated list).
-  [green]optimize global [[models=N]] [[restarts=N]] [[trials=N]] [[lm=N]] [[step=lm|psd2|psd3]] [[broyden=true|false]] [[stall=N]] [[seed=N]] [[prepolish=N]] [[sigma=V]] [[cap=V]] [[glass=V]] [[native]] [[analytic]] [[out=DIR]][/]  Global Search: many seeded restarts from the start design; writes a pool of distinct .lhlt designs to DIR (default global_search_results). seed: base seed (run 1, then 2, … for independent batches). prepolish=0 (default) perturbs the raw start.
+  [green]optimize global [[models=N]] [[restarts=N]] [[trials=N]] [[lm=N]] [[step=lm|psd2|psd3]] [[broyden=true|false]] [[stall=N]] [[seed=N]] [[prepolish=N]] [[sigma=V]] [[cap=V]] [[glass=V]] [[engine=native|csharp]] [[analytic=true|false]] [[out=DIR]][/]  Global Search: many seeded restarts from the start design; writes a pool of distinct .lhlt designs to DIR (default global_search_results). seed: base seed (run 1, then 2, … for independent batches). prepolish=0 (default) perturbs the raw start.
   [green]optimize deseed [[pop=N]] [[step=lm|psd2|psd3]] [[broyden=true|false]] [[gens=N]] [[stall=N]] [[f=V]] [[cr=V]] [[glass=V]] [[curvlimit=V]] [[gpu]] [[seed=N]] [[emit=N]] [[refine=N]] [[out=DIR]][/]  Differential-Evolution seed generator: evolve a population from ranges (geometry + glass), then LM-refine each seed; writes refined seeds to DIR. glass = per-candidate glass-swap probability (%); curvlimit = curvature seed limit (0=auto); gpu = run the per-generation merit eval on the GPU (host DE loop). Prints a CPU/GPU timing breakdown.
   [green]optimize memetic [[rounds=N]] [[gens=N]] [[polish-count=N]] [[polish=lm|multistart]] [[pop=N]] [[step=lm|psd2|psd3]] [[broyden=true|false]] [[f=V]] [[cr=V]] [[clones=N]] [[sigma=V]] [[niche=V]] [[lm-iters=N]] [[seed=N]] [[gpu]] [[out=DIR]] [[resume=DIR]][/]  EXPERIMENTAL memetic DE: interleaves DE bursts (gens) with niched-best polish + reseed for `rounds`, returning `polish-count` diverse designs. gpu = population resident on the device. out: writes best/*.lhlt + population.json (restart with resume=DIR).
   [green]optimize cancel[/]                                     Cancel running optimization
@@ -705,7 +705,10 @@ namespace LensHH.CLI.Commands
             gs.Multistart.SigmaCap = 0.01;
             gs.Multistart.GlassSubstitutionProbability = 0.5;
             gs.Multistart.LmIterationsPerTrial = OptimizationDefaults.LmIterations;
-            bool useNative = false, analytic = false;
+            // 1.0.152: default to C++ Native + Analytic, matching the Global Search dialog.
+            // The legacy native= / analytic= switches below still force them on; engine=csharp
+            // and analytic=false turn them off.
+            bool useNative = true, analytic = true;
             string outDir = "global_search_results";
 
             for (int i = 1; i < args.Length; i++)
@@ -737,8 +740,9 @@ namespace LensHH.CLI.Commands
                     case "reduceddim": gs.Multistart.ReducedDimPerturbation = !IsOff(val); break;
                     case "basinmemory": gs.Multistart.BasinMemoryRestart = !IsOff(val); break;
                     case "metropolis": gs.Multistart.EnableMetropolis = !IsOff(val); break;
-                    case "native": useNative = true; break;
-                    case "analytic": analytic = true; break;
+                    case "native": useNative = !IsOff(val); break;
+                    case "engine": useNative = !val.Equals("csharp", StringComparison.OrdinalIgnoreCase); break;
+                    case "analytic": analytic = !IsOff(val) && !val.Equals("false", StringComparison.OrdinalIgnoreCase); break;
                     case "out": if (!string.IsNullOrEmpty(val)) outDir = val; break;
                 }
             }
@@ -1255,6 +1259,7 @@ namespace LensHH.CLI.Commands
                 AnsiConsole.MarkupLine($"  Initial Merit: {result.InitialMerit:E6}");
                 AnsiConsole.MarkupLine($"  Final Merit:   {result.FinalMerit:E6}");
                 AnsiConsole.MarkupLine($"  Chains: {result.ChainsRun}, restarts: {result.TotalRestarts}, total hops: {result.TotalHops}");
+                AnsiConsole.MarkupLine($"  Engine:        {Markup.Escape(result.ComputePathDescription)}");
                 AnsiConsole.MarkupLine($"  Wall time: {result.Elapsed.TotalSeconds:F1} s  ({(result.TimedOut ? "global time limit reached" : result.Cancelled ? "stopped by user" : "completed")})");
                 if (!string.IsNullOrEmpty(result.Message))
                     AnsiConsole.MarkupLine($"  {Markup.Escape(result.Message)}");
