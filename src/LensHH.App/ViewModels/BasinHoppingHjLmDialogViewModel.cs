@@ -400,6 +400,13 @@ public partial class BasinHoppingHjLmDialogViewModel : ObservableObject
                 optimizer.FilteredCatalogSearchPaths = filteredDir != null ? new[] { filteredDir } : Array.Empty<string>();
                 optimizer.OnProgress = p => Dispatcher.UIThread.Post(() =>
                     {
+                        // Announce every stall AS IT HAPPENS, before the throttle can swallow it.
+                        // An end-of-run summary was not enough: a stall fired, the chain restarted,
+                        // and there was no way to tell which detector did it or why.
+                        if (p.StallReason != BasinStallReason.None)
+                            AppendLog($"chain {p.Chain}   STALL: {p.StallReason} at hop {p.ChainHop + 1}"
+                                    + $"  ->  {p.StallResponse}");
+
                         if (!variableRowsPopulated && optimizer!.Variables.Count > 0)
                         {
                             variableRowsPopulated = true;
@@ -471,6 +478,13 @@ public partial class BasinHoppingHjLmDialogViewModel : ObservableObject
                 _batch.FilteredCatalogSearchPaths = filteredDir != null ? new[] { filteredDir } : Array.Empty<string>();
                 _batch.OnProgress = p => Dispatcher.UIThread.Post(() =>
                     {
+                        // Announce every stall AS IT HAPPENS, before the throttle can swallow it.
+                        // An end-of-run summary was not enough: a stall fired, the chain restarted,
+                        // and there was no way to tell which detector did it or why.
+                        if (p.StallReason != BasinStallReason.None)
+                            AppendLog($"chain {p.Chain}   STALL: {p.StallReason} at hop {p.ChainHop + 1}"
+                                    + $"  ->  {p.StallResponse}");
+
                         // Per-chain improvement logging lives in OnChainsProgress (it carries each
                         // chain's OWN best); here we only keep the throttled headline current.
                         if (headThrottle.ElapsedMilliseconds < 200) return;
