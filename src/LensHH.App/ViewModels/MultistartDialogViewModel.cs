@@ -274,6 +274,26 @@ public partial class MultistartDialogViewModel : ObservableObject
         }
     }
 
+    /// <summary>
+    /// Text for the Preview button: what THIS dialog's current settings will actually run.
+    /// Delegates to ComputePathPlanner — the same code the optimizer uses to pick its path —
+    /// so the preview cannot disagree with the run.
+    /// </summary>
+    public string BuildComputePathPreview()
+        => LensHH.App.Views.ComputePathPreview.Build(
+            _session,
+            "Multistart (" + (SelectedStep?.Value ?? StepMethod.LevenbergMarquardt) + ")",
+            (EngineModeIndex == 1) ? EngineMode.Native : EngineMode.CSharp,
+            (DerivativeModeIndex == 1)
+                ? LensHH.Core.NativeInterop.MeritDerivativeMode.Analytic
+                : LensHH.Core.NativeInterop.MeritDerivativeMode.FiniteDifference,
+            UseBroydenUpdate,
+            AppPreferences.GpuImageQuality,
+            "GPU candidate pre-screen (Preferences > GPU): "
+          + (AppPreferences.GpuPreScreen ? "ON" : "off")
+          + ". This is a separate stage from the merit engine above — it ranks perturbed "
+          + "candidates on the device; the local optimizer that follows still uses the path above.");
+
     [RelayCommand]
     public async Task StartOptimization()
     {

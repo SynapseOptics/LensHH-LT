@@ -22,6 +22,12 @@ public partial class OptimizationDialog : Window
         Close();
     }
 
+private async void Preview_Click(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is OptimizationDialogViewModel vm)
+            await ComputePathPreview.ShowAsync(this, vm.BuildComputePathPreview());
+    }
+
     private void Cancel_Click(object? sender, RoutedEventArgs e)
     {
         if (VM.IsRunning)

@@ -14,7 +14,7 @@
   <DockPanel Margin="12">
 
     <!-- ═══ Bottom Buttons ═══ -->
-    <Grid DockPanel.Dock="Bottom" ColumnDefinitions="Auto,Auto,*,Auto,Auto"
+    <Grid DockPanel.Dock="Bottom" ColumnDefinitions="Auto,Auto,*,Auto,Auto,Auto"
           Margin="0,6,0,0">
       <Button Grid.Column="0" Content="Start" Command="{Binding StartOptimizationCommand}"
               IsEnabled="{Binding !IsRunning}" Width="90" Margin="0,0,8,0"
@@ -28,9 +28,12 @@
       <controls:GpuStatusChip Grid.Column="2" HorizontalAlignment="Left"
                               Margin="14,0,0,0" VerticalAlignment="Center" />
 
-      <Button Grid.Column="3" Content="OK — Accept Results" Click="OK_Click" Width="180"
+      <Button Grid.Column="3" Content="Preview" Click="Preview_Click" Width="90" Margin="0,0,8,0"
+              Tag="Show which merit/Jacobian engine this run will actually use, and why — before starting it."
+              PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited" />
+      <Button Grid.Column="4" Content="OK — Accept Results" Click="OK_Click" Width="180"
               IsEnabled="{Binding IsComplete}" FontWeight="SemiBold" Margin="0,0,8,0" />
-      <Button Grid.Column="4" Content="Cancel — Revert" Click="Cancel_Click" Width="150" IsCancel="True" />
+      <Button Grid.Column="5" Content="Cancel — Revert" Click="Cancel_Click" Width="150" IsCancel="True" />
     </Grid>
 
     <!-- ═══ Help / description strip ═══ -->

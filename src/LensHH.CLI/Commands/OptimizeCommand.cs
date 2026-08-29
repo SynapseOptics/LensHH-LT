@@ -6,6 +6,7 @@ using System.Linq;
 using System.Text.Json;
 using System.Threading;
 using LensHH.Core.Models;
+using LensHH.Core.MeritFunction;
 using LensHH.Core.NativeInterop;
 using LensHH.Core.Optimization;
 using Spectre.Console;
@@ -22,16 +23,17 @@ namespace LensHH.CLI.Commands
         public string Help => @"[bold]optimize[/] - Optimization operations
   [green]optimize run [[maxiter=N]] [[tol=V]] [[damping=V]] [[step=lm|psd2|psd3]] [[broyden=true|false]] [[refresh=N]][/]  Run local optimization (auto-applies result to the system)
   [green]optimize try [[maxiter=N]] [[tol=V]] [[damping=V]] [[step=lm|psd2|psd3]] [[broyden=true|false]] [[refresh=N]][/]  Run local optimization and prompt to keep or revert
-  [green]optimize multistart [[trials=N]] [[lm=N]] [[initlm=N]] [[sigma=V]] [[cap=V]] [[growth=V]] [[glass=V]] [[constrained]] [[tol=V]] [[damping=V]] [[step=lm|psd2|psd3]] [[broyden=true|false]] [[refresh=N]] [[gpu]] [[mincurvchange=V]] [[gpufill=V]] [[gpuimage]][/]  Multistart optimization. gpu = sieve candidates on the GPU. mincurvchange (default 2) = GPU difference gate: only feed designs that differ from the running best by a glass swap or this % refractive-surface curvature change (0 = off; stops the GPU sieve acting as a pure refiner). gpufill (default 1) = population/device-fill multiplier: candidates per batch = gpufill × device-fill count (1 = fill the GPU once, 2 = double the cloud). gpuimage = trace the merit's image-quality operands (SPOT/WAVE/SENS) on the GPU each trial (separate from the pre-screen; needs a CUDA device, off-axis fields, ray-aiming off).
-  [green]optimize basin [[hops=N]] [[lm=N]] [[hj=N]] [[sigma=V]] [[hjstep=V]] [[hjmin=V]] [[tol=V]] [[damping=V]] [[step=lm|psd2|psd3]] [[broyden=true|false]] [[constrained]] [[glasssub=true|false]] [[onlypreferred=true|false]] [[catalog=NAME]] [[seed=N]] [[gpuimage]][/]  Basin hopping (Hooke-Jeeves + LM with random kicks between hops). gpuimage = trace image-quality operands (SPOT/WAVE/SENS) on the GPU (needs off-axis fields, ray-aiming off).
-  [green]optimize global-basin [[hops=N]] [[lm=N]] [[hj=N]] [[sigma=V]] [[step=lm|psd2|psd3]] [[broyden=true|false]] [[glasssub=true|false]] [[rescale=true|false]] [[constrained]] [[onlypreferred=true|false]] [[catalog=NAME]] [[seed=N]] [[timeout=SEC]] [[globalmin=MIN]] [[savechains=DIR]] [[apply=N]][/]  Global Basin Hopping HJ+LM: chains=physical cores (fixed); each chain restarts from the best of the OTHER chains when its no-improvement watchdog (timeout, default 600s) fires or hops are exhausted, until the global limit (globalmin, default 120) elapses or you cancel. savechains: write every chain's best design; apply=N: apply chain N's design instead of the global best.
+  [green]optimize multistart [[trials=N]] [[lm=N]] [[initlm=N]] [[sigma=V]] [[cap=V]] [[growth=V]] [[glass=V]] [[constrained]] [[tol=V]] [[damping=V]] [[step=lm|psd2|psd3]] [[broyden=true|false]] [[refresh=N]] [[gpu]] [[mincurvchange=V]] [[gpufill=V]] [[gpuimage]] [[engine=native|csharp]] [[analytic=true|false]][/]  Multistart optimization. gpu = sieve candidates on the GPU. mincurvchange (default 2) = GPU difference gate: only feed designs that differ from the running best by a glass swap or this % refractive-surface curvature change (0 = off; stops the GPU sieve acting as a pure refiner). gpufill (default 1) = population/device-fill multiplier: candidates per batch = gpufill × device-fill count (1 = fill the GPU once, 2 = double the cloud). gpuimage = trace the merit's image-quality operands (SPOT/WAVE/SENS) on the GPU each trial (separate from the pre-screen; needs a CUDA device, off-axis fields, ray-aiming off).
+  [green]optimize basin [[hops=N]] [[lm=N]] [[hj=N]] [[sigma=V]] [[hjstep=V]] [[hjmin=V]] [[tol=V]] [[damping=V]] [[step=lm|psd2|psd3]] [[broyden=true|false]] [[constrained]] [[glasssub=true|false]] [[onlypreferred=true|false]] [[catalog=NAME]] [[seed=N]] [[gpuimage]] [[engine=native|csharp]] [[analytic=true|false]][/]  Basin hopping (Hooke-Jeeves + LM with random kicks between hops). gpuimage = trace image-quality operands (SPOT/WAVE/SENS) on the GPU (needs off-axis fields, ray-aiming off).
+  [green]optimize global-basin [[hops=N]] [[lm=N]] [[hj=N]] [[sigma=V]] [[step=lm|psd2|psd3]] [[broyden=true|false]] [[glasssub=true|false]] [[rescale=true|false]] [[constrained]] [[onlypreferred=true|false]] [[catalog=NAME]] [[seed=N]] [[timeout=SEC]] [[globalmin=MIN]] [[savechains=DIR]] [[apply=N]] [[engine=native|csharp]] [[analytic=true|false]][/]  Global Basin Hopping HJ+LM: chains=physical cores (fixed); each chain restarts from the best of the OTHER chains when its no-improvement watchdog (timeout, default 600s) fires or hops are exhausted, until the global limit (globalmin, default 120) elapses or you cancel. savechains: write every chain's best design; apply=N: apply chain N's design instead of the global best.
   [green]optimize split [[splits=N]] [[trials=N]] [[lm=N]] [[postlm=N]] [[preglass=N]] [[postglass=N]] [[sigma=V]] [[constrained]] [[onlypreferred=true|false]] [[minglass=V]] [[maxglass=V]] [[minair=V]] [[maxair=V]] [[minedge=V]] [[skipsec=V]] [[tol=V]] [[damping=V]] [[step=lm|psd2|psd3]] [[broyden=true|false]] [[refresh=N]] [[catalog=NAME]] [[noglass]][/]  Split element synthesis. catalog: AGF name (e.g. catalog=S1_GLASS); resolved against catalogs\FilteredGlassCatalogues. noglass: skip the glass-trials phase entirely (split + LM polish only).
   [green]optimize spc [[elements=N]] [[topn=N]] [[scanmin=V]] [[scanmax=V]] [[steps=N]] [[epsilon=V]] [[glass=N]] [[lm=N]] [[step=lm|psd2|psd3]] [[broyden=true|false]] [[postlm=N]] [[catalog=NAME]] [[archive=true|false]] [[archivedir=PATH]] [[dop=N]] [[nullglass=NAME]] [[runinitlm=true|false]] [[initlm=N]] [[onlypreferred=true|false]] [[minglass=V]] [[maxglass=V]] [[minair=V]] [[maxair=V]] [[minedge=V]] [[constraintweight=V]][/]  Synthesis by SPC. catalog is mandatory (single AGF name or comma-separated list).
   [green]optimize global [[models=N]] [[restarts=N]] [[trials=N]] [[lm=N]] [[step=lm|psd2|psd3]] [[broyden=true|false]] [[stall=N]] [[seed=N]] [[prepolish=N]] [[sigma=V]] [[cap=V]] [[glass=V]] [[native]] [[analytic]] [[out=DIR]][/]  Global Search: many seeded restarts from the start design; writes a pool of distinct .lhlt designs to DIR (default global_search_results). seed: base seed (run 1, then 2, … for independent batches). prepolish=0 (default) perturbs the raw start.
   [green]optimize deseed [[pop=N]] [[step=lm|psd2|psd3]] [[broyden=true|false]] [[gens=N]] [[stall=N]] [[f=V]] [[cr=V]] [[glass=V]] [[curvlimit=V]] [[gpu]] [[seed=N]] [[emit=N]] [[refine=N]] [[out=DIR]][/]  Differential-Evolution seed generator: evolve a population from ranges (geometry + glass), then LM-refine each seed; writes refined seeds to DIR. glass = per-candidate glass-swap probability (%); curvlimit = curvature seed limit (0=auto); gpu = run the per-generation merit eval on the GPU (host DE loop). Prints a CPU/GPU timing breakdown.
   [green]optimize memetic [[rounds=N]] [[gens=N]] [[polish-count=N]] [[polish=lm|multistart]] [[pop=N]] [[step=lm|psd2|psd3]] [[broyden=true|false]] [[f=V]] [[cr=V]] [[clones=N]] [[sigma=V]] [[niche=V]] [[lm-iters=N]] [[seed=N]] [[gpu]] [[out=DIR]] [[resume=DIR]][/]  EXPERIMENTAL memetic DE: interleaves DE bursts (gens) with niched-best polish + reseed for `rounds`, returning `polish-count` diverse designs. gpu = population resident on the device. out: writes best/*.lhlt + population.json (restart with resume=DIR).
   [green]optimize cancel[/]                                     Cancel running optimization
-  [green]optimize variables[/]                                  List current variables";
+  [green]optimize variables[/]                                  List current variables
+  [green]optimize preview [[engine=native|csharp]] [[analytic=true|false]] [[broyden=true|false]] [[gpuimage]][/]  Report which merit/Jacobian engine a run would ACTUALLY use with these settings, and the reason for any downgrade. Same query the GUI's Preview button makes.";
 
         public void Execute(Session session, string[] args)
         {
@@ -86,10 +88,86 @@ namespace LensHH.CLI.Commands
                 case "variables":
                     ListVariables(session);
                     break;
+                case "preview":
+                    PreviewComputePath(session, args);
+                    break;
                 default:
                     AnsiConsole.MarkupLine($"[yellow]Unknown subcommand: {Markup.Escape(args[0])}[/]");
                     break;
             }
+        }
+
+        /// <summary>
+        /// Shared engine/derivative override parsing for the global optimizers, so
+        /// engine= / analytic= mean the same thing on every subcommand.
+        /// </summary>
+        private static void ParseEngineArgs(string[] args, ref EngineMode engine, ref MeritDerivativeMode deriv)
+        {
+            for (int i = 1; i < args.Length; i++)
+            {
+                var kv = args[i].Split(new[] { '=' }, 2);
+                if (kv.Length != 2) continue;
+                if (kv[0].Equals("engine", StringComparison.OrdinalIgnoreCase))
+                    engine = kv[1].Equals("csharp", StringComparison.OrdinalIgnoreCase)
+                           ? EngineMode.CSharp : EngineMode.Native;
+                else if (kv[0].Equals("analytic", StringComparison.OrdinalIgnoreCase))
+                    deriv = kv[1].Equals("false", StringComparison.OrdinalIgnoreCase)
+                          ? MeritDerivativeMode.FiniteDifference : MeritDerivativeMode.Analytic;
+            }
+        }
+
+        /// <summary>
+        /// The CLI face of the GUI's Preview button. Both call ComputePathPlanner — the same
+        /// code the optimizer itself calls — so this is a report, never a prediction.
+        /// </summary>
+        private void PreviewComputePath(Session session, string[] args)
+        {
+            var system = session.EnsureValidSystem();
+            var mf = session.EnsureMeritFunction();
+            var glassMgr = session.EnsureGlassCatalog();
+
+            var engine = EngineMode.Native;
+            var deriv = MeritDerivativeMode.Analytic;
+            bool broyden = true;
+            bool gpuImage = false;
+
+            for (int i = 1; i < args.Length; i++)
+            {
+                if (args[i].Equals("gpuimage", StringComparison.OrdinalIgnoreCase)) { gpuImage = true; continue; }
+                var kv = args[i].Split(new[] { '=' }, 2);
+                if (kv.Length != 2) continue;
+                switch (kv[0].ToLowerInvariant())
+                {
+                    case "engine":
+                        engine = kv[1].Equals("csharp", StringComparison.OrdinalIgnoreCase)
+                               ? EngineMode.CSharp : EngineMode.Native;
+                        break;
+                    case "analytic":
+                        deriv = kv[1].Equals("false", StringComparison.OrdinalIgnoreCase)
+                              ? MeritDerivativeMode.FiniteDifference : MeritDerivativeMode.Analytic;
+                        break;
+                    case "broyden":
+                        broyden = !kv[1].Equals("false", StringComparison.OrdinalIgnoreCase);
+                        break;
+                    case "gpuimage":
+                        gpuImage = !kv[1].Equals("false", StringComparison.OrdinalIgnoreCase);
+                        break;
+                }
+            }
+
+            var probe = new LocalOptimizer(system, mf, glassMgr);
+            probe.CollectVariables();
+
+            var plan = ComputePathPlanner.Plan(
+                system, mf, probe.Variables, engine, deriv, broyden,
+                forceEngineOverride: false,
+                requestedUseGpu: gpuImage,
+                gpuImageOperands: gpuImage);
+
+            AnsiConsole.WriteLine();
+            AnsiConsole.Write(plan.Report());
+            if (probe.Variables.Count == 0)
+                AnsiConsole.MarkupLine("[yellow]WARNING: no variables are defined — the run would stop immediately.[/]");
         }
 
         private void RunOptimization(Session session, string[] args, bool autoApply)
@@ -314,8 +392,18 @@ namespace LensHH.CLI.Commands
 
             var filteredPaths = new System.Collections.Generic.List<string>(FindFilteredCatalogPaths());
 
+            var engineMode = EngineMode.Native;
+            var derivMode = MeritDerivativeMode.Analytic;
+            ParseEngineArgs(args, ref engineMode, ref derivMode);
+
             var optimizer = new MultistartOptimizer(system, mf, glassMgr)
             {
+                // 1.0.152: match the GUI dialog, which has defaulted to C++ Native + Analytic
+                // since 1.0.115. The CLI left these at the engine-side C#/FiniteDifference
+                // defaults, so the same run took a different path in each surface. Override
+                // with engine=csharp / analytic=false.
+                EngineMode = engineMode,
+                NativeDerivativeMode = derivMode,
                 Settings = settings,
                 FilteredCatalogSearchPaths = filteredPaths.ToArray(),
                 UseGpuGridTrace = gpuImage,
@@ -943,8 +1031,18 @@ namespace LensHH.CLI.Commands
 
             // Always use the batch orchestrator: chains==1 routes to the single-chain
             // optimizer (identical to before), chains>1 runs N parallel walks.
+            var engineMode = EngineMode.Native;
+            var derivMode = MeritDerivativeMode.Analytic;
+            ParseEngineArgs(args, ref engineMode, ref derivMode);
+
             var optimizer = new BasinHoppingOptimizerBatch(system, mf, glassMgr)
             {
+                // 1.0.152: match the GUI dialog, which has defaulted to C++ Native + Analytic
+                // since 1.0.115. The CLI left these at the engine-side C#/FiniteDifference
+                // defaults, so the same run took a different path in each surface. Override
+                // with engine=csharp / analytic=false.
+                EngineMode = engineMode,
+                NativeDerivativeMode = derivMode,
                 Settings = settings,
                 FilteredCatalogSearchPaths = FindFilteredCatalogPaths(),
                 UseGpuGridTrace = gpuImage,
@@ -1000,6 +1098,7 @@ namespace LensHH.CLI.Commands
                 AnsiConsole.MarkupLine($"  Initial Merit: {result.InitialMerit:E6}");
                 AnsiConsole.MarkupLine($"  Final Merit:   {result.FinalMerit:E6}");
                 AnsiConsole.MarkupLine($"  Chains: {optimizer.ChainsRun}, total hops: {result.Hops}, Accepted: {result.Accepted}, Rejected: {result.Rejected}, Glass Swaps: {result.GlassSwaps}");
+                AnsiConsole.MarkupLine($"  Engine:        {Markup.Escape(result.ComputePathDescription)}");
                 AnsiConsole.MarkupLine($"  Evaluations: {result.EvaluationCount:N0}");
                 AnsiConsole.MarkupLine($"  Parallel-eval fires: {LensHH.Core.MeritFunction.MeritFunctionEvaluator.ParallelFireCount:N0}");
                 AnsiConsole.MarkupLine($"  Wall time: {result.Elapsed.TotalSeconds:F2} s");
@@ -1101,8 +1200,18 @@ namespace LensHH.CLI.Commands
             _cts = new CancellationTokenSource();
             Console.CancelKeyPress += OnCancelKeyPress;
 
+            var engineMode = EngineMode.Native;
+            var derivMode = MeritDerivativeMode.Analytic;
+            ParseEngineArgs(args, ref engineMode, ref derivMode);
+
             var optimizer = new GlobalBasinHoppingOptimizer(system, mf, glassMgr)
             {
+                // 1.0.152: match the GUI dialog, which has defaulted to C++ Native + Analytic
+                // since 1.0.115. The CLI left these at the engine-side C#/FiniteDifference
+                // defaults, so the same run took a different path in each surface. Override
+                // with engine=csharp / analytic=false.
+                EngineMode = engineMode,
+                NativeDerivativeMode = derivMode,
                 Settings = gs,
                 FilteredCatalogSearchPaths = FindFilteredCatalogPaths(),
             };

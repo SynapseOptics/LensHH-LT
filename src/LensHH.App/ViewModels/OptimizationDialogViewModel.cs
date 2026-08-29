@@ -117,6 +117,23 @@ public partial class OptimizationDialogViewModel : ObservableObject
         _session = session;
     }
 
+    /// <summary>
+    /// Text for the Preview button: what THIS dialog's current settings will actually run.
+    /// Delegates to ComputePathPlanner — the same code the optimizer uses to pick its path —
+    /// so the preview cannot disagree with the run.
+    /// </summary>
+    public string BuildComputePathPreview()
+        => LensHH.App.Views.ComputePathPreview.Build(
+            _session,
+            "Local optimization (" + (SelectedStep?.Value ?? StepMethod.LevenbergMarquardt) + ")",
+            // This dialog does not expose an engine choice — it always asks for the native
+            // analytic path and relies on the planner's fallbacks. Keep these two literals in
+            // step with StartOptimization below.
+            EngineMode.Native,
+            LensHH.Core.NativeInterop.MeritDerivativeMode.Analytic,
+            UseBroydenUpdate,
+            gpuImageOperands: false);
+
     [RelayCommand]
     public async Task StartOptimization()
     {

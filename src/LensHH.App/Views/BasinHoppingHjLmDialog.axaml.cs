@@ -25,6 +25,12 @@ public partial class BasinHoppingHjLmDialog : Window
         Close();
     }
 
+private async void Preview_Click(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is BasinHoppingHjLmDialogViewModel vm)
+            await ComputePathPreview.ShowAsync(this, vm.BuildComputePathPreview());
+    }
+
     private void Cancel_Click(object? sender, RoutedEventArgs e)
     {
         VM.Stop();

@@ -251,6 +251,24 @@ public partial class BasinHoppingHjLmDialogViewModel : ObservableObject
         SelectedGlassSourceIndex = 0;
     }
 
+    /// <summary>
+    /// Text for the Preview button: what THIS dialog's current settings will actually run.
+    /// Delegates to ComputePathPlanner — the same code the optimizer uses to pick its path —
+    /// so the preview cannot disagree with the run.
+    /// </summary>
+    public string BuildComputePathPreview()
+        => LensHH.App.Views.ComputePathPreview.Build(
+            _session,
+            "Basin Hopping (Hooke-Jeeves + " + (SelectedStep?.Value ?? StepMethod.LevenbergMarquardt) + ")",
+            (EngineModeIndex == 1) ? EngineMode.Native : EngineMode.CSharp,
+            (DerivativeModeIndex == 1)
+                ? LensHH.Core.NativeInterop.MeritDerivativeMode.Analytic
+                : LensHH.Core.NativeInterop.MeritDerivativeMode.FiniteDifference,
+            UseBroydenUpdate,
+            AppPreferences.GpuImageQuality,
+            "Each basin-hopping chain runs its own local optimizer with these settings, so the "
+          + "path above is the path every chain takes.");
+
     [RelayCommand]
     public async Task Start()
     {
@@ -526,6 +544,11 @@ public partial class BasinHoppingHjLmDialogViewModel : ObservableObject
 
         if (result != null)
         {
+            // What actually ran. Basin hopping used to report nothing here, so a fallback to
+            // C# — which every chain silently takes for certain operands or variables — was
+            // invisible from the dialog.
+            AppendLog($"Engine: {result.ComputePathDescription}");
+
             // Re-evaluate to match what other panels show (config-aware in PRO via the factory)
             LensHH.Core.Analysis.SemiDiameterSolver.Solve(_session.System, _session.GlassCatalog, accurateApertures: true);
             var freshEval = AppExtensions.CreateMeritEvaluator(
