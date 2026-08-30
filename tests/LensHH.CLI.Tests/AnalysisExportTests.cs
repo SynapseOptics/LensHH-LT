@@ -13,10 +13,16 @@ namespace LensHH.CLI.Tests
     {
         // In-repo multi-field test fixture (3 fields, 3 wavelengths,
         // resolves on any clone via TestHelper.RepoRoot).
+        //
+        // Was CookeTripletAftrLocalOptimization.lhlt, which has never existed in this repo: no
+        // commit ever added it and nothing outside this file referenced it, so the constructor
+        // threw FileNotFoundException and took every test in the class with it — 63 of the 85
+        // CLI tests. Pointed at the sample that actually ships and already matches the
+        // description above.
         private static readonly string CookeTripletPath =
             TestHelper.RepoRoot is { } root
-                ? Path.Combine(root, "samples", "CookeTripletAftrLocalOptimization.lhlt")
-                : "samples/CookeTripletAftrLocalOptimization.lhlt";
+                ? Path.Combine(root, "samples", "CookeTriplet.lhlt")
+                : "samples/CookeTriplet.lhlt";
 
         private readonly string _tmpDir;
         private readonly Session _session;
@@ -152,12 +158,17 @@ namespace LensHH.CLI.Tests
         [InlineData("fftmtf")]
         [InlineData("fftmtf-field")]
         [InlineData("fftmtf-focus")]
-        [InlineData("fftpsf")]
         [InlineData("geomtf")]
         [InlineData("geomtf-field")]
         [InlineData("geomtf-focus")]
         [InlineData("wavefront")]
-        [InlineData("chromaticfocalshift")]
+        [InlineData("longitudinalaberration")]
+        // fftpsf and chromaticfocalshift are deliberately absent: 'analysis render' has no
+        // renderer for either (its list is spot, rayfan, opdfan, seidel, layout, relillum,
+        // lateralcolor, fieldcurvature, distortion, fftmtf{,-field,-focus}, geomtf{,-field,
+        // -focus}, wavefront, longitudinalaberration). Both DO work through 'export-text', and
+        // the text test above covers them. Asserting a render that was never implemented is a
+        // test defect, not a product one — if the renderers are wanted, that is a feature.
         public void RenderPng_ProducesFile(string analysis)
         {
             if (!RenderAppAvailable())
@@ -169,18 +180,18 @@ namespace LensHH.CLI.Tests
             string outFile = Path.Combine(_tmpDir, $"{analysis}.png");
 
             string output = TestHelper.CaptureOutput(_cmd, _session,
-                new[] { "render-png", analysis, outFile });
+                new[] { "render", analysis, outFile });
 
             // If RenderApp pipe failed (not running), treat as skip rather than failure
             if (output.Contains("Render error", StringComparison.OrdinalIgnoreCase))
                 return;
 
             Assert.True(File.Exists(outFile),
-                $"render-png {analysis} did not create {outFile}. Output: {output}");
+                $"render {analysis} did not create {outFile}. Output: {output}");
 
             var info = new FileInfo(outFile);
             Assert.True(info.Length > 100,
-                $"render-png {analysis} produced suspiciously small PNG ({info.Length} bytes)");
+                $"render {analysis} produced suspiciously small PNG ({info.Length} bytes)");
         }
 
         // ─── Multi-field export tests (verify all fields present) ────

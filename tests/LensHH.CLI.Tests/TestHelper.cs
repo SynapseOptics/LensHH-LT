@@ -118,7 +118,11 @@ namespace LensHH.CLI.Tests
             var glassMgr = new LensHH.Core.Glass.GlassCatalogManager();
             if (RepoRoot != null)
             {
-                var catalogsDir = Path.Combine(RepoRoot, "catalogs");
+                // catalogs/Glass, not catalogs/: LoadCatalogsFromFolder uses
+                // Directory.GetFiles (non-recursive) and every .AGF lives in the Glass
+                // subfolder, so pointing at the parent silently loaded nothing and every
+                // glass lookup in these tests returned "No glasses found".
+                var catalogsDir = Path.Combine(RepoRoot, "catalogs", "Glass");
                 if (Directory.Exists(catalogsDir))
                     glassMgr.LoadCatalogsFromFolder(catalogsDir);
             }

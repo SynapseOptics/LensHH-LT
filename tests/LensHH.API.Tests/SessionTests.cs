@@ -17,7 +17,10 @@ namespace LensHH.API.Tests
             session.NewSystem();
 
             Assert.True(session.HasSystem);
-            Assert.Equal(3, session.System.Surfaces.Count); // object + stop + image
+            // object + the singlet's two surfaces + image. NewSystem() builds a real biconvex
+            // N-BK7 element and solves its image distance for marginal focus; the
+            // "object + stop + image" system it once produced is long gone.
+            Assert.Equal(4, session.System.Surfaces.Count);
             Assert.Single(session.System.Wavelengths);
             Assert.Single(session.System.Fields);
             Assert.Equal("New System", session.System.Title);
@@ -212,7 +215,8 @@ namespace LensHH.API.Tests
                 var session2 = new LensHHSession();
                 session2.Load(path);
                 Assert.Equal("Round Trip Test", session2.System.Title);
-                Assert.Equal(4, session2.System.Surfaces.Count); // obj + stop + added + image
+                // obj + the singlet's two surfaces + the one this test adds + image.
+                Assert.Equal(5, session2.System.Surfaces.Count);
             }
             finally
             {
@@ -231,6 +235,17 @@ namespace LensHH.API.Tests
 
     public class InterfaceTests
     {
+        /// <summary>catalogs/Glass walking up from the test binary, or null if not found.</summary>
+        private static string? FindCatalogsGlassFolder()
+        {
+            var dir = AppContext.BaseDirectory;
+            for (int i = 0; i < 12 && dir != null; i++, dir = Path.GetDirectoryName(dir))
+            {
+                var cat = Path.Combine(dir, "catalogs", "Glass");
+                if (Directory.Exists(cat)) return cat;
+            }
+            return null;
+        }
         [Fact]
         public void Session_ImplementsAllInterfaces()
         {
@@ -250,9 +265,15 @@ namespace LensHH.API.Tests
             var session = new LensHHSession();
             session.NewSystem();
 
+            // NewSystem() puts N-BK7 on the singlet, so ParaxialData cannot run until a catalog
+            // can resolve it — it validates glass first and throws otherwise. The old comment
+            // here claimed "no glass has no optical power", which stopped being true when
+            // NewSystem started building a real element.
+            var catalogs = FindCatalogsGlassFolder();
+            if (catalogs != null) session.LoadGlassCatalogs(catalogs);
+
             IAnalysis analysis = session;
             var parax = analysis.ParaxialData();
-            // New system with no glass has no optical power — EFL may be infinity or NaN
             Assert.NotNull(parax);
         }
     }

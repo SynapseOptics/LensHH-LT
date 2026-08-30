@@ -6,10 +6,10 @@
         x:DataType="vm:BasinHoppingHjLmDialogViewModel"
         Title="Basin-Hopping HJ+LM Optimization"
         Icon="avares://LensHH.App/Assets/icon_256.png"
-        Width="820" Height="640"
+        Width="840" Height="690"
         WindowStartupLocation="CenterOwner"
         CanResize="True"
-        MinWidth="700" MinHeight="500">
+        MinWidth="720" MinHeight="560">
 
   <DockPanel Margin="12">
 
@@ -154,7 +154,7 @@
              column 4 where the "Timeout (s):" label lives. Previously
              ColumnSpan="5" overlapped col 4 and produced visually garbled
              text ("improvememendut") where the two labels crashed together. -->
-        <CheckBox Grid.Row="6" Grid.Column="0" Grid.ColumnSpan="4" Content="Reseed from best design after no improvement"
+        <CheckBox Grid.Row="6" Grid.Column="0" Grid.ColumnSpan="4" Content="Reseed from best design" Margin="0,0,12,0"
                   IsChecked="{Binding NoImprovementEnabled}" IsEnabled="{Binding !IsRunning}" VerticalAlignment="Center"
                   Tag="When enabled, a chain that goes this long without improving its own best restarts from the best design any OTHER chain has found, and keeps its hop count. Unlike the hop-based trigger this does NOT require the chain to be out of contention — an explicit time limit is taken at face value. With a single chain there is nothing to borrow from, so the run ends instead (the original behaviour). The timer resets on every new best."
                   PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"
