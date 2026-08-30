@@ -130,6 +130,15 @@ public partial class BasinHoppingHjLmDialogViewModel : ObservableObject
     [ObservableProperty] private bool _enableMetropolis = true;
     [ObservableProperty] private double _metropolisTemperature = 0.0;   // 0 = autotune
     [ObservableProperty] private int _restartAfterStalledHops = 20;     // 0 = off (local walk only)
+
+    // ── Reseed-from-elite thresholds ──────────────────────────────────────────────────
+    // BOTH must hold before a chain is handed another chain's design. The hop count alone is
+    // not a stall — a Metropolis walk goes tens of hops between records while working fine, so
+    // triggering on that collapses every chain onto the leader. The merit factor is the test
+    // that says "and this chain is genuinely out of contention", and it is what keeps the
+    // population diverse. 0 hops disables the trigger entirely.
+    [ObservableProperty] private int _eliteRestartHops = 150;
+    [ObservableProperty] private double _eliteRestartMeritFactor = 10.0;
     [ObservableProperty] private double _restartSigma = 0.5;
 
     // Parallel independent chains: each a full hop walk from its own perturbation seed;
@@ -358,6 +367,8 @@ public partial class BasinHoppingHjLmDialogViewModel : ObservableObject
             EnableMetropolis = EnableMetropolis,
             MetropolisTemperature = MetropolisTemperature,
             RestartAfterStalledHops = RestartAfterStalledHops,
+                EliteRestartHops = EliteRestartHops,
+                EliteRestartMeritFactor = EliteRestartMeritFactor,
             RestartSigma = RestartSigma,
         };
 

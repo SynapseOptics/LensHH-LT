@@ -691,6 +691,7 @@ namespace LensHH.Mcp.Tools
             "Poll optimize_status(jobId) for progress (global best merit, restarts, hops); call optimize_cancel(jobId) to stop early. When the job completes the global-best design is auto-applied to the system. " +
             "Per-chain HJ-LM settings: maxHops (3000), lmIterationsPerHop (6000), hjStepsPerHop (30), initialPerturbSigma (0.001), useBroydenUpdate (unset = true for lm, false for psd2/psd3; pass explicitly to override), constrainedOnly (false — when true, only randomize bounded variables), glassSubstitution (false), rescaleOnGlassSwap (false), onlyPreferred (true), catalogs (''), seed (1234). " +
             "Exploration knobs (same defaults as single-chain basin_hopping): enableMetropolis (true — each chain accepts a worse design with probability exp(-dMerit/T) to walk between basins; false = greedy), metropolisTemperature (0 = autotune T from the first few uphill dMerit samples), restartAfterStalledHops (20 — after this many hops with no new global best a chain re-randomizes its shape variables full-range off the best; 0 = off), restartSigma (0.5 — magnitude of that long-jump kick). " +
+            "eliteRestartHops (150) + eliteRestartMeritFactor (10) gate the reseed-from-elite rescue: a chain is handed another chain's best design only when it has gone eliteRestartHops hops without a best of its own AND its own best is worse than eliteRestartMeritFactor x the best design found so far. BOTH are required - the hop count alone is not a stall (a Metropolis walk goes tens of hops between records while working fine) and triggering on it alone collapses every chain onto the leader. eliteRestartHops=0 disables the rescue. If your chains typically spread less than the factor, it will never fire; lower it to just under the spread you actually observe. " +
             "Mandatory no-improvement watchdog: noImprovementTimeoutSeconds (default 600; values <=0 are forced to 600 — it cannot be disabled). Global wall-clock budget: globalTimeoutMinutes (default 120; <=0 = run until cancelled). " +
             "Chain export: saveChainsFolder ('') — when set, every chain's best design is written there as a separate .lhlt (best-merit first).")]
         public string GlobalBasinHoppingStart(
@@ -701,6 +702,7 @@ namespace LensHH.Mcp.Tools
             int seed = 1234,
             bool enableMetropolis = true, double metropolisTemperature = 0,
             int restartAfterStalledHops = 20, double restartSigma = 0.5,
+            int eliteRestartHops = 150, double eliteRestartMeritFactor = 10.0,
             double noImprovementTimeoutSeconds = 600, double globalTimeoutMinutes = 120,
             string saveChainsFolder = "", string stepMethod = "lm")
         {
@@ -731,6 +733,8 @@ namespace LensHH.Mcp.Tools
                     EnableMetropolis = enableMetropolis,
                     MetropolisTemperature = metropolisTemperature,
                     RestartAfterStalledHops = restartAfterStalledHops,
+                    EliteRestartHops = eliteRestartHops,
+                    EliteRestartMeritFactor = eliteRestartMeritFactor,
                     RestartSigma = restartSigma,
                 },
             };
@@ -1136,6 +1140,7 @@ namespace LensHH.Mcp.Tools
             "Result auto-applies to the system when the job completes. " +
             "chains (default 0 = auto = one chain per physical core) runs that many independent hopping chains concurrently and returns the single global best (chains=1 = classic single chain). " +
             "Exploration knobs: enableMetropolis (true — accept a worse design with probability exp(-dMerit/T) to walk between basins; false = greedy), metropolisTemperature (0 = autotune), restartAfterStalledHops (20 — full-range long-jump restart after this many hops with no new best; 0 = off), restartSigma (0.5 — magnitude of that jump). " +
+            "eliteRestartHops (150) + eliteRestartMeritFactor (10) gate the reseed-from-elite rescue: a chain is handed another chain's best design only when it has gone eliteRestartHops hops without a best of its own AND its own best is worse than eliteRestartMeritFactor x the best design found so far. BOTH are required - the hop count alone is not a stall (a Metropolis walk goes tens of hops between records while working fine) and triggering on it alone collapses every chain onto the leader. eliteRestartHops=0 disables the rescue. If your chains typically spread less than the factor, it will never fire; lower it to just under the spread you actually observe. " +
             "Parameters mirror optimize_basin_hopping.")]
         public string BasinHoppingStart(
             int maxHops = OptimizationDefaults.MultistartTrials, int lmIterationsPerHop = OptimizationDefaults.LmIterations, int hjStepsPerHop = 30,
@@ -1146,6 +1151,7 @@ namespace LensHH.Mcp.Tools
             int seed = 1234,
             bool enableMetropolis = true, double metropolisTemperature = 0,
             int restartAfterStalledHops = 20, double restartSigma = 0.5,
+            int eliteRestartHops = 150, double eliteRestartMeritFactor = 10.0,
             int chains = 0, string saveChainsFolder = "", bool useGpuImageQuality = false, string stepMethod = "lm")
         {
             { var ge = _session.ValidateGlass(); if (ge != null) return ge; }
@@ -1172,6 +1178,8 @@ namespace LensHH.Mcp.Tools
                 EnableMetropolis = enableMetropolis,
                 MetropolisTemperature = metropolisTemperature,
                 RestartAfterStalledHops = restartAfterStalledHops,
+                EliteRestartHops = eliteRestartHops,
+                EliteRestartMeritFactor = eliteRestartMeritFactor,
                 RestartSigma = restartSigma,
             };
             if (useBroydenUpdate.HasValue) settings.UseBroydenUpdate = useBroydenUpdate.Value;
