@@ -653,8 +653,9 @@ third-, fifth- and seventh-order coefficients above — no rays are traced. It
 implements the analytic merit function of Robb, *JOSA* **66**, 1037 (1976).
 
 Because it costs a coefficient pass rather than a pupil of real rays, it is
-cheap enough to drive a search that would be impractical with `SPOT`. That is
-its purpose: screening and early convergence, not final evaluation.
+substantially faster than `SPOT`. Speed is the reason to reach for it: the
+ray-traced operands work perfectly well for the same searches, they simply cost
+more per evaluation.
 
 | Input | Meaning |
 |---|---|

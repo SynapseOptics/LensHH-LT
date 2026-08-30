@@ -137,6 +137,14 @@ those variables go quiet one by one as they reach their bounds and the search
 loses dimensions it still needs; under Reflect they keep contributing. It also
 helps the stochastic searches, whose random kicks routinely land out of range.
 
+**Starting from a power-free design.** A stack of flat plates, or any start with
+no real form yet, is the case where bounded thicknesses matter most. Left
+unbounded, the optimizer readily walks into negative centre thicknesses and
+crossed surfaces — geometry that cannot be built and that the search does not
+reliably come back from. Bounding the thicknesses makes those states
+unreachable rather than merely expensive, and Reflect is what keeps a variable
+responsive once it settles on one of those bounds.
+
 **When to stay on Sigmoid.** Unconstrained or lightly constrained designs, where
 nothing spends time on a limit, gain nothing from Reflect — and Sigmoid's
 smoothness is friendlier to LM's quadratic model. Sigmoid remains the default so
