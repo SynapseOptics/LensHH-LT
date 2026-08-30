@@ -54,6 +54,13 @@ and the programmatic interfaces.
   recipe for an LLM agent to chain `search_stock_lenses` →
   `insert_stock_lens` → analyze → `reverse_lens` → optimize against the
   bundled 7,600-part Edmund + Thorlabs + Ross Optical catalog.
+- **[Designing from a Skeleton](skeleton-design.md)** — starting from
+  parallel plates with no optical power and letting the optimizer find
+  the form, using aberration coefficients and paraxial ray data instead
+  of traced rays. Covers the merit function such a search needs, why the
+  image plane and colour need operands of their own, and why the
+  weighting has to be phased.
+
 - **[Sasian Design — Stock-Lens Triplet Pipeline](sasian-design.md)** —
   end-to-end MCP orchestrator (`sasian_design_start` / `_status` /
   `_cancel` / `_discard`) that builds a Cooke-triplet skeleton,
