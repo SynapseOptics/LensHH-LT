@@ -147,7 +147,7 @@ namespace LensHH.App.ViewModels
         public string BuildComputePathPreview()
             => LensHH.App.Views.ComputePathPreview.Build(
                 _session,
-                "Global Search (" + (SelectedStep?.Label ?? "LM") + ")",
+                "Global Search - " + (SelectedStep?.Label ?? "LM"),
                 (EngineModeIndex == 1) ? EngineMode.Native : EngineMode.CSharp,
                 (DerivativeModeIndex == 1)
                     ? LensHH.Core.NativeInterop.MeritDerivativeMode.Analytic

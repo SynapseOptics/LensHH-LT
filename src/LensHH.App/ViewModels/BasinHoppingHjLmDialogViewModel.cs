@@ -268,7 +268,7 @@ public partial class BasinHoppingHjLmDialogViewModel : ObservableObject
     public string BuildComputePathPreview()
         => LensHH.App.Views.ComputePathPreview.Build(
             _session,
-            "Basin Hopping (Hooke-Jeeves + " + (SelectedStep?.Label ?? "LM") + ")",
+            "Basin Hopping - Hooke-Jeeves + " + (SelectedStep?.Label ?? "LM"),
             (EngineModeIndex == 1) ? EngineMode.Native : EngineMode.CSharp,
             (DerivativeModeIndex == 1)
                 ? LensHH.Core.NativeInterop.MeritDerivativeMode.Analytic

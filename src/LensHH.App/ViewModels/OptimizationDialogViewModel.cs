@@ -125,7 +125,7 @@ public partial class OptimizationDialogViewModel : ObservableObject
     public string BuildComputePathPreview()
         => LensHH.App.Views.ComputePathPreview.Build(
             _session,
-            "Local optimization (" + (SelectedStep?.Label ?? "LM") + ")",
+            "Local optimization - " + (SelectedStep?.Label ?? "LM"),
             // This dialog does not expose an engine choice — it always asks for the native
             // analytic path and relies on the planner's fallbacks. Keep these two literals in
             // step with StartOptimization below.
