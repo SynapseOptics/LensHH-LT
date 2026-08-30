@@ -646,6 +646,55 @@ form.
 
 ---
 
+## PRMS — RMS Spot Size from the Aberration Coefficients
+
+`PRMS` estimates the RMS spot radius at a field point directly from the
+third-, fifth- and seventh-order coefficients above — no rays are traced. It
+implements the analytic merit function of Robb, *JOSA* **66**, 1037 (1976).
+
+Because it costs a coefficient pass rather than a pupil of real rays, it is
+cheap enough to drive a search that would be impractical with `SPOT`. That is
+its purpose: screening and early convergence, not final evaluation.
+
+| Input | Meaning |
+|---|---|
+| `Hy` | Fractional field height at which the spot is estimated (0 = axis, 1 = full field). |
+| `Wave` | Wavelength index, or blank for the primary wavelength. `0` means *all* wavelengths, combined using each wavelength's weight. |
+
+The value is referenced to the **centroid**, as Robb's method specifies, not to
+the chief-ray intercept.
+
+### What it does not see
+
+Three limits follow from what the coefficients are, and each one has bitten a
+real design:
+
+1. **It cannot see defocus.** Every aberration coefficient is referenced to the
+   *paraxial image plane*, so `PRMS` reports the spot at that plane no matter
+   where the image surface actually sits. A design can reach a low `PRMS` with
+   a large real spot simply because the image plane is in the wrong place. Pin
+   the plane with a `PY` operand at the image surface targeted to 0, and add a
+   `BFL` minimum so the focus cannot land inside the glass.
+
+2. **It cannot see colour.** Each wavelength is evaluated at its own paraxial
+   focus, so axial and lateral colour do not appear in the value even with
+   `Wave = 0`. Use `ACT` and `LCT` alongside it.
+
+3. **It is a truncated series.** The estimate is only as good as the orders it
+   includes, so it degrades where the expansion does — at large aperture, large
+   field, or on strongly aspheric surfaces.
+
+### Weighting it against the geometry
+
+`PRMS` and the coefficient operands are numerically small next to boundary
+operands like `EG` and `EA`, which are zero while satisfied and large when
+violated. Starting from a poor design, a heavy image-quality weight can buy
+spot size by driving the geometry negative — surfaces crossing before the rim.
+Watch the edge-thickness operands as the tell, and raise image-quality weights
+after the geometry is holding rather than before.
+
+---
+
 ## Arithmetic Operands
 
 Derive new values from other operands already in the list. All operand

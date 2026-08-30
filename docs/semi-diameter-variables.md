@@ -27,6 +27,25 @@ Enable **[automatic vignetting factors](vignetting-factors.md)** in the
 System settings; it is the setting that ties the moving apertures to
 the merit function's pupil sampling.
 
+## How Auto semi-diameters are solved
+
+A surface set to **Auto** has its semi-diameter computed for you. Two solve
+modes decide how, set in System settings and applied to every Auto surface at
+once:
+
+| Mode | How the semi-diameter is obtained |
+|---|---|
+| **Real ray** (default) | Traces the pupil-edge rays — the Y meridian and the ±45° diagonals — at every field and wavelength, and takes the largest incident height at each surface. |
+| **Paraxial** | Sizes each surface to the paraxial beam footprint instead: the marginal and chief ray heights, without tracing real rays. |
+
+Both then apply the surface's **clear-aperture percent** if one is set, and
+neither touches a surface marked Fixed.
+
+The difference shows up where real rays depart from the paraxial ones — at
+large aperture or field, and on strongly aspheric surfaces. Real-ray mode sizes
+to the beam that is actually there; Paraxial mode sizes to where first-order
+theory says it would be.
+
 ## Enabling a semi-diameter variable
 
 In **Surface Properties → Variable / Pickup tab**, the

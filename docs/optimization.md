@@ -31,6 +31,61 @@ Skip step 1 if you start from a known-good design; never skip step 3.
 | **Global Basin Hopping** | The deepest *single* answer — many parallel Basin-Hopping (HJ+LM) chains that pool their best basin and reseed each stalled chain from the others' elite, running until you stop. The most thorough escape for one design when you can spend the compute. | Surveying many forms or quick iteration — it pours all chains into one answer (use Global Multi Start for a gallery) and is the most compute-intensive. |
 | **Global Evolutionary Optimization** | Building a *gallery* of polished starting designs from a poor or power-free start (e.g. parallel plates) by evolving a whole population in parallel — GPU-accelerated. The fastest "no design → many viable forms" route. | Driving a single chosen design to its absolute lowest merit. |
 
+## Preview: what will actually run (new in 1.0.152)
+
+Every optimizer dialog has a **Preview** button next to OK/Cancel. It reports
+what the run will do *before* you start it, and it is worth using whenever a run
+is slower or worse than you expected.
+
+The reason it exists: the dialogs let you choose a merit engine and a derivative
+mode, but the optimizer silently overrides those for designs it cannot handle,
+and there was no way to see that it had. A run could sit on the slower path for
+a whole session with no indication.
+
+Preview reports:
+
+- **the merit/Jacobian engine that will actually be used** — C# or native C++,
+  finite-difference or analytic;
+- **why, if it differs from what you selected** — naming the variable or operand
+  responsible;
+- **whether the GPU takes part**, and if not, why not;
+- the variable and operand counts, and whether the native engine loaded.
+
+```
+WILL RUN:  C# Finite-Difference (fell back from Native: model-glass variables)
+
+Requested: Native Analytic
+
+DOWNGRADED, because:
+  model-glass variables
+
+Also:
+  - Native engine: loaded (v0.1.0).
+  - 21 variable(s), 27 merit operand(s).
+  - GPU: not requested - the merit runs on the CPU.
+```
+
+Preview asks the same code the optimizer uses to choose its path, so it cannot
+disagree with the run. It is disabled while a run is in progress.
+
+The same query is available from the CLI as `optimize preview`, which accepts
+`engine=`, `analytic=`, `broyden=` and `gpuimage` so you can test a
+configuration before committing to it.
+
+### Why a run might not use the engine you picked
+
+The native analytic path does not cover everything. These send a run to the C#
+finite-difference engine instead, and Preview names whichever applies:
+
+| Cause | Note |
+|---|---|
+| Semi-diameter / clear-aperture variables | Their merit dependence is ray clipping, which the analytic Jacobian cannot represent. |
+| Model-glass variables | No model-index support in the native batched path. |
+| Paraxial power variables | Optimized in reciprocal (diopter) space. |
+| Ray-angle operands `RI`/`RE`/`RIT`/`RET` with analytic derivatives | The native angle derivative diverges off-axis. |
+| Paraxial ray operands `PY`/`PZ`/`PL`/`PX`/`PM`/`PN` under a non-EPD aperture | Their launch height *is* the pupil radius, which F/# and object-space NA derive from EFL. Under an EPD aperture these run native analytic. |
+| Automatic vignetting factors | The per-field pupil remap exists only in the managed trace. |
+
 ## Variables
 
 The optimizer moves any parameter marked **Variable** in the Surfaces
@@ -818,11 +873,11 @@ Glass swaps and continuous-variable hops cooperate: a swap that
 gets accepted often stays in the design while later hops fine-tune
 curvatures and thicknesses around it.
 
-![The Basin-Hopping HJ+LM dialog. Below the hop / LM / HJ budgets and the glass-substitution controls, the **exploration** row governs how the walk moves between basins — **Metropolis walk** with its **Temp**, and the full-range long-jump restart tuned by **Restart@stall** and **Restart σ**. **Chains** sets how many independent walks run in parallel (0 = one per physical core).](images/BasinHoppingSettings.png)
+![The Basin-Hopping HJ+LM dialog. Below the hop / LM / HJ budgets and the glass-substitution controls, the **exploration** row governs how the walk moves between basins — **Metropolis walk** with its **Temp**, and the full-range long-jump restart tuned by **Restart@stall** and **Restart σ**. **Chains** sets how many independent walks run in parallel (0 = one per physical core). **Reseed from best design** and the **Reseed after / if worse than** row control when a chain that has fallen behind is handed another chain's design, and **Preview** reports which merit engine the run will actually use.](images/BasinHoppingSettings.png)
 
 | Setting | Default | Meaning |
 |---|---|---|
-| **Hops** | 3000 | Outer-loop cap **per chain**. With **Stop on no improvement** on (the usual mode) a chain plateaus and stops long before this — the cap is just a backstop. Lower it only if you want a hard wall on runtime. |
+| **Hops** | 3000 | Outer-loop cap **per chain**. Reached less often than it looks: per-hop cost climbs as a design converges, so a long run can end on the clock rather than the cap. Lower it if you want the run to finish on its own. |
 | **LM / Hop** | 6000 | Max LM iterations per hop. LM stops early on tolerance once a hop converges (~30 iterations for an easy basin), so this is generous *headroom*, not a fixed cost — a hop that is still improving is never cut off. Reduce only if you deliberately want shallow, cheap hops. |
 | **HJ Steps** | 30 | Maximum Hooke-Jeeves steps per hop before handing off to LM. 30 is balanced; 0 disables HJ entirely. |
 | **Sigma** | 0.001 | *Starting* value of the Gaussian-perturbation scale. Sigma is adapted automatically during the run (see below). 0.001 is sufficient even for severe starts; you rarely need to raise it. |
@@ -833,7 +888,8 @@ curvatures and thicknesses around it.
 | **Only randomize constrained variables** | off | Limit perturbation to bounded variables. Useful for surgical exploration when most variables are already where you want them. |
 | **Glass Substitution** | off | Enable glass swaps. Pick the source from the **Glass Source** dropdown — filtered catalogs (small curated lists, cheap) or one of the loaded full catalogs (broad exploration, slower). |
 | **Glass Source** | first filtered catalog | Pool used when Glass Substitution is on. Filtered catalogs in `<install>/catalogs/Filtered/` are typically 30–100 glasses curated by status, manufacturer, refractive-index range, etc. See [Glass Catalogs](glass-catalogs.md). |
-| **Stop on no improvement / Timeout (s)** | off / 600 | Per-chain watchdog. When on, a chain ends early if *its own* best merit hasn't improved within this many seconds — see [Stop on no improvement](#stop-on-no-improvement). |
+| **Reseed from best design / Timeout (s)** | off / 600 | Per-chain watchdog. When on, a chain whose *own* best merit hasn't improved within this many seconds is reseeded from the best design found so far (a lone chain stops instead) — see [Reseed from best design after no improvement](#reseed-from-best-design-after-no-improvement). |
+| **Reseed after / if worse than** | 150 hops / 10 × elite | Hand a chain another chain's design once it has gone this long without a best of its own **and** is this far out of contention — see [Reseeding a chain that has fallen behind](#reseeding-a-chain-that-has-fallen-behind-new-in-10152). 0 hops disables it. |
 | **Metropolis walk** | on | Governs how a *non-improving* hop is handled. **On** (default): the chain may still accept a *worse* design as its next centre with probability `exp(−ΔMerit/T)`, so it can step through a worse basin to reach a better one — thorough exploration. **Off**: *greedy* hopping — every non-improving hop is rejected and the chain restores to its best. Greedy converges quickly but can stick in the first basin. |
 | **Temp** | 0 (autotune) | Metropolis temperature *T* in `exp(−ΔMerit/T)`. **0** autotunes it to the mean of the first several uphill `\|ΔMerit\|` samples. Larger *T* accepts more worse moves (more exploration). Ignored when Metropolis walk is off. |
 | **Restart@stall** | 20 | Full-range "long-jump" restart trigger (see [Escaping a stalled search](#escaping-a-stalled-search-full-range-restarts) below). After this many consecutive hops with no new global best, the chain re-randomizes its *shape* variables across their whole range and continues from there. **0** disables it — a pure local walk that only reaches basins near the start. |
@@ -862,6 +918,46 @@ local minimum. The restart is on by default and needs no setup; since 1.0.146
 you can tune *when* it fires (**Restart@stall**, in hops) and *how far* it
 jumps (**Restart σ**) from the dialog, or disable it entirely by setting
 **Restart@stall** to 0.
+
+### Reseeding a chain that has fallen behind (new in 1.0.152)
+
+A full-range restart sends a chain somewhere new, but it is still a blind throw
+from where that chain already is. When several chains are running, one of them
+has usually already found something better — and a chain that is hopelessly
+behind is better off starting from that than from another random jump.
+
+A chain is handed the best design found by **another** chain when **both** of
+these hold:
+
+| Control | Default | Meaning |
+|---|---|---|
+| **Reseed after** | 150 hops | Hops with no new best *of its own*. |
+| **if worse than** | 10 × elite | Its own best must be worse than this multiple of the best design any chain has found. |
+
+**Both conditions are required, and the second one is the important one.** A
+chain that has gone quiet is not necessarily stuck: a Metropolis walk accepts
+uphill moves and routinely goes tens of hops between records while working
+perfectly well. Reseeding on the hop count alone would move nearly every chain
+onto the leader's design within the first few tens of hops — ten chains all
+exploring one basin is one chain with ten times the noise, and if that basin is
+a poor one, nothing is left to escape it. The merit factor is what keeps
+productive chains independent: a chain doing well by its own lights is never
+reseeded, however quiet it has been.
+
+The chain holding the elite is never reseeded from itself, and the reseeded
+chain **keeps its hop count** — it is continuing, not starting over.
+
+Set **Reseed after** to 0 to switch the mechanism off entirely.
+
+> **Choosing the factor.** If your chains typically finish within a factor of
+> two of each other, a factor of 10 will never fire and the rescue does nothing.
+> Read the per-chain merits in the Chains tab after a run and set the factor
+> below the spread you actually see. Higher keeps more independent lineages;
+> lower propagates a good design faster at the cost of diversity.
+
+This is distinct from **Restart@stall**, which is the same chain restarting
+*itself* from its *own* best. That one keeps the chain in its own lineage and is
+what a single-chain run relies on; this one deliberately crosses lineages.
 
 ### Parallel chains
 
@@ -897,32 +993,39 @@ tabs as it runs.
 > set Chains to your *logical* core count for ~40 % more throughput at the
 > cost of a busier system.
 
-### Stop on no improvement
+### Reseed from best design after no improvement
 
-Long runs often plateau well before they hit the **Hops** cap. The
-**Stop on no improvement** watchdog ends a run that has gone quiet so you
-don't pay for hops that aren't buying anything. Tick the box and set
+Long runs often plateau well before they hit the **Hops** cap. This watchdog
+gives a chain that has gone quiet something better to do. Tick the box and set
 **Timeout (s)** to the idle window you're willing to wait.
 
-The watchdog is **per chain, and each chain is independent**:
+The watchdog is **per chain**. Each chain runs its own timer, and the timer
+resets **only** when *that chain's own* best merit strictly improves — activity
+alone (rejected hops, equal-merit basins) does not reset it. The check happens
+**between hops**, so an in-progress hop always finishes and a long hop can
+overshoot the timeout by up to one hop's duration.
 
-- Each chain runs its own timer. The timer resets **only** when *that
-  chain's own* best merit makes a strict improvement — activity alone
-  (rejected hops, equal-merit basins) does not reset it.
-- A chain stops itself once its timer exceeds the timeout. The check
-  happens **between hops**, so an in-progress hop always finishes — a
-  long hop can overshoot the timeout by up to one hop's duration.
-- There is **no cross-chain coordination**. One chain finding a new
-  *global* best does not reset any other chain's timer; a stalled chain
-  stops and frees its core even while another chain is still improving.
-- With *N* parallel chains the whole run finishes when the **last**
-  chain stops (or any chain reaches **Hops**, or you press **Stop**).
-  Chains therefore time out at different wall-clock moments.
+What happens when it fires depends on whether there is anything to borrow:
 
-The timeout measures wall-clock time, not hop count, so its practical
-length depends on how long each hop takes (`LM/Hop`, variable count,
-quadrature density). For `Chains = 1` the watchdog behaves identically —
-it's simply the one chain's timer.
+- **With more than one chain**, the quiet chain is reseeded from the best design
+  found so far and keeps going. Unlike the hop-based trigger above, this does
+  **not** apply the merit-factor test — if you have asked for a hard limit on
+  idle time, it is taken at face value.
+- **With a single chain** there is no sibling to borrow from, so the run ends —
+  which is what this setting has always done, and what "no improvement for N
+  seconds" can mean when a chain is on its own.
+
+*Changed in 1.0.152: with parallel chains this used to stop the chain. It now
+reseeds it, which is why the label reads "Reseed from best design" rather than
+"Stop on no improvement".*
+
+The timeout measures wall-clock time, not hop count, so its practical length
+depends on how long each hop takes (`LM/Hop`, variable count, quadrature
+density). Per-hop cost is not constant across a run: as a design converges the
+inner LM has more work to do before it converges, so late hops can cost an order
+of magnitude more than early ones. If a run is not reaching its **Hops** cap in
+the time you expect, that is usually why — lower **Hops** rather than assume a
+chain has stopped.
 
 ### Saving every chain's design
 
@@ -1151,7 +1254,7 @@ Watch for two patterns:
 - **Long flat plateau.** Global best unchanged for a long stretch.
   Either you're at the best form for the chosen topology and glass pool,
   or you need a larger Sigma, more variables, or a broader substitution
-  catalog — that's what **Stop on no improvement** is for.
+  catalog — that's what the **Reseed from best design** watchdog is for.
 
 ## Global Basin Hopping (HJ + LM)
 
