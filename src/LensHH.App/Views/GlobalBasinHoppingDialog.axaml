@@ -131,7 +131,7 @@
                   GotFocus="Help_GotFocus" LostFocus="Help_LostFocus" />
 
         <!-- Row 3: mandatory no-improvement watchdog (checkbox locked ON) + rescale -->
-        <CheckBox Grid.Row="6" Grid.Column="0" Grid.ColumnSpan="4" Content="Stop on no improvement"
+        <CheckBox Grid.Row="6" Grid.Column="0" Grid.ColumnSpan="4" Content="Stop on no improvement" Margin="0,0,12,0"
                   IsChecked="True" IsEnabled="False" VerticalAlignment="Center"
                   Tag="Always on for Global Basin-Hopping: a chain restarts from the best of the OTHER chains when its best merit hasn't improved within the timeout. Only the timeout is editable."
                   PointerEntered="Help_PointerEntered" PointerExited="Help_PointerExited"

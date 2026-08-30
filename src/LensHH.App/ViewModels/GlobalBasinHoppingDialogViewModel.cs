@@ -174,7 +174,7 @@ public partial class GlobalBasinHoppingDialogViewModel : ObservableObject
     public string BuildComputePathPreview()
         => LensHH.App.Views.ComputePathPreview.Build(
             _session,
-            "Global Basin Hopping (Hooke-Jeeves + " + (SelectedStep?.Value ?? StepMethod.LevenbergMarquardt) + ")",
+            "Global Basin Hopping (Hooke-Jeeves + " + (SelectedStep?.Label ?? "LM") + ")",
             (EngineModeIndex == 1) ? EngineMode.Native : EngineMode.CSharp,
             (DerivativeModeIndex == 1)
                 ? LensHH.Core.NativeInterop.MeritDerivativeMode.Analytic

@@ -51,6 +51,10 @@ Preview reports:
 - **whether the GPU takes part**, and if not, why not;
 - the variable and operand counts, and whether the native engine loaded.
 
+![The Compute path preview modal, opened from the Basin Hopping dialog. It names the algorithm and step method, then the path that will run, the path that was requested, and — when the two differ — the reason. The **Also** block reports whether the native engine loaded, the variable and operand counts, and whether the GPU takes part. The closing note is dialog-specific: for Basin Hopping it points out that every chain builds its local optimizer from these settings, so one path describes them all.](images/ComputePathPreview.png)
+
+When the requested path *cannot* be used, the report says so and names the cause:
+
 ```
 WILL RUN:  C# Finite-Difference (fell back from Native: model-glass variables)
 
@@ -58,11 +62,6 @@ Requested: Native Analytic
 
 DOWNGRADED, because:
   model-glass variables
-
-Also:
-  - Native engine: loaded (v0.1.0).
-  - 21 variable(s), 27 merit operand(s).
-  - GPU: not requested - the merit runs on the CPU.
 ```
 
 Preview asks the same code the optimizer uses to choose its path, so it cannot
@@ -1297,7 +1296,7 @@ Only-randomize-constrained, the Glass Source, the **Metropolis walk** (with its
 behave identically *inside* each episode. The differences are the three controls
 that govern the global loop:
 
-![The Global Basin-Hopping HJ+LM dialog. The per-chain knobs match Basin Hopping — including the **Metropolis walk** / **Temp** and the **Restart@stall** / **Restart σ** long-jump restart — while **Global (min)** caps the whole run and **Stop on no improvement** is locked on (only its Timeout is editable), because the restart-from-elite migration between chains depends on episodes being allowed to stall.](images/GlobalBasinHoppingSettings.png)
+![The Global Basin-Hopping HJ+LM dialog. The per-chain knobs match Basin Hopping — including the **Metropolis walk** / **Temp** and the **Restart@stall** / **Restart σ** long-jump restart — while **Global (min)** caps the whole run and **Stop on no improvement** is locked on (only its Timeout is editable), because the restart-from-elite migration between chains depends on episodes being allowed to stall. The **Reseed after / if worse than** row is the within-episode rescue, and it means the same thing here as in Basin Hopping.](images/GlobalBasinHoppingSettings.png)
 
 | Setting | Default | Meaning |
 |---|---|---|
