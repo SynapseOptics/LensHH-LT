@@ -24,6 +24,7 @@ namespace LensHH.Core.IO
             var wavelengthWeights = new List<double>();
             var fieldAnglesY = new List<double>();
             var fieldWeights = new List<double>();
+            var catalogsSeen = new List<string>();
             int refWavelength = 1; // 1-indexed
             double unitScale = 1.0; // default mm
             Surface? currentSurface = null;
@@ -100,7 +101,7 @@ namespace LensHH.Core.IO
                     case "SO": // Object surface
                     case "S":  // Regular surface
                     case "SI": // Image surface
-                        currentSurface = ParseSurfaceLine(parts, keyword, surfIdx);
+                        currentSurface = ParseSurfaceLine(parts, keyword, surfIdx, catalogsSeen);
                         surfaces.Add(currentSurface);
                         surfIdx++;
                         break;
@@ -200,6 +201,13 @@ namespace LensHH.Core.IO
             // Populate system
             system.Surfaces = surfaces;
 
+            // Glass catalogs named by NAME_CATALOG suffixes. Leaving this empty
+            // makes every glass lookup fall back to searching all loaded
+            // catalogs, which silently binds names to the wrong glass data.
+            foreach (var cat in catalogsSeen)
+                if (!system.GlassCatalogs.Contains(cat))
+                    system.GlassCatalogs.Add(cat);
+
             // Wavelengths
             for (int i = 0; i < wavelengths.Count; i++)
             {
@@ -227,7 +235,8 @@ namespace LensHH.Core.IO
             return system;
         }
 
-        private static Surface ParseSurfaceLine(string[] parts, string keyword, int index)
+        private static Surface ParseSurfaceLine(string[] parts, string keyword, int index,
+                                                ICollection<string> catalogsSeen)
         {
             var surface = new Surface { Index = index };
 
@@ -261,10 +270,27 @@ namespace LensHH.Core.IO
                 }
                 else
                 {
-                    // Remove catalog suffix like "_SCHOTT"
-                    int underscoreIdx = material.IndexOf('_');
+                    // Split off a catalog suffix like "_SCHOTT". The catalog is
+                    // recorded on the system, not discarded: without it a bare
+                    // glass name is ambiguous and resolves against whatever
+                    // catalog happens to be loaded first.
+                    //
+                    // Only a recognised vendor catalog counts as a suffix —
+                    // exactly the set CodeVWriter is willing to emit. Glass
+                    // NAMES may themselves contain an underscore (the MoldStress
+                    // extension generates MS_PMMA, MS_POLYSTYR), and splitting
+                    // those would invent the glass "MS" in a catalog "PMMA".
+                    int underscoreIdx = material.LastIndexOf('_');
                     if (underscoreIdx > 0)
-                        material = material.Substring(0, underscoreIdx);
+                    {
+                        string cat = material.Substring(underscoreIdx + 1).Trim();
+                        if (CodeVVendorCatalogs.Contains(cat))
+                        {
+                            if (!catalogsSeen.Contains(cat))
+                                catalogsSeen.Add(cat);
+                            material = material.Substring(0, underscoreIdx);
+                        }
+                    }
                     // Schott N-prefix glasses are written without the dash
                     // in Code V (e.g. NSF10), but the LensHH glass catalogs
                     // (and Zemax) use the dashed form (N-SF10). Apply the
@@ -325,6 +351,15 @@ namespace LensHH.Core.IO
             return double.TryParse(s, NumberStyles.Float | NumberStyles.AllowExponent,
                 CultureInfo.InvariantCulture, out value);
         }
+
+        /// <summary>
+        /// Vendor catalogs recognised as a <c>NAME_CATALOG</c> suffix. Must
+        /// mirror <c>CodeVWriter.CodeVVendorCatalogs</c>, so that every suffix
+        /// this reader strips is one the writer actually emits.
+        /// </summary>
+        private static readonly HashSet<string> CodeVVendorCatalogs =
+            new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            { "SCHOTT", "OHARA", "HOYA", "CORNING", "CDGM", "SUMITA", "HIKARI" };
 
         /// <summary>
         /// Translate a Code V glass name to the form used in the LensHH

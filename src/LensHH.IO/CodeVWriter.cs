@@ -1,8 +1,10 @@
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Text;
 using LensHH.Core.Enums;
+using LensHH.Core.Glass;
 using LensHH.Core.Models;
 
 namespace LensHH.Core.IO
@@ -12,7 +14,8 @@ namespace LensHH.Core.IO
     /// </summary>
     public static class CodeVWriter
     {
-        public static void Write(OpticalSystem system, string filePath)
+        public static void Write(OpticalSystem system, string filePath,
+                                 GlassCatalogManager? glassCatalog = null)
         {
             var sb = new StringBuilder();
             sb.AppendLine("! Lens exported from LensHH-LT");
@@ -77,7 +80,7 @@ namespace LensHH.Core.IO
                     s.Material.Equals("MIRROR", StringComparison.OrdinalIgnoreCase);
                 string material = isMirror ? "REFL" :
                     string.IsNullOrEmpty(s.Material) ? "AIR" :
-                    CatalogNamesToCodeV(s.Material!);
+                    CatalogNamesToCodeV(s.Material!, system, glassCatalog);
 
                 sb.AppendLine(string.Format(CultureInfo.InvariantCulture,
                     "{0} {1:G14} {2:G14} {3}", prefix, radius, thickness, material));
@@ -122,17 +125,48 @@ namespace LensHH.Core.IO
         }
 
         /// <summary>
+        /// Vendor catalogs Code V ships and will recognise as a
+        /// <c>NAME_CATALOG</c> suffix. Zemax-specific pseudo-catalogs
+        /// (MISC, INFRARED, BIREFRINGENT, …) are deliberately absent: their
+        /// glasses are not in any Code V catalog, so qualifying them would
+        /// name a catalog the reader cannot resolve.
+        /// </summary>
+        private static readonly HashSet<string> CodeVVendorCatalogs =
+            new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            { "SCHOTT", "OHARA", "HOYA", "CORNING", "CDGM", "SUMITA", "HIKARI" };
+
+        /// <summary>
         /// Translate a LensHH/Zemax-style glass name to the form Code V
         /// expects. Schott "N-prefix" glasses are written without the dash
         /// in Code V (<c>N-SF10</c> → <c>NSF10</c>); inverse of
-        /// <c>CodeVReader.CodeVNamesToCatalog</c>. All other names pass
-        /// through unchanged.
+        /// <c>CodeVReader.CodeVNamesToCatalog</c>.
+        ///
+        /// The catalog is appended as <c>NAME_CATALOG</c> whenever it can be
+        /// determined. Without it a bare name is ambiguous — readers must
+        /// guess which catalog it came from, and legacy <c>SK16</c> and modern
+        /// <c>N-SK16</c> are different glasses that different catalogs both
+        /// answer to. The dash-stripped form is only resolvable *with* the
+        /// catalog, because that is the cue a reader uses to restore the dash.
         /// </summary>
-        private static string CatalogNamesToCodeV(string name)
+        private static string CatalogNamesToCodeV(string name, OpticalSystem system,
+                                                  GlassCatalogManager? glassCatalog)
         {
-            if (name.Length >= 2 && name[0] == 'N' && name[1] == '-')
-                return "N" + name.Substring(2);
-            return name;
+            string bare = (name.Length >= 2 && name[0] == 'N' && name[1] == '-')
+                ? "N" + name.Substring(2)
+                : name;
+
+            string? catalog = null;
+            if (glassCatalog != null)
+            {
+                var preferred = system.GlassCatalogs.Count > 0 ? system.GlassCatalogs : null;
+                catalog = glassCatalog.GetGlass(name, preferred)?.Catalog;
+            }
+            if (string.IsNullOrEmpty(catalog) && system.GlassCatalogs.Count == 1)
+                catalog = system.GlassCatalogs[0];
+
+            return !string.IsNullOrEmpty(catalog) && CodeVVendorCatalogs.Contains(catalog!)
+                ? bare + "_" + catalog!.ToUpperInvariant()
+                : bare;
         }
     }
 }
