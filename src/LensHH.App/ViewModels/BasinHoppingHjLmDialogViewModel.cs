@@ -166,11 +166,11 @@ public partial class BasinHoppingHjLmDialogViewModel : ObservableObject
     public IReadOnlyList<string> DerivativeModeOptions { get; } =
         new[] { "Finite Difference", "Analytic" };
 
-    // No-improvement watchdog: terminate the run if best merit hasn't improved
-    // within this many seconds since the last improvement. 0 = disabled. When
-    // ON, MaxHops effectively becomes a safety cap and the watchdog is the
-    // practical termination criterion. UI toggle pairs with the value box —
-    // toggling Off forces the value to 0 so the engine sees it as disabled.
+    // No-improvement watchdog. With more than one chain it RESEEDS the quiet chain from the
+    // best design found elsewhere and the run continues; with a single chain there is nothing to
+    // borrow from and it still terminates, which is what this setting has always done. 0 =
+    // disabled. The UI toggle pairs with the value box — toggling Off forces the value to 0 so
+    // the engine sees it as disabled.
     [ObservableProperty] private bool _noImprovementEnabled = false;
     [ObservableProperty] private double _noImprovementTimeoutSeconds = 600.0;
 
@@ -404,8 +404,7 @@ public partial class BasinHoppingHjLmDialogViewModel : ObservableObject
                         // An end-of-run summary was not enough: a stall fired, the chain restarted,
                         // and there was no way to tell which detector did it or why.
                         if (p.StallReason != BasinStallReason.None)
-                            AppendLog($"chain {p.Chain}   STALL: {p.StallReason} at hop {p.ChainHop + 1}"
-                                    + $"  ->  {p.StallResponse}");
+                            AppendLog($"chain {p.Chain}   RESEEDED from best design: {p.StallReason} at hop {p.ChainHop + 1}");
 
                         if (!variableRowsPopulated && optimizer!.Variables.Count > 0)
                         {
@@ -482,8 +481,7 @@ public partial class BasinHoppingHjLmDialogViewModel : ObservableObject
                         // An end-of-run summary was not enough: a stall fired, the chain restarted,
                         // and there was no way to tell which detector did it or why.
                         if (p.StallReason != BasinStallReason.None)
-                            AppendLog($"chain {p.Chain}   STALL: {p.StallReason} at hop {p.ChainHop + 1}"
-                                    + $"  ->  {p.StallResponse}");
+                            AppendLog($"chain {p.Chain}   RESEEDED from best design: {p.StallReason} at hop {p.ChainHop + 1}");
 
                         // Per-chain improvement logging lives in OnChainsProgress (it carries each
                         // chain's OWN best); here we only keep the throttled headline current.
