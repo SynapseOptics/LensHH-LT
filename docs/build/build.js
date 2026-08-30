@@ -15,6 +15,7 @@ const order = [
   { file: 'analyses.md',        title: 'Analyses Reference' },
   { file: 'merit-function.md',  title: 'Merit Function Reference' },
   { file: 'optimization.md',    title: 'Optimization' },
+  { file: 'skeleton-design.md', title: 'Designing from a Skeleton' },
   { file: 'vignetting-factors.md',      title: 'Automatic Vignetting Factors' },
   { file: 'semi-diameter-variables.md', title: 'Semi-Diameter as an Optimization Variable' },
   { file: 'gpu-acceleration.md',        title: 'GPU Acceleration' },
