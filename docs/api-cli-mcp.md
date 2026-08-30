@@ -142,7 +142,7 @@ prompt, or pass `--script <file>` to run a batch of commands.
 | `pickup`  | Surface-to-surface parameter pickups. |
 | `var`     | Mark parameters as variables with optional bounds. |
 | `merit`   | Build and evaluate the merit function. |
-| `optimize`| Run Local LM, Multistart, Global Search (`optimize global`), or Basin Hopping. |
+| `optimize`| Run Local LM, Multistart, Global Search (`optimize global`), Basin Hopping, Global Basin Hopping, Split Element, SPC or DE — and `optimize preview`, which reports which engine a run would use without running it. |
 | `analysis`| Run any analysis (spot, mtf, wavefront, seidel, etc.) and print results. |
 | `log`     | Control log verbosity and output redirection. |
 | `script`  | Execute a file of CLI commands. |
@@ -216,6 +216,81 @@ The MCP server exposes the same via `edit_surface` (`property="type"` →
 `paraxial`, or `property="focal_length"`) and `set_variable`
 (`property="focal_power"`, `min`/`max` in diopters); the C# API adds
 `SetSurface(..., focalLength:)` and `SetFocalLengthVariable(index, minPower, maxPower)`.
+
+**Which engine will this run use?** (new in 1.0.152)
+
+`optimize preview` answers the same question the GUI's **Preview** button does,
+and asks the same code the optimizer uses to choose, so it cannot disagree with
+the run:
+
+```bash
+file open design.lhlt
+optimize preview                        # as the optimizer would run it
+optimize preview engine=csharp          # what a C# run would look like
+optimize preview analytic=false         # native, finite-difference
+optimize preview broyden=false          # PSD's default; changes the answer
+optimize preview gpuimage               # include the GPU image-quality path
+```
+
+```
+WILL RUN:  C# Finite-Difference (fell back from Native: model-glass variables)
+
+Requested: Native Analytic
+
+DOWNGRADED, because:
+  model-glass variables
+
+Also:
+  - Native engine: loaded (v0.1.0).
+  - 21 variable(s), 27 merit operand(s).
+  - GPU: not requested - the merit runs on the CPU.
+```
+
+`broyden=` matters more than it looks: it defaults to on for LM and off for the
+PSD steps, and some fallbacks depend on it. If a PSD run is slower than the same
+design under LM, preview both and compare.
+
+**Choosing the engine explicitly** (new in 1.0.152):
+
+```bash
+optimize run maxiter=200 engine=csharp analytic=false
+optimize basin hops=200 engine=native analytic=true
+optimize multistart trials=200 engine=native
+optimize global-basin globalmin=30 engine=native
+```
+
+`engine=native|csharp` and `analytic=true|false` are accepted by `run`,
+`multistart`, `basin`, `global-basin` and `global`. All of them default to
+**native + analytic**, matching the GUI dialogs; before 1.0.152 the CLI defaulted
+to C# finite-difference while the dialogs did not, so the same run took a
+different path depending on where you launched it.
+
+The optimizer still falls back on its own when a design needs it — the flags
+express a preference, and `optimize preview` tells you what survived.
+
+**Reseeding a stalled chain** (new in 1.0.152):
+
+```bash
+optimize basin hops=1000 chains=0 elitehops=150 elitefactor=10
+optimize basin hops=1000 elitehops=0                 # rescue off
+optimize global-basin globalmin=60 elitehops=150 elitefactor=3
+```
+
+A chain is handed another chain's best design only when it has gone
+`elitehops` hops with no best of its own **and** its own best is worse than
+`elitefactor` × the best design found so far. Both are required: the hop count
+alone is not a stall, and acting on it alone collapses every chain onto the
+leader. `elitehops=0` disables it. See
+[Reseeding a chain that has fallen behind](optimization.md#reseeding-a-chain-that-has-fallen-behind-new-in-10152)
+for how to choose the factor.
+
+**Diagnosing a local-optimizer stall.** Set `LENSHH_LM_DEBUG` to a file path and
+every LM iteration — accept/reject, damping, step and gradient norms — is
+appended to it, for every subcommand including the inner LM of a basin hop:
+
+```bash
+LENSHH_LM_DEBUG=lm.log LensHH.CLI --script run.lhscript
+```
 
 ### Exit Codes
 
@@ -350,6 +425,19 @@ Every tool has an `[McpServerTool, Description(...)]` attribute with a
 plain-English description of what it does and what each parameter
 means. An LLM discovering the server via MCP's introspection will see
 those descriptions verbatim.
+
+#### Basin-hopping reseed parameters (new in 1.0.152)
+
+`basin_hopping_start` and `global_basin_hopping_start` accept
+`eliteRestartHops` (default 150) and `eliteRestartMeritFactor` (default 10).
+They gate the same rescue the GUI and CLI expose: a chain is handed another
+chain's best design only when it has gone that many hops without a best of its
+own **and** its own best is worse than that multiple of the best found so far.
+Both conditions are required, and `eliteRestartHops = 0` disables the rescue.
+
+If your chains typically finish within a factor of two of each other, a factor
+of 10 never fires — read the per-chain merits back and set it below the spread
+you actually observe.
 
 ### Typical LLM Workflow
 
