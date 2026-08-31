@@ -35,16 +35,33 @@ once:
 
 | Mode | How the semi-diameter is obtained |
 |---|---|
-| **Real ray** (default) | Traces the pupil-edge rays — the Y meridian and the ±45° diagonals — at every field and wavelength, and takes the largest incident height at each surface. |
+| **Real ray** (default) | Traces eight pupil-rim rays — the Y and X meridians and the four ±45° diagonals — at every field and wavelength, and takes the largest incident height at each surface. |
 | **Paraxial** | Sizes each surface to the paraxial beam footprint instead: the marginal and chief ray heights, without tracing real rays. |
 
 Both then apply the surface's **clear-aperture percent** if one is set, and
 neither touches a surface marked Fixed.
 
-The difference shows up where real rays depart from the paraxial ones — at
-large aperture or field, and on strongly aspheric surfaces. Real-ray mode sizes
-to the beam that is actually there; Paraxial mode sizes to where first-order
-theory says it would be.
+The two modes are measuring different things, and they diverge on ordinary
+designs — not only at large aperture or field, or on strongly aspheric
+surfaces. On an f/3 double Gauss with a 14° maximum field and no aspheres,
+switching modes moves the solved semi-diameters by **+26% on one surface and
+−11% on another**.
+
+The sign varies along the lens, which is the clue to why. Where real rays are
+clipped or vignetted, the paraxial footprint is the *larger* of the two: it
+describes a beam that is not all there. Where aberration carries real rays
+outside the first-order beam — typically the rear group, after the stop — the
+paraxial footprint is the *smaller*, and sizing to it under-reports the
+aperture the element actually needs.
+
+Real-ray mode sizes to the beam that is actually there; Paraxial mode sizes to
+where first-order theory says it would be. Real ray is the default, and is what
+we recommend. Paraxial is available for the case where you deliberately want
+the aperture the design *requires* rather than the one the surviving rays
+happen to fill — but note that anything reading a semi-diameter reads the
+changed value with it, so `ET`, `EA`, `EG` and `SD` all move, and an
+under-reported aperture makes a manufacturability constraint look satisfied
+when it is not.
 
 ## Enabling a semi-diameter variable
 
