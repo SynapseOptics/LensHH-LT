@@ -2,6 +2,119 @@
 
 All notable changes to LensHH-LT and the LensHH-LT-Engine.
 
+## 1.0.152 — 2026-08-30
+
+### Added
+
+- **Aberration-coefficient merit operands.** A merit function can now be built from aberration
+  coefficients and paraxial ray data rather than traced rays. These are closed-form functions of
+  the curvatures, thicknesses and indices, so they cost a fraction of a ray-traced evaluation.
+
+  - **Third-order (Seidel)** — `SPHS`…`LCS` over a surface range, `SPHT`…`LCT` for the whole system.
+  - **Fifth- and seventh-order (Buchdahl/Rimmer)** — `B5S`/`B5T` through `B7S`/`B7T`, following
+    Rimmer (1962). Conic constants and the `A4`, `A6`, `A8` even-asphere coefficients all contribute.
+  - **`PRMS`** — an RMS spot estimate assembled from those coefficients, implementing the analytic
+    merit function of Robb, *JOSA* **66**, 1037 (1976), referenced to the centroid. Takes a field
+    height and a wavelength; `Wave = 0` combines all wavelengths using their weights.
+  - **Paraxial ray operands** `PY`, `PZ`, `PL`, `PX`, `PM`, `PN` for marginal-ray height and slope
+    at a chosen surface.
+
+  These are a speed choice, not a capability one — the ray-traced operands solve the same problems
+  and simply cost more per evaluation.
+
+  Two limits are worth knowing before you use them. Every aberration coefficient is referenced to
+  the **paraxial image plane**, so a merit built only from coefficients cannot see defocus: pin the
+  image plane with a `PY` operand at the image surface targeted to zero. And each wavelength is
+  evaluated at its own focus, so colour does not appear either — `ACT` and `LCT` remain the operands
+  that see it. Both are documented in the Merit Function Reference.
+
+- **Preview: which engine will actually run.** Every optimization dialog has a **Preview** button
+  beside OK/Cancel. It reports what the run will do before you start it: the merit/Jacobian engine
+  it will use, the reason if that differs from what you selected, whether the GPU takes part, and
+  the variable and operand counts.
+
+  The dialogs let you choose an engine and a derivative mode, but the optimizer silently overrides
+  those for designs it cannot handle, and there was previously no way to see that it had — a run
+  could sit on the slower path for a session with no indication. Preview asks the same code the
+  optimizer uses to choose, so it cannot disagree with the run.
+
+  Also available as `optimize preview` in the CLI.
+
+### Fixed
+
+- **The semi-diameter derivative used the wrong wavelength's entrance pupil.**
+
+  The semi-diameter solve computes its entrance pupil per wavelength. The analytic derivative
+  retraced the ray that set each semi-diameter but launched it from the *primary* wavelength's
+  pupil, so for any ray belonging to another wavelength it differentiated a different ray from the
+  one that was measured.
+
+  This affected `SD`, `ET`, `EA`, `EG`, `DTRG` and their totals on multi-wavelength designs at
+  off-axis fields — measured at up to 22% on individual Jacobian entries. On axis the error
+  vanishes, and with a single wavelength it cannot occur.
+
+  The parity suite had been classifying the resulting `EG`/`EA` divergence as an "envelope kink" —
+  a genuine non-differentiability — and excluding those rows from its checks. One-sided differences
+  showed the forward and backward slopes agreeing with each other everywhere, which means there was
+  no kink and the term was simply wrong. Those rows are now checked like any other.
+
+- **Levenberg-Marquardt could fail on merit functions containing `PY`.** The paraxial ray operands
+  had no analytic derivative in the native engine. A run requesting native analytic derivatives with
+  one of them in the merit function stopped at the first Jacobian instead of falling back. They now
+  have analytic derivatives under an EPD aperture, and fall back cleanly otherwise.
+
+- **A converged local optimization reported a failure.** Reaching the damping ceiling with a
+  vanishing step means no descent direction exists at any scale — a local minimum, not a failure.
+  It now reports convergence. A ceiling reached while steps are still large keeps the failure
+  wording, because that is conditioning rather than convergence.
+
+- **Several `OpticalSystem` clones dropped the semi-diameter solve mode and bound handling**, so an
+  optimizer working on a clone could use different settings from the design you started with. Every
+  clone now goes through one path.
+
+- **Seidel and Buchdahl coefficients on designs with negative field angles.** The coefficients are
+  now referenced to the field magnitude, which corrects the sign of the odd-in-field terms
+  (`COMAS`, `DISTS`, `LCS` and their totals).
+
+- **The Seidel aspheric term read the `A2` coefficient where `A4` belongs.**
+
+### Changed
+
+- **Basin hopping: a stalled chain can be reseeded from the best design found so far.**
+  Basin-hopping chains can now hand a stalled chain the best design another chain has found, rather
+  than leaving it to restart itself at random. A chain qualifies only when it has gone **150 hops
+  without improving its own best** *and* its best is **worse than 10× the best design found so
+  far**. Both conditions are required: a chain that has gone quiet is not necessarily stuck, and
+  reseeding on the hop count alone moves every chain onto the leader's design and costs the
+  population its diversity.
+
+  Both thresholds are editable in the Basin Hopping and Global Basin Hopping dialogs, and available
+  as `elitehops` / `elitefactor` in the CLI and `eliteRestartHops` / `eliteRestartMeritFactor` in
+  MCP. Set the hop count to 0 to disable the mechanism.
+
+  The **Stop on no improvement** watchdog now *reseeds* a quiet chain from the best design instead
+  of ending it, when there is more than one chain; a single chain still ends the run as before. The
+  Basin Hopping dialog's checkbox is relabelled accordingly.
+
+  Every reseed is logged as it happens, with the reason.
+
+- **CLI engine defaults now match the dialogs.** `optimize run`, `multistart`, `basin`,
+  `global-basin` and `global` now accept `engine=native|csharp` and `analytic=true|false`, and all
+  of them default to **native + analytic**, matching the GUI dialogs. Previously the CLI defaulted
+  to C# finite-difference while the dialogs did not, so the same run took a different path depending
+  on where it was launched from.
+
+- **`LENSHH_LM_DEBUG=<path>`** writes a per-iteration Levenberg-Marquardt trace for every optimize
+  subcommand, including the inner local optimizer of a basin hop.
+
+### Documentation
+
+The Merit Function Reference covers all the new operands, including what `PRMS` cannot see.
+Optimization gains sections on Preview and on the reseed thresholds, and the bound-handling guidance
+now covers starting from a design with no optical power, where unbounded thicknesses let the
+optimizer walk into negative centre thicknesses it does not reliably recover from. The
+semi-diameter page describes the two Auto solve modes.
+
 ## 1.0.151 — 2026-08-26
 
 ### Fixed
