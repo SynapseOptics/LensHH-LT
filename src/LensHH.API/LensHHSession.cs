@@ -255,7 +255,7 @@ namespace LensHH.API
         public void ExportZemax(string filePath) { EnsureSystem(); ZmxWriter.Write(_system!, filePath); }
 
         /// <summary>Export to Code V .seq file.</summary>
-        public void ExportCodeV(string filePath) { EnsureSystem(); CodeVWriter.Write(_system!, filePath); }
+        public void ExportCodeV(string filePath) { EnsureSystem(); CodeVWriter.Write(_system!, filePath, GlassCatalog); }
 
         /// <summary>Export to OSLO .len file.</summary>
         public void ExportOslo(string filePath) { EnsureSystem(); OsloWriter.Write(_system!, filePath); }

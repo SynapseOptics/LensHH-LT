@@ -290,7 +290,7 @@ namespace LensHH.CLI.Commands
                     break;
                 case "codev":
                 case "seq":
-                    CodeVWriter.Write(system, path);
+                    CodeVWriter.Write(system, path, session.EnsureGlassCatalog());
                     break;
                 case "oslo":
                 case "len":

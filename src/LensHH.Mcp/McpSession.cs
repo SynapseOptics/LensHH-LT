@@ -278,7 +278,7 @@ namespace LensHH.Mcp
         public void ExportCodeV(string filePath)
         {
             if (_system == null) throw new InvalidOperationException("No optical system loaded.");
-            CodeVWriter.Write(_system, filePath);
+            CodeVWriter.Write(_system, filePath, GlassCatalog);
         }
 
         public void ExportOslo(string filePath)

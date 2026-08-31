@@ -366,7 +366,7 @@ public class GuiSession
                 ZmxWriter.Write(_system, path);
                 break;
             case "codev":
-                CodeVWriter.Write(_system, path);
+                CodeVWriter.Write(_system, path, _glassCatalog);
                 break;
             case "oslo":
                 OsloWriter.Write(_system, path);

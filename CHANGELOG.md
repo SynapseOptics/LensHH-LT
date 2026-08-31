@@ -27,12 +27,23 @@ All notable changes to LensHH-LT and the LensHH-LT-Engine.
   glass catalogs instead: a name a catalog claims as written is kept, otherwise the entry whose
   punctuation-stripped form matches is used, and a name no catalog claims is passed through
   untouched rather than decorated with a dash. Code V's `GLASS_CATALOG` qualifier is honoured
-  where present, which is what separates Sumita's `P-SK50` from Schott's `PSK50` — the only two
-  glasses in the shipped catalogs that strip to the same Code V name.
+  where present.
 
   The GUI, CLI, MCP and API import paths all pass their catalogs to the reader. Importing with no
   catalogs loaded falls back to the old N-prefix assumption, since there is then nothing to
   resolve against.
+
+- **A round trip through Code V could return a different glass.** Sumita `P-SK50` and Schott
+  `PSK50` are the only two glasses in the shipped catalogs that strip to the same Code V name, so
+  whichever you exported came back as the other — a silent substitution of one vendor's glass for
+  another's.
+
+  Colliding names are now written with Code V's `GLASS_CATALOG` qualifier (`PSK50_SUMITA`), which
+  is enough to bring them back as themselves. Only names that actually collide are qualified, and
+  only when the owning catalog is one Code V ships: HOYA, OHARA, SCHOTT, CDGM, SUMITA, HIKARI. A
+  glass from a catalog Code V does not have — Corning, LightPath, MISC, PATENTMODEL or your own
+  custom catalogs — is always written bare, since naming a catalog Code V cannot find would make
+  the material unresolvable there.
 
 ## 1.0.152 — 2026-08-30
 

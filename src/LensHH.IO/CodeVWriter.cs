@@ -3,6 +3,7 @@ using System.Globalization;
 using System.Linq;
 using System.Text;
 using LensHH.Core.Enums;
+using LensHH.Core.Glass;
 using LensHH.Core.Models;
 
 namespace LensHH.Core.IO
@@ -12,8 +13,16 @@ namespace LensHH.Core.IO
     /// </summary>
     public static class CodeVWriter
     {
-        public static void Write(OpticalSystem system, string filePath)
+        /// <summary>
+        /// Write a Code V .seq file. When <paramref name="glassMgr"/> is
+        /// provided, a glass whose punctuation-free name would collide with
+        /// another catalog's glass is written as <c>GLASS_CATALOG</c> so it
+        /// imports back as itself; without a manager those few names are
+        /// written bare, as they were before 1.0.153.
+        /// </summary>
+        public static void Write(OpticalSystem system, string filePath, GlassCatalogManager? glassMgr = null)
         {
+            var qualifier = new CodeVGlassQualifier(glassMgr);
             var sb = new StringBuilder();
             sb.AppendLine("! Lens exported from LensHH-LT");
             sb.AppendLine("RDM;LEN");
@@ -77,7 +86,7 @@ namespace LensHH.Core.IO
                     s.Material.Equals("MIRROR", StringComparison.OrdinalIgnoreCase);
                 string material = isMirror ? "REFL" :
                     string.IsNullOrEmpty(s.Material) ? "AIR" :
-                    CatalogNamesToCodeV(s.Material!);
+                    qualifier.ToCodeVMaterial(s.Material!);
 
                 sb.AppendLine(string.Format(CultureInfo.InvariantCulture,
                     "{0} {1:G14} {2:G14} {3}", prefix, radius, thickness, material));
@@ -121,15 +130,5 @@ namespace LensHH.Core.IO
             return string.Format(CultureInfo.InvariantCulture, "{0} {1:G14}", keyword, value);
         }
 
-        /// <summary>
-        /// Translate a LensHH/Zemax-style glass name to the form Code V
-        /// expects. See <see cref="CodeVGlassNames.ToCodeV"/>: Code V glass
-        /// names carry no punctuation, for every vendor and not just the
-        /// Schott N-prefix this method used to special-case.
-        /// </summary>
-        private static string CatalogNamesToCodeV(string name)
-        {
-            return CodeVGlassNames.ToCodeV(name);
-        }
     }
 }

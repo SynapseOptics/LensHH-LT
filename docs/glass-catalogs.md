@@ -57,11 +57,18 @@ before importing a `.seq`** — with none loaded there is nothing to
 resolve against, and only the Schott N-prefix is recovered.
 
 Two glasses in the shipped catalogs strip to the same Code V name:
-Sumita `P-SK50` and Schott `PSK50`. Code V's `GLASS_CATALOG` qualifier
-resolves it — `PSK50_SUMITA` imports as `P-SK50`. Written without a
-qualifier, the literal spelling wins, so that one name exports from
-Sumita and returns as the Schott glass. Check it after a round trip if
-you use it.
+Sumita `P-SK50` and Schott `PSK50`. Those are written with Code V's
+`GLASS_CATALOG` qualifier — `PSK50_SUMITA` — so they import back as
+themselves rather than as the other vendor's glass. Only names that
+actually collide are qualified; everything else is written bare.
+
+A qualifier is added only when the owning catalog is one Code V ships:
+HOYA, OHARA, SCHOTT, CDGM, SUMITA, HIKARI. A glass from a catalog Code V
+does not have — Corning, LightPath, MISC, PATENTMODEL, or a custom
+catalog of your own — is always written bare, because naming a catalog
+Code V cannot find would make the material unresolvable there. If two of
+your loaded catalogs contain the same colliding name, there is nothing
+to qualify with and the name is written bare as before.
 
 ## Status Flags
 

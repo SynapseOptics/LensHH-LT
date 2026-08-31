@@ -173,6 +173,77 @@ namespace LensHH.API.Tests
         }
 
         [Fact]
+        public void Export_QualifiesOnlyTheCollidingNames()
+        {
+            var mgr = LoadCatalogs();
+            if (mgr == null) return;
+
+            var sys = SystemWith("P-SK50", "N-BK7", "S-FPL51");
+            var path = Path.GetTempFileName() + ".seq";
+            try
+            {
+                CodeVWriter.Write(sys, path, mgr);
+                var text = File.ReadAllText(path);
+
+                // Sumita P-SK50 collides with Schott PSK50 once punctuation is
+                // gone, so it carries its catalog.
+                Assert.Contains("PSK50_SUMITA", text);
+
+                // Everything else stays bare: the qualifier is not a licence to
+                // decorate names that were never ambiguous.
+                Assert.Contains("NBK7", text);
+                Assert.Contains("SFPL51", text);
+                Assert.DoesNotContain("NBK7_", text);
+                Assert.DoesNotContain("SFPL51_", text);
+            }
+            finally { File.Delete(path); }
+        }
+
+        [Fact]
+        public void RoundTrip_CollidingName_ReturnsToItsOwnVendor()
+        {
+            var mgr = LoadCatalogs();
+            if (mgr == null) return;
+
+            // Sumita P-SK50 used to come back as Schott PSK50: a different
+            // glass, silently substituted by a round trip.
+            var sys = SystemWith("P-SK50");
+            var path = Path.GetTempFileName() + ".seq";
+            try
+            {
+                CodeVWriter.Write(sys, path, mgr);
+                var back = CodeVReader.Read(path, mgr);
+                Assert.Equal("P-SK50", back.Surfaces[1].Material);
+
+                var glass = mgr.GetGlass(back.Surfaces[1].Material!);
+                Assert.NotNull(glass);
+                Assert.Equal("SUMITA", glass!.Catalog, ignoreCase: true);
+            }
+            finally { File.Delete(path); }
+        }
+
+        [Fact]
+        public void Export_NeverNamesACatalogCodeVDoesNotHave()
+        {
+            var mgr = LoadCatalogs();
+            if (mgr == null) return;
+
+            // Corning fused silica is ours, not Code V's. Whatever we do about
+            // ambiguity, we must not write _CORNING_FS as a catalog: Code V
+            // cannot resolve it, which is worse than the ambiguity.
+            var sys = SystemWith("HPFS_7980");
+            var path = Path.GetTempFileName() + ".seq";
+            try
+            {
+                CodeVWriter.Write(sys, path, mgr);
+                var text = File.ReadAllText(path);
+                Assert.Contains("HPFS7980", text);
+                Assert.DoesNotContain("CORNING", text);
+            }
+            finally { File.Delete(path); }
+        }
+
+        [Fact]
         public void Import_UnknownGlass_IsPassedThroughUnchanged()
         {
             var mgr = LoadCatalogs();
