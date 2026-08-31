@@ -2,7 +2,7 @@
 
 All notable changes to LensHH-LT and the LensHH-LT-Engine.
 
-## 1.0.153 — unreleased
+## 1.0.153 — 2026-08-31
 
 ### Fixed
 
@@ -52,7 +52,7 @@ All notable changes to LensHH-LT and the LensHH-LT-Engine.
   import. Where several loaded catalogs answer to one name, the system's catalog preference
   decides; with none set, the name goes out bare.
 
-- **A glass name containing an underscore was split into a name and a catalog.** ZEMAX's MoldStress
+- **A glass name containing an underscore was split into a name and a catalog.** The MoldStress
   extension writes glasses called `MS_PMMA` and `MS_POLYSTYR`; import took the first underscore as
   the catalog separator and produced a glass `MS` from a catalog `PMMA`. The split now happens only
   when what follows the underscore actually names a catalog.
