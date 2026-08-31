@@ -56,19 +56,36 @@ whose punctuation-stripped form matches is used. **Load your catalogs
 before importing a `.seq`** — with none loaded there is nothing to
 resolve against, and only the Schott N-prefix is recovered.
 
-Two glasses in the shipped catalogs strip to the same Code V name:
-Sumita `P-SK50` and Schott `PSK50`. Those are written with Code V's
-`GLASS_CATALOG` qualifier — `PSK50_SUMITA` — so they import back as
-themselves rather than as the other vendor's glass. Only names that
-actually collide are qualified; everything else is written bare.
+### The catalog travels with the glass
 
-A qualifier is added only when the owning catalog is one Code V ships:
-HOYA, OHARA, SCHOTT, CDGM, SUMITA, HIKARI. A glass from a catalog Code V
-does not have — Corning, LightPath, MISC, PATENTMODEL, or a custom
-catalog of your own — is always written bare, because naming a catalog
-Code V cannot find would make the material unresolvable there. If two of
-your loaded catalogs contain the same colliding name, there is nothing
-to qualify with and the name is written bare as before.
+A bare name does not always identify a glass. `SK16` is in both SCHOTT
+and SUMITA with the same n_d but different dispersion formulas, so which
+one a bare `SK16` binds to depends on the order catalogs happen to be
+searched in. Stripping punctuation adds collisions of its own: Sumita
+`P-SK50` and Schott `PSK50` both become `PSK50`.
+
+Export therefore writes the catalog alongside the name, in Code V's
+`GLASS_CATALOG` form — `NBK7_SCHOTT`, `SFPL51_OHARA`, `SK16_SUMITA` — and
+import records those catalogs on the system, where they become the
+preferred-catalog order for every later lookup.
+
+A qualifier is only written when the owning catalog is one Code V ships:
+HOYA, OHARA, SCHOTT, CDGM, SUMITA, HIKARI, CORNING. A glass from a
+catalog Code V does not have — MISC, PATENTMODEL, LightPath, or a custom
+catalog of your own — is written bare, because naming a catalog Code V
+cannot find would make the material unresolvable there. We hold Corning
+in two catalogs, `CORNING_B` and `CORNING_FS`; both are written as Code
+V's single `CORNING`, and import maps it back.
+
+Where several of your catalogs answer to one name, the system's own
+catalog preference decides which is written. With no preference set
+there is nothing to justify a choice, so the name goes out bare.
+
+One spelling cannot survive the trip. A glass whose name genuinely
+contains an underscore — ZEMAX's MoldStress extension writes `MS_PMMA`
+— imports correctly, since `PMMA` is not a catalog name, but exports as
+`MSPMMA`. Code V reads `_` as the catalog separator, so there is no way
+to write that name in a `.seq` and have it read back whole.
 
 ## Status Flags
 

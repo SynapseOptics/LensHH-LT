@@ -14,15 +14,15 @@ namespace LensHH.Core.IO
     public static class CodeVWriter
     {
         /// <summary>
-        /// Write a Code V .seq file. When <paramref name="glassMgr"/> is
-        /// provided, a glass whose punctuation-free name would collide with
-        /// another catalog's glass is written as <c>GLASS_CATALOG</c> so it
-        /// imports back as itself; without a manager those few names are
-        /// written bare, as they were before 1.0.153.
+        /// Write a Code V .seq file. Glasses are written as <c>GLASS_CATALOG</c>
+        /// whenever the owning catalog can be identified and Code V has it, so
+        /// that the glass -- not merely its name -- survives the round trip.
+        /// <paramref name="glassMgr"/> is what identifies the owner; without one
+        /// the system's own catalog list is used when it names exactly one.
         /// </summary>
         public static void Write(OpticalSystem system, string filePath, GlassCatalogManager? glassMgr = null)
         {
-            var qualifier = new CodeVGlassQualifier(glassMgr);
+            var qualifier = new CodeVGlassQualifier(glassMgr, system.GlassCatalogs);
             var sb = new StringBuilder();
             sb.AppendLine("! Lens exported from LensHH-LT");
             sb.AppendLine("RDM;LEN");

@@ -8,18 +8,25 @@ namespace LensHH.Core.IO
     /// <summary>
     /// Glass-name translation between the LensHH/ZEMAX catalogs and Code V.
     ///
-    /// Code V glass names carry no punctuation. The catalogs' <c>N-BK7</c>,
-    /// <c>S-FPL51</c>, <c>H-ZF52</c> and <c>D-ZLAF52LA</c> are written
-    /// <c>NBK7</c>, <c>SFPL51</c>, <c>HZF52</c> and <c>DZLAF52LA</c>. This is a
-    /// general rule, not a Schott one: of the 1515 glasses in catalogs/Glass,
-    /// 754 contain punctuation and only 115 of those carry the Schott N-prefix.
+    /// Two things travel with a glass in a .seq file: the name, and the catalog
+    /// it came from. Code V writes them as <c>NAME_CATALOG</c>.
     ///
-    /// The inverse is not a string operation. Punctuation cannot be re-inserted
-    /// by guesswork -- Hoya ships 28 real names of the form <c>NBF1</c>,
-    /// <c>NBFD10</c>, <c>NBFD265</c>, which must survive an import untouched,
-    /// while <c>NBK7</c> has to become <c>N-BK7</c>. Nothing in the spelling
-    /// separates the two; only a catalog lookup does, which is the job of
-    /// <see cref="CodeVGlassResolver"/>.
+    /// The name loses its punctuation. The catalogs' <c>N-BK7</c>, <c>S-FPL51</c>
+    /// and <c>H-ZF52</c> are <c>NBK7</c>, <c>SFPL51</c> and <c>HZF52</c> there.
+    /// This is a general rule, not a Schott one: of the 1515 glasses in
+    /// catalogs/Glass, 754 contain punctuation and only 115 carry the Schott
+    /// N-prefix.
+    ///
+    /// The catalog is not decoration either. A bare name does not always
+    /// identify a glass -- <c>SK16</c> is in both SCHOTT and SUMITA with the
+    /// same n_d but different dispersion formulas, so which one a bare name
+    /// binds to depends on the order catalogs happen to be searched in.
+    ///
+    /// Restoring the punctuation on import is not a string operation. Hoya ships
+    /// 28 real names of the form <c>NBF1</c>, <c>NBFD10</c>, <c>NBFD265</c> that
+    /// must survive untouched, while <c>NBK7</c> has to become <c>N-BK7</c>;
+    /// nothing in the spelling separates them. <see cref="CodeVGlassResolver"/>
+    /// looks the name up instead of transforming it.
     /// </summary>
     internal static class CodeVGlassNames
     {
@@ -49,14 +56,14 @@ namespace LensHH.Core.IO
 
         /// <summary>
         /// The vendor catalogs Code V ships in its own GLASS folder, and so the
-        /// only ones a <c>GLASS_CATALOG</c> qualifier may name. Writing a
-        /// catalog Code V does not have -- our CORNING_B, CORNING_FS,
-        /// LIGHTPATH, MISC and PATENTMODEL are all in that position -- would
-        /// make the material unresolvable there, which is a worse outcome than
-        /// the ambiguity the qualifier removes.
+        /// only ones a <c>GLASS_CATALOG</c> qualifier may name. Naming a catalog
+        /// Code V does not have would make the material unresolvable there,
+        /// which is worse than the ambiguity the qualifier removes -- so ZEMAX
+        /// side catalogs such as MISC, PATENTMODEL and LIGHTPATH, and any custom
+        /// catalog of the user's, are written bare.
         /// </summary>
         public static readonly string[] CodeVCatalogs =
-            { "HOYA", "OHARA", "SCHOTT", "CDGM", "SUMITA", "HIKARI" };
+            { "HOYA", "OHARA", "SCHOTT", "CDGM", "SUMITA", "HIKARI", "CORNING" };
 
         public static bool IsCodeVCatalog(string? catalog)
         {
@@ -66,6 +73,23 @@ namespace LensHH.Core.IO
                 if (c.Equals(catalog, StringComparison.OrdinalIgnoreCase)) return true;
             }
             return false;
+        }
+
+        /// <summary>
+        /// One of our catalog names to the Code V catalog that holds the same
+        /// glasses, or null when Code V has no such catalog and the name must
+        /// therefore be written bare.
+        /// </summary>
+        public static string? ToCodeVCatalog(string? catalog)
+        {
+            if (string.IsNullOrEmpty(catalog)) return null;
+
+            // We split Corning across CORNING_B (borosilicate) and CORNING_FS
+            // (fused silica); Code V keeps them in one CORNING catalog.
+            if (catalog!.StartsWith("CORNING", StringComparison.OrdinalIgnoreCase))
+                return "CORNING";
+
+            return IsCodeVCatalog(catalog) ? catalog.ToUpperInvariant() : null;
         }
 
         /// <summary>
@@ -83,30 +107,43 @@ namespace LensHH.Core.IO
     }
 
     /// <summary>
-    /// Resolves a Code V glass name back to the catalog name it was written
-    /// from, by looking it up rather than by transforming it. Built once per
-    /// file read; the index costs a single pass over the loaded catalogs.
+    /// Resolves a Code V material token back to a catalog glass name, by looking
+    /// it up rather than by transforming it, and reports which catalogs the file
+    /// named so the caller can record them on the system. Built once per read.
     /// </summary>
     internal sealed class CodeVGlassResolver
     {
         private readonly GlassCatalogManager? _mgr;
 
-        // Stripped form -> real catalog name, globally and per catalog. The
-        // per-catalog map is what lets a GLASS_CATALOG qualifier pick Sumita's
-        // P-SK50 over Schott's PSK50: those two are the only names in the
-        // shipped catalogs that collide once punctuation is removed.
-        private readonly Dictionary<string, string> _byStripped;
+        // Stripped Code V name -> the catalog name it came from, globally and
+        // per loaded catalog. The per-catalog map is what lets a qualifier pick
+        // Sumita P-SK50 over Schott PSK50.
+        private readonly Dictionary<string, (string Name, string Catalog)> _byStripped;
         private readonly Dictionary<string, Dictionary<string, string>> _byCatalogStripped;
+
+        // Tokens that may legitimately follow the underscore. Anything else is
+        // part of the glass name, not a catalog.
+        private readonly HashSet<string> _catalogTokens;
+
+        private readonly List<string> _seenCatalogs = new List<string>();
+
+        /// <summary>Catalogs this file bound glasses to, in order of first use.</summary>
+        public IReadOnlyList<string> SeenCatalogs => _seenCatalogs;
 
         public CodeVGlassResolver(GlassCatalogManager? mgr)
         {
             _mgr = mgr;
-            _byStripped = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            _byStripped = new Dictionary<string, (string, string)>(StringComparer.OrdinalIgnoreCase);
             _byCatalogStripped = new Dictionary<string, Dictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
+            _catalogTokens = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var c in CodeVGlassNames.CodeVCatalogs) _catalogTokens.Add(c);
             if (mgr == null) return;
 
             foreach (var catalog in mgr.LoadedCatalogs)
             {
+                _catalogTokens.Add(catalog);
+
                 var perCatalog = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
                 foreach (var glass in mgr.GetGlassesInCatalog(catalog))
                 {
@@ -117,12 +154,40 @@ namespace LensHH.Core.IO
                         perCatalog[stripped] = glass.Name;
 
                     // First catalog in load order wins a contested stripped
-                    // form. Both contested forms resolve earlier than this, on
-                    // the exact-name or per-catalog check in Resolve.
+                    // form; a qualifier overrides it before this is consulted.
                     if (!_byStripped.ContainsKey(stripped))
-                        _byStripped[stripped] = glass.Name;
+                        _byStripped[stripped] = (glass.Name, catalog);
                 }
                 _byCatalogStripped[catalog] = perCatalog;
+            }
+        }
+
+        private void Record(string? catalog)
+        {
+            if (string.IsNullOrEmpty(catalog)) return;
+            foreach (var c in _seenCatalogs)
+            {
+                if (c.Equals(catalog, StringComparison.OrdinalIgnoreCase)) return;
+            }
+            _seenCatalogs.Add(catalog!);
+        }
+
+        // The loaded catalogs a file's catalog token refers to. Usually itself;
+        // a Code V catalog we split into several (CORNING) expands to all of
+        // them, so CORNING finds glasses in CORNING_B and CORNING_FS.
+        private IEnumerable<string> LoadedCatalogsFor(string catalog)
+        {
+            if (_mgr == null) yield break;
+
+            foreach (var loaded in _mgr.LoadedCatalogs)
+            {
+                if (loaded.Equals(catalog, StringComparison.OrdinalIgnoreCase)) { yield return loaded; yield break; }
+            }
+            foreach (var loaded in _mgr.LoadedCatalogs)
+            {
+                var mapped = CodeVGlassNames.ToCodeVCatalog(loaded);
+                if (mapped != null && mapped.Equals(catalog, StringComparison.OrdinalIgnoreCase))
+                    yield return loaded;
             }
         }
 
@@ -134,44 +199,69 @@ namespace LensHH.Core.IO
         {
             if (string.IsNullOrEmpty(material)) return material;
 
-            // Code V qualifies a name as GLASS_CATALOG. ToCodeV has already
-            // removed any underscore from the glass part, so the first
-            // underscore is the separator and the catalog keeps its own
-            // (CORNING_FS).
+            // Split only when what follows the underscore actually names a
+            // catalog. ZEMAX's MoldStress extension writes glasses called
+            // MS_PMMA and MS_POLYSTYR; splitting those on the first underscore
+            // would invent a glass MS in a catalog PMMA.
             string name = material;
             string? catalog = null;
             int underscoreIdx = material.IndexOf('_');
             if (underscoreIdx > 0)
             {
-                name = material.Substring(0, underscoreIdx);
-                catalog = material.Substring(underscoreIdx + 1);
+                var suffix = material.Substring(underscoreIdx + 1);
+                if (_catalogTokens.Contains(suffix))
+                {
+                    name = material.Substring(0, underscoreIdx);
+                    catalog = suffix;
+                }
             }
 
-            if (_mgr == null) return CodeVGlassNames.LegacyNPrefix(name);
+            if (_mgr == null)
+            {
+                Record(catalog);
+                return CodeVGlassNames.LegacyNPrefix(name);
+            }
 
-            // A catalog qualifier is the only thing separating the colliding
-            // names, so honour it before any global lookup.
+            // A named catalog is the strongest evidence there is: it is what
+            // separates SCHOTT SK16 from SUMITA SK16, and Sumita P-SK50 from
+            // Schott PSK50.
             if (catalog != null)
             {
-                var exact = _mgr.GetGlass(catalog.ToUpperInvariant() + ":" + name);
-                if (exact != null) return exact.Name;
+                foreach (var loaded in LoadedCatalogsFor(catalog))
+                {
+                    var exact = _mgr.GetGlass(loaded.ToUpperInvariant() + ":" + name);
+                    if (exact != null) { Record(loaded); return exact.Name; }
 
-                if (_byCatalogStripped.TryGetValue(catalog, out var perCatalog) &&
-                    perCatalog.TryGetValue(name, out var inCatalog))
-                    return inCatalog;
+                    if (_byCatalogStripped.TryGetValue(loaded, out var perCatalog) &&
+                        perCatalog.TryGetValue(name, out var inCatalog))
+                    {
+                        Record(loaded);
+                        return inCatalog;
+                    }
+                }
             }
 
-            // The name as written wins next: Hoya's NBFD10 and its 27 siblings
+            // The name as written wins next. Hoya's NBFD10 and its 27 siblings
             // are real catalog names that merely look like de-punctuated
             // N-prefix glasses, and transforming them breaks a working import.
-            if (_mgr.GetGlass(name) != null) return name;
+            var asWritten = _mgr.GetGlass(name);
+            if (asWritten != null)
+            {
+                Record(string.IsNullOrEmpty(asWritten.Catalog) ? catalog : asWritten.Catalog);
+                return name;
+            }
 
             // Otherwise it lost its punctuation on the way out to Code V; find
             // the catalog entry that strips down to it.
-            if (_byStripped.TryGetValue(name, out var real)) return real;
+            if (_byStripped.TryGetValue(name, out var hit))
+            {
+                Record(hit.Catalog);
+                return hit.Name;
+            }
 
             // Unknown to every loaded catalog. Leave it as the file spelled it
             // rather than decorating it with a dash we cannot justify.
+            Record(catalog);
             return name;
         }
     }
@@ -180,72 +270,68 @@ namespace LensHH.Core.IO
     /// Decides how a glass is written into a .seq: bare, or qualified as
     /// <c>GLASS_CATALOG</c>.
     ///
-    /// Removing punctuation can make two different glasses share one Code V
-    /// name -- Sumita <c>P-SK50</c> and Schott <c>PSK50</c> both become
-    /// <c>PSK50</c>, and they are the only such pair in the shipped catalogs.
-    /// Written bare, whichever one you exported comes back as the other. The
-    /// qualifier is added for exactly those contested names, and only when the
-    /// owning catalog is one Code V has; every other glass is written bare, as
-    /// before.
+    /// The catalog is written whenever we can say which one owns the glass and
+    /// Code V has that catalog, because a bare name does not reliably identify a
+    /// glass on the way back in -- SCHOTT and SUMITA both answer to SK16 with
+    /// different dispersion formulas, and stripping punctuation adds collisions
+    /// of its own (Sumita P-SK50 and Schott PSK50 both become PSK50).
     /// </summary>
     internal sealed class CodeVGlassQualifier
     {
         private readonly GlassCatalogManager? _mgr;
+        private readonly IList<string> _systemCatalogs;
 
-        // Code V names claimed by more than one distinct catalog name.
-        private readonly HashSet<string> _contested;
-
-        public CodeVGlassQualifier(GlassCatalogManager? mgr)
+        public CodeVGlassQualifier(GlassCatalogManager? mgr, IList<string>? systemCatalogs)
         {
             _mgr = mgr;
-            _contested = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            if (mgr == null) return;
-
-            var seen = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-            foreach (var catalog in mgr.LoadedCatalogs)
-            {
-                foreach (var glass in mgr.GetGlassesInCatalog(catalog))
-                {
-                    if (string.IsNullOrEmpty(glass.Name)) continue;
-                    var stripped = CodeVGlassNames.ToCodeV(glass.Name);
-
-                    if (seen.TryGetValue(stripped, out var first))
-                    {
-                        // Same catalog name from two catalogs is not a conflict:
-                        // it strips to itself and imports back to itself.
-                        if (!first.Equals(glass.Name, StringComparison.OrdinalIgnoreCase))
-                            _contested.Add(stripped);
-                    }
-                    else
-                    {
-                        seen[stripped] = glass.Name;
-                    }
-                }
-            }
+            _systemCatalogs = systemCatalogs ?? new List<string>();
         }
 
-        /// <summary>
-        /// The material token for a catalog glass name.
-        /// </summary>
+        /// <summary>The material token for a catalog glass name.</summary>
         public string ToCodeVMaterial(string name)
         {
             var stripped = CodeVGlassNames.ToCodeV(name);
-            if (_mgr == null || !_contested.Contains(stripped)) return stripped;
+            var owner = OwningCatalog(name);
+            if (owner == null) return stripped;
 
-            // Contested: name the catalog if we can say which one owns it and
-            // Code V is known to have that catalog. Two catalogs claiming the
-            // same spelling leaves us nothing to qualify with, so write it bare
-            // and let Code V's own search order decide -- the same outcome as
-            // before, not a worse one.
+            var codeVCatalog = CodeVGlassNames.ToCodeVCatalog(owner);
+            return codeVCatalog == null ? stripped : stripped + "_" + codeVCatalog;
+        }
+
+        // Which catalog this glass came from, or null when that cannot be said.
+        private string? OwningCatalog(string name)
+        {
+            if (_mgr == null)
+            {
+                // No catalogs loaded. A system carrying exactly one catalog
+                // (a ZMX GCAT line, typically) leaves no room for doubt; more
+                // than one and we would be guessing, so we write the name bare.
+                return _systemCatalogs.Count == 1 ? _systemCatalogs[0] : null;
+            }
+
             string? owner = null;
+            var owners = new List<string>();
             foreach (var catalog in _mgr.LoadedCatalogs)
             {
                 if (_mgr.GetGlass(catalog.ToUpperInvariant() + ":" + name) == null) continue;
-                if (owner != null) return stripped;
+                owners.Add(catalog);
                 owner = catalog;
             }
 
-            return CodeVGlassNames.IsCodeVCatalog(owner) ? stripped + "_" + owner!.ToUpperInvariant() : stripped;
+            if (owners.Count == 0) return _systemCatalogs.Count == 1 ? _systemCatalogs[0] : null;
+            if (owners.Count == 1) return owner;
+
+            // Several catalogs answer to this name -- exactly the SK16 case.
+            // The system's own preference order decides; without one there is
+            // nothing to justify a choice, so the name goes out bare.
+            foreach (var preferred in _systemCatalogs)
+            {
+                foreach (var candidate in owners)
+                {
+                    if (candidate.Equals(preferred, StringComparison.OrdinalIgnoreCase)) return candidate;
+                }
+            }
+            return null;
         }
     }
 }

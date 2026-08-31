@@ -173,28 +173,28 @@ namespace LensHH.API.Tests
         }
 
         [Fact]
-        public void Export_QualifiesOnlyTheCollidingNames()
+        public void Export_QualifiesGlassesWithTheirVendorCatalog()
         {
             var mgr = LoadCatalogs();
             if (mgr == null) return;
 
-            var sys = SystemWith("P-SK50", "N-BK7", "S-FPL51");
+            var sys = SystemWith("P-SK50", "N-BK7", "S-FPL51", "H-ZF52");
             var path = Path.GetTempFileName() + ".seq";
             try
             {
                 CodeVWriter.Write(sys, path, mgr);
                 var text = File.ReadAllText(path);
 
-                // Sumita P-SK50 collides with Schott PSK50 once punctuation is
-                // gone, so it carries its catalog.
+                // The catalog travels with the glass, because the bare name does
+                // not reliably identify one on the way back in.
                 Assert.Contains("PSK50_SUMITA", text);
+                Assert.Contains("NBK7_SCHOTT", text);
+                Assert.Contains("SFPL51_OHARA", text);
+                Assert.Contains("HZF52_CDGM", text);
 
-                // Everything else stays bare: the qualifier is not a licence to
-                // decorate names that were never ambiguous.
-                Assert.Contains("NBK7", text);
-                Assert.Contains("SFPL51", text);
-                Assert.DoesNotContain("NBK7_", text);
-                Assert.DoesNotContain("SFPL51_", text);
+                // The punctuated spellings are still gone.
+                Assert.DoesNotContain("N-BK7", text);
+                Assert.DoesNotContain("S-FPL51", text);
             }
             finally { File.Delete(path); }
         }
@@ -228,17 +228,86 @@ namespace LensHH.API.Tests
             var mgr = LoadCatalogs();
             if (mgr == null) return;
 
-            // Corning fused silica is ours, not Code V's. Whatever we do about
-            // ambiguity, we must not write _CORNING_FS as a catalog: Code V
-            // cannot resolve it, which is worse than the ambiguity.
+            // MISC is ours, not Code V's. Naming it would make the material
+            // unresolvable there — worse than the ambiguity a qualifier removes
+            // — so a glass from it goes out bare.
+            var sys = SystemWith("SAPPHIRE");
+            var path = Path.GetTempFileName() + ".seq";
+            try
+            {
+                CodeVWriter.Write(sys, path, mgr);
+                var text = File.ReadAllText(path);
+                Assert.Contains("SAPPHIRE", text);
+                Assert.DoesNotContain("SAPPHIRE_", text);
+                Assert.DoesNotContain("MISC", text);
+            }
+            finally { File.Delete(path); }
+        }
+
+        [Fact]
+        public void Export_CorningMapsToTheSingleCodeVCatalog()
+        {
+            var mgr = LoadCatalogs();
+            if (mgr == null) return;
+
+            // We split Corning across CORNING_B and CORNING_FS; Code V keeps one
+            // CORNING catalog, and CORNING_FS is not a name it could resolve.
             var sys = SystemWith("HPFS_7980");
             var path = Path.GetTempFileName() + ".seq";
             try
             {
                 CodeVWriter.Write(sys, path, mgr);
                 var text = File.ReadAllText(path);
-                Assert.Contains("HPFS7980", text);
-                Assert.DoesNotContain("CORNING", text);
+                Assert.Contains("HPFS7980_CORNING", text);
+                Assert.DoesNotContain("CORNING_FS", text);
+
+                // And it comes back to the catalog name we actually hold it in.
+                var back = CodeVReader.Read(path, mgr);
+                Assert.Equal("HPFS_7980", back.Surfaces[1].Material);
+            }
+            finally { File.Delete(path); }
+        }
+
+        [Fact]
+        public void Import_RecordsTheCatalogsTheGlassesBoundTo()
+        {
+            var mgr = LoadCatalogs();
+            if (mgr == null) return;
+
+            // Without this the system carries no preference and every later
+            // lookup rescans all catalogs, where SK16 is ambiguous.
+            var sys = ReadSeq(SeqWithMaterial("SK16_SUMITA"), mgr);
+            Assert.Equal("SK16", sys.Surfaces[1].Material);
+            Assert.Contains("SUMITA", sys.GlassCatalogs);
+
+            var schott = ReadSeq(SeqWithMaterial("SK16_SCHOTT"), mgr);
+            Assert.Equal("SK16", schott.Surfaces[1].Material);
+            Assert.Contains("SCHOTT", schott.GlassCatalogs);
+        }
+
+        [Fact]
+        public void Import_UnderscoreInsideAGlassName_IsNotACatalog()
+        {
+            var mgr = LoadCatalogs();
+            if (mgr == null) return;
+
+            // ZEMAX's MoldStress extension writes MS_PMMA and MS_POLYSTYR.
+            // PMMA is not a catalog, so the underscore is part of the name.
+            var sys = ReadSeq(SeqWithMaterial("MS_PMMA"), mgr);
+            Assert.Equal("MS_PMMA", sys.Surfaces[1].Material);
+            Assert.Empty(sys.GlassCatalogs);
+
+            // Exporting it loses the underscore, and has to: Code V reads _ as
+            // the catalog separator, so a literal MS_PMMA in a .seq would be
+            // parsed as glass MS from a catalog PMMA. MSPMMA is the only legal
+            // spelling of that name in the format, lossy though it is.
+            var path = Path.GetTempFileName() + ".seq";
+            try
+            {
+                CodeVWriter.Write(sys, path, mgr);
+                var text = File.ReadAllText(path);
+                Assert.Contains("MSPMMA", text);
+                Assert.DoesNotContain("MS_PMMA", text);
             }
             finally { File.Delete(path); }
         }

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using LensHH.Core.Enums;
 using LensHH.Core.Glass;
 using LensHH.Core.Models;
@@ -230,6 +231,17 @@ namespace LensHH.Core.IO
                 system.Fields.Add(new Field(0, 1.0));
 
             FieldValidation.FilterImportedFields(system);
+
+            // Record the catalogs the file's glasses actually bound to. Without
+            // this the system carries no preference and every later lookup falls
+            // back to scanning all catalogs, where a bare name does not always
+            // identify a glass: SCHOTT and SUMITA both hold an SK16, same n_d
+            // but different dispersion formulas.
+            foreach (var catalog in resolver.SeenCatalogs)
+            {
+                if (!system.GlassCatalogs.Contains(catalog, StringComparer.OrdinalIgnoreCase))
+                    system.GlassCatalogs.Add(catalog);
+            }
 
             // Convert from file units to mm
             if (unitScale != 1.0)
