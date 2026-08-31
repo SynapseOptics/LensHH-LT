@@ -239,7 +239,7 @@ namespace LensHH.Mcp
 
         public void ImportCodeV(string filePath)
         {
-            _system = CodeVReader.Read(filePath);
+            _system = CodeVReader.Read(filePath, GlassCatalog);
             MeritFunction = null;
             _currentFilePath = null;
             ClearLastRender();

@@ -220,7 +220,7 @@ namespace LensHH.API
         /// <summary>Import from Code V .seq file.</summary>
         public void ImportCodeV(string filePath)
         {
-            _system = CodeVReader.Read(filePath);
+            _system = CodeVReader.Read(filePath, GlassCatalog);
             ClearMeritAndConfig();
             UpdateSemiDiameters();
         }

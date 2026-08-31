@@ -240,7 +240,7 @@ namespace LensHH.CLI.Commands
                     break;
                 case "codev":
                 case "seq":
-                    system = CodeVReader.Read(path);
+                    system = CodeVReader.Read(path, session.EnsureGlassCatalog());
                     break;
                 case "oslo":
                 case "len":

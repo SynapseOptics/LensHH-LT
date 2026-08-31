@@ -39,6 +39,30 @@ SCHOTT and older catalogs), the preferred-catalog order decides which
 one wins. Reorder the list via **File → Catalog Preference…** if the
 resolver is picking the wrong one.
 
+### Names in Code V files
+
+Code V glass names carry no punctuation. The names above are written
+`NBK7` and `STIH6` in a `.seq` file, and the same applies to every
+vendor: Ohara `S-FPL51` is `SFPL51`, CDGM `H-ZF52` is `HZF52`. Export
+strips the punctuation for you.
+
+Import cannot simply reverse that, because the punctuation-free spelling
+is genuinely ambiguous — Hoya ships real catalog names like `NBFD10`
+that must be left exactly as they are, while `NBK7` has to become
+`N-BK7`. Nothing in the spelling separates the two cases, so import
+resolves the name against your loaded catalogs instead of transforming
+it: a name that a catalog claims as written is kept, otherwise the entry
+whose punctuation-stripped form matches is used. **Load your catalogs
+before importing a `.seq`** — with none loaded there is nothing to
+resolve against, and only the Schott N-prefix is recovered.
+
+Two glasses in the shipped catalogs strip to the same Code V name:
+Sumita `P-SK50` and Schott `PSK50`. Code V's `GLASS_CATALOG` qualifier
+resolves it — `PSK50_SUMITA` imports as `P-SK50`. Written without a
+qualifier, the literal spelling wins, so that one name exports from
+Sumita and returns as the Schott glass. Check it after a round trip if
+you use it.
+
 ## Status Flags
 
 AGF entries carry a status code that LensHH-LT reads and surfaces in

@@ -123,16 +123,13 @@ namespace LensHH.Core.IO
 
         /// <summary>
         /// Translate a LensHH/Zemax-style glass name to the form Code V
-        /// expects. Schott "N-prefix" glasses are written without the dash
-        /// in Code V (<c>N-SF10</c> → <c>NSF10</c>); inverse of
-        /// <c>CodeVReader.CodeVNamesToCatalog</c>. All other names pass
-        /// through unchanged.
+        /// expects. See <see cref="CodeVGlassNames.ToCodeV"/>: Code V glass
+        /// names carry no punctuation, for every vendor and not just the
+        /// Schott N-prefix this method used to special-case.
         /// </summary>
         private static string CatalogNamesToCodeV(string name)
         {
-            if (name.Length >= 2 && name[0] == 'N' && name[1] == '-')
-                return "N" + name.Substring(2);
-            return name;
+            return CodeVGlassNames.ToCodeV(name);
         }
     }
 }

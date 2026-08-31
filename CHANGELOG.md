@@ -2,6 +2,38 @@
 
 All notable changes to LensHH-LT and the LensHH-LT-Engine.
 
+## 1.0.153 — unreleased
+
+### Fixed
+
+- **Code V export wrote glass names Code V cannot resolve.**
+
+  Code V glass names carry no punctuation: the catalogs' `N-BK7`, `S-FPL51` and `H-ZF52` are
+  `NBK7`, `SFPL51` and `HZF52` there. Export stripped the dash only for the Schott N-prefix, so
+  every other punctuated name went out in a spelling Code V does not accept — 639 of the 754
+  punctuated names among the 1515 glasses shipped in `catalogs/Glass`.
+
+  Underscores were the worse half of it, because Code V reads `_` as the separator in
+  `GLASS_CATALOG`: Corning's `HPFS_7980` was written verbatim and read as glass `HPFS` from a
+  catalog named `7980`. Punctuation is now stripped in general, for every vendor.
+
+- **Code V import invented punctuation that was never there.** Import assumed any name starting
+  with `N` followed by a capital was a de-punctuated Schott N-prefix glass and inserted a dash.
+  That is right for `NBK7` and wrong for the 28 Hoya glasses genuinely named `NBF1`, `NBFD10`,
+  `NBFD265` and so on, each of which became a name no catalog contains — so the surface lost its
+  glass on import.
+
+  No string rule can tell those two cases apart. Import now resolves the name against the loaded
+  glass catalogs instead: a name a catalog claims as written is kept, otherwise the entry whose
+  punctuation-stripped form matches is used, and a name no catalog claims is passed through
+  untouched rather than decorated with a dash. Code V's `GLASS_CATALOG` qualifier is honoured
+  where present, which is what separates Sumita's `P-SK50` from Schott's `PSK50` — the only two
+  glasses in the shipped catalogs that strip to the same Code V name.
+
+  The GUI, CLI, MCP and API import paths all pass their catalogs to the reader. Importing with no
+  catalogs loaded falls back to the old N-prefix assumption, since there is then nothing to
+  resolve against.
+
 ## 1.0.152 — 2026-08-30
 
 ### Added

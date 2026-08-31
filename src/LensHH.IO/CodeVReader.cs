@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using LensHH.Core.Enums;
+using LensHH.Core.Glass;
 using LensHH.Core.Models;
 
 namespace LensHH.Core.IO
@@ -14,10 +15,20 @@ namespace LensHH.Core.IO
     /// </summary>
     public static class CodeVReader
     {
-        public static OpticalSystem Read(string filePath)
+        /// <summary>
+        /// Read a Code V .seq file. When <paramref name="glassMgr"/> is
+        /// provided, glass names are resolved against the loaded catalogs, which
+        /// is the only way to undo Code V's punctuation-free spelling: NBK7 has
+        /// to become N-BK7 while Hoya's NBFD10 must be left alone. Without a
+        /// manager we fall back to the old assumption that a leading N before an
+        /// uppercase letter is a Schott N-prefix -- fine for Schott, wrong for
+        /// the 28 Hoya NBF/NBFD glasses.
+        /// </summary>
+        public static OpticalSystem Read(string filePath, GlassCatalogManager? glassMgr = null)
         {
             var lines = File.ReadAllLines(filePath);
             var system = new OpticalSystem();
+            var resolver = new CodeVGlassResolver(glassMgr);
 
             var surfaces = new List<Surface>();
             var wavelengths = new List<double>();
@@ -100,7 +111,7 @@ namespace LensHH.Core.IO
                     case "SO": // Object surface
                     case "S":  // Regular surface
                     case "SI": // Image surface
-                        currentSurface = ParseSurfaceLine(parts, keyword, surfIdx);
+                        currentSurface = ParseSurfaceLine(parts, keyword, surfIdx, resolver);
                         surfaces.Add(currentSurface);
                         surfIdx++;
                         break;
@@ -227,7 +238,8 @@ namespace LensHH.Core.IO
             return system;
         }
 
-        private static Surface ParseSurfaceLine(string[] parts, string keyword, int index)
+        private static Surface ParseSurfaceLine(string[] parts, string keyword, int index,
+            CodeVGlassResolver resolver)
         {
             var surface = new Surface { Index = index };
 
@@ -261,16 +273,11 @@ namespace LensHH.Core.IO
                 }
                 else
                 {
-                    // Remove catalog suffix like "_SCHOTT"
-                    int underscoreIdx = material.IndexOf('_');
-                    if (underscoreIdx > 0)
-                        material = material.Substring(0, underscoreIdx);
-                    // Schott N-prefix glasses are written without the dash
-                    // in Code V (e.g. NSF10), but the LensHH glass catalogs
-                    // (and Zemax) use the dashed form (N-SF10). Apply the
-                    // transform on import so the loaded glass actually
-                    // resolves against the catalog.
-                    surface.Material = CodeVNamesToCatalog(material);
+                    // Code V writes glass names without punctuation and may
+                    // qualify them as GLASS_CATALOG. Resolving that against the
+                    // loaded catalogs -- rather than guessing where a dash used
+                    // to be -- is what keeps NBK7 and Hoya's NBFD10 apart.
+                    surface.Material = resolver.Resolve(material);
                 }
             }
 
@@ -324,23 +331,6 @@ namespace LensHH.Core.IO
         {
             return double.TryParse(s, NumberStyles.Float | NumberStyles.AllowExponent,
                 CultureInfo.InvariantCulture, out value);
-        }
-
-        /// <summary>
-        /// Translate a Code V glass name to the form used in the LensHH
-        /// glass catalogs (and in Zemax). Schott "N-prefix" glasses appear
-        /// in Code V without the dash, so <c>NSF10</c> needs to become
-        /// <c>N-SF10</c> before catalog lookup. Triggers only on names of
-        /// the form N + uppercase letter (so legacy names that happen to
-        /// start with N — e.g. <c>NULL</c>, none of which are real glass
-        /// names anyway — are unaffected, and old non-N glasses like
-        /// <c>SF10</c>, <c>LAFN7</c> are passed through untouched).
-        /// </summary>
-        private static string CodeVNamesToCatalog(string name)
-        {
-            if (name.Length >= 2 && name[0] == 'N' && char.IsUpper(name[1]))
-                return "N-" + name.Substring(1);
-            return name;
         }
 
         private static bool IsGlassMaterial(string? material)

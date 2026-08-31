@@ -247,7 +247,7 @@ public class GuiSession
                 isImport = true;
                 break;
             case "codev":
-                _system = CodeVReader.Read(path);
+                _system = CodeVReader.Read(path, _glassCatalog);
                 _meritFunction = null;
                 _filePath = null;
                 isImport = true;
