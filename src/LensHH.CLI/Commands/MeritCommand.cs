@@ -137,9 +137,13 @@ namespace LensHH.CLI.Commands
                 else
                     surfStr = "";
 
-                // Macro sampling info (show effective values with defaults applied)
+                // Macro sampling info (show effective values with defaults applied).
+                // Covering every wavelength and sampling the pupil are different properties:
+                // PRMSA does the first and not the second, because Robb's pupil average is
+                // closed form. Showing it rings and arms would advertise a control that does
+                // nothing.
                 string samplingStr = "";
-                if (isMacro)
+                if (isMacro && op.Type != OperandType.PRMSA)
                 {
                     bool isRect = op.Type == OperandType.WAVEXR || op.Type == OperandType.WAVEMR
                         || op.Type == OperandType.WAVECR || op.Type == OperandType.SPOTMR
@@ -612,6 +616,10 @@ namespace LensHH.CLI.Commands
                 case OperandType.SPOTMR:
                 case OperandType.SPOTR:
                 case OperandType.SENS:
+                // PRMSA covers every field and wavelength too, so its Wave column reads
+                // "All". Without this it printed the primary wavelength's number, implying
+                // a per-wavelength operand that can be retargeted — it cannot.
+                case OperandType.PRMSA:
                     return true;
                 default:
                     return false;

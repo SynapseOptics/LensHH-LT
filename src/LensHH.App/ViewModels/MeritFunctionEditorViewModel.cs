@@ -34,7 +34,13 @@ public partial class OperandRowViewModel : ObservableObject
 
     // ── Operand category ──
 
-    private enum Category { RayIntercept, Macro, MacroRect, System, Boundary, SurfaceProperty, Arithmetic }
+    // Composite: a whole-system operand that covers every field and wavelength by
+    // construction and takes NOTHING but a weight. It is its own category because every
+    // other one turns something on that does not apply — System would offer a wavelength,
+    // Macro would offer rings and arms, and the RayIntercept fallback offers a surface and
+    // ray coordinates as well. An unlisted operand lands on that fallback, which is how
+    // PRMSA came to show a surface, a wavelength and pupil coordinates it ignores.
+    private enum Category { RayIntercept, Macro, MacroRect, System, Boundary, SurfaceProperty, Arithmetic, Composite }
 
     private Category GetCategory() => _operand.Type switch
     {
@@ -89,6 +95,14 @@ public partial class OperandRowViewModel : ObservableObject
         or OperandType.PSD or OperandType.PSDT or OperandType.SDR or OperandType.SDRT
         or OperandType.PRMS
             => Category.System,
+
+        // PRMSA expands into one PRMS per (wavelength, field) using the system's own
+        // weights, so a wavelength or a field height on the macro would be ignored — set
+        // Wave = 1 and you would still get every wavelength. It takes no surface either,
+        // and no rings or arms: Robb's pupil average is closed form, so the sampling is
+        // exact rather than something to choose. Weight only.
+        OperandType.PRMSA
+            => Category.Composite,
 
         // Boundary
         OperandType.CV or OperandType.CVA or OperandType.CVG
@@ -648,6 +662,7 @@ public partial class MeritFunctionEditorViewModel : ObservableObject
         OperandType.PSDT => "PSDT — Additive form of PSD: sqrt(sum of SQUARED per-surface bound violations) over Surface1..Surface2, against an implicit target of 0. Every offending surface contributes gradient rather than only the worst one. Params: Surface1, Surface2",
         OperandType.SDR => "SDR — Aperture adequacy: actual semi-diameter divided by the paraxial requirement, worst case over Surface1..Surface2. 1.0 means the aperture exactly accommodates the beam; below 1 the beam is being cut. Bound with Minimum near 1. Its gradient points the right way — the optimizer cannot satisfy it by shrinking apertures, only by making the geometry pass the beam. Under Auto Diameters = Paraxial the ratio is 1 on every AUTO surface, since the semi-diameter is then set to the requirement — but NOT on Fixed surfaces, and not where Clear Aperture % is below 100, so a range covering those still reports real information. Prefer PSD when every surface in the range is Auto. Params: Surface1, Surface2",
         OperandType.SDRT => "SDRT — Additive form of SDR: sqrt(sum of SQUARED per-surface bound violations) over Surface1..Surface2, against an implicit target of 0, so every inadequate surface contributes gradient. Same caveat as SDR: meaningless when Auto Diameters is Paraxial. Params: Surface1, Surface2",
+        OperandType.PRMSA => "PRMSA - Paraxial RMS spot across the WHOLE field and spectrum: one operand that expands into a PRMS per (wavelength, field), weighted by the field and wavelength weights already on the system. Identical merit to writing those rows out by hand, but the weights follow the system, and the expansion is wavelength-major so the analytic Jacobian can hold one coefficient pass across a wavelength's fields. TAKES NOTHING BUT A WEIGHT. No wavelength and no field: it covers them all, so either would be ignored. No surface: it is a whole-system quantity. No rings or arms: the pupil average is CLOSED FORM, exact rather than sampled - effectively infinite rings and arms, and its accuracy is set by the truncated series, not by sampling. Inherits every PRMS limitation: defocus and colour are both invisible, so pin focus with PY at the image surface targeted to 0 and use ACT/LCT for colour. Params: Weight",
         OperandType.PRMS => "PRMS — Paraxial RMS spot radius at field Hy, formed from the aberration coefficients instead of traced rays (Robb's analytic merit function, JOSA 66 1037). Covers the full third and fifth order plus seventh-order spherical; measured about the CENTROID, at the paraxial image plane. One scalar in place of many individually weighted coefficient operands. THREE LIMITATIONS, all structural rather than approximations. (1) DEFOCUS IS INVISIBLE: it is referenced to the paraxial image plane, so a design away from focus has a real spot far larger than this reports — constrain focus separately, e.g. PY at the image surface targeted to 0. (2) COLOUR IS INVISIBLE: the coefficients are monochromatic, so each wavelength is measured at ITS OWN focus and about ITS OWN chief ray — neither axial nor lateral colour appears, however many wavelengths you evaluate. Use ACT and LCT for those. (3) Seventh-order FIELD terms are absent (only B7 is computed), so accuracy falls off toward the edge of a wide fast field. Wave selects the wavelength; blank uses the primary. For a spectral spot, add one PRMS per wavelength and set each row's weight — the merit squares and weight-averages them, which is exactly Robb's weighting. Params: Hy, Wave",
         OperandType.BFL => "BFL — Paraxial back focal length: distance from last refractive surface to paraxial focus. For infinite conjugate matches the parallel-ray BFL; for finite conjugate equals the paraxial image distance from the last lens. Params: Wave (optional)",
         OperandType.MAG => "MAG — Paraxial magnification. Params: Wave (optional)",
