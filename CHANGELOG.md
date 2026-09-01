@@ -2,6 +2,77 @@
 
 All notable changes to LensHH-LT and the LensHH-LT-Engine.
 
+## 1.0.154 — unreleased
+
+### Added
+
+- **`PRMSA` — one operand for the whole field and spectrum.** Building a
+  coefficient-based image-quality merit meant writing one `PRMS` per field per
+  wavelength by hand: nine rows for a 3×3 system, each needing its own fractional field
+  height, with weights that did not follow the system when a field or wavelength weight
+  changed. `PRMSA` expands into exactly those operands, weighted by the system's own
+  field and wavelength weights.
+
+  Nothing is given up against writing them out: same sub-operand count, same residuals,
+  same Jacobian rows, same merit. The expansion is wavelength-major, which lets both
+  engines hold one coefficient pass across a wavelength's fields — on the native
+  analytic Jacobian that is 0.812 → 0.385 ms per evaluation on a 3-wavelength,
+  3-field double Gauss. Operands written by hand in field-major order get no such
+  benefit, so `PRMSA` is the form to reach for.
+
+### Fixed
+
+- **The finite-difference Jacobian was wrong on any design whose variable sat outside
+  its own bounds.**
+
+  Each perturbed system was built by passing every variable through the bound
+  transform, and that transform clamps a value that violates its bound to just inside
+  it. The base the columns were differenced against had not been through the same step.
+  So the clamp moved the variable in every perturbed evaluation and never in the base,
+  and that constant offset — divided by a step of order 1e-6 — swamped the derivative
+  in **every column**, not only the clamped variable's.
+
+  On a Cooke triplet carrying a thickness of 0.99997 against a declared minimum of 1,
+  2757 of 2880 Jacobian entries were wrong, including a sign inversion. Designs whose
+  variables all respect their bounds were never affected. **Merit values were correct
+  throughout** — the merit is a sum of squares and cannot see a derivative's sign, which
+  is why this went unnoticed. It affects optimizers using finite differences, including
+  Multistart and the DE seeder.
+
+- **A merit built from aberration-coefficient operands screened against a penalty on the
+  GPU.** The Seidel totals, the Buchdahl operands, the paraxial-aperture operands and
+  `PRMS`/`PRMSA` have no GPU implementation. The whole-merit GPU kernel did not decline
+  them; it returned its failure penalty for each, so such a merit evaluated as roughly
+  9,000,000 instead of its real value. GPU-accelerated DE seeding on a coefficient merit
+  therefore selected its population against that penalty rather than against the design.
+  The GPU path now refuses these merits and stays on the CPU, and Preview says so.
+
+### Changed
+
+- **Semi-diameter solves trace five pupil-rim rays instead of eight.** The system is
+  rotationally symmetric and a field has no sagittal coordinate, so the configuration is
+  symmetric about the meridional plane and three of the eight rim rays were recomputing
+  heights already in hand. **Solved semi-diameters are unchanged** — this is an identity,
+  not a coarser sampling, which matters because a sampling reduction would bias an
+  aperture envelope downward and make edge and aperture constraints look satisfied when
+  they are not. Merit evaluation on the double Gauss above went 0.1664 → 0.1234 ms.
+
+- **Preview names variables that start outside their own bounds.** Such a variable is
+  moved onto the bound before the first evaluation, so the run does not begin from the
+  design on screen. Preview now reports each one with its value and the bound it breaks.
+
+- **The native Jacobian no longer re-solves semi-diameters twice.** It ran the managed
+  solver over the whole system and then solved again internally on its own copy, for the
+  base point and every perturbed column. The duplicate real-ray pass is gone; the value
+  path keeps its solve, which is not redundant.
+
+### Documentation
+
+The semi-diameter page describes the real-ray fan correctly (eight rim rays, not six)
+and no longer frames the difference between the two Auto solve modes as an edge case:
+on an f/3, 14° double Gauss with no aspheres the modes differ by +26% on one surface and
+−11% on another. Real ray remains the default and the recommendation.
+
 ## 1.0.153 — 2026-08-31
 
 ### Fixed
