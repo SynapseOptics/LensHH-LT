@@ -47,6 +47,23 @@ All notable changes to LensHH-LT and the LensHH-LT-Engine.
   therefore selected its population against that penalty rather than against the design.
   The GPU path now refuses these merits and stays on the CPU, and Preview says so.
 
+- **Importing a ZEMAX file dropped the aspheric layer of a hybrid asphere.** A moulded
+  aspheric layer is written as a model glass — `GLAS ___BLANK` with the index and Abbe
+  number inline — which carries an index but no material name. The import pass that sums
+  air-only surfaces between the last element and the image identified that last element by
+  material name, so the layer counted as air: its aspheric back surface was removed, its
+  thickness folded into the surface in front, and the image ended up formed inside the
+  layer's glass.
+
+  The result was a silently different lens. Edmund's aspherized achromat 49-658 imported
+  with an effective focal length of 20.65 mm against the part's nominal 14 mm; four other
+  parts in that family were out by 0.6% to 4.3%. The import now asks whether a surface has
+  an index rather than whether it has a name, and the five read 12.0151, 18.0159, 14.0289,
+  20.0233 and 3.0004 mm against nominals of 12, 18, 14, 20 and 3.
+
+  Only ZEMAX import is affected, and only for a design whose last element is a model
+  glass. The stock-lens catalog ships as `.lhlt` and was never affected.
+
 ### Changed
 
 - **Semi-diameter solves trace five pupil-rim rays instead of eight.** The system is

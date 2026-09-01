@@ -179,7 +179,15 @@ namespace LensHH.Core.IO
             int lastGlassIdx = -1;
             for (int i = 0; i < n; i++)
             {
-                if (!string.IsNullOrEmpty(system.Surfaces[i].Material))
+                // A ZEMAX model glass (GLAS ___BLANK with inline nd/Vd) carries an index but
+                // no material NAME, so testing the name alone declares a real refracting
+                // surface to be a dummy and collapses it away. On an aspherized achromat
+                // that is the moulded aspheric layer: the asphere is lost and the image
+                // ends up formed inside the layer's glass, with the focal length wrong to
+                // match (Edmund 49-658 read 20.65 mm against a nominal 14 mm). The test is
+                // therefore whether the surface has an INDEX, not whether it has a name.
+                var s = system.Surfaces[i];
+                if (!string.IsNullOrEmpty(s.Material) || (s.ModelIndexEnabled && s.ModelNd > 0.0))
                     lastGlassIdx = i;
             }
             if (lastGlassIdx < 0) return;
