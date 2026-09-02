@@ -685,6 +685,14 @@ real design:
    includes, so it degrades where the expansion does — at large aperture, large
    field, or on strongly aspheric surfaces.
 
+4. **It cannot see an aperture.** The estimate is a closed-form function of the
+   coefficients and the field height; no ray is traced, and no surface's
+   semi-diameter or clear aperture enters it. A beam clipped at a surface —
+   off-axis **or on axis** — produces the same value as one that passes
+   unobstructed, and the vignetting penalty that the ray-traced operands apply
+   never arises. Whether a design's apertures pass its beams is a separate
+   question from what `PRMS` reports.
+
 ### Weighting it against the geometry
 
 `PRMS` and the coefficient operands are numerically small next to boundary
@@ -694,6 +702,44 @@ spot size by driving the geometry negative — surfaces crossing before the rim.
 Watch the edge-thickness operands as the tell, and raise image-quality weights
 after the geometry is holding rather than before.
 
+---
+
+## PRMSA — PRMS Over Every Field and Wavelength
+
+`PRMSA` is a composite form of `PRMS`. One row expands, at evaluation time, into
+one `PRMS` sub-operand for every combination of the system's fields and
+wavelengths — a system with three fields and three wavelengths produces nine.
+
+The expansion is fixed by the system, not by the operand:
+
+| | |
+|---|---|
+| **Fields** | Every field in the field table. Each sub-operand's `Hy` is that field's height divided by the largest field height, so the set spans 0 to 1. |
+| **Wavelengths** | Every wavelength in the wavelength table. |
+| **Weight** | Each sub-operand carries `PRMSA weight × field weight × wavelength weight`. With all field and wavelength weights at 1, a `PRMSA` of weight *w* is nine `PRMS` rows of weight *w*. |
+| **Target** | The `PRMSA` target, applied to each sub-operand. |
+| **Order** | Wavelength-major: a wavelength's fields sit together. The coefficient set is monochromatic but field-independent, so one coefficient pass serves all of a wavelength's fields. |
+
+Because the sub-operands are real operands, the least-squares structure is the
+same as writing them out by hand: the same number of residuals and the same
+Jacobian rows, not a single combined row.
+
+### Inputs it does not take
+
+`PRMSA` has no `Wave`, no `Surface`, and no `Rings`/`Arms`:
+
+- **`Wave`** — it covers every wavelength, so there is nothing to select.
+- **`Surface`** — like `PRMS`, it is a property of the whole system at a field
+  point, not of one surface.
+- **`Rings`/`Arms`** — `PRMS` evaluates Robb's integral in closed form over the
+  pupil rather than by summing sampled rays, so there is no sampling density to
+  set. The pupil average is exact to the truncation of the series.
+
+### What it does not see
+
+Every limitation of `PRMS` applies unchanged to each sub-operand `PRMSA`
+produces: defocus, colour, series truncation, and aperture clipping, including
+on-axis clipping. See *What it does not see* above.
 ---
 
 ## Arithmetic Operands

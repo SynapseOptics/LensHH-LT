@@ -2,7 +2,7 @@
 
 All notable changes to LensHH-LT and the LensHH-LT-Engine.
 
-## 1.0.154 — unreleased
+## 1.0.154 — 2026-09-01
 
 ### Added
 
@@ -17,8 +17,14 @@ All notable changes to LensHH-LT and the LensHH-LT-Engine.
   same Jacobian rows, same merit. The expansion is wavelength-major, which lets both
   engines hold one coefficient pass across a wavelength's fields — on the native
   analytic Jacobian that is 0.812 → 0.385 ms per evaluation on a 3-wavelength,
-  3-field double Gauss. Operands written by hand in field-major order get no such
-  benefit, so `PRMSA` is the form to reach for.
+  3-field double Gauss. Operands written by hand in field-major order do not get that
+  reuse.
+
+  `PRMSA` inherits every limitation of `PRMS`, which the merit-function documentation
+  now states in one place: it is computed from the aberration coefficients with no ray
+  traced, so it cannot see defocus, cannot see colour, degrades with the truncation of
+  the series, and takes no account of any surface's aperture — a beam clipped on axis
+  or off it gives the same value as one that passes unobstructed.
 
 ### Fixed
 
