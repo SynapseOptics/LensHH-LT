@@ -16,7 +16,7 @@ namespace LensHH.Mcp.Tools
         private readonly McpSession _session;
         public OptimizationTools(McpSession session) => _session = session;
 
-        [McpServerTool, Description("Add a merit function operand. type is the operand type (e.g. EFL, BFL, CV, RX, RY, WAVEX, CTA, CT). target is the desired value. weight is the importance. Optional: surface (Surface1), surface2 (Surface2, for span boundary operands), wave, min, max, operationCode (NONE,SINE,COSINE,ACOS,ASIN,TANGENT,ATN,SQRT,ABSO). Boundary operands (CT, CTA, CTG, ET, EA, EG, CV, CVA, CVG, SD, DTRG, RI, RE) scan [surface, surface2] and use min/max. Surface sentinels: 0 = mirror the other endpoint (single-surface span); -1 = last refractive surface (count − 2); -2 = image; -3 = first surface after stop; -4 = stop surface; -5 = first surface after OBJ (position 1). When omitted, surface2 defaults to surface so single-surface operands work without an extra parameter.")]
+        [McpServerTool, Description("Add a merit function operand. type is the operand type (e.g. EFL, BFL, CV, RX, RY, WAVEX, CTA, CT). target is the desired value. weight is the importance. Optional: surface - for span operands this is Surface1; it is ALSO SurfaceIndex, which is the surface the paraxial family PL/PM/PN/PX/PY/PZ is evaluated AT (required, >=1) and the trace END surface for the ray family RX..RN (0 = image surface), surface2 (Surface2, for span boundary operands), wave, min, max, operationCode (NONE,SINE,COSINE,ACOS,ASIN,TANGENT,ATN,SQRT,ABSO). Boundary operands (CT, CTA, CTG, ET, EA, EG, CV, CVA, CVG, SD, DTRG, RI, RE) scan [surface, surface2] and use min/max. Surface sentinels: 0 = mirror the other endpoint (single-surface span); -1 = last refractive surface (count − 2); -2 = image; -3 = first surface after stop; -4 = stop surface; -5 = first surface after OBJ (position 1). When omitted, surface2 defaults to surface so single-surface operands work without an extra parameter.")]
         public string AddOperand(string type, double target = 0, double weight = 1,
             int surface = 0, int? surface2 = null, int wave = 0, double? min = null, double? max = null,
             string operationCode = "NONE")
@@ -27,12 +27,48 @@ namespace LensHH.Mcp.Tools
             if (!Enum.TryParse<Core.Enums.OperationCode>(operationCode, true, out var opCode))
                 opCode = Core.Enums.OperationCode.None;
 
+            // Operands addressed by SurfaceIndex rather than by a [Surface1, Surface2]
+            // span: the paraxial family is evaluated AT a surface, and the ray-intercept
+            // family uses it as the END surface of the trace.
+            //
+            // These used to be unauthorable here, silently. AddOperand set Surface1 and
+            // never SurfaceIndex, so a PY left it at 0; EvaluateParaxial indexes
+            // marginal[SurfaceIndex - 1] and its guard (SurfaceIndex - 1 >= 0) simply
+            // skipped the assignment, leaving Value at its default 0. The operand then
+            // reported value 0 against target 0 - residual 0, perfectly satisfied - while
+            // measuring nothing at all. A focus pin authored that way does not pin
+            // anything, which lets a coefficient merit look healthy while the image plane
+            // runs away.
+            bool paraxialFamily = opType == OperandType.PL || opType == OperandType.PM
+                               || opType == OperandType.PN || opType == OperandType.PX
+                               || opType == OperandType.PY || opType == OperandType.PZ;
+            if (paraxialFamily)
+            {
+                // Reject rather than create a dead operand: 0 is precisely the value that
+                // used to evaluate to nothing.
+                int lastSurface = (_session.System?.Surfaces?.Count ?? 0) - 1;
+                if (surface < 1 || (lastSurface > 0 && surface > lastSurface))
+                {
+                    string hint = lastSurface > 0
+                        ? $" and <= {lastSurface} (the image surface)"
+                        : "";
+                    return $"{opType} is evaluated AT a surface and needs surface >= 1{hint}. "
+                         + $"Got surface={surface}. For a focus pin, use the image surface.";
+                }
+            }
+
             var operand = new Operand
             {
                 Type = opType,
                 Target = target,
                 Weight = weight,
                 Surface1 = surface,
+                // Set ALONGSIDE Surface1, not instead of it: span operands read
+                // Surface1/Surface2 and ignore this; the paraxial and ray families read
+                // this and ignore those. Default 0 leaves the ray family unchanged, where
+                // endSurface <= 0 already means "the image surface" (ArbitraryRay.Trace),
+                // so only an EXPLICIT surface=N alters existing behaviour.
+                SurfaceIndex = surface,
                 // Default: single-surface span. The evaluator's sentinel resolver
                 // treats Surface2=0 as "mirror Surface1", so an `add_operand(...,
                 // surface=5)` call without surface2 evaluates as if the user had
