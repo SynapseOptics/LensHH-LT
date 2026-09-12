@@ -770,7 +770,24 @@ public partial class MeritFunctionEditorViewModel : ObservableObject
                 insertIdx = selIdx + 1;
         }
 
-        var newOp = new Operand { Type = OperandType.EFL, Weight = 1.0 };
+        // Weight 0, NOT 1. A freshly inserted row has had no input from the user: its
+        // Target is still the field default of 0, and for any operand carrying a scale —
+        // EFL, BFL, TTRACK, MAG — a target of 0 is never what anyone means, it is the most
+        // destructive value available. At weight 1 such a row does not sit quietly waiting
+        // to be filled in; it immediately demands the quantity go to zero.
+        //
+        // Observed on a real 100 mm design: one unfilled EFL row contributed a residual of
+        // ~100, which was 99% of the merit's entire sum of squares, and the optimizer
+        // dutifully traded image quality away chasing it (PRMSA 0.0414 -> 0.0915) while the
+        // merit sat pinned near 6.87. Deleting that one row took the same design to 0.028.
+        //
+        // Weight 0 is already a first-class state: the evaluator zeroes the residual and
+        // skips it, while still computing and showing its Value (MeritFunctionEvaluator
+        // lines 332 / 736). So a new row reads as a MONITOR — it tells you what the operand
+        // currently measures, and starts influencing the merit only once you give it a
+        // weight on purpose. The failure mode flips from silent sabotage to a silent no-op,
+        // which is the right direction for something the user has not configured yet.
+        var newOp = new Operand { Type = OperandType.EFL, Weight = 0.0 };
         mf.InsertOperand(insertIdx, newOp);
         Refresh();
 
