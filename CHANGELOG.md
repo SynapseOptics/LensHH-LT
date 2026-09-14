@@ -2,6 +2,70 @@
 
 All notable changes to LensHH-LT and the LensHH-LT-Engine.
 
+## 1.0.155 — 2026-09-14
+
+### Fixed
+
+- **A merit function carrying `LCF` would not optimize at all.** It failed with a
+  derivative error while the Preview button reported "Native Analytic" — so the one
+  place built to tell you which engine will run was telling you the wrong thing, and
+  removing the operand was the only way to find out why. `LCF` had no native analytic
+  derivative; the native engine declined, and the decline surfaced as a failure rather
+  than as a fallback.
+
+  Rather than route `LCF` to finite differences, it and thirteen others were given real
+  analytic derivatives: `LCF`, `DITAN`, `DITHETA`, `DITANF`, `DITHETAF`, `ENPD`, `DM`,
+  `EXPD`, `FCF`, `ASTF`, `ENPZ`, `EXPZ`, `MAG` and `ILL`. Each is validated against
+  finite differences in its own test.
+
+  This matters beyond the operands named. **One** operand without an analytic derivative
+  forces the **whole** merit onto finite differences, so a single monitor row — a row you
+  added to watch a number, not to drive the design — was costing exact gradients on every
+  other row in the function.
+
+  `ILL` is worth calling out: its derivative now includes the motion of the vignetting
+  boundary itself. Measured against independent central differences it is *more* accurate
+  than the finite differences it replaces, because the boundary is found by bisection and
+  a difference quotient cannot see past that quantisation.
+
+- **Preview could report a compute path the run did not take.** Two gaps. Downgrading the
+  *derivative* (analytic to finite-difference) was described as falling back from Native,
+  which is untrue when the run is still native — the two are now reported separately. And
+  the support rules that depend on the **system** rather than the operand were missing
+  entirely: `MAG` is analytic only under an EPD aperture, the `DIT*` family only when the
+  field type is not Object Height, `ENPD`/`EXPD` only when the aperture is not
+  Object-Space NA. Each of those used to reach the engine and fail.
+
+- **A newly inserted merit row arrived at weight 1 with a target of 0.** For any operand
+  carrying a scale — `EFL`, `BFL`, `TTRACK`, `MAG` — a target of 0 is never what anyone
+  means; it is the most destructive value available, and at weight 1 the row does not wait
+  to be filled in, it immediately demands the quantity go to zero. On a 100 mm design one
+  unfilled `EFL` row contributed 99% of the merit's sum of squares, and the optimizer
+  traded image quality away chasing it. Deleting that single row took the same design from
+  0.0915 to 0.028.
+
+  New rows now arrive at **weight 0**, which the evaluator already treats as a first-class
+  state: the residual is skipped while the Value is still computed and displayed. A new row
+  therefore reads as a *monitor*, and starts influencing the merit only when you give it a
+  weight deliberately.
+
+- **`add_operand` through the MCP interface ignored the surface for the paraxial family.**
+  `PL`/`PM`/`PN`/`PX`/`PY`/`PZ` are addressed by a surface index rather than by a surface
+  span, and it was never set — so the operand evaluated to 0 against a target of 0, a
+  residual of 0, perfectly satisfied, while measuring nothing. A focus constraint authored
+  that way does not constrain anything, which is how a coefficient-based merit can look
+  healthy while the image plane runs away. The surface is now set, and the paraxial family
+  rejects a missing one instead of creating a row that measures nothing.
+
+### Changed
+
+- **There is no longer a limit on the number of surfaces.** The native engine carried an
+  internal cap of 256 that was never an optical or a product decision — it was the size of
+  a scratch buffer that became a limit on what the software would accept. Worse, for most
+  of its life nothing checked it. Every such buffer is now sized from the design's actual
+  surface count, and a 299-surface system is exercised by the test suite through the value
+  path, the aperture solve and both derivative modes.
+
 ## 1.0.154 — 2026-09-01
 
 ### Added
