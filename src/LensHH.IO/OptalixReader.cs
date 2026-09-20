@@ -430,7 +430,10 @@ namespace LensHH.Core.IO
                 double n1 = indices[i - 1];
                 double n2 = indices[i];
                 if (n2 <= 0) return 0; // unresolved glass — abort, caller falls back
-                double c = surfaces[i].Curvature; // 1/R, 0 for flat
+                // VERTEX curvature: an even asphere's r² coefficient is a curvature change
+                // (c = cb + 2·A2) and so sets the surface's paraxial power. Same double as
+                // Curvature on any surface without one. See Surface.VertexCurvature.
+                double c = surfaces[i].VertexCurvature; // 1/R (+2·A2), 0 for flat
 
                 // Paraxial refraction (ynu form): n2*u' = n1*u - y*(n2-n1)*c
                 u = (n1 * u - y * (n2 - n1) * c) / n2;

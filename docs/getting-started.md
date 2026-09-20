@@ -194,6 +194,43 @@ Each row in the Lens Editor is one surface, ordered object → image:
 | **Fixed SD** | Checkbox choosing how the semi-diameter is set. |
 | **Properties** | The `…` button — per-surface variable / pickup, aspheric, and aperture settings. |
 
+**Even Asphere surfaces and the `A2` term.** An **Even Asphere** surface is the
+conic of the **Radius** and **Conic Constant** columns plus a polynomial in even
+powers of the radial height `r`, edited on the **Aspheric** tab of the surface
+**Properties** dialog:
+
+```
+        c·r²                                    1
+z = ───────────────────── + A2·r² + A4·r⁴ + A6·r⁶ + … + A16·r¹⁶ ,    c = ─────
+    1 + √(1 − (1+k)c²r²)                                                Radius
+```
+
+Note where the polynomial starts. **`A2` multiplies `r²`, and so does the conic
+term — which makes `A2` a change of CURVATURE, not a figuring term.** Expanding
+the sag gives `z = (c/2 + A2)·r² + …`, so a surface with base curvature `c` and a
+non-zero `A2` has a *vertex* curvature of `c + 2·A2`. That is the curvature that
+sets the surface's power, so an `A2` moves the focal length, the back focal
+length, the pupils, the Petzval sum and every Seidel coefficient — even though
+the **Radius** column still shows the base radius you typed.
+
+Two consequences worth knowing:
+
+- **The reported Radius is not the whole shape.** On a surface carrying an `A2`,
+  read the first-order data (EFL / BFL / F/#) rather than inferring power from
+  the radius. The two disagree by design.
+- **`A2` is usually the wrong variable to optimize.** It duplicates the radius —
+  any `A2` can be absorbed into the radius with a compensating `A4` — so making
+  both variable gives the optimizer two knobs for one degree of freedom. Prefer
+  the radius, and start the aspheric terms at `A4`. `A2` earns its place mainly
+  when importing a prescription that was written that way.
+
+Every route through the program agrees on this: the real ray trace uses the sag
+above, and the paraxial, Seidel and Buchdahl routes use the vertex curvature and
+measure the remaining figuring from the sphere it describes. (Releases before
+this one read the base curvature in those routes and discarded `A2` entirely, so
+a design carrying one was analysed as a different lens from the one its rays were
+traced through. See the changelog.)
+
 **Paraxial (ideal thin lens) surfaces.** Setting a surface's type to
 **Paraxial** turns it into an ideal thin lens defined by a single **focal
 length** (mm) — it bends rays with no aberration and no thickness. Radius,
