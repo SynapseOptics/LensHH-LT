@@ -2,6 +2,57 @@
 
 All notable changes to LensHH-LT and the LensHH-LT-Engine.
 
+## 1.0.156 — 2026-09-20
+
+### Fixed
+
+- **An `A2` aspheric coefficient reached nothing but the ray trace.** On an Even Asphere
+  surface, putting a value in `A2` left the reported effective focal length, back focal
+  length, pupils, Petzval sum and every Seidel and Buchdahl coefficient exactly where they
+  were — while the rays bent differently. The program was analysing one lens and tracing
+  another.
+
+  `A2` multiplies `r²`, and so does the conic term. That makes it a change of **curvature**,
+  not a figuring term: the sag expands as `z = (c/2 + A2)·r² + …`, so a surface with base
+  curvature `c` and a non-zero `A2` has a *vertex* curvature of `c + 2·A2`, and it is the
+  vertex curvature that sets the surface's power. Every routine that formed a paraxial
+  power read the base curvature instead and discarded the term. The real ray trace uses
+  the true sag, so it had the surface right all along — which is what made the disagreement
+  possible rather than merely wrong.
+
+  On a 78 mm singlet, an `A2` of 1E-04 on the front surface moves the focal length to
+  77.42 mm and the spherical sum `S1` from 5.537E-03 to 5.503E-03. Before this release
+  both numbers were reported unchanged.
+
+  Three consequences beyond the displayed numbers. The Seidel aspheric term measures a
+  surface's departure from the sphere the paraxial trace used, so it had to be
+  re-referenced to the vertex sphere — it was measuring the `r⁴` departure from the wrong
+  one. The Buchdahl route is fixed the same way, through an explicit conversion to the
+  equivalent vertex sphere; it previously documented the `r²` term as "not handled" and
+  raised an internal flag that nothing in the product ever read, so the limitation it
+  announced reached no user. And the optimizer's analytic derivative of focal length with
+  respect to `A2` was identically zero, so an `A2` variable could not be driven against a
+  focal-length target at all.
+
+  Nothing changes on any design without an `A2`. The correction is arranged so that it is
+  bit-for-bit zero there — not merely small — and that is pinned by its own tests, as is
+  the equivalence that finds the bug: one surface written two ways, as `(c, A2)` and as the
+  shifted sphere `c + 2·A2` with compensating figuring, must give one answer.
+
+- **An OpTaliX file with an `A2` term could import at the wrong aperture.** When the file
+  carries no aperture keyword, the entrance-pupil diameter is backed out from a paraxial
+  axial ray. That ray used base curvatures, so an `r²` term on any surface ahead of the
+  stop produced the wrong EPD for the whole design — from an import that reported no
+  problem.
+
+### Changed
+
+- **The Even Asphere surface is now documented.** The user guide gives the sag equation and
+  says plainly that `A2` sits on the same power of `r` as the conic, so it moves the focal
+  length while the **Radius** column still shows the base radius you typed. It also notes
+  that `A2` duplicates the radius as an optimization variable — two knobs for one degree of
+  freedom — so aspheric terms should normally start at `A4`.
+
 ## 1.0.155 — 2026-09-14
 
 ### Fixed
