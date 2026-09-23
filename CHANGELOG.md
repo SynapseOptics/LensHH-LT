@@ -2,6 +2,71 @@
 
 All notable changes to LensHH-LT and the LensHH-LT-Engine.
 
+## 1.0.157 — 2026-09-22
+
+### Fixed
+
+- **Relative illumination was measuring the wrong quantity.** Illuminance at an image
+  point is the projected solid angle of the cone arriving there: the area of the
+  transmitted pupil in image-space direction cosines, taken about the **image
+  surface's normal** at that point, with each ray's direction taken as seen **from**
+  the image point. Four parts of that were wrong.
+
+  The polygon was built from direction cosines about the **z axis**, so on a curved
+  image the surface's shape dropped out entirely — an ideal f/5 lens with a +200 mm
+  image surface read 0.5670 at 30° where the answer is 0.3558, and the same lens with
+  a −150 mm surface read 0.5670 where the answer is 0.7852. Raw ray directions were
+  used, with no reference-sphere correction: an aberrated ray does not pass through
+  the image point, so its own direction describes the cone somewhere else. Rays were
+  confined to the **paraxial** entrance pupil with no aiming, cutting off the off-axis
+  pupil growth that lets a wide-angle lens beat cos⁴ — and making the answer depend on
+  the file's ray-aiming setting, which has nothing to do with radiometry. And the
+  transmitted area was found by one outward search per azimuth, which assumes the
+  region is star-shaped about the chief ray.
+
+  Measured against closed-form answers: the two curved-image lenses now read 0.3558
+  and 0.7852, a Kingslake double Gauss 0.9009 at 14° (was ~0.872), a Topogon 0.3517 at
+  35° (was ~0.373), a vignetted Cooke triplet 0.3333 at 20° (was 0.3430), and a lens
+  with a curved **object** 0.8504 at 60 mm (was ~0.901).
+
+- **A central obstruction blocked no light.** The obscuration radius was stored on the
+  surface, read only to decide whether the semi-diameter should clip, and never
+  consulted again — so an obstruction was invisible to every ray-based analysis, and
+  an obscured pupil was measured as a full disk. It now blocks rays. Relative
+  illumination on an ideal lens with a 4 mm obstruction reads 0.6472 at 30° where it
+  used to read 0.5670.
+
+- **Every clear aperture acted 0.5 % oversize.** The clip test carried a 1 % slack on
+  r² with no stated reason, so an aperture of radius *R* passed rays out to
+  *R* × 1.005. Where vignetting sets the off-axis beam that is light the lens does not
+  transmit — three quarters of the relative-illumination error on a vignetted Cooke
+  triplet. The slack is now round-off relief only.
+
+- **A deep meniscus could refract a ray on the wrong hemisphere.** The conic
+  intersection took the root nearest the vertex plane without checking which sheet of
+  the conic it landed on. For a ray leaving a stop near the centre of curvature that
+  root is on the far hemisphere, and the ray was refracted at a surface point the lens
+  does not have.
+
+- **The exit-pupil position was wrong for a finite conjugate with the stop first.** The
+  calculation took a shortcut that only holds when the object is at infinity, so on a
+  finite-conjugate design whose stop is the first surface it reported a position that
+  is not the exit pupil at all.
+
+- **An `ILL` merit operand and the relative-illumination plot could disagree.** They
+  were two independent implementations of the same measurement. The operand now
+  evaluates the analysis itself, so the number you optimize against and the curve you
+  check it on cannot drift apart. (`ILL` is still normalized to the axis and the plot
+  to the brightest field; that difference is deliberate.)
+
+### Changed
+
+- **Vignetting factors are now the vignetting model.** When a field's factors remap the
+  pupil, the rays they describe are no longer re-tested against the clear apertures —
+  that counted the same vignetting twice. Two cases still clip: designs with
+  **Penalize Vignetting** on, where being shown the vignetting is the point, and
+  on-axis fields, which never carry factors.
+
 ## 1.0.156 — 2026-09-20
 
 ### Fixed
