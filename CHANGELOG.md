@@ -2,6 +2,23 @@
 
 All notable changes to LensHH-LT and the LensHH-LT-Engine.
 
+## 1.0.158 — in progress
+
+### Fixed
+
+- **An OSLO file LensHH-LT wrote could open in the wrong colour.** OSLO has no
+  primary-wavelength keyword: its primary is wavelength 1, the first entry on the `WV`
+  line. The exporter wrote the wavelengths in the order they were stored, so a lens
+  stored F, d, C with d primary was written `WV 0.48613 0.58756 0.65627` and opened in
+  OSLO — and read back into LensHH-LT — as an F-line lens: on a Kingslake double Gauss,
+  EFL 100.1859 instead of 100.0039, and the full-field chief ray at 24.9457 instead of
+  24.9495. The exporter now writes the primary first and the rest short to long, which
+  is OSLO's own middle, short, long order (d, F, C for the usual three), with each
+  weight kept beside its wavelength. The importer already took the first wavelength as
+  primary and is unchanged. OSLO files exported by earlier versions should be exported
+  again, or have the primary moved to the front of the `WV` line (and its weight on
+  the `WW` line) by hand.
+
 ## 1.0.157 — 2026-09-22
 
 ### Fixed

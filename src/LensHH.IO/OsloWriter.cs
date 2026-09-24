@@ -167,12 +167,27 @@ namespace LensHH.Core.IO
                     sb.AppendLine("CALLBACK  1");
             }
 
-            // Wavelengths
+            // Wavelengths. OSLO has no primary-wavelength keyword: its primary IS
+            // wavelength 1, the first on the WV line (OSLO Program Reference pp. 26,
+            // 123), and OsloReader reads it that way. So the primary goes first, and
+            // the rest follow short to long - OSLO's own middle, short, long order,
+            // d F C for the usual three. Each weight travels with its wavelength.
+            // Written in stored order instead, an F d C lens with d primary opened
+            // in OSLO, and read back here, as an F-line lens. Nothing else in the
+            // file refers to a wavelength by number, so nothing else is renumbered.
             if (system.Wavelengths.Count > 0)
             {
+                int primary = system.PrimaryWavelengthIndex;
+                if (primary < 0 || primary >= system.Wavelengths.Count)
+                    primary = 0;
+                var ordered = system.Wavelengths
+                    .Where((_, i) => i != primary)
+                    .OrderBy(w => w.Value)
+                    .Prepend(system.Wavelengths[primary]);
+
                 var wvSb = new StringBuilder("WV ");
                 var wwSb = new StringBuilder("WW ");
-                foreach (var wl in system.Wavelengths)
+                foreach (var wl in ordered)
                 {
                     wvSb.Append(string.Format(CultureInfo.InvariantCulture, " {0:F5}", wl.Value));
                     wwSb.Append(string.Format(CultureInfo.InvariantCulture, " {0:G}", wl.Weight));
