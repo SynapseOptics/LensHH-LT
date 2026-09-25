@@ -311,6 +311,17 @@ public partial class MainWindow : Window
         var notes = VM.Session.LastImportNotes;
         if (notes.Count == 0) return;
 
+        if (VM.Session.LastImportFormat == "optiland")
+        {
+            var ol = new System.Text.StringBuilder();
+            ol.AppendLine("Some of this file's materials could not be read as the same glass:");
+            ol.AppendLine();
+            foreach (var note in notes)
+                ol.AppendLine("  • " + note);
+            await ShowMessageBox("Optiland materials", ol.ToString());
+            return;
+        }
+
         var sb = new System.Text.StringBuilder();
         sb.AppendLine("This file's glasses come from outside LensHH-LT's own catalogs:");
         sb.AppendLine();
@@ -382,7 +393,18 @@ public partial class MainWindow : Window
         if (file != null)
         {
             var path = file.TryGetLocalPath();
-            if (path != null) VM.SaveFile(path, format);
+            if (path != null)
+            {
+                VM.SaveFile(path, format);
+                if (format == "optiland" && VM.Session.LastExportGlassFolder is string folder)
+                    await ShowMessageBox("Glasses for Optiland",
+                        "The glasses of this lens, as LensHH-LT computes them, are in\n\n  " + folder
+                        + "\n\nas Optiland user catalogs. Copy its folders into ~/.optiland/catalogs/ "
+                        + "(on Windows, %USERPROFILE%\\.optiland\\catalogs\\) and Optiland uses exactly "
+                        + "these glasses. Without them, Optiland stops with an error naming the catalog "
+                        + "it is missing; it never substitutes another glass. "
+                        + "README.txt in the folder has the details.");
+            }
         }
     }
 

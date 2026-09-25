@@ -1,8 +1,10 @@
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Text;
 using LensHH.Core.Enums;
+using LensHH.Core.Glass;
 using LensHH.Core.Models;
 
 namespace LensHH.Core.IO
@@ -10,13 +12,33 @@ namespace LensHH.Core.IO
     /// <summary>
     /// Writes Optiland .json lens files.
     /// Produces JSON compatible with the Optiland Python optical design tool.
+    ///
+    /// <para>Glass is written as <see cref="OptilandGlass"/> describes:</para>
+    /// <list type="bullet">
+    /// <item>in the lens file, each glass is named with its catalog and
+    /// <c>match_policy: "strict"</c>;</item>
+    /// <item>beside it, the glass's own dispersion data goes into a folder of Optiland user
+    /// catalogs.</item>
+    /// </list>
+    /// <para>Earlier versions wrote a bare name with <c>robust_search</c>, which lets Optiland take
+    /// the nearest name from any catalog. Many common glasses came back as a different glass that
+    /// way, and a model glass was written as a name Optiland could not know.</para>
     /// </summary>
     public static class OptilandWriter
     {
-        public static void Write(OpticalSystem system, string filePath)
+        private const string Air = "{\"type\": \"IdealMaterial\", \"index\": 1.0, \"absorp\": 0.0}";
+
+        /// <summary>Writes the lens, and its glasses beside it.</summary>
+        /// <param name="glassMgr">The glass catalogs. With them, each glass is written with its
+        /// dispersion data. Without them, a catalog glass goes out by name only, for Optiland's
+        /// own database: strict, and with a catalog only when the system names exactly one.</param>
+        /// <returns>The folder of glasses written beside the lens file, or null when there were
+        /// none to write.</returns>
+        public static string? Write(OpticalSystem system, string filePath, GlassCatalogManager? glassMgr = null)
         {
             var sb = new StringBuilder();
             string indent = "    ";
+            var materials = Materials(system, glassMgr, out var ymls);
 
             sb.AppendLine("{");
             sb.AppendLine($"{indent}\"version\": 1.0,");
@@ -133,52 +155,24 @@ namespace LensHH.Core.IO
                 sb.AppendLine($"{indent}{indent}{indent}{indent}}},");
 
                 // Material pre (for non-object surfaces)
-                bool isMirror = !string.IsNullOrEmpty(s.Material) &&
-                                s.Material.Equals("MIRROR", StringComparison.OrdinalIgnoreCase);
-                bool hasGlass = !string.IsNullOrEmpty(s.Material) && !isMirror;
+                bool isMirror = s.IsMirror;
+                bool hasGlass = materials[i] != null;
 
                 if (!isObject)
                 {
                     // material_pre: glass from previous surface's material_post, or air
-                    var prevSurf = system.Surfaces[i - 1];
-                    bool prevHasGlass = !string.IsNullOrEmpty(prevSurf.Material) &&
-                                        !prevSurf.Material.Equals("MIRROR", StringComparison.OrdinalIgnoreCase);
+                    bool prevHasGlass = materials[i - 1] != null;
                     if (prevHasGlass)
-                    {
-                        sb.AppendLine($"{indent}{indent}{indent}{indent}\"material_pre\": {{");
-                        sb.AppendLine($"{indent}{indent}{indent}{indent}{indent}\"type\": \"Material\",");
-                        sb.AppendLine($"{indent}{indent}{indent}{indent}{indent}\"name\": \"{prevSurf.Material}\",");
-                        sb.AppendLine($"{indent}{indent}{indent}{indent}{indent}\"reference\": null,");
-                        sb.AppendLine($"{indent}{indent}{indent}{indent}{indent}\"robust_search\": true,");
-                        sb.AppendLine($"{indent}{indent}{indent}{indent}{indent}\"min_wavelength\": null,");
-                        sb.AppendLine($"{indent}{indent}{indent}{indent}{indent}\"max_wavelength\": null");
-                        sb.AppendLine($"{indent}{indent}{indent}{indent}}},");
-                    }
+                        sb.AppendLine($"{indent}{indent}{indent}{indent}\"material_pre\": {materials[i - 1]},");
                     else
-                    {
-                        sb.AppendLine($"{indent}{indent}{indent}{indent}\"material_pre\": {{\"type\": \"IdealMaterial\", \"index\": 1.0, \"absorp\": 0.0}},");
-                    }
+                        sb.AppendLine($"{indent}{indent}{indent}{indent}\"material_pre\": {Air},");
                 }
 
                 // material_post — trailing comma only when more properties
                 // follow. Non-object surfaces have an is_stop block after
                 // material_post; the object surface stops here, so no comma.
                 string mpTail = isObject ? "" : ",";
-                if (hasGlass)
-                {
-                    sb.AppendLine($"{indent}{indent}{indent}{indent}\"material_post\": {{");
-                    sb.AppendLine($"{indent}{indent}{indent}{indent}{indent}\"type\": \"Material\",");
-                    sb.AppendLine($"{indent}{indent}{indent}{indent}{indent}\"name\": \"{s.Material}\",");
-                    sb.AppendLine($"{indent}{indent}{indent}{indent}{indent}\"reference\": null,");
-                    sb.AppendLine($"{indent}{indent}{indent}{indent}{indent}\"robust_search\": true,");
-                    sb.AppendLine($"{indent}{indent}{indent}{indent}{indent}\"min_wavelength\": null,");
-                    sb.AppendLine($"{indent}{indent}{indent}{indent}{indent}\"max_wavelength\": null");
-                    sb.AppendLine($"{indent}{indent}{indent}{indent}}}{mpTail}");
-                }
-                else
-                {
-                    sb.AppendLine($"{indent}{indent}{indent}{indent}\"material_post\": {{\"type\": \"IdealMaterial\", \"index\": 1.0, \"absorp\": 0.0}}{mpTail}");
-                }
+                sb.AppendLine($"{indent}{indent}{indent}{indent}\"material_post\": {(hasGlass ? materials[i] : Air)}{mpTail}");
 
                 // is_stop, aperture, coating, bsdf, is_reflective
                 if (!isObject)
@@ -198,6 +192,108 @@ namespace LensHH.Core.IO
             sb.AppendLine("}");
 
             File.WriteAllText(filePath, sb.ToString());
+            return WriteGlassFolder(filePath, ymls);
+        }
+
+        // The material_post object for each surface, or null for air and mirrors; and the .yml
+        // of each glass, keyed by catalog then name.
+        private static string?[] Materials(OpticalSystem system, GlassCatalogManager? glassMgr,
+            out SortedDictionary<string, SortedDictionary<string, string>> ymls)
+        {
+            ymls = new SortedDictionary<string, SortedDictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
+            var materials = new string?[system.Surfaces.Count];
+            IList<string>? preferred = system.GlassCatalogs.Count > 0 ? system.GlassCatalogs : null;
+
+            for (int i = 0; i < system.Surfaces.Count; i++)
+            {
+                var s = system.Surfaces[i];
+                if (s.IsMirror) continue;
+
+                if (s.ModelIndexEnabled)
+                {
+                    string name = OptilandGlass.ModelName(s.ModelNd, s.ModelVd, s.ModelDPgF);
+                    var (formula, c) = OptilandGlass.ModelDispersion(s.ModelNd, s.ModelVd, s.ModelDPgF);
+                    string description = string.Format(CultureInfo.InvariantCulture,
+                        "LensHH-LT model glass: nd {0:R}, Vd {1:R}, dPgF {2:R}", s.ModelNd, s.ModelVd, s.ModelDPgF);
+                    Add(ymls, OptilandGlass.ModelCatalog, name, OptilandGlass.Yml(description, formula, c, 0.2, 5.0));
+                    materials[i] = MaterialJson(name, OptilandGlass.ModelCatalog);
+                    continue;
+                }
+
+                if (string.IsNullOrEmpty(s.Material) || s.Material.Equals("AIR", StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                var glass = glassMgr?.GetGlass(s.Material, preferred);
+                var dispersion = glass != null ? OptilandGlass.Dispersion(glass) : null;
+                if (glass != null && dispersion != null && !string.IsNullOrEmpty(glass.Catalog)
+                    && OptilandGlass.IsFileName(glass.Name))
+                {
+                    string catalog = OptilandGlass.DataCatalog(glass.Catalog);
+                    var (formula, c) = dispersion.Value;
+                    double lo = glass.WavelengthMin > 0 ? glass.WavelengthMin : 0.2;
+                    double hi = glass.WavelengthMax > lo ? glass.WavelengthMax : 5.0;
+                    Add(ymls, catalog, glass.Name,
+                        OptilandGlass.Yml($"{glass.Catalog} {glass.Name}, as LensHH-LT computes it", formula, c, lo, hi));
+                    materials[i] = MaterialJson(glass.Name, catalog);
+                }
+                else
+                {
+                    // Not in any catalog we have (or a name no file can carry): the name alone,
+                    // still strict, so Optiland either has exactly this glass or says it does not.
+                    string? catalog = system.GlassCatalogs.Count == 1
+                        ? OptilandGlass.VendorCatalog(system.GlassCatalogs[0]) : null;
+                    materials[i] = MaterialJson(s.Material, catalog);
+                }
+            }
+            return materials;
+        }
+
+        private static void Add(SortedDictionary<string, SortedDictionary<string, string>> ymls,
+                                string catalog, string name, string yml)
+        {
+            if (!ymls.TryGetValue(catalog, out var names))
+                ymls[catalog] = names = new SortedDictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            names[name] = yml;
+        }
+
+        private static string MaterialJson(string name, string? catalog) =>
+            "{\"type\": \"Material\", \"name\": " + JsonString(name)
+            + ", \"reference\": null, \"catalog\": " + (catalog == null ? "null" : JsonString(catalog))
+            + ", \"match_policy\": \"strict\", \"robust_search\": null"
+            + ", \"min_wavelength\": null, \"max_wavelength\": null}";
+
+        private static string JsonString(string s)
+        {
+            var sb = new StringBuilder("\"");
+            foreach (char ch in s)
+            {
+                if (ch == '"' || ch == '\\') sb.Append('\\').Append(ch);
+                else if (ch < ' ') sb.Append("\\u").Append(((int)ch).ToString("x4"));
+                else sb.Append(ch);
+            }
+            return sb.Append('"').ToString();
+        }
+
+        // The glasses, as Optiland user catalogs in a folder named after the lens file. The folder
+        // is rewritten whole, so a glass the lens no longer uses does not linger in it.
+        private static string? WriteGlassFolder(string filePath,
+            SortedDictionary<string, SortedDictionary<string, string>> ymls)
+        {
+            string dir = Path.GetDirectoryName(Path.GetFullPath(filePath)) ?? ".";
+            string folder = Path.Combine(dir, Path.GetFileNameWithoutExtension(filePath) + "_glass");
+            if (Directory.Exists(folder)) Directory.Delete(folder, true);
+            if (ymls.Count == 0) return null;
+
+            foreach (var catalog in ymls)
+            {
+                string sub = Path.Combine(folder, catalog.Key);
+                Directory.CreateDirectory(sub);
+                foreach (var glass in catalog.Value)
+                    File.WriteAllText(Path.Combine(sub, glass.Key + ".yml"), glass.Value, new UTF8Encoding(false));
+            }
+            File.WriteAllText(Path.Combine(folder, "README.txt"),
+                OptilandGlass.ReadMe(Path.GetFileName(filePath), ymls.Keys));
+            return folder;
         }
 
         private static string Fmt(double v)
@@ -208,11 +304,9 @@ namespace LensHH.Core.IO
         private static string FmtInf(double v)
         {
             // Optiland's canonical JSON uses literal Infinity / -Infinity
-            // tokens (see OptilandNet's own sample cooke_triplet_original.json).
-            // Both Python json (with allow_nan=True, default) and OptilandNet's
-            // parser accept these. A finite sentinel like 1e30 also parses but
-            // breaks layout rendering — OptilandNet treats it as a real finite
-            // object distance and the lens shrinks to invisibility.
+            // tokens, which Python's json accepts (allow_nan=True, the default).
+            // A finite sentinel like 1e30 also parses but is taken as a real
+            // finite object distance.
             if (double.IsPositiveInfinity(v)) return "Infinity";
             if (double.IsNegativeInfinity(v)) return "-Infinity";
             return Fmt(v);

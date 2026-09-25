@@ -110,6 +110,9 @@ public class GuiSession
     /// cleared on the next file open.</summary>
     public IReadOnlyList<string> LastImportNotes { get; private set; } = Array.Empty<string>();
 
+    /// <summary>The format of the last file opened, which decides how its notes are headed.</summary>
+    public string LastImportFormat { get; private set; } = "lhlt";
+
     /// <summary>True if any system wavelength falls outside the declared
     /// dispersion range of at least one material on the system. Outside
     /// that range glass-index formulas extrapolate and silently produce
@@ -242,6 +245,7 @@ public class GuiSession
         LastImportSubstitutions = Array.Empty<LensHH.App.GlassCatalog.GlassNumericResolver.Substitution>();
         LastImportNotConverted = Array.Empty<string>();
         LastImportNotes = Array.Empty<string>();
+        LastImportFormat = format.ToLowerInvariant();
 
         bool isImport = false;
         switch (format.ToLowerInvariant())
@@ -279,7 +283,8 @@ public class GuiSession
                 isImport = true;
                 break;
             case "optiland":
-                _system = OptilandReader.Read(path);
+                _system = OptilandReader.Read(path, _glassCatalog, out var optilandNotes);
+                LastImportNotes = optilandNotes;
                 _meritFunction = null;
                 _filePath = null;
                 isImport = true;
@@ -368,8 +373,14 @@ public class GuiSession
         LastImportSubstitutions = subs;
     }
 
+    /// <summary>
+    /// The folder of glasses the last Optiland export wrote beside the lens file, or null.
+    /// </summary>
+    public string? LastExportGlassFolder { get; private set; }
+
     public void SaveFile(string path, string format = "lhlt")
     {
+        LastExportGlassFolder = null;
         switch (format.ToLowerInvariant())
         {
             case "lhlt":
@@ -389,7 +400,7 @@ public class GuiSession
                 OptalixWriter.Write(_system, path, _glassCatalog);
                 break;
             case "optiland":
-                OptilandWriter.Write(_system, path);
+                LastExportGlassFolder = OptilandWriter.Write(_system, path, _glassCatalog);
                 break;
             default:
                 if (NativeFormatHandlers.TryGetValue(format, out var saveHandler))

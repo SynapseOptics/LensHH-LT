@@ -818,6 +818,7 @@ Both settings are saved in `.lhlt` and round-trip through ZEMAX `.zmx`
 | `.len`    | OSLO lens file. **File → Import → OSLO (.len)…** and **File → Export → OSLO (.len)…**. See [OSLO files](#oslo-files) below. |
 | `.otx`    | Optalix lens file. **File → Import → Optalix (.otx)…** and **File → Export → Optalix (.otx)…**. See [Optalix files](#optalix-files) below. |
 | `.seq`    | Code V sequence file. **File → Import → Code V (.seq)…** and **File → Export → Code V (.seq)…**. See [Code V files](#code-v-files) below. |
+| `.json`   | Optiland lens file. **File → Import → Optiland (.json)…** and **File → Export → Optiland (.json)…**. See [Optiland files](#optiland-files) below. |
 | `.agf`    | Glass catalog. Loaded from `<install>\catalogs\Glass\` on startup. |
 
 ### OpticStudio table glasses (.ZTG)
@@ -979,6 +980,45 @@ table glass (`.ZTG`) holding the same index at each wavelength. Two things to kn
 **`.seq` files exported before 1.0.158** could write an object NA as an F-number, object heights as
 angles, a model glass as air, and an asphere that Code V reads as a plain conic. Export such lenses
 again.
+
+### Optiland files
+
+Optiland finds a glass by name in its own database, and a name alone does not say which glass. Its
+database files glasses under groups of equivalents too — its "BK7" holds Schott's N-BK7, Ohara's
+S-BSL7, CDGM's H-K9L and others — and it lacks many glasses outright, older Schott glasses such as
+SK16 and F4 among them. So LensHH-LT writes each glass's own data, and has Optiland use exactly
+that.
+
+Exporting `lens.json` also writes a folder **`lens_glass`** beside it. It holds one folder per
+catalog, named `lenshh-schott`, `lenshh-ohara` and so on, with `lenshh-model` for model glasses. In
+each is one `.yml` file per glass: the glass's dispersion data, in the refractiveindex.info format
+Optiland reads. Every catalog dispersion formula and the LensHH-LT model glass are written exactly;
+Optiland's index is LensHH-LT's to the last digit.
+
+The lens file names each glass with its catalog and `match_policy: "strict"`, so Optiland never
+substitutes a glass. For Optiland to find them, **install the folders**. Copy the folders inside
+`lens_glass` into `~/.optiland/catalogs/` (on Windows, `%USERPROFILE%\.optiland\catalogs\`), and
+Optiland loads them when it starts. Folders of the same name from other lenses merge, since a glass
+is the same file in each. Until they are installed, Optiland stops with an error naming the catalog
+it is missing. `README.txt` in the folder also shows how to load them in a Python session instead.
+
+Import reads Optiland's materials:
+
+| In the `.json` file | In LensHH-LT |
+|---|---|
+| `Material` with a `catalog` | That catalog's glass. The catalog goes into the lens's catalog preference, ordered so each glass resolves to its own catalog even when another catalog has a glass of the same name. |
+| `MaterialFile` | The glass its file is named for, from the catalog its folder is named for. |
+| A model glass LensHH-LT wrote | That model glass. |
+| `AbbeMaterial` | A model glass of the same nd and Vd. Optiland's dispersion model for it is not LensHH-LT's, so the two differ away from the d line. |
+| `IdealMaterial` of index other than 1 | A model glass of that index without dispersion. |
+
+After an import, an **Optiland materials** message lists any material that did not carry over
+exactly, and any glass the loaded catalogs do not have (the command-line `file import` prints the
+same list).
+
+**`.json` files exported before 1.0.158** named each glass bare and let Optiland take the nearest
+name from any catalog: BK7 opened as N-BK7, SK16 as N-SK16, and a model glass not at all. Export
+such lenses again.
 
 ## Keyboard Shortcuts
 

@@ -212,7 +212,8 @@ namespace LensHH.API
 
         // ─── Import (external formats) ─────────────────────────────────
 
-        /// <summary>What the last Zemax import converted (OpticStudio table glasses).</summary>
+        /// <summary>What the last Zemax or Optiland import converted: OpticStudio table glasses,
+        /// Optiland materials that are not catalog glasses, glasses the catalogs lack.</summary>
         public System.Collections.Generic.IReadOnlyList<string> LastImportNotes { get; private set; } = Array.Empty<string>();
 
         /// <summary>Import from Zemax .zmx file.</summary>
@@ -251,7 +252,8 @@ namespace LensHH.API
         /// <summary>Import from Optiland .json file.</summary>
         public void ImportOptiland(string filePath)
         {
-            _system = OptilandReader.Read(filePath);
+            _system = OptilandReader.Read(filePath, GlassCatalog, out var notes);
+            LastImportNotes = notes;
             ClearMeritAndConfig();
             UpdateSemiDiameters();
         }
@@ -271,7 +273,7 @@ namespace LensHH.API
         public void ExportOptalix(string filePath) { EnsureSystem(); OptalixWriter.Write(_system!, filePath, GlassCatalog); }
 
         /// <summary>Export to Optiland .json file.</summary>
-        public void ExportOptiland(string filePath) { EnsureSystem(); OptilandWriter.Write(_system!, filePath); }
+        public void ExportOptiland(string filePath) { EnsureSystem(); OptilandWriter.Write(_system!, filePath, GlassCatalog); }
 
         // ─── System editing ─────────────────────────────────────────────
 

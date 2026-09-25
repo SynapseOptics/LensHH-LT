@@ -232,7 +232,8 @@ namespace LensHH.Mcp
             _currentFilePath = filePath;
         }
 
-        /// <summary>What the last Zemax import converted (OpticStudio table glasses).</summary>
+        /// <summary>What the last Zemax or Optiland import converted: OpticStudio table glasses,
+        /// Optiland materials that are not catalog glasses, glasses the catalogs lack.</summary>
         public IReadOnlyList<string> LastImportNotes { get; private set; } = Array.Empty<string>();
 
         public void ImportZemax(string filePath)
@@ -270,7 +271,8 @@ namespace LensHH.Mcp
 
         public void ImportOptiland(string filePath)
         {
-            _system = OptilandReader.Read(filePath);
+            _system = OptilandReader.Read(filePath, GlassCatalog, out var notes);
+            LastImportNotes = notes;
             MeritFunction = null;
             _currentFilePath = null;
             ClearLastRender();
@@ -303,7 +305,7 @@ namespace LensHH.Mcp
         public void ExportOptiland(string filePath)
         {
             if (_system == null) throw new InvalidOperationException("No optical system loaded.");
-            OptilandWriter.Write(_system, filePath);
+            OptilandWriter.Write(_system, filePath, GlassCatalog);
         }
 
         /// <summary>Last rendered analysis name (e.g. "FftMtf", "SpotDiagram").</summary>

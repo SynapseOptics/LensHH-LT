@@ -6,6 +6,29 @@ All notable changes to LensHH-LT and the LensHH-LT-Engine.
 
 ### Fixed
 
+- **Optiland export let Optiland choose the glass, and it often chose another.** Each glass
+  went out as a bare name with `robust_search`, so Optiland took the nearest name from any
+  catalog. Of the glasses in the shipped catalogs, 96 Schott and 146 Sumita names opened
+  as a different glass that way, among them BK7 as N-BK7 (Optiland files N-BK7 under a
+  "BK7" group of equivalents). Hundreds of names were not in Optiland at all, and a model
+  glass went out as a name Optiland could not know. Export now writes each glass's own
+  data: a folder `<lens>_glass` beside the `.json` holds Optiland user catalogs
+  (`lenshh-schott`, `lenshh-model`, …), one refractiveindex.info `.yml` per glass. All
+  thirteen AGF dispersion formulas and the model glass are written exactly. The lens file
+  names each glass with its catalog and `match_policy: "strict"`, so Optiland either uses
+  exactly LensHH-LT's glass or stops with an error naming the missing catalog. Checked in
+  Optiland 0.6.2: every glass of every shipped catalog (1838) gives LensHH-LT's index,
+  and so does every sample lens.
+- **Optiland import turned most materials into air.** Only a `Material`'s name was read.
+  Now:
+  - a `Material`'s catalog goes into the lens's catalog preference, ordered so each glass
+    resolves to its own catalog;
+  - a `MaterialFile` is the glass its file names;
+  - an `AbbeMaterial`, a constant-index `IdealMaterial` and an exported model glass become
+    model glasses.
+
+  What does not carry over exactly is listed after the import.
+
 - **An OSLO file LensHH-LT wrote could open in the wrong colour.** OSLO has no
   primary-wavelength keyword: its primary is wavelength 1, the first entry on the `WV`
   line. The exporter wrote the wavelengths in the order they were stored, so a lens

@@ -254,7 +254,7 @@ namespace LensHH.CLI.Commands
                     break;
                 case "optiland":
                 case "json":
-                    system = OptilandReader.Read(path);
+                    system = OptilandReader.Read(path, session.EnsureGlassCatalog(), out importNotes);
                     break;
                 default:
                     AnsiConsole.MarkupLine($"[red]Unknown format: {Markup.Escape(format)}. Use zemax, codev, oslo, optalix, or optiland.[/]");
@@ -277,7 +277,9 @@ namespace LensHH.CLI.Commands
             }
             if (importNotes.Count > 0)
             {
-                AnsiConsole.MarkupLine("  Glasses brought in (OpticStudio table glasses and catalogs):");
+                AnsiConsole.MarkupLine(format == "optiland" || format == "json"
+                    ? "  Materials not read as the same glass:"
+                    : "  Glasses brought in (OpticStudio table glasses and catalogs):");
                 foreach (var item in importNotes)
                     AnsiConsole.MarkupLine($"    - {Markup.Escape(item)}");
             }
@@ -296,6 +298,7 @@ namespace LensHH.CLI.Commands
             string format = args[1].ToLowerInvariant();
             var path = string.Join(" ", args, 2, args.Length - 2);
 
+            string? glassFolder = null;
             switch (format)
             {
                 case "zemax":
@@ -316,7 +319,7 @@ namespace LensHH.CLI.Commands
                     break;
                 case "optiland":
                 case "json":
-                    OptilandWriter.Write(system, path);
+                    glassFolder = OptilandWriter.Write(system, path, session.EnsureGlassCatalog());
                     break;
                 default:
                     AnsiConsole.MarkupLine($"[red]Unknown format: {Markup.Escape(format)}. Use zemax, codev, oslo, optalix, or optiland.[/]");
@@ -324,6 +327,8 @@ namespace LensHH.CLI.Commands
             }
 
             AnsiConsole.MarkupLine($"[green]Exported ({format}): {Markup.Escape(path)}[/]");
+            if (glassFolder != null)
+                AnsiConsole.MarkupLine($"  Glasses for Optiland: {Markup.Escape(glassFolder)} (see README.txt there)");
         }
     }
 }
