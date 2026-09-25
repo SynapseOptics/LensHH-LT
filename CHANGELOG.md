@@ -36,7 +36,10 @@ All notable changes to LensHH-LT and the LensHH-LT-Engine.
   - *Every semi-diameter went out as a checked aperture*, so an exported lens vignetted
     where its source did not: the vignetted Cooke triplet lost light at its automatic
     second surface. Only an aperture that clips is now checked — a fixed semi-diameter,
-    or an automatic one held under 100 % — and OSLO solves the rest.
+    or an automatic one held under 100 %. The others go out not checked (`AP`), which
+    OSLO uses to draw the surface and never to block a ray; left to OSLO's own solve, a
+    wide-angle lens's surfaces drew as circles, their paraxial heights exceeding their
+    radii. An automatic stop is left to OSLO, which sizes it from `EBR`.
 
   The importer reads all of these, as OSLO writes them, and reads an aperture OSLO does
   not check (`AP` without `CHK`, which never blocks a ray there) as an automatic

@@ -148,9 +148,17 @@ namespace LensHH.API.Tests
             sys.Surfaces[2].SemiDiameterMode = SemiDiameterMode.Auto;
             sys.Surfaces[2].SemiDiameter = 20.0;
             string text = Export(sys, OsloReader.Read, out var back);
-            Assert.Single(Lines(text), l => l.StartsWith("AP "));
-            Assert.Contains("AP CHK 10", Lines(text));
+            Assert.Contains("AP CHK 10", Lines(text));             // Fixed: checked, it clips
+            Assert.Contains("AP 20", Lines(text));                 // Auto: sized for drawing, never clips
             Assert.Equal(SemiDiameterMode.Fixed, back!.Surfaces[1].SemiDiameterMode);
+            Assert.Equal(SemiDiameterMode.Auto, back.Surfaces[2].SemiDiameterMode);
+            Assert.Equal(20.0, back.Surfaces[2].SemiDiameter, 12);
+
+            // An automatic stop is left for OSLO to size from EBR.
+            sys.Surfaces[1].SemiDiameterMode = SemiDiameterMode.Auto;
+            text = Export(sys, null, out _);
+            Assert.DoesNotContain("AP 10", Lines(text));
+            Assert.DoesNotContain("AP CHK 10", Lines(text));
 
             // An automatic semi-diameter held under 100 % of the beam vignettes by design: checked.
             sys.Surfaces[2].ClearAperturePercent = 90.0;

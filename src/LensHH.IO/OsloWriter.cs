@@ -215,14 +215,23 @@ namespace LensHH.Core.IO
                     }
                 }
 
-                // Only an aperture that clips: a Fixed semi-diameter, or an automatic one held
-                // under 100 % of the beam. OSLO solves the others itself, and draws with them. (Every
-                // semi-diameter used to go out checked, so an exported lens vignetted where its
-                // source did not.)
+                // Checked (AP CHK, which blocks rays) only for an aperture that clips: a Fixed
+                // semi-diameter, or an automatic one held under 100 % of the beam. Any other
+                // semi-diameter goes out not checked (AP), which in OSLO sizes the surface for
+                // drawing and never blocks a ray - the meaning of an automatic one here. Left out,
+                // OSLO would solve it from paraxial ray heights, which on a wide-angle lens exceed
+                // the radius of curvature: the Topogon at 35 degrees drew as circles. The stop,
+                // when automatic, is left to OSLO, which sizes it from EBR. (Every semi-diameter
+                // used to go out checked, so an exported lens vignetted where its source did not.)
                 bool clips = s.SemiDiameterMode == SemiDiameterMode.Fixed
                     || (s.ClearAperturePercent > 0 && s.ClearAperturePercent < 100.0);
-                if (clips && s.SemiDiameter > 0)
-                    sb.AppendLine(string.Format(CultureInfo.InvariantCulture, "  AP CHK {0:G10}", s.SemiDiameter));
+                if (s.SemiDiameter > 0)
+                {
+                    if (clips)
+                        sb.AppendLine(string.Format(CultureInfo.InvariantCulture, "  AP CHK {0:G10}", s.SemiDiameter));
+                    else if (!s.IsStop)
+                        sb.AppendLine(string.Format(CultureInfo.InvariantCulture, "  AP {0:G10}", s.SemiDiameter));
+                }
 
                 // Central obscuration / annular pupil — round-trip the same
                 // AY1/AY2/AX1/AX2/ATP/AAC pattern OsloReader interprets.
