@@ -290,7 +290,7 @@ namespace LensHH.Mcp
         public void ExportOptalix(string filePath)
         {
             if (_system == null) throw new InvalidOperationException("No optical system loaded.");
-            OptalixWriter.Write(_system, filePath);
+            OptalixWriter.Write(_system, filePath, GlassCatalog);
         }
 
         public void ExportOptiland(string filePath)

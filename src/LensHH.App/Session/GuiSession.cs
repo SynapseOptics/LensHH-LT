@@ -372,7 +372,7 @@ public class GuiSession
                 OsloWriter.Write(_system, path, _glassCatalog);
                 break;
             case "optalix":
-                OptalixWriter.Write(_system, path);
+                OptalixWriter.Write(_system, path, _glassCatalog);
                 break;
             case "optiland":
                 OptilandWriter.Write(_system, path);

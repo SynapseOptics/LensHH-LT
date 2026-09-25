@@ -51,6 +51,35 @@ All notable changes to LensHH-LT and the LensHH-LT-Engine.
   semi-diameter rather than a fixed one. The conversions use C# paraxial traces, so the
   export is the same whether or not the engine is activated.
 
+- **Optalix export wrote a different lens, and import misread Optalix's own files.** Both
+  now follow what Optalix writes, surveyed across the 1019 lens files that ship with it
+  and its reference manual:
+  - *The aperture went out as `EPD` with whatever its value was*: an F/6.3 lens got an
+    entrance pupil 6.3 mm across, an object NA of 0.05 a pupil of 0.05 mm. It is now
+    `EPD`, `FNO` or `NAO` as the lens states it (an F-number at a finite object as the
+    EPD it gives).
+  - *Object heights went out as `FTYP 0`*, which is not an Optalix field type; they are
+    `FTYP 2`, and import reads 2 as object heights.
+  - *Ray aiming went out as `RAIM 0` and then `RAIM 2`.* It is one line: 1 for the
+    paraxial pupil, 2 for the real stop (Optalix's default), 3 for a telecentric object
+    space. Import read 1 as real aiming and knew no telecentric mode.
+  - *An ideal lens was dropped.* It is Optalix's lens module, a pair of `SUT L` surfaces
+    with its power in `LMOD`, and import reads a pair back as one ideal lens.
+  - *A model glass was not written*, so the surface went out as air. It is Optalix's
+    fictitious-glass code (1.6201 / 60.4 as `6201.604`), or its index at each wavelength
+    (`PRI`) where the code cannot carry it; import reads both.
+  - *Optalix's apertures do not block rays unless the surface is marked `FH 1`*, which
+    was never written: an exported lens was not vignetted in Optalix where its source
+    was. Clipping apertures are now marked. Import took every aperture as clipping, and
+    now takes only the marked ones — about 10,600 apertures in Optalix's examples are
+    automatic.
+  - *A mirror went out as a bare `SUT M`*, with no base type; it is `SM`, or `AM` when
+    aspheric. `ASP` has Optalix's ten values, and a surface with an r² term, which
+    Optalix's even asphere has no place for, is refused rather than written without it.
+  - *`PIM 0`* keeps the image where the lens puts it.
+
+  All 1019 of Optalix's example lenses import without error.
+
 - **A Zemax lens with its stop on a mirror imported as a different lens.** The
   stock-lens rule — which inserts a stop in air ahead of a stock lens whose stop sits
   on its first glass surface — took a mirror for glass. A paraboloid imported with its

@@ -816,6 +816,7 @@ Both settings are saved in `.lhlt` and round-trip through ZEMAX `.zmx`
 | `.lhlt`   | LensHH-LT native format. Save/load from **File → Save/Open**. |
 | `.zmx`    | ZEMAX prescription. **File → Import → Zemax (.zmx)…** and **File → Export → Zemax (.zmx)…**. Only standard and even-asphere surfaces are honored. Object Space NA (`OBNA`) and object-space telecentric are honored. |
 | `.len`    | OSLO lens file. **File → Import → OSLO (.len)…** and **File → Export → OSLO (.len)…**. See [OSLO files](#oslo-files) below. |
+| `.otx`    | Optalix lens file. **File → Import → Optalix (.otx)…** and **File → Export → Optalix (.otx)…**. See [Optalix files](#optalix-files) below. |
 | `.agf`    | Glass catalog. Loaded from `<install>\catalogs\Glass\` on startup. |
 
 ### OSLO files
@@ -854,6 +855,39 @@ there; a checked one comes in as fixed.
 **`.len` files exported before 1.0.158** could put the wrong wavelength first, drop an ideal lens
 or a model glass (the surface became air), replace any non-EPD aperture with `EBR 5`, and mark
 every aperture checked. Export such lenses again.
+
+### Optalix files
+
+LensHH-LT writes an Optalix `.otx` file the way Optalix itself writes one, as found in the lens
+files that ship with Optalix:
+
+| In LensHH-LT | In the `.otx` file |
+|---|---|
+| Aperture | `EPD`, `FNO` (object at infinity) or `NAO` (finite object), as the lens states it. An F-number at a finite object goes out as the entrance pupil diameter it gives, since Optalix defines `FNO` at infinity. |
+| Field | `FTYP 1` for field angles, `FTYP 2` for object heights. |
+| Ray aiming | `RAIM 1` off (the paraxial entrance pupil), `RAIM 2` real (Optalix's default), `RAIM 3` for a telecentric object space. |
+| Primary wavelength | `REF`, the primary's number. |
+| Ideal (paraxial) lens | Optalix's **lens module**: two `SUT L` surfaces, its principal planes, with the power (1/f) in `LMOD`. Here the planes coincide. |
+| Model glass | Optalix's fictitious-glass code — nd 1.6201, Vd 60.4 is `GLA 6201.604` — or, if it has a partial-dispersion offset or a Vd outside 10–100, its index at each wavelength (`PRI`). |
+| Mirror | `SUT SM`, or `SUT AM` when it is aspheric. |
+| Fixed semi-diameter, or clear aperture under 100 % | The aperture, with **`FH 1`**: Optalix blocks rays outside it. |
+| Automatic semi-diameter | The aperture without `FH`: Optalix draws the surface at that size but never blocks a ray there. |
+| Asphere | `ASP`: the conic, then the r⁴ to r¹⁸ coefficients. Optalix's even asphere has no r² term, so a surface with one cannot be exported. |
+
+Import reads the same things back, and all of the lens files that ship with Optalix import.
+An Optalix lens module comes in as one ideal lens: the gap between its two principal planes is
+dropped and every other distance kept, which images exactly the same, though the lens is that much
+shorter overall. Only apertures Optalix marks `FH 1` come in as fixed.
+
+**Some Optalix features have no counterpart here**, and import leaves them out: field types
+given as image heights (`FTYP 3` and `4`, read as angles), an image-space NA (the aperture is then
+taken from the stop's size), and surface types other than spheres, even aspheres, mirrors and lens
+modules.
+
+**`.otx` files exported before 1.0.158** could give the wrong aperture — an F-number or NA written
+as a diameter — drop an ideal lens or a model glass (the surface became air), write object heights
+with a field type Optalix does not have, and leave apertures that should clip unmarked. Export
+such lenses again.
 
 ## Keyboard Shortcuts
 

@@ -298,7 +298,7 @@ namespace LensHH.CLI.Commands
                     break;
                 case "optalix":
                 case "otx":
-                    OptalixWriter.Write(system, path);
+                    OptalixWriter.Write(system, path, session.EnsureGlassCatalog());
                     break;
                 case "optiland":
                 case "json":

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using LensHH.Core.Enums;
 using LensHH.Core.Glass;
 using LensHH.Core.Models;
@@ -11,7 +12,8 @@ namespace LensHH.Core.IO
     /// <summary>
     /// Reads Optalix .OTX lens files.
     /// Surfaces defined by SUR blocks with CUY/THI/GLA/STO/APE/ASP sub-keywords.
-    /// Surface types: S=standard, A=aspheric, M=mirror, AM=aspheric mirror.
+    /// Surface types are letters in any order: S sphere, A asphere, L lens module (ideal lens),
+    /// M mirror, and others this program does not model.
     /// </summary>
     public static class OptalixReader
     {
@@ -42,6 +44,11 @@ namespace LensHH.Core.IO
             // at the end, only if no FLD lines populated system.Fields.
             var fldYArr = new List<double>();
             var fwgtArr = new List<double>();
+
+            // Optalix's lens module (ideal lens): SUT L surfaces, in pairs, the power on the first
+            // one's LMOD. Merged into one paraxial surface after the parse.
+            var lensModule = new HashSet<Surface>();
+            var lmodPower = new Dictionary<Surface, double>();
 
             foreach (var rawLine in lines)
             {
@@ -82,13 +89,24 @@ namespace LensHH.Core.IO
                             system.Aperture = new Aperture(ApertureType.FNumber, fno);
                         break;
 
+                    case "NAO":
+                        // Object-space numerical aperture: Optalix's aperture for a finite object.
+                        if (parts.Length > 1 && TryParseDouble(parts[1], out double nao) && nao > 0)
+                            system.Aperture = new Aperture(ApertureType.ObjectSpaceNA, nao);
+                        break;
+
+                    case "AFO":
+                        // Afocal mode ("AFO 1000.0", or a bare AFO; the manual's AFO 1).
+                        system.IsAfocal = parts.Length < 2 || !TryParseDouble(parts[1], out double afo) || afo != 0;
+                        break;
+
                     // Note: MFR is NOT the entrance pupil. Files like
                     // FISHEYE2.OTX, HYPERGON.OTX, LAIKIN-9-1.OTX specify
                     // both `MFR` and an aperture (EPD or FNO) as separate
                     // values — MFR is some other quantity (likely a ray-fan
                     // plotting / sampling parameter). We deliberately ignore
-                    // it here. (NA / NAO / NAI keywords also exist in some
-                    // files but are rare; add later if needed.)
+                    // it here. (NA, the image-space NA, has no counterpart here: a file that
+                    // gives it takes its aperture from the stop's size, below.)
 
                     case "WL":
                         for (int i = 1; i < parts.Length; i++)
@@ -148,8 +166,10 @@ namespace LensHH.Core.IO
                     case "FTYP":
                         if (parts.Length > 1 && int.TryParse(parts[1], out int ft))
                         {
-                            // Optalix: 0 = object height, 1 = angle.
-                            system.FieldType = ft == 0 ? FieldType.ObjectHeight : FieldType.ObjectAngle;
+                            // Optalix: 1 = field angle, 2 = object height; 3 and 4 are image heights,
+                            // which have no counterpart here. 0 is what LensHH-LT wrote for object
+                            // heights before 1.0.158.
+                            system.FieldType = ft == 2 || ft == 0 ? FieldType.ObjectHeight : FieldType.ObjectAngle;
                         }
                         break;
 
@@ -182,13 +202,17 @@ namespace LensHH.Core.IO
                         break;
 
                     case "SUT":
-                        // Surface type: S=standard, A=aspheric, M=mirror, AM=aspheric mirror
+                        // Surface type: letters in any order - one base type (S sphere, A asphere,
+                        // L lens module, X, U) and modifiers (M mirror, D decentered, ...): SM and
+                        // MS are both a spherical mirror.
                         if (currentSurface != null && parts.Length > 1)
                         {
                             string sut = parts[1].ToUpperInvariant();
-                            currentIsMirror = sut == "M" || sut == "AM";
-                            if (sut == "A" || sut == "AM")
+                            currentIsMirror = sut.Contains('M');
+                            if (sut.Contains('A'))
                                 currentSurface.Type = SurfaceType.EvenAsphere;
+                            if (sut.Contains('L'))
+                                lensModule.Add(currentSurface);
                         }
                         break;
 
@@ -214,7 +238,56 @@ namespace LensHH.Core.IO
 
                     case "GLA":
                         if (currentSurface != null && parts.Length > 1)
-                            currentSurface.Material = parts[1].Trim();
+                        {
+                            string gla = parts[1].Trim();
+                            if (TryFictitiousGlass(gla, out double fnd, out double fvd))
+                            {
+                                // Optalix's fictitious (model) glass: 6201.604 = nd 1.6201, Vd 60.4.
+                                currentSurface.ModelIndexEnabled = true;
+                                currentSurface.ModelNd = fnd;
+                                currentSurface.ModelVd = fvd;
+                                currentSurface.ModelDPgF = 0.0;
+                                currentSurface.Material = "";
+                            }
+                            else if (gla.Equals("AIR", StringComparison.OrdinalIgnoreCase))
+                                currentSurface.Material = "";
+                            else
+                                currentSurface.Material = gla.Trim('\'');   // 'GE': a private glass's name
+                        }
+                        break;
+
+                    case "PRI":
+                        // PRI n1 n2 ...: the index at each WL wavelength - a glass given directly.
+                        if (currentSurface != null && parts.Length > 1)
+                        {
+                            var pri = new List<double>();
+                            for (int i = 1; i < parts.Length; i++)
+                                if (TryParseDouble(parts[i], out double ni))
+                                    pri.Add(ni);
+                            if (pri.Count > 0)
+                            {
+                                var (pnd, pvd) = ModelFromIndices(wavelengths, pri);
+                                currentSurface.ModelIndexEnabled = true;
+                                currentSurface.ModelNd = pnd;
+                                currentSurface.ModelVd = pvd;
+                                currentSurface.ModelDPgF = 0.0;
+                                currentSurface.Material = "";
+                            }
+                        }
+                        break;
+
+                    case "LMOD":
+                        // LMOD <power> 0 0 0 0 on a lens-module surface. The value is a power: the
+                        // 160 mm tube lens that ships with Optalix has 0.00625.
+                        if (currentSurface != null && parts.Length > 1 && TryParseDouble(parts[1], out double lp))
+                            lmodPower[currentSurface] = lp;
+                        break;
+
+                    case "FH":
+                        // FH 1 ...: the surface's aperture clips. Without it an Optalix aperture only
+                        // sizes the surface and never blocks a ray (reference manual p. 166).
+                        if (currentSurface != null && parts.Length > 1 && parts[1] == "1" && currentSurface.SemiDiameter > 0)
+                            currentSurface.SemiDiameterMode = SemiDiameterMode.Fixed;
                         break;
 
                     case "STO":
@@ -223,26 +296,33 @@ namespace LensHH.Core.IO
                         break;
 
                     case "APE":
-                        // APE <mode> <y_radius> <x_radius> ... — mode 1 = clear
-                        // aperture (semi-diameter); mode 2 = central obscuration
-                        // (mirror central hole or secondary baffle shadow).
-                        // Mode 2 mirrors OsloReader's AAC=2 convention: store as
-                        // InnerRadius for mirrors, ObscurationRadius otherwise.
-                        if (currentSurface != null && parts.Length > 2
-                            && int.TryParse(parts[1], out int apeMode)
-                            && TryParseDouble(parts[2], out double apeVal) && apeVal > 0)
+                        // APE <n> <semi-x> <semi-y> <x0> <y0> <rot> <shape> <op> <trans> ... (reference
+                        // manual §32.2). trans is 0 transmit, 1 obstruct, 2 hole. A transmitting
+                        // aperture is the surface's size, automatic until an FH 1 line after it makes
+                        // it clip. An obstruction is a central obscuration: InnerRadius on a mirror,
+                        // ObscurationRadius otherwise. (Every aperture was read as fixed, and the
+                        // aperture number was taken for its type.)
+                        if (currentSurface != null && parts.Length > 3
+                            && TryParseDouble(parts[2], out double apeX)
+                            && TryParseDouble(parts[3], out double apeY))
                         {
-                            if (apeMode == 2)
+                            double apeVal = Math.Max(apeX, apeY);
+                            int trans = parts.Length > 9 && int.TryParse(parts[9], out int t) ? t
+                                      : parts.Length > 1 && parts[1] == "2" ? 1   // pre-1.0.158 LensHH-LT files
+                                      : 0;
+                            if (apeVal <= 0)
+                                break;
+                            if (trans == 1 || trans == 2)
                             {
-                                if (currentIsMirror)
+                                if (currentIsMirror || trans == 2)
                                     currentSurface.InnerRadius = apeVal;
                                 else
                                     currentSurface.ObscurationRadius = apeVal;
                             }
-                            else
+                            else if (currentSurface.SemiDiameter <= 0)
                             {
                                 currentSurface.SemiDiameter = apeVal;
-                                currentSurface.SemiDiameterMode = SemiDiameterMode.Fixed;
+                                currentSurface.SemiDiameterMode = SemiDiameterMode.Auto;
                             }
                         }
                         break;
@@ -308,10 +388,14 @@ namespace LensHH.Core.IO
                         break;
 
                     case "RAIM":
-                        // Optalix: 0=Off, 1=Paraxial, 2=Real → map both 1 and 2 to Real
+                        // Optalix writes 2 (aim at the real stop, its default) in 962 of the 1019
+                        // lens files that ship with it, 1 for the paraxial entrance pupil, 3 for a
+                        // telecentric object space, and never 0 - which LensHH-LT wrote, meaning off,
+                        // before 1.0.158.
                         if (parts.Length > 1 && int.TryParse(parts[1], out int raim))
                         {
-                            system.RayAiming = (raim >= 1) ? RayAimingMode.Real : RayAimingMode.Off;
+                            system.RayAiming = raim == 2 || raim == 4 ? RayAimingMode.Real : RayAimingMode.Off;
+                            system.TelecentricObjectSpace = raim == 3;
                         }
                         break;
                 }
@@ -320,6 +404,41 @@ namespace LensHH.Core.IO
                 if (currentIsMirror && currentSurface != null && string.IsNullOrEmpty(currentSurface.Material))
                     currentSurface.Material = "MIRROR";
             }
+
+            // Optalix's lens module is a pair of L surfaces - the principal planes - with the power on
+            // the first. Here it becomes one ideal lens. The gap between the planes is dropped and
+            // every other distance kept: a ray leaves the second plane at the height it met the
+            // first, so the imaging is unchanged; only the lens's overall length is shorter.
+            for (int i = 0; i + 1 < surfaces.Count; i++)
+            {
+                var entrance = surfaces[i];
+                var exit = surfaces[i + 1];
+                if (!lensModule.Contains(entrance) || !lensModule.Contains(exit))
+                    continue;
+                double power = lmodPower.TryGetValue(entrance, out double pw) ? pw : 0.0;
+                entrance.Type = SurfaceType.Paraxial;
+                entrance.Radius = double.PositiveInfinity;
+                entrance.FocalLength = power == 0.0 ? double.PositiveInfinity : 1.0 / power;
+                entrance.Thickness = exit.Thickness;
+                entrance.IsStop |= exit.IsStop;
+                if (string.IsNullOrEmpty(entrance.Material) && !entrance.ModelIndexEnabled)
+                {
+                    entrance.Material = exit.Material;
+                    entrance.ModelIndexEnabled = exit.ModelIndexEnabled;
+                    entrance.ModelNd = exit.ModelNd;
+                    entrance.ModelVd = exit.ModelVd;
+                    entrance.ModelDPgF = exit.ModelDPgF;
+                }
+                if (exit.SemiDiameter > entrance.SemiDiameter)
+                {
+                    entrance.SemiDiameter = exit.SemiDiameter;
+                    entrance.SemiDiameterMode = exit.SemiDiameterMode;
+                }
+                surfaces.RemoveAt(i + 1);
+                lensModule.Remove(entrance);
+            }
+            for (int i = 0; i < surfaces.Count; i++)
+                surfaces[i].Index = i;
 
             system.Surfaces = surfaces;
 
@@ -389,6 +508,73 @@ namespace LensHH.Core.IO
                 LensUnitConverter.ConvertToMm(system, unitScale);
 
             return system;
+        }
+
+        /// <summary>
+        /// Optalix's fictitious-glass code, as the files that ship with it write it: the digits
+        /// before the point are nd − 1 after its decimal point, and after it come Vd's two integer
+        /// digits and its decimals - 6204.603 is nd 1.6204, Vd 60.3; 516.64 is 1.516, 64. Six digits
+        /// and no point is the MIL code: 620603 is 1.620, 60.3.
+        /// </summary>
+        public static bool TryFictitiousGlass(string code, out double nd, out double vd)
+        {
+            nd = vd = 0.0;
+            if (code.Length == 0 || !char.IsDigit(code[0]) || code.Any(ch => !char.IsDigit(ch) && ch != '.'))
+                return false;
+            int dot = code.IndexOf('.');
+            if (dot < 0)
+            {
+                if (code.Length != 6)
+                    return false;
+                nd = 1.0 + int.Parse(code.Substring(0, 3), CultureInfo.InvariantCulture) / 1000.0;
+                vd = int.Parse(code.Substring(3), CultureInfo.InvariantCulture) / 10.0;
+                return true;
+            }
+            string whole = code.Substring(0, dot), frac = code.Substring(dot + 1);
+            if (whole.Length < 3 || frac.Length < 2 || frac.Contains('.'))
+                return false;
+            nd = 1.0 + double.Parse("0." + whole, CultureInfo.InvariantCulture);
+            vd = double.Parse(frac.Substring(0, 2) + "." + (frac.Length > 2 ? frac.Substring(2) : "0"),
+                              CultureInfo.InvariantCulture);
+            return true;
+        }
+
+        /// <summary>
+        /// The model glass (nd, Vd) behind indices at the file's wavelengths: exact with the d, F and
+        /// C lines among them, otherwise from a Cauchy fit n = A + B/λ²; a single index is taken as
+        /// nd with a Vd so large the index is the same at every wavelength.
+        /// </summary>
+        private static (double nd, double vd) ModelFromIndices(List<double> wavelengthsUm, List<double> n)
+        {
+            const double dLine = 0.58756, fLine = 0.48613, cLine = 0.65627;
+            int count = Math.Min(wavelengthsUm.Count, n.Count);
+            if (count < 2)
+                return (n[0], 1e6);
+            int Find(double target)
+            {
+                for (int i = 0; i < count; i++)
+                    if (Math.Abs(wavelengthsUm[i] - target) < 1e-4)
+                        return i;
+                return -1;
+            }
+            int id = Find(dLine), iF = Find(fLine), iC = Find(cLine);
+            if (id >= 0 && iF >= 0 && iC >= 0 && Math.Abs(n[iF] - n[iC]) > 1e-12)
+                return (n[id], (n[id] - 1.0) / (n[iF] - n[iC]));
+            double sx = 0, sy = 0, sxx = 0, sxy = 0;
+            for (int i = 0; i < count; i++)
+            {
+                double x = 1.0 / (wavelengthsUm[i] * wavelengthsUm[i]);
+                sx += x; sy += n[i]; sxx += x * x; sxy += x * n[i];
+            }
+            double det = count * sxx - sx * sx;
+            if (Math.Abs(det) < 1e-300)
+                return (n[0], 1e6);
+            double bCoef = (count * sxy - sx * sy) / det;
+            double aCoef = (sy - bCoef * sx) / count;
+            double Cauchy(double lam) => aCoef + bCoef / (lam * lam);
+            double nd = Cauchy(dLine);
+            double dispersion = Cauchy(fLine) - Cauchy(cLine);
+            return (nd, Math.Abs(dispersion) > 1e-12 ? (nd - 1.0) / dispersion : 1e6);
         }
 
         private static string[] SplitLine(string line)
