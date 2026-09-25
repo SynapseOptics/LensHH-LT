@@ -46,6 +46,14 @@ All notable changes to LensHH-LT and the LensHH-LT-Engine.
   semi-diameter rather than a fixed one. The conversions use C# paraxial traces, so the
   export is the same whether or not the engine is activated.
 
+- **A Zemax lens with its stop on a mirror imported as a different lens.** The
+  stock-lens rule — which inserts a stop in air ahead of a stock lens whose stop sits
+  on its first glass surface — took a mirror for glass. A paraboloid imported with its
+  stop moved off the curved mirror to a flat surface at its vertex, its image surface
+  given a fixed semi-diameter, and ray aiming turned off; at 0.5° the relative
+  illumination moved by 2 × 10⁻⁴. A stop on a mirror now stays on the mirror. Stock
+  lenses import as before.
+
 ## 1.0.157 — 2026-09-22
 
 ### Fixed

@@ -97,6 +97,12 @@ namespace LensHH.Core.IO
 
             var stopSurf = system.Surfaces[stopIdx];
             if (string.IsNullOrEmpty(stopSurf.Material)) return; // stop already in air
+            // A stop on a mirror is not a stock lens's refractive vertex: the mirror IS the stop.
+            // Its material, MIRROR, is not empty, and this pass used to take it for glass - moving
+            // the stop off the curved mirror to a flat dummy at its vertex, fixing the image
+            // surface's semi-diameter (the "element" ended at the first air surface after it), and
+            // turning ray aiming off. On a paraboloid at 0.5 degrees that moved RI by 2e-4.
+            if (stopSurf.IsMirror) return;
             double clap = stopSurf.SemiDiameter > 0
                 ? stopSurf.SemiDiameter
                 : stopSurf.ClapOuterRadius; // MEMA-only vendor files: no DIAM/CLAP, only MEMA
