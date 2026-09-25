@@ -105,8 +105,13 @@ All notable changes to LensHH-LT and the LensHH-LT-Engine.
     read Optalix's `FTYP` rather than Code V's field commands. Curvature mode (`RDM N`),
     `TITLE`, quoted glass names and the surface-specific forms (`THI S3 10`) are read.
   - What a `.seq` file holds that this lens cannot — tilts and decenters, special and
-    toroidal surfaces, zoom data, image-height fields, vignetting factors — is listed in
-    the lens's notes instead of being dropped without a word.
+    toroidal surfaces, zoom data, image-height fields, vignetting factors — is recorded
+    in the lens's notes (saved with the `.lhlt`); the application does not yet show it
+    on import.
+
+  Checked in OpticStudio 2022 R2: a Cooke triplet with a model glass and an even asphere,
+  exported here and opened with OpticStudio's Code V converter, arrived with every
+  surface, glass, the stop, the asphere terms, wavelengths, primary and fields intact.
 
 - **A Zemax lens with its stop on a mirror imported as a different lens.** The
   stock-lens rule — which inserts a stop in air ahead of a stock lens whose stop sits

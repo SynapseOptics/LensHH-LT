@@ -916,18 +916,33 @@ itself saves a lens in:
 | Fixed semi-diameter | `CIR`. An automatic one is left for Code V to size. |
 | Obscuration or central hole | `CIR OBS`. |
 | Asphere | `ASP`, then the conic (`K`) and the r⁴ to r¹⁶ coefficients (`A` to `G`); a conic alone is `CON` and `K`. Code V's asphere has no r² term, so a surface with one cannot be exported. |
+| Ray aiming | Not written: a `.seq` file does not carry it. |
 
 Import reads the same things back, and also what Code V writes that LensHH-LT does not: several
-commands on one line separated by `;`, lines continued with `&`, curvature mode (`RDM N`), MIL
-glass codes (`517.642`), and Code V's large-number infinity (`0.1E+14`).
+commands on one line separated by `;`, lines continued with `&`, comments after `!`, curvature
+mode (`RDM N`), quoted glass names, MIL glass codes (`517.642`), the surface-specific forms such
+as `THI S3 10`, and Code V's large-number infinity (`0.1E+14`).
 
 **An ideal lens cannot be exported to Code V**, since a `.seq` file has no ideal lens to name;
 the export stops and says so rather than writing a flat surface in its place.
 
 **Some Code V features have no counterpart here**, and import leaves them out: tilts and
-decenters, special surfaces (`SPS`), toroidal and diffractive surfaces, zoom positions (the first
-is read), fields given as image heights, and vignetting factors. Whatever was left out is listed
-in the lens's notes.
+decenters (`XDE`, `ADE`, `DAR`, `BEN` …), special surfaces (`SPS`), toroidal and diffractive
+surfaces, aspheric terms beyond r¹⁶ (`H`, `J`), rectangular and elliptical apertures, zoom
+positions (the first is read), x fields, fields given as image heights, and vignetting factors. A
+lens that uses any of them imports without it, so compare it with its source before relying on it.
+
+**Opening an exported `.seq` in OpticStudio.** OpticStudio reads Code V files with its *CodeV to
+OpticStudio Converter* macro, which reads LensHH-LT's `.seq` files as it reads Code V's: surfaces,
+stop, glasses, even aspheres, wavelengths with their primary, fields and aperture all arrive as
+they left. A private glass (a model glass with a partial-dispersion offset) becomes an OpticStudio
+table glass (`.ZTG`) holding the same index at each wavelength. Two things to know:
+
+- The macro writes Schott glasses by their bare names (`SK16`, `F2`) and notes each one in the
+  surface comment as "glass name modified"; that is expected.
+- The macro **always turns OpticStudio's ray aiming on** (paraxial), whatever the lens had. A lens
+  run with ray aiming off in LensHH-LT should have it turned off again in OpticStudio before
+  results are compared, at wide fields especially.
 
 **`.seq` files exported before 1.0.158** could write an object NA as an F-number, object heights as
 angles, a model glass as air, and an asphere that Code V reads as a plain conic. Export such lenses
