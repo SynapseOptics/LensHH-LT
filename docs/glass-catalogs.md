@@ -150,13 +150,22 @@ glass** — a refractive index computed directly from three numbers:
 - **Vd** — the Abbe number (dispersion).
 - **dPgF** — the deviation of the relative partial dispersion (Pg,F)
   from the "normal line", which sets the anomalous dispersion that
-  drives secondary-spectrum correction.
+  drives secondary-spectrum correction. The normal line is Schott's
+  (Technical Information TIE-29), P_g,F = 0.6438 − 0.001682·Vd, so a
+  catalog glass's dPgF here agrees with the ΔPg,F Schott publishes.
 
 The engine builds a full dispersion curve from these three values, so
 a model glass behaves like any real glass in ray tracing, analysis,
 and optimization — but it need not exist in any catalog. That makes it
 the tool for **exploring what glass a design *wants*** before you go
 shopping for a real one.
+
+The curve is the **LensHH-LT model glass**: Conrady's dispersion formula,
+with its constants set by the glass's Nd, Abbe number and g–F partial
+dispersion. Like any three-number model it is an approximation of real
+glass. It is closest across the visible and drifts from a real glass's
+curve in the deep blue and the infrared, so use a catalog glass when a
+design depends on its index outside the visible.
 
 ### Enabling it
 
@@ -171,8 +180,9 @@ the surface keeps its catalog glass:
 ![Glass Model tab, Model Index disabled — glass F2](images/ModelIndex/ModelIndeUnchecked.png)
 
 Check **Enable Model Index** and the three fields populate from the
-current glass (F2's Nd ≈ 1.6200, Vd ≈ 36.37, dPgF ≈ 0.000279), and the
-glass label changes to **Model**:
+current glass (F2's Nd ≈ 1.6200, Vd ≈ 36.37, dPgF ≈ 0.00016 — the
+screenshot below predates 1.0.158 and shows 0.000279, which was measured
+from a different normal line), and the glass label changes to **Model**:
 
 ![Glass Model tab, Model Index enabled — fields loaded from F2, glass now Model](images/ModelIndex/ModelIndexChecked.png)
 

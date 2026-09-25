@@ -113,6 +113,17 @@ All notable changes to LensHH-LT and the LensHH-LT-Engine.
   exported here and opened with OpticStudio's Code V converter, arrived with every
   surface, glass, the stop, the asphere terms, wavelengths, primary and fields intact.
 
+- **A new model glass: the LensHH-LT model.** A model glass (nd, Vd, ΔPgF) was computed
+  with a formula fitted to Schott catalog data. It is now the LensHH-LT model:
+  - The form is Conrady's dispersion formula, with its constants set by the glass's nd,
+    Abbe number and g–F partial dispersion.
+  - ΔPgF is measured from Schott's normal line (TIE-29), P_gF = 0.6438 − 0.001682·Vd, so
+    a catalog glass's ΔPgF agrees with the value Schott publishes.
+
+  Designs saved with model glasses will trace slightly differently, by up to about
+  4.5 × 10⁻⁴ in index at 0.4 µm for a low-Vd glass and much less across the
+  mid-visible.
+
 - **A Zemax lens with its stop on a mirror imported as a different lens.** The
   stock-lens rule — which inserts a stop in air ahead of a stock lens whose stop sits
   on its first glass surface — took a mirror for glass. A paraboloid imported with its
