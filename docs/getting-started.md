@@ -879,6 +879,16 @@ An Optalix lens module comes in as one ideal lens: the gap between its two princ
 dropped and every other distance kept, which images exactly the same, though the lens is that much
 shorter overall. Only apertures Optalix marks `FH 1` come in as fixed.
 
+**An ideal lens at a finite conjugate is not perfect in Optalix.** LensHH-LT's ideal lens images
+perfectly at any object distance; Optalix's lens module is perfect at only one magnification, which
+Optalix sets separately and the `.otx` file does not carry, so it takes its default, an object at
+infinity. An ideal lens with its object at infinity exports faithfully. One used with a finite
+object — a relay, say, or the 1:1 lens of a curved-object test — keeps its focal length and
+first-order layout in Optalix, but shows aberrations there that it does not have in LensHH-LT. To
+make it perfect in Optalix, set its magnification there after opening the file, with Optalix's
+`MRD` command on the lens module's first surface; `MRD` is the negative of the magnification, so
+1 for a 1:1 relay.
+
 **Some Optalix features have no counterpart here**, and import leaves them out: field types
 given as image heights (`FTYP 3` and `4`, read as angles), an image-space NA (the aperture is then
 taken from the stop's size), and surface types other than spheres, even aspheres, mirrors and lens
