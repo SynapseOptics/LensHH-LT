@@ -37,7 +37,16 @@ namespace LensHH.Core.IO
         /// uppercase letter is a Schott N-prefix -- fine for Schott, wrong for
         /// the 28 Hoya NBF/NBFD glasses.
         /// </summary>
-        public static OpticalSystem Read(string filePath, GlassCatalogManager? glassMgr = null)
+        public static OpticalSystem Read(string filePath, GlassCatalogManager? glassMgr = null) =>
+            Read(filePath, glassMgr, out _);
+
+        /// <summary>
+        /// Read a Code V .seq file, and say what in it the lens could not take: one entry per
+        /// feature left out (a decenter, a special surface, zoom data ...), with the Code V surface
+        /// it was on. Empty when everything was read. The same list is kept in the lens's notes.
+        /// </summary>
+        public static OpticalSystem Read(string filePath, GlassCatalogManager? glassMgr,
+                                         out IReadOnlyList<string> notConvertedFeatures)
         {
             var system = new OpticalSystem();
             var resolver = new CodeVGlassResolver(glassMgr);
@@ -363,6 +372,7 @@ namespace LensHH.Core.IO
             }
 
             // What the file holds that this lens cannot, so that it is not lost unseen.
+            notConvertedFeatures = notConverted.Distinct().ToList();
             if (notConverted.Count > 0)
             {
                 string note = "Code V import - not converted: " + string.Join(", ", notConverted.Distinct()) + ".";

@@ -100,6 +100,11 @@ public class GuiSession
     public IReadOnlyList<LensHH.App.GlassCatalog.GlassNumericResolver.Substitution> LastImportSubstitutions { get; private set; }
         = Array.Empty<LensHH.App.GlassCatalog.GlassNumericResolver.Substitution>();
 
+    /// <summary>What the most recently imported file holds that the lens could not take - a
+    /// Code V decenter, special surface, zoom data ... - one entry each. The GUI shows it after
+    /// OpenFile so nothing is left out unseen. Cleared on the next file open.</summary>
+    public IReadOnlyList<string> LastImportNotConverted { get; private set; } = Array.Empty<string>();
+
     /// <summary>True if any system wavelength falls outside the declared
     /// dispersion range of at least one material on the system. Outside
     /// that range glass-index formulas extrapolate and silently produce
@@ -230,6 +235,7 @@ public class GuiSession
     {
         // Reset import-state carried across opens.
         LastImportSubstitutions = Array.Empty<LensHH.App.GlassCatalog.GlassNumericResolver.Substitution>();
+        LastImportNotConverted = Array.Empty<string>();
 
         bool isImport = false;
         switch (format.ToLowerInvariant())
@@ -247,7 +253,8 @@ public class GuiSession
                 isImport = true;
                 break;
             case "codev":
-                _system = CodeVReader.Read(path, _glassCatalog);
+                _system = CodeVReader.Read(path, _glassCatalog, out var notConverted);
+                LastImportNotConverted = notConverted;
                 _meritFunction = null;
                 _filePath = null;
                 isImport = true;

@@ -930,7 +930,10 @@ the export stops and says so rather than writing a flat surface in its place.
 decenters (`XDE`, `ADE`, `DAR`, `BEN` …), special surfaces (`SPS`), toroidal and diffractive
 surfaces, aspheric terms beyond r¹⁶ (`H`, `J`), rectangular and elliptical apertures, zoom
 positions (the first is read), x fields, fields given as image heights, and vignetting factors. A
-lens that uses any of them imports without it, so compare it with its source before relying on it.
+lens that uses any of them imports without it, and a **Not imported** message after the import
+lists each one with the Code V surface it was on (the command-line `file import` prints the same
+list). The list is also kept in the lens's notes, saved with it. Compare such a lens with its source
+before relying on it.
 
 **Opening an exported `.seq` in OpticStudio.** OpticStudio reads Code V files with its *CodeV to
 OpticStudio Converter* macro, which reads LensHH-LT's `.seq` files as it reads Code V's: surfaces,

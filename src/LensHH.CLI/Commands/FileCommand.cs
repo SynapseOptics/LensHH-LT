@@ -232,6 +232,7 @@ namespace LensHH.CLI.Commands
             var path = string.Join(" ", args, 2, args.Length - 2);
 
             OpticalSystem system;
+            IReadOnlyList<string> notConverted = Array.Empty<string>();
             switch (format)
             {
                 case "zemax":
@@ -240,7 +241,7 @@ namespace LensHH.CLI.Commands
                     break;
                 case "codev":
                 case "seq":
-                    system = CodeVReader.Read(path, session.EnsureGlassCatalog());
+                    system = CodeVReader.Read(path, session.EnsureGlassCatalog(), out notConverted);
                     break;
                 case "oslo":
                 case "len":
@@ -267,6 +268,12 @@ namespace LensHH.CLI.Commands
             AnsiConsole.MarkupLine($"  Surfaces: {system.Surfaces.Count}");
             AnsiConsole.MarkupLine($"  Wavelengths: {system.Wavelengths.Count}");
             AnsiConsole.MarkupLine($"  Fields: {system.Fields.Count}");
+            if (notConverted.Count > 0)
+            {
+                AnsiConsole.MarkupLine("[yellow]  Not imported (LensHH-LT does not model these):[/]");
+                foreach (var item in notConverted)
+                    AnsiConsole.MarkupLine($"[yellow]    - {Markup.Escape(item)}[/]");
+            }
         }
 
         private void ExecuteExport(Session session, string[] args)

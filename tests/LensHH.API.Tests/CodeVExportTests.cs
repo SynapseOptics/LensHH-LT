@@ -239,6 +239,20 @@ GO
             Assert.True(sys.Surfaces[3].IsStop);
             Assert.True(sys.Surfaces[4].IsMirror);
             Assert.Contains("XDE", sys.Notes);                                 // not converted, and said so
+
+            // The same list, for the import notice: one entry, the decenter on Code V surface 4.
+            var path = Path.GetTempFileName() + ".seq";
+            try
+            {
+                File.WriteAllText(path, CodeVStyle);
+                CodeVReader.Read(path, null, out var notConverted);
+                Assert.Equal(new[] { "XDE (tilt or decenter) (S4)" }, notConverted);
+
+                File.WriteAllText(path, "RDM;LEN\nEPD 10\nWL 587.6\nSO 0 1e10\nS 50 5 516800.641700\nS 0 95\nSI 0 0\nGO\n");
+                CodeVReader.Read(path, null, out notConverted);
+                Assert.Empty(notConverted);                                     // nothing left out, no notice
+            }
+            finally { File.Delete(path); }
         }
 
         [Fact]

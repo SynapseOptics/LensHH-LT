@@ -274,9 +274,31 @@ public partial class MainWindow : Window
             if (path != null)
             {
                 VM.OpenFile(path, format);
+                await ShowImportNotConvertedAsync();
                 await ShowImportSubstitutionsAsync();
             }
         }
+    }
+
+    /// <summary>
+    /// If the just-imported file holds features the lens could not take - a Code V decenter,
+    /// special surface, zoom data ... - say which, so the lens is not taken for the whole of
+    /// its source.
+    /// </summary>
+    private async System.Threading.Tasks.Task ShowImportNotConvertedAsync()
+    {
+        var left = VM.Session.LastImportNotConverted;
+        if (left.Count == 0) return;
+
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("This file uses features LensHH-LT does not model. The lens was imported without them:");
+        sb.AppendLine();
+        foreach (var item in left)
+            sb.AppendLine("  • " + item);
+        sb.AppendLine();
+        sb.Append("Compare the lens with its source before relying on it. This list is also kept in the lens's notes.");
+
+        await ShowMessageBox("Not imported", sb.ToString());
     }
 
     /// <summary>

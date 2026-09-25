@@ -105,9 +105,9 @@ All notable changes to LensHH-LT and the LensHH-LT-Engine.
     read Optalix's `FTYP` rather than Code V's field commands. Curvature mode (`RDM N`),
     `TITLE`, quoted glass names and the surface-specific forms (`THI S3 10`) are read.
   - What a `.seq` file holds that this lens cannot — tilts and decenters, special and
-    toroidal surfaces, zoom data, image-height fields, vignetting factors — is recorded
-    in the lens's notes (saved with the `.lhlt`); the application does not yet show it
-    on import.
+    toroidal surfaces, zoom data, image-height fields, vignetting factors — is listed in
+    a **Not imported** message after the import, with the Code V surface each was on
+    (and printed by the CLI's `file import`), and kept in the lens's notes.
 
   Checked in OpticStudio 2022 R2: a Cooke triplet with a model glass and an even asphere,
   exported here and opened with OpticStudio's Code V converter, arrived with every
