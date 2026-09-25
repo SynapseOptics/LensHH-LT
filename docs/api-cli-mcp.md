@@ -64,7 +64,7 @@ reference to just the capability you need:
 | Interface          | Purpose |
 |--------------------|---------|
 | `ILicenseStatus`   | Activation state, trial days, machine ID. |
-| `IFileIO`          | `.lhlt` load/save; import/export `.zmx`, `.seq`, `.len`, `.otx`, `.json`. An Optiland `.json` export also writes the lens's glasses to a `<lens>_glass` folder beside it, and `LastImportNotes` lists the materials a `.zmx` or `.json` import converted; see [Optiland files](getting-started.md#optiland-files). |
+| `IFileIO`          | `.lhlt` load/save; import/export `.zmx`, `.seq`, `.len`, `.otx`, `.json`. An Optiland `.json` export also writes the lens's glasses to a `<lens>_glass` folder beside it and installs them in `~/.optiland/catalogs/` (`ExportOptiland` returns where they went), and `LastImportNotes` lists the materials a `.zmx` or `.json` import converted; see [Optiland files](getting-started.md#optiland-files). |
 | `ISystemEditor`    | Mutations: aperture, fields, wavelengths, surfaces, variables, pickups. |
 | `IAnalysis`        | Spot diagram, MTF, wavefront, OPD/ray fans, Seidel, Zernike, lateral color, etc. |
 | `IOptimization`    | Local LM, Multistart, Basin Hopping, split-element, SPC synthesis. |

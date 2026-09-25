@@ -302,10 +302,10 @@ namespace LensHH.Mcp
             OptalixWriter.Write(_system, filePath, GlassCatalog);
         }
 
-        public void ExportOptiland(string filePath)
+        public OptilandExport ExportOptiland(string filePath)
         {
             if (_system == null) throw new InvalidOperationException("No optical system loaded.");
-            OptilandWriter.Write(_system, filePath, GlassCatalog);
+            return OptilandWriter.Write(_system, filePath, GlassCatalog);
         }
 
         /// <summary>Last rendered analysis name (e.g. "FftMtf", "SpotDiagram").</summary>

@@ -48,6 +48,20 @@ namespace LensHH.Core.IO
     /// </summary>
     public static class OptilandGlass
     {
+        /// <summary>
+        /// Where Optiland reads user catalogs: <c>~/.optiland/catalogs</c>, which its material
+        /// registry looks in when first used in a session (<c>Path.home()</c> in Python: the
+        /// user profile folder on Windows, <c>$HOME</c> elsewhere, which is what .NET's
+        /// <see cref="Environment.SpecialFolder.UserProfile"/> gives). Optiland has no setting
+        /// to move it.
+        /// </summary>
+        public static string UserCatalogsFolder =>
+            UserCatalogsFolderOverride
+            ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".optiland", "catalogs");
+
+        /// <summary>For tests: a folder to use instead of <see cref="UserCatalogsFolder"/>.</summary>
+        public static string? UserCatalogsFolderOverride { get; set; }
+
         /// <summary>What the catalogs written for Optiland are prefixed with.</summary>
         public const string CatalogPrefix = "lenshh-";
 
@@ -212,10 +226,11 @@ namespace LensHH.Core.IO
             sb.AppendLine("one of these catalogs and match_policy \"strict\", so Optiland uses exactly these");
             sb.AppendLine("glasses, and never substitutes another.");
             sb.AppendLine();
-            sb.AppendLine("Optiland needs the folders installed. Copy them into ~/.optiland/catalogs/");
-            sb.AppendLine("(on Windows, %USERPROFILE%\\.optiland\\catalogs\\); Optiland loads them when it");
-            sb.AppendLine("starts. Folders of the same name from other lenses merge: a glass is the same file");
-            sb.AppendLine("in each.");
+            sb.AppendLine("LensHH-LT installed them for Optiland on the machine it exported from, in");
+            sb.AppendLine("~/.optiland/catalogs/ (on Windows, %USERPROFILE%\\.optiland\\catalogs\\); Optiland");
+            sb.AppendLine("loads them when it starts. On another machine, or another account, copy the");
+            sb.AppendLine("folders here into that folder. Folders of the same name from other lenses merge:");
+            sb.AppendLine("a glass is the same file in each.");
             sb.AppendLine();
             sb.AppendLine("Or load them in the session, before loading the lens:");
             sb.AppendLine("    from optiland.materials.registry import MaterialRegistry");

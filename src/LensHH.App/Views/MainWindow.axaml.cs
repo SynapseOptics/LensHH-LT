@@ -396,14 +396,11 @@ public partial class MainWindow : Window
             if (path != null)
             {
                 VM.SaveFile(path, format);
-                if (format == "optiland" && VM.Session.LastExportGlassFolder is string folder)
+                if (format == "optiland" && VM.Session.LastOptilandExport is { GlassFolder: not null } export)
                     await ShowMessageBox("Glasses for Optiland",
-                        "The glasses of this lens, as LensHH-LT computes them, are in\n\n  " + folder
-                        + "\n\nas Optiland user catalogs. Copy its folders into ~/.optiland/catalogs/ "
-                        + "(on Windows, %USERPROFILE%\\.optiland\\catalogs\\) and Optiland uses exactly "
-                        + "these glasses. Without them, Optiland stops with an error naming the catalog "
-                        + "it is missing; it never substitutes another glass. "
-                        + "README.txt in the folder has the details.");
+                        "The glasses of this lens are written as LensHH-LT computes them, and the lens file "
+                        + "names each one strictly, so Optiland never substitutes another glass.\n\n"
+                        + export.Describe());
             }
         }
     }

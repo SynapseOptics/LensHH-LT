@@ -373,14 +373,12 @@ public class GuiSession
         LastImportSubstitutions = subs;
     }
 
-    /// <summary>
-    /// The folder of glasses the last Optiland export wrote beside the lens file, or null.
-    /// </summary>
-    public string? LastExportGlassFolder { get; private set; }
+    /// <summary>Where the last Optiland export put the lens's glasses, or null.</summary>
+    public OptilandExport? LastOptilandExport { get; private set; }
 
     public void SaveFile(string path, string format = "lhlt")
     {
-        LastExportGlassFolder = null;
+        LastOptilandExport = null;
         switch (format.ToLowerInvariant())
         {
             case "lhlt":
@@ -400,7 +398,7 @@ public class GuiSession
                 OptalixWriter.Write(_system, path, _glassCatalog);
                 break;
             case "optiland":
-                LastExportGlassFolder = OptilandWriter.Write(_system, path, _glassCatalog);
+                LastOptilandExport = OptilandWriter.Write(_system, path, _glassCatalog);
                 break;
             default:
                 if (NativeFormatHandlers.TryGetValue(format, out var saveHandler))

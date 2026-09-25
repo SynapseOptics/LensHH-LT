@@ -18,23 +18,58 @@ namespace LensHH.Core.IO
     /// <item>in the lens file, each glass is named with its catalog and
     /// <c>match_policy: "strict"</c>;</item>
     /// <item>beside it, the glass's own dispersion data goes into a folder of Optiland user
-    /// catalogs.</item>
+    /// catalogs;</item>
+    /// <item>and the same catalogs are installed where Optiland on this machine reads them (see
+    /// <see cref="OptilandGlass.UserCatalogsFolder"/>), so the lens opens there with no further
+    /// step.</item>
     /// </list>
     /// <para>Earlier versions wrote a bare name with <c>robust_search</c>, which lets Optiland take
     /// the nearest name from any catalog. Many common glasses came back as a different glass that
     /// way, and a model glass was written as a name Optiland could not know.</para>
     /// </summary>
+    /// <summary>Where an Optiland export put the lens's glasses.</summary>
+    public sealed class OptilandExport
+    {
+        /// <summary>The folder of glasses beside the lens file, or null when it has none.</summary>
+        public string? GlassFolder { get; set; }
+
+        /// <summary>The Optiland catalogs folder the glasses were installed in, or null.</summary>
+        public string? InstalledTo { get; set; }
+
+        /// <summary>How many glass files were installed.</summary>
+        public int InstalledGlasses { get; set; }
+
+        /// <summary>Why installing failed, or null.</summary>
+        public string? InstallError { get; set; }
+
+        /// <summary>One or two lines saying where the glasses went, for a message.</summary>
+        public string Describe()
+        {
+            if (GlassFolder == null) return "The lens has no glass, so there were no glasses to write.";
+            var sb = new StringBuilder();
+            if (InstalledTo != null)
+                sb.Append($"The glasses are installed for Optiland in {InstalledTo}; Optiland reads them when it "
+                        + "starts (restart a Python session that already had Optiland loaded). ");
+            else if (InstallError != null)
+                sb.Append(InstallError + ". Copy the folders inside the folder below into ~/.optiland/catalogs/ by hand. ");
+            sb.Append($"A copy is in {GlassFolder}, to take with the lens to another machine.");
+            return sb.ToString();
+        }
+    }
+
     public static class OptilandWriter
     {
         private const string Air = "{\"type\": \"IdealMaterial\", \"index\": 1.0, \"absorp\": 0.0}";
 
-        /// <summary>Writes the lens, and its glasses beside it.</summary>
+        /// <summary>Writes the lens, its glasses beside it, and installs the glasses for Optiland.</summary>
         /// <param name="glassMgr">The glass catalogs. With them, each glass is written with its
         /// dispersion data. Without them, a catalog glass goes out by name only, for Optiland's
         /// own database: strict, and with a catalog only when the system names exactly one.</param>
-        /// <returns>The folder of glasses written beside the lens file, or null when there were
-        /// none to write.</returns>
-        public static string? Write(OpticalSystem system, string filePath, GlassCatalogManager? glassMgr = null)
+        /// <param name="install">Whether to install the glasses into this machine's Optiland
+        /// catalogs as well as writing them beside the lens.</param>
+        /// <returns>Where the glasses went.</returns>
+        public static OptilandExport Write(OpticalSystem system, string filePath, GlassCatalogManager? glassMgr = null,
+                                           bool install = true)
         {
             var sb = new StringBuilder();
             string indent = "    ";
@@ -192,7 +227,39 @@ namespace LensHH.Core.IO
             sb.AppendLine("}");
 
             File.WriteAllText(filePath, sb.ToString());
-            return WriteGlassFolder(filePath, ymls);
+            var result = new OptilandExport { GlassFolder = WriteGlassFolder(filePath, ymls) };
+            if (install && ymls.Count > 0) Install(ymls, result);
+            return result;
+        }
+
+        // Into this machine's Optiland user catalogs. Only the lenshh- folders are written, and
+        // nothing is deleted: other exported lenses may use the same glasses. A glass already
+        // there is replaced by the current data, which is the same glass. A failure here leaves
+        // the export itself good, and is reported.
+        private static void Install(SortedDictionary<string, SortedDictionary<string, string>> ymls, OptilandExport result)
+        {
+            string target = OptilandGlass.UserCatalogsFolder;
+            try
+            {
+                int count = 0;
+                foreach (var catalog in ymls)
+                {
+                    string sub = Path.Combine(target, catalog.Key);
+                    Directory.CreateDirectory(sub);
+                    foreach (var glass in catalog.Value)
+                    {
+                        File.WriteAllText(Path.Combine(sub, glass.Key + ".yml"), glass.Value, new UTF8Encoding(false));
+                        count++;
+                    }
+                }
+                result.InstalledTo = target;
+                result.InstalledGlasses = count;
+            }
+            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException
+                                       || ex is System.Security.SecurityException || ex is ArgumentException)
+            {
+                result.InstallError = $"The glasses could not be installed in {target}: {ex.Message}";
+            }
         }
 
         // The material_post object for each surface, or null for air and mirrors; and the .yml

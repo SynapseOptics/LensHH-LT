@@ -273,7 +273,8 @@ namespace LensHH.API
         public void ExportOptalix(string filePath) { EnsureSystem(); OptalixWriter.Write(_system!, filePath, GlassCatalog); }
 
         /// <summary>Export to Optiland .json file.</summary>
-        public void ExportOptiland(string filePath) { EnsureSystem(); OptilandWriter.Write(_system!, filePath, GlassCatalog); }
+        /// <summary>Exports to Optiland, installing the lens's glasses where Optiland reads them.</summary>
+        public OptilandExport ExportOptiland(string filePath) { EnsureSystem(); return OptilandWriter.Write(_system!, filePath, GlassCatalog); }
 
         // ─── System editing ─────────────────────────────────────────────
 

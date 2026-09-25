@@ -16,7 +16,10 @@ All notable changes to LensHH-LT and the LensHH-LT-Engine.
   (`lenshh-schott`, `lenshh-model`, …), one refractiveindex.info `.yml` per glass. All
   thirteen AGF dispersion formulas and the model glass are written exactly. The lens file
   names each glass with its catalog and `match_policy: "strict"`, so Optiland either uses
-  exactly LensHH-LT's glass or stops with an error naming the missing catalog. Checked in
+  exactly LensHH-LT's glass or stops with an error naming the missing catalog. The export
+  also installs the catalogs in `~/.optiland/catalogs/`, where Optiland reads them, so the
+  lens opens in Optiland on the same machine with no further step; the copy only adds to
+  the `lenshh-` folders. Checked in
   Optiland 0.6.2: every glass of every shipped catalog (1838) gives LensHH-LT's index,
   and so does every sample lens.
 - **Optiland import turned most materials into air.** Only a `Material`'s name was read.

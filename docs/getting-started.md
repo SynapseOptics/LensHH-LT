@@ -996,11 +996,22 @@ Optiland reads. Every catalog dispersion formula and the LensHH-LT model glass a
 Optiland's index is LensHH-LT's to the last digit.
 
 The lens file names each glass with its catalog and `match_policy: "strict"`, so Optiland never
-substitutes a glass. For Optiland to find them, **install the folders**. Copy the folders inside
-`lens_glass` into `~/.optiland/catalogs/` (on Windows, `%USERPROFILE%\.optiland\catalogs\`), and
-Optiland loads them when it starts. Folders of the same name from other lenses merge, since a glass
-is the same file in each. Until they are installed, Optiland stops with an error naming the catalog
-it is missing. `README.txt` in the folder also shows how to load them in a Python session instead.
+substitutes a glass.
+
+**The glasses are installed for Optiland as part of the export.** LensHH-LT also copies the catalogs
+into `~/.optiland/catalogs/`, the folder Optiland reads user catalogs from (on Windows,
+`%USERPROFILE%\.optiland\catalogs\`), so the exported lens opens in Optiland on the same machine as
+it is. Optiland reads that folder when it is first used in a Python session; a session that already
+had Optiland loaded must be restarted. The copy writes only the `lenshh-` folders, adds to them
+without deleting anything, since other exported lenses use the same glasses, and replaces a glass
+already there with the current data for it. If the copy fails (a folder that cannot be written,
+say), the export still completes and says so.
+
+**On another machine or account**, take the `lens_glass` folder with the `.json` and copy the folders
+inside it into that user's `~/.optiland/catalogs/`. Folders of the same name from other lenses merge,
+since a glass is the same file in each. Until they are installed, Optiland stops with an error naming
+the catalog it is missing. `README.txt` in the folder also shows how to load them in a Python session
+instead.
 
 Import reads Optiland's materials:
 

@@ -19,10 +19,15 @@ namespace LensHH.API.Tests
     {
         private readonly string _dir = Path.Combine(Path.GetTempPath(), "optiland_" + Guid.NewGuid().ToString("N"));
 
-        public OptilandGlassTests() => Directory.CreateDirectory(_dir);
+        public OptilandGlassTests()
+        {
+            Directory.CreateDirectory(_dir);
+            OptilandGlass.UserCatalogsFolderOverride = Path.Combine(_dir, "home", ".optiland", "catalogs");
+        }
 
         public void Dispose()
         {
+            OptilandGlass.UserCatalogsFolderOverride = null;
             try { Directory.Delete(_dir, true); } catch { }
         }
 
@@ -135,7 +140,7 @@ namespace LensHH.API.Tests
         {
             var mgr = Catalogs();
             string path = Path.Combine(_dir, "doublet.json");
-            string? folder = OptilandWriter.Write(Doublet(), path, mgr);
+            string? folder = OptilandWriter.Write(Doublet(), path, mgr).GlassFolder;
             string json = File.ReadAllText(path);
 
             // Named with the catalog that owns it - SK16 from SUMITA, as the system prefers - under
@@ -180,6 +185,55 @@ namespace LensHH.API.Tests
             Assert.Equal(0.0092, m.ModelDPgF, 8);
         }
 
+        // Installed where Optiland reads user catalogs, so the lens opens there as it is. Only
+        // lenshh- folders are written, and nothing already there is removed.
+        [Fact]
+        public void TheGlassesAreInstalledForOptiland()
+        {
+            var mgr = Catalogs();
+            string catalogs = OptilandGlass.UserCatalogsFolder;
+            Directory.CreateDirectory(Path.Combine(catalogs, "mine"));
+            File.WriteAllText(Path.Combine(catalogs, "mine", "X.yml"), "x");
+            Directory.CreateDirectory(Path.Combine(catalogs, "lenshh-schott"));
+            File.WriteAllText(Path.Combine(catalogs, "lenshh-schott", "F2.yml"), "from another lens");
+
+            var export = OptilandWriter.Write(Doublet(), Path.Combine(_dir, "doublet.json"), mgr);
+
+            Assert.Equal(catalogs, export.InstalledTo);
+            Assert.Equal(3, export.InstalledGlasses);
+            Assert.Null(export.InstallError);
+            Assert.Equal(File.ReadAllText(Path.Combine(export.GlassFolder!, "lenshh-sumita", "SK16.yml")),
+                         File.ReadAllText(Path.Combine(catalogs, "lenshh-sumita", "SK16.yml")));
+            Assert.True(File.Exists(Path.Combine(catalogs, "lenshh-schott", "N-BK7.yml")));
+            Assert.True(File.Exists(Path.Combine(catalogs, "lenshh-model", OptilandGlass.ModelName(1.7847, 25.68, 0.0092) + ".yml")));
+            Assert.True(File.Exists(Path.Combine(catalogs, "lenshh-schott", "F2.yml")));
+            Assert.True(File.Exists(Path.Combine(catalogs, "mine", "X.yml")));
+            Assert.False(File.Exists(Path.Combine(catalogs, "README.txt")));
+            Assert.Contains(catalogs, export.Describe());
+
+            // And not, when asked not to.
+            Directory.Delete(Path.Combine(catalogs, "lenshh-sumita"), true);
+            var local = OptilandWriter.Write(Doublet(), Path.Combine(_dir, "doublet.json"), mgr, install: false);
+            Assert.Null(local.InstalledTo);
+            Assert.False(Directory.Exists(Path.Combine(catalogs, "lenshh-sumita")));
+        }
+
+        [Fact]
+        public void AFailedInstallLeavesTheExport()
+        {
+            // A file where the catalogs folder should be: it cannot be created.
+            File.WriteAllText(Path.Combine(_dir, "blocked"), "");
+            OptilandGlass.UserCatalogsFolderOverride = Path.Combine(_dir, "blocked", "catalogs");
+
+            var export = OptilandWriter.Write(Doublet(), Path.Combine(_dir, "doublet.json"), Catalogs());
+
+            Assert.Null(export.InstalledTo);
+            Assert.NotNull(export.InstallError);
+            Assert.True(File.Exists(Path.Combine(_dir, "doublet.json")));
+            Assert.True(Directory.Exists(export.GlassFolder));
+            Assert.Contains("by hand", export.Describe());
+        }
+
         [Fact]
         public void AGlassFolderNoLongerNeededIsRemoved()
         {
@@ -189,7 +243,7 @@ namespace LensHH.API.Tests
             var air = Doublet();
             foreach (var s in air.Surfaces) { s.Material = null; s.ModelIndexEnabled = false; }
 
-            Assert.Null(OptilandWriter.Write(air, path, mgr));
+            Assert.Null(OptilandWriter.Write(air, path, mgr).GlassFolder);
             Assert.False(Directory.Exists(Path.Combine(_dir, "doublet_glass")));
         }
 

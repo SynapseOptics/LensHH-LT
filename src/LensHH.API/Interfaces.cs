@@ -60,7 +60,8 @@ namespace LensHH.API
         void ExportCodeV(string filePath);
         void ExportOslo(string filePath);
         void ExportOptalix(string filePath);
-        void ExportOptiland(string filePath);
+        /// <summary>Exports to Optiland, installing the lens's glasses where Optiland reads them.</summary>
+        LensHH.Core.IO.OptilandExport ExportOptiland(string filePath);
     }
 
     /// <summary>

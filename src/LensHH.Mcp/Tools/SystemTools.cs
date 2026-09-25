@@ -131,8 +131,8 @@ namespace LensHH.Mcp.Tools
         [McpServerTool, Description("Export the current optical system to an Optiland .json file.")]
         public string ExportOptiland(string filePath)
         {
-            _session.ExportOptiland(filePath);
-            return $"Exported Optiland file: {filePath}";
+            var export = _session.ExportOptiland(filePath);
+            return $"Exported Optiland file: {filePath}. {export.Describe()}";
         }
 
         private string FormatImportResult(string filePath)

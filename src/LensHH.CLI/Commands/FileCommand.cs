@@ -298,7 +298,7 @@ namespace LensHH.CLI.Commands
             string format = args[1].ToLowerInvariant();
             var path = string.Join(" ", args, 2, args.Length - 2);
 
-            string? glassFolder = null;
+            OptilandExport? optiland = null;
             switch (format)
             {
                 case "zemax":
@@ -319,7 +319,7 @@ namespace LensHH.CLI.Commands
                     break;
                 case "optiland":
                 case "json":
-                    glassFolder = OptilandWriter.Write(system, path, session.EnsureGlassCatalog());
+                    optiland = OptilandWriter.Write(system, path, session.EnsureGlassCatalog());
                     break;
                 default:
                     AnsiConsole.MarkupLine($"[red]Unknown format: {Markup.Escape(format)}. Use zemax, codev, oslo, optalix, or optiland.[/]");
@@ -327,8 +327,8 @@ namespace LensHH.CLI.Commands
             }
 
             AnsiConsole.MarkupLine($"[green]Exported ({format}): {Markup.Escape(path)}[/]");
-            if (glassFolder != null)
-                AnsiConsole.MarkupLine($"  Glasses for Optiland: {Markup.Escape(glassFolder)} (see README.txt there)");
+            if (optiland?.GlassFolder != null)
+                AnsiConsole.MarkupLine($"  {Markup.Escape(optiland.Describe())}");
         }
     }
 }
