@@ -58,7 +58,7 @@ public class AgfFileParser
             if (trimmed.StartsWith("NM "))
             {
                 if (current != null)
-                    glasses.Add(current);
+                    glasses.Add(Finish(current));
 
                 var parts = trimmed.Split(new[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries);
                 string name = parts.Length > 1 ? parts[1] : "";
@@ -92,9 +92,6 @@ public class AgfFileParser
                         coefficients[j - 1] = ParseDouble(parts[j]);
 
                     current.DispersionCoefficients = coefficients;
-
-                    if (coefficients.Length > 0 && formula > 0)
-                        current.DPgF = DispersionCalculator.ComputeDPgF(formula, coefficients, vd);
                 }
                 else if (trimmed.StartsWith("ED "))
                 {
@@ -135,9 +132,32 @@ public class AgfFileParser
         }
 
         if (current != null)
-            glasses.Add(current);
+            glasses.Add(Finish(current));
 
         return glasses;
+    }
+
+    /// <summary>
+    /// A glass once all its lines are read: its listed nd/Vd checked against its own
+    /// dispersion data (the engine's ListedValueCheck — CDGM H-TK9 and HOYA MC-TAF115 list
+    /// values their data contradicts), then dPgF computed from the Vd that stands.
+    /// </summary>
+    private static GlassEntry Finish(GlassEntry e)
+    {
+        var g = new LensHH.Core.Glass.GlassData
+        {
+            Name = e.Name, Catalog = e.CatalogName, DispersionFormula = e.DispersionFormula,
+            Coefficients = e.DispersionCoefficients, WavelengthMin = e.MinWavelength,
+            WavelengthMax = e.MaxWavelength, Nd = e.Nd, Vd = e.Vd,
+        };
+        if (LensHH.Core.Glass.ListedValueCheck.Reconcile(g) != null)
+        {
+            e.Nd = g.Nd;
+            e.Vd = g.Vd;
+        }
+        if (e.DispersionCoefficients.Length > 0 && e.DispersionFormula > 0)
+            e.DPgF = DispersionCalculator.ComputeDPgF(e.DispersionFormula, e.DispersionCoefficients, e.Vd);
+        return e;
     }
 
     private static double ParseOdValue(string s)

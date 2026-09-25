@@ -113,6 +113,18 @@ All notable changes to LensHH-LT and the LensHH-LT-Engine.
   exported here and opened with OpticStudio's Code V converter, arrived with every
   surface, glass, the stop, the asphere terms, wavelengths, primary and fields intact.
 
+- **Two catalog glasses sat at the wrong place on the glass map.** A catalog lists each
+  glass's nd and Vd, and separately gives the dispersion data the index is computed from.
+  In CDGM's H-TK9 and HOYA's MC-TAF115 the two disagree: H-TK9 lists 1.587 / 75.9 (another
+  glass's values) where its data and its MIL code give 1.621 / 60.3, and MC-TAF115 lists
+  1.777047 where its data gives 1.770473. Tracing used the data. But snapping a model glass
+  to the closest real glass, glass substitution in optimization, and the glass filters and
+  catalog tools used the listed values. So a design asking for about 1.587 / 75.9 could be
+  offered H-TK9. When a catalog loads, a listed nd or Vd that differs from the glass's own
+  data by more than 10⁻³ or 0.5 now takes the data's value. This also corrects the nominal
+  Vd of CaF₂ (93.6 → 95.0) and sapphire (78 → 72.3) in the MISC catalog. Rounded listings
+  (Sumita's one-decimal Vd) and infrared or laser-line materials are left as listed.
+
 - **OpticStudio table glasses (`.ZTG`) import.** A `.zmx` names a table glass by its file
   (`GLAS NAME.ZTG`), and the name was kept as a glass nothing could resolve. The file is
   now found beside the lens or in `Documents\Zemax\Glasscat` and converted. A table of six
