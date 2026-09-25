@@ -11,7 +11,109 @@ namespace LensHH.Core.IO
 {
     public static class ZmxReader
     {
-        public static OpticalSystem Read(string filePath)
+        public static OpticalSystem Read(string filePath) => Read(filePath, null, out _);
+
+        /// <summary>
+        /// Read a .zmx file, and say what was done to bring it in: each OpticStudio table glass
+        /// (<c>GLAS NAME.ZTG</c>) is converted — added to the user's TABLE catalog, or made a
+        /// model glass — or reported missing. <paramref name="glassMgr"/>, when given, is loaded
+        /// with any glass added, so the lens resolves at once.
+        /// </summary>
+        public static OpticalSystem Read(string filePath, Glass.GlassCatalogManager? glassMgr,
+                                         out IReadOnlyList<string> importNotes)
+        {
+            var system = ReadCore(filePath);
+            importNotes = ResolveTableGlasses(system, filePath, glassMgr);
+            return system;
+        }
+
+        /// <summary>
+        /// The surfaces whose glass is an OpticStudio table glass. The table (six or more points)
+        /// is fitted with the Schott formula and added to the user's TABLE catalog under the file's
+        /// name; a shorter table is fitted with a Conrady curve and becomes a model glass — which
+        /// is exact for the three-point tables OpticStudio's Code V converter writes for a Code V
+        /// private glass, a model glass being a Conrady curve. A table that cannot be found is left
+        /// named, so the surface shows as an unresolved glass, and reported.
+        /// </summary>
+        private static List<string> ResolveTableGlasses(OpticalSystem system, string lensPath,
+                                                        Glass.GlassCatalogManager? glassMgr)
+        {
+            var notes = new List<string>();
+            var done = new Dictionary<string, Action<Surface>>(StringComparer.OrdinalIgnoreCase);
+            var inv = CultureInfo.InvariantCulture;
+
+            for (int i = 0; i < system.Surfaces.Count; i++)
+            {
+                var s = system.Surfaces[i];
+                string? mat = s.Material;
+                if (string.IsNullOrEmpty(mat) || !mat!.EndsWith(".ZTG", StringComparison.OrdinalIgnoreCase)) continue;
+
+                if (!done.TryGetValue(mat, out var apply))
+                {
+                    string? file = TableGlass.Find(mat, lensPath);
+                    if (file == null)
+                    {
+                        notes.Add($"Surface {i}: table glass {mat} not found beside the lens or in Documents\\Zemax\\Glasscat; the surface has no glass until it is.");
+                        done[mat] = _ => { };
+                        continue;
+                    }
+
+                    var points = TableGlass.Read(file);
+                    string name = Path.GetFileNameWithoutExtension(file).Replace(' ', '_').ToUpperInvariant();
+                    string range = points.Count > 0
+                        ? string.Format(inv, "{0:0.###}–{1:0.###} µm", points[0].Um, points[points.Count - 1].Um) : "";
+
+                    if (points.Count >= TableGlass.MinSchottPoints)
+                    {
+                        var (c, err) = TableGlass.FitSchott(points);
+                        UserGlassCatalog.AddSchottGlass(name, c, points[0].Um, points[points.Count - 1].Um,
+                            $"from {Path.GetFileName(file)}, {points.Count} points, fitted with the Schott formula", glassMgr);
+                        notes.Add(string.Format(inv, "Surface {0}: table glass {1} ({2} points, {3}) added to your TABLE catalog as {4}; the Schott formula fits the table to {5:0.0e0}.",
+                            i, Path.GetFileName(file), points.Count, range, name, err));
+                        apply = surf =>
+                        {
+                            surf.Material = name;
+                            if (!system.GlassCatalogs.Contains(UserGlassCatalog.TableCatalog, StringComparer.OrdinalIgnoreCase))
+                                system.GlassCatalogs.Add(UserGlassCatalog.TableCatalog);
+                        };
+                    }
+                    else if (points.Count > 0)
+                    {
+                        var (c0, c1, c2, err) = TableGlass.FitConrady(points);
+                        var model = Glass.ModelGlass.FromConrady(c0, c1, c2);
+                        if (model == null)
+                        {
+                            notes.Add($"Surface {i}: table glass {Path.GetFileName(file)} could not be converted; the surface has no glass.");
+                            done[mat] = _ => { };
+                            continue;
+                        }
+                        var (nd, vd, dPgF) = model.Value;
+                        notes.Add(string.Format(inv, "Surface {0}: table glass {1} ({2} points, {3}) is too short to fit a catalog formula to, and was made a model glass (nd {4:F6}, Vd {5:F4}, ΔPgF {6:F5}){7}.",
+                            i, Path.GetFileName(file), points.Count, range, nd, vd, dPgF,
+                            err < 1e-9 ? ", which passes through every point" : string.Format(inv, " that fits the table to {0:0.0e0}", err)));
+                        apply = surf =>
+                        {
+                            surf.Material = "";
+                            surf.ModelIndexEnabled = true;
+                            surf.ModelNd = nd;
+                            surf.ModelVd = vd;
+                            surf.ModelDPgF = dPgF;
+                        };
+                    }
+                    else
+                    {
+                        notes.Add($"Surface {i}: table glass {Path.GetFileName(file)} holds no wavelength–index pairs; the surface has no glass.");
+                        done[mat] = _ => { };
+                        continue;
+                    }
+                    done[mat] = apply;
+                }
+                apply(s);
+            }
+            return notes;
+        }
+
+        private static OpticalSystem ReadCore(string filePath)
         {
             var lines = ReadFileLines(filePath);
             var system = new OpticalSystem();

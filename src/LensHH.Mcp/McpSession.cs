@@ -170,6 +170,9 @@ namespace LensHH.Mcp
                             break;
                         }
                     }
+
+                    // The user's own catalogs: table glasses converted from OpticStudio .ZTG files.
+                    UserGlassCatalog.LoadInto(_glassCatalog);
                 }
                 return _glassCatalog;
             }
@@ -229,9 +232,13 @@ namespace LensHH.Mcp
             _currentFilePath = filePath;
         }
 
+        /// <summary>What the last Zemax import converted (OpticStudio table glasses).</summary>
+        public IReadOnlyList<string> LastImportNotes { get; private set; } = Array.Empty<string>();
+
         public void ImportZemax(string filePath)
         {
-            _system = ZmxReader.Read(filePath);
+            _system = ZmxReader.Read(filePath, GlassCatalog, out var notes);
+            LastImportNotes = notes;
             MeritFunction = null;
             _currentFilePath = null;
             ClearLastRender();

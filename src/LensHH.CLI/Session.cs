@@ -208,6 +208,9 @@ namespace LensHH.CLI
                     }
                     if (GlassCatalog.LoadedCatalogs.Count > 0) break;
                 }
+
+                // The user's own catalogs: table glasses converted from OpticStudio .ZTG files.
+                UserGlassCatalog.LoadInto(GlassCatalog);
             }
             return GlassCatalog;
         }

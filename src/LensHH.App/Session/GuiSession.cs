@@ -105,6 +105,11 @@ public class GuiSession
     /// OpenFile so nothing is left out unseen. Cleared on the next file open.</summary>
     public IReadOnlyList<string> LastImportNotConverted { get; private set; } = Array.Empty<string>();
 
+    /// <summary>What the most recent import did to bring the lens in that the user should
+    /// know about — an OpticStudio table glass converted, or not found. Shown after OpenFile;
+    /// cleared on the next file open.</summary>
+    public IReadOnlyList<string> LastImportNotes { get; private set; } = Array.Empty<string>();
+
     /// <summary>True if any system wavelength falls outside the declared
     /// dispersion range of at least one material on the system. Outside
     /// that range glass-index formulas extrapolate and silently produce
@@ -236,6 +241,7 @@ public class GuiSession
         // Reset import-state carried across opens.
         LastImportSubstitutions = Array.Empty<LensHH.App.GlassCatalog.GlassNumericResolver.Substitution>();
         LastImportNotConverted = Array.Empty<string>();
+        LastImportNotes = Array.Empty<string>();
 
         bool isImport = false;
         switch (format.ToLowerInvariant())
@@ -247,7 +253,8 @@ public class GuiSession
                 _filePath = path;
                 break;
             case "zmx":
-                _system = ZmxReader.Read(path);
+                _system = ZmxReader.Read(path, _glassCatalog, out var zmxNotes);
+                LastImportNotes = zmxNotes;
                 _meritFunction = null;
                 _filePath = null; // imported, not native
                 isImport = true;
@@ -507,6 +514,10 @@ public class GuiSession
                 break;
             }
         }
+
+        // The user's own catalogs (Documents\LensHH-LT\Glass): table glasses converted from
+        // OpticStudio .ZTG files live there, so a lens saved with one resolves again.
+        UserGlassCatalog.LoadInto(_glassCatalog);
     }
 
     /// <summary>

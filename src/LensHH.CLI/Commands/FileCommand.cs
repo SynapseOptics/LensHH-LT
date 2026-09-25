@@ -233,11 +233,12 @@ namespace LensHH.CLI.Commands
 
             OpticalSystem system;
             IReadOnlyList<string> notConverted = Array.Empty<string>();
+            IReadOnlyList<string> importNotes = Array.Empty<string>();
             switch (format)
             {
                 case "zemax":
                 case "zmx":
-                    system = ZmxReader.Read(path);
+                    system = ZmxReader.Read(path, session.EnsureGlassCatalog(), out importNotes);
                     break;
                 case "codev":
                 case "seq":
@@ -273,6 +274,12 @@ namespace LensHH.CLI.Commands
                 AnsiConsole.MarkupLine("[yellow]  Not imported (LensHH-LT does not model these):[/]");
                 foreach (var item in notConverted)
                     AnsiConsole.MarkupLine($"[yellow]    - {Markup.Escape(item)}[/]");
+            }
+            if (importNotes.Count > 0)
+            {
+                AnsiConsole.MarkupLine("  Table glasses (OpticStudio .ZTG):");
+                foreach (var item in importNotes)
+                    AnsiConsole.MarkupLine($"    - {Markup.Escape(item)}");
             }
         }
 

@@ -275,6 +275,7 @@ public partial class MainWindow : Window
             {
                 VM.OpenFile(path, format);
                 await ShowImportNotConvertedAsync();
+                await ShowImportNotesAsync();
                 await ShowImportSubstitutionsAsync();
             }
         }
@@ -299,6 +300,26 @@ public partial class MainWindow : Window
         sb.Append("Compare the lens with its source before relying on it. This list is also kept in the lens's notes.");
 
         await ShowMessageBox("Not imported", sb.ToString());
+    }
+
+    /// <summary>
+    /// What the import converted on the way in — an OpticStudio table glass (.ZTG) made a
+    /// catalog or model glass, or not found — so the user knows where the glass came from.
+    /// </summary>
+    private async System.Threading.Tasks.Task ShowImportNotesAsync()
+    {
+        var notes = VM.Session.LastImportNotes;
+        if (notes.Count == 0) return;
+
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("This file uses OpticStudio table glasses (.ZTG):");
+        sb.AppendLine();
+        foreach (var note in notes)
+            sb.AppendLine("  • " + note);
+        sb.AppendLine();
+        sb.Append("Table glasses added to your TABLE catalog are kept in Documents\\LensHH-LT\\Glass.");
+
+        await ShowMessageBox("Table glasses", sb.ToString());
     }
 
     /// <summary>

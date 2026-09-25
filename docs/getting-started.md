@@ -814,11 +814,31 @@ Both settings are saved in `.lhlt` and round-trip through ZEMAX `.zmx`
 | Extension | Meaning |
 |-----------|---------|
 | `.lhlt`   | LensHH-LT native format. Save/load from **File → Save/Open**. |
-| `.zmx`    | ZEMAX prescription. **File → Import → Zemax (.zmx)…** and **File → Export → Zemax (.zmx)…**. Only standard and even-asphere surfaces are honored. Object Space NA (`OBNA`) and object-space telecentric are honored. |
+| `.zmx`    | ZEMAX prescription. **File → Import → Zemax (.zmx)…** and **File → Export → Zemax (.zmx)…**. Only standard and even-asphere surfaces are honored. Object Space NA (`OBNA`) and object-space telecentric are honored. Table glasses (`.ZTG`) are converted; see [OpticStudio table glasses](#opticstudio-table-glasses-ztg) below. |
 | `.len`    | OSLO lens file. **File → Import → OSLO (.len)…** and **File → Export → OSLO (.len)…**. See [OSLO files](#oslo-files) below. |
 | `.otx`    | Optalix lens file. **File → Import → Optalix (.otx)…** and **File → Export → Optalix (.otx)…**. See [Optalix files](#optalix-files) below. |
 | `.seq`    | Code V sequence file. **File → Import → Code V (.seq)…** and **File → Export → Code V (.seq)…**. See [Code V files](#code-v-files) below. |
 | `.agf`    | Glass catalog. Loaded from `<install>\catalogs\Glass\` on startup. |
+
+### OpticStudio table glasses (.ZTG)
+
+OpticStudio can define a glass by a table of its index at a list of wavelengths, kept in a
+`.ZTG` file. A `.zmx` names such a glass by the file alone (`GLAS NAME.ZTG`), so **the `.ZTG`
+file has to come with the lens**. OpticStudio's Code V converter makes one for every Code V
+private glass, and measured materials (crystals, polymers, a melt sheet) are often given this way.
+
+On import LensHH-LT looks for the file beside the `.zmx`, then in OpticStudio's glass folder
+(`Documents\Zemax\Glasscat`), and converts it:
+
+| Table | Becomes |
+|---|---|
+| Six or more points | A glass in your own **TABLE** catalog, named after the file, with the Schott dispersion formula fitted to the table. Real glass tables fit to about 10⁻⁶ across the visible. The catalog is `Documents\LensHH-LT\Glass\TABLE.AGF`: it is loaded every time LensHH-LT starts, so a lens saved with the glass opens with it again. It is a standard `.AGF`, which OpticStudio reads too. |
+| Fewer than six points | A **model glass** whose curve passes through the points (exactly, for up to three points). A three-point table made from a model glass, such as a Code V private glass LensHH-LT exported, comes back as that same model glass. |
+
+A message after the import (and the CLI's `file import`) lists each table glass with how it was
+converted and how closely the fit follows the table. A `.ZTG` that cannot be found is named there,
+and the surface shows as an unresolved glass until the file is put beside the lens and the lens is
+imported again.
 
 ### OSLO files
 

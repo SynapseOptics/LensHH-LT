@@ -113,6 +113,17 @@ All notable changes to LensHH-LT and the LensHH-LT-Engine.
   exported here and opened with OpticStudio's Code V converter, arrived with every
   surface, glass, the stop, the asphere terms, wavelengths, primary and fields intact.
 
+- **OpticStudio table glasses (`.ZTG`) import.** A `.zmx` names a table glass by its file
+  (`GLAS NAME.ZTG`), and the name was kept as a glass nothing could resolve. The file is
+  now found beside the lens or in `Documents\Zemax\Glasscat` and converted. A table of six
+  or more points becomes a glass in the user's TABLE catalog
+  (`Documents\LensHH-LT\Glass\TABLE.AGF`, loaded at every start), with the Schott formula
+  fitted to it (about 10⁻⁶ for real glass across the visible; OpticStudio's own
+  `TABLETEST.ZTG` to 6 × 10⁻⁸). A shorter table becomes a model glass through its points.
+  That covers the three-point tables OpticStudio's Code V converter writes, and it recovers
+  a model glass LensHH-LT exported exactly. The import lists what it converted, and names
+  any table it could not find.
+
 - **A new model glass: the LensHH-LT model.** A model glass (nd, Vd, ΔPgF) was computed
   with a formula fitted to Schott catalog data. It is now the LensHH-LT model:
   - The form is Conrady's dispersion formula, with its constants set by the glass's nd,
