@@ -47,9 +47,15 @@ namespace LensHH.Core.IO
         /// The <c>.ZTG</c> file a lens names: beside the lens file first, then in OpticStudio's
         /// glass folder (Documents\Zemax\Glasscat). Null when it is in neither.
         /// </summary>
-        public static string? Find(string ztgName, string lensPath)
+        public static string? Find(string ztgName, string lensPath) => FindCatalog(ztgName, lensPath);
+
+        /// <summary>
+        /// A glass file (a <c>.ZTG</c> table or an <c>.AGF</c> catalog) a lens refers to: beside
+        /// the lens file first, then in OpticStudio's glass folder. Null when it is in neither.
+        /// </summary>
+        public static string? FindCatalog(string fileName, string lensPath)
         {
-            string file = Path.GetFileName(ztgName);
+            string file = Path.GetFileName(fileName);
             var dirs = new List<string>();
             string? lensDir = Path.GetDirectoryName(Path.GetFullPath(lensPath));
             if (lensDir != null) dirs.Add(lensDir);

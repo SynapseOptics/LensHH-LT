@@ -23,8 +23,61 @@ namespace LensHH.Core.IO
                                          out IReadOnlyList<string> importNotes)
         {
             var system = ReadCore(filePath);
-            importNotes = ResolveTableGlasses(system, filePath, glassMgr);
+            var notes = ResolveTableGlasses(system, filePath, glassMgr);
+            if (glassMgr != null)
+                notes.AddRange(LoadLensCatalogs(system, filePath, glassMgr));
+            importNotes = notes;
             return system;
+        }
+
+        /// <summary>
+        /// The catalogs on the lens's GCAT line that it needs and LensHH-LT does not have. A glass
+        /// that resolves from no loaded catalog is looked for in the lens's own catalogs — found
+        /// beside the lens or in OpticStudio's glass folder (Documents\Zemax\Glasscat) — and a
+        /// catalog that holds one is copied into the user's glass folder and loaded, so the lens
+        /// opens with it again. OpticStudio's Code V converter, for one, writes formula-defined
+        /// private glasses into a catalog of its own, CODEV_CONVERTED. A catalog LensHH-LT already
+        /// has is never replaced, and a catalog the lens lists but does not use is left alone.
+        /// </summary>
+        private static List<string> LoadLensCatalogs(OpticalSystem system, string lensPath,
+                                                     Glass.GlassCatalogManager glassMgr)
+        {
+            var notes = new List<string>();
+            var unresolved = system.Surfaces
+                .Select(s => s.Material)
+                .Where(m => !string.IsNullOrWhiteSpace(m)
+                            && !m!.Equals("MIRROR", StringComparison.OrdinalIgnoreCase)
+                            && !m.EndsWith(".ZTG", StringComparison.OrdinalIgnoreCase)
+                            && glassMgr.GetGlass(m, system.GlassCatalogs) == null)
+                .Select(m => m!)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            if (unresolved.Count == 0) return notes;
+
+            foreach (var catalog in system.GlassCatalogs.ToList())
+            {
+                if (unresolved.Count == 0) break;
+                if (glassMgr.LoadedCatalogs.Contains(catalog, StringComparer.OrdinalIgnoreCase)) continue;
+
+                string? file = TableGlass.FindCatalog(catalog + ".AGF", lensPath);
+                if (file == null)
+                {
+                    notes.Add($"The lens's glass catalog {catalog} was not found beside the lens or in Documents\\Zemax\\Glasscat.");
+                    continue;
+                }
+
+                var names = Glass.AgfReader.Read(file).Select(g => g.Name).ToList();
+                var provides = unresolved.Where(u => names.Contains(u, StringComparer.OrdinalIgnoreCase)).ToList();
+                if (provides.Count == 0) continue;
+
+                int before = glassMgr.ListedValueCorrections.Count;
+                UserGlassCatalog.AddCatalogFile(file, glassMgr);
+                notes.Add($"Glass catalog {catalog} ({names.Count} glasses, for {string.Join(", ", provides)}) loaded from {file} and copied to your glass folder.");
+                foreach (var correction in glassMgr.ListedValueCorrections.Skip(before))
+                    notes.Add(correction);
+                unresolved.RemoveAll(u => provides.Contains(u, StringComparer.OrdinalIgnoreCase));
+            }
+            return notes;
         }
 
         /// <summary>

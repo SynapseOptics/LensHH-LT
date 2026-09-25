@@ -9,109 +9,18 @@ public static class DispersionCalculator
     private const double Lambda_F = 0.4861327;
     private const double Lambda_g = 0.4358343;
 
+    /// <summary>
+    /// The index of an AGF glass at <paramref name="lambdaMicrons"/>, for any of the thirteen
+    /// AGF formulas — the engine's evaluation, which is checked against OpticStudio. (This had
+    /// its own copy of the formulas, and got 4, 12 and 13 wrong: Sellmeier 2 and Extended 2 and 3,
+    /// which OpticStudio's HIKARI, NIKON-HIKARI and LZOS catalogs use.)
+    /// </summary>
     public static double ComputeIndex(int formula, double[] c, double lambdaMicrons)
     {
-        double L = lambdaMicrons;
-        double L2 = L * L;
-
-        switch (formula)
-        {
-            case 1: // Schott
-                {
-                    double n2 = c[0] + c[1] * L2 + c[2] / L2 + c[3] / (L2 * L2)
-                               + c[4] / (L2 * L2 * L2) + c[5] / (L2 * L2 * L2 * L2);
-                    return Math.Sqrt(Math.Abs(n2));
-                }
-            case 2: // Sellmeier 1
-                {
-                    double n2 = 1.0;
-                    n2 += Safe(c, 0) * L2 / (L2 - Safe(c, 1));
-                    n2 += Safe(c, 2) * L2 / (L2 - Safe(c, 3));
-                    n2 += Safe(c, 4) * L2 / (L2 - Safe(c, 5));
-                    return Math.Sqrt(Math.Abs(n2));
-                }
-            case 3: // Herzberger
-                {
-                    double LL = 1.0 / (L2 - 0.028);
-                    double n = Safe(c, 0) + Safe(c, 1) * LL + Safe(c, 2) * LL * LL
-                             + Safe(c, 3) * L2 + Safe(c, 4) * L2 * L2 + Safe(c, 5) * L2 * L2 * L2;
-                    return n;
-                }
-            case 4: // Sellmeier 2
-                {
-                    double n2 = 1.0 + Safe(c, 0) * L2 / (L2 - Safe(c, 1))
-                                   + Safe(c, 2) * L2 / (L2 - Safe(c, 3));
-                    return Math.Sqrt(Math.Abs(n2));
-                }
-            case 5: // Conrady
-                {
-                    double n = Safe(c, 0) + Safe(c, 1) / L + Safe(c, 2) / Math.Pow(L, 3.5);
-                    return n;
-                }
-            case 6: // Sellmeier 3
-                {
-                    double n2 = 1.0;
-                    n2 += Safe(c, 0) * L2 / (L2 - Safe(c, 1));
-                    n2 += Safe(c, 2) * L2 / (L2 - Safe(c, 3));
-                    n2 += Safe(c, 4) * L2 / (L2 - Safe(c, 5));
-                    n2 += Safe(c, 6) * L2 / (L2 - Safe(c, 7));
-                    return Math.Sqrt(Math.Abs(n2));
-                }
-            case 7: // Handbook of Optics 1
-                {
-                    double n2 = Safe(c, 0) + Safe(c, 1) / (L2 - Safe(c, 2))
-                               - Safe(c, 3) * L2;
-                    return Math.Sqrt(Math.Abs(n2));
-                }
-            case 8: // Handbook of Optics 2
-                {
-                    double n2 = Safe(c, 0) + Safe(c, 1) * L2 / (L2 - Safe(c, 2))
-                               - Safe(c, 3) * L2;
-                    return Math.Sqrt(Math.Abs(n2));
-                }
-            case 9: // Sellmeier 4
-                {
-                    double n2 = Safe(c, 0) + Safe(c, 1) * L2 / (L2 - Safe(c, 2))
-                               + Safe(c, 3) * L2 / (L2 - Safe(c, 4));
-                    return Math.Sqrt(Math.Abs(n2));
-                }
-            case 10: // Extended 1
-                {
-                    double n2 = Safe(c, 0) + Safe(c, 1) * L2 + Safe(c, 2) / L2
-                               + Safe(c, 3) / (L2 * L2) + Safe(c, 4) / (L2 * L2 * L2)
-                               + Safe(c, 5) / (L2 * L2 * L2 * L2)
-                               + Safe(c, 6) / (L2 * L2 * L2 * L2 * L2)
-                               + Safe(c, 7) / (L2 * L2 * L2 * L2 * L2 * L2);
-                    return Math.Sqrt(Math.Abs(n2));
-                }
-            case 11: // Sellmeier 5
-                {
-                    double n2 = 1.0;
-                    n2 += Safe(c, 0) * L2 / (L2 - Safe(c, 1));
-                    n2 += Safe(c, 2) * L2 / (L2 - Safe(c, 3));
-                    n2 += Safe(c, 4) * L2 / (L2 - Safe(c, 5));
-                    n2 += Safe(c, 6) * L2 / (L2 - Safe(c, 7));
-                    n2 += Safe(c, 8) * L2 / (L2 - Safe(c, 9));
-                    return Math.Sqrt(Math.Abs(n2));
-                }
-            case 12: // Extended 2
-                {
-                    double n2 = Safe(c, 0) + Safe(c, 1) * L2 + Safe(c, 2) / L2
-                               + Safe(c, 3) / (L2 * L2) + Safe(c, 4) / (L2 * L2 * L2)
-                               + Safe(c, 5) / (L2 * L2 * L2 * L2)
-                               + Safe(c, 6) * L2 * L2;
-                    return Math.Sqrt(Math.Abs(n2));
-                }
-            case 13: // Extended 3
-                {
-                    double n2 = Safe(c, 0) + Safe(c, 1) * L2 + Safe(c, 2) * L2 * L2
-                               + Safe(c, 3) / L2 + Safe(c, 4) / (L2 * L2)
-                               + Safe(c, 5) / (L2 * L2 * L2);
-                    return Math.Sqrt(Math.Abs(n2));
-                }
-            default:
-                return 1.5;
-        }
+        var padded = new double[Math.Max(10, c?.Length ?? 0)];   // as an AGF CD line: missing terms are 0
+        if (c != null) Array.Copy(c, padded, c.Length);
+        var glass = new LensHH.Core.Glass.GlassData { DispersionFormula = formula, Coefficients = padded };
+        return glass.GetIndex(lambdaMicrons);
     }
 
     public static double ComputeDPgF(int formula, double[] coefficients, double Vd)
@@ -128,10 +37,5 @@ public static class DispersionCalculator
         double PgF_normal = 0.6438 - 0.001682 * Vd;
 
         return PgF - PgF_normal;
-    }
-
-    private static double Safe(double[] c, int index)
-    {
-        return (c != null && index < c.Length) ? c[index] : 0.0;
     }
 }

@@ -835,10 +835,19 @@ On import LensHH-LT looks for the file beside the `.zmx`, then in OpticStudio's 
 | Six or more points | A glass in your own **TABLE** catalog, named after the file, with the Schott dispersion formula fitted to the table. Real glass tables fit to about 10⁻⁶ across the visible. The catalog is `Documents\LensHH-LT\Glass\TABLE.AGF`: it is loaded every time LensHH-LT starts, so a lens saved with the glass opens with it again. It is a standard `.AGF`, which OpticStudio reads too. |
 | Fewer than six points | A **model glass** whose curve passes through the points (exactly, for up to three points). A three-point table made from a model glass, such as a Code V private glass LensHH-LT exported, comes back as that same model glass. |
 
-A message after the import (and the CLI's `file import`) lists each table glass with how it was
-converted and how closely the fit follows the table. A `.ZTG` that cannot be found is named there,
-and the surface shows as an unresolved glass until the file is put beside the lens and the lens is
-imported again.
+**Glass catalogs LensHH-LT does not ship.** A `.zmx` lists the catalogs its glasses come from on
+its `GCAT` line, and some may not be among LensHH-LT's own: HIKARI, NIKON-HIKARI, LZOS,
+INFRARED, a company's in-house catalog, or the `CODEV_CONVERTED` catalog OpticStudio's Code V
+converter writes. When a glass isn't in any loaded catalog, the import looks for the lens's
+catalogs beside the `.zmx` and in `Documents\Zemax\Glasscat`. A catalog that holds the glass is
+copied into `Documents\LensHH-LT\Glass` and loaded, so the lens opens with it again. A catalog
+LensHH-LT already has is never replaced, and one the lens lists but doesn't use is left alone.
+All thirteen of OpticStudio's dispersion formulas are evaluated as OpticStudio evaluates them.
+
+A message after the import (and the CLI's `file import`) lists each glass or catalog brought in.
+For a table glass it also says how closely the fit follows the table. A `.ZTG` or catalog that
+cannot be found is named there. The surface shows as an unresolved glass until the file is put
+beside the lens and the lens is imported again.
 
 ### OSLO files
 

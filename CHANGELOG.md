@@ -113,6 +113,18 @@ All notable changes to LensHH-LT and the LensHH-LT-Engine.
   exported here and opened with OpticStudio's Code V converter, arrived with every
   surface, glass, the stop, the asphere terms, wavelengths, primary and fields intact.
 
+- **Glasses from catalogs LensHH-LT doesn't ship now import, with the right index.** The
+  engine evaluated six of the thirteen AGF dispersion formulas, and one of those
+  (Sellmeier 2) wrongly. A glass given by any other formula was traced with its nd at every
+  wavelength, so it had no dispersion at all. OpticStudio's own HIKARI, NIKON-HIKARI, LZOS,
+  INFRARED, BIREFRINGENT and AMTIR catalogs use those formulas. All thirteen now reproduce
+  OpticStudio's index exactly (checked on real HIKARI, LZOS and BIREFRINGENT glasses). The
+  catalog tools' own copies of the formulas, which got Sellmeier 2 and Extended 2 and 3
+  wrong, now use the engine's. When a `.zmx` uses a glass from a catalog on its `GCAT` line
+  that isn't loaded, the catalog is found beside the lens or in `Documents\Zemax\Glasscat`,
+  copied into `Documents\LensHH-LT\Glass` and loaded. That includes the `CODEV_CONVERTED`
+  catalog OpticStudio's Code V converter writes.
+
 - **Two catalog glasses sat at the wrong place on the glass map.** A catalog lists each
   glass's nd and Vd, and separately gives the dispersion data the index is computed from.
   In CDGM's H-TK9 and HOYA's MC-TAF115 the two disagree: H-TK9 lists 1.587 / 75.9 (another

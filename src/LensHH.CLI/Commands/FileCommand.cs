@@ -277,7 +277,7 @@ namespace LensHH.CLI.Commands
             }
             if (importNotes.Count > 0)
             {
-                AnsiConsole.MarkupLine("  Table glasses (OpticStudio .ZTG):");
+                AnsiConsole.MarkupLine("  Glasses brought in (OpticStudio table glasses and catalogs):");
                 foreach (var item in importNotes)
                     AnsiConsole.MarkupLine($"    - {Markup.Escape(item)}");
             }

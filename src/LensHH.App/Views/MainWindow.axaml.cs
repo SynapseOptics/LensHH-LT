@@ -312,14 +312,14 @@ public partial class MainWindow : Window
         if (notes.Count == 0) return;
 
         var sb = new System.Text.StringBuilder();
-        sb.AppendLine("This file uses OpticStudio table glasses (.ZTG):");
+        sb.AppendLine("This file's glasses come from outside LensHH-LT's own catalogs:");
         sb.AppendLine();
         foreach (var note in notes)
             sb.AppendLine("  • " + note);
         sb.AppendLine();
-        sb.Append("Table glasses added to your TABLE catalog are kept in Documents\\LensHH-LT\\Glass.");
+        sb.Append("Glasses and catalogs brought in this way are kept in Documents\\LensHH-LT\\Glass, so the lens opens with them again.");
 
-        await ShowMessageBox("Table glasses", sb.ToString());
+        await ShowMessageBox("Glasses brought in", sb.ToString());
     }
 
     /// <summary>

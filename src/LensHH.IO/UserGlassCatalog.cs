@@ -76,6 +76,20 @@ namespace LensHH.Core.IO
             mgr?.LoadCatalog(TableCatalogPath);
         }
 
+        /// <summary>
+        /// Copy a catalog file into the user's glass folder, replacing an earlier copy of the same
+        /// name, and load it into <paramref name="mgr"/>. Returns the copy's path.
+        /// </summary>
+        public static string AddCatalogFile(string sourcePath, GlassCatalogManager? mgr)
+        {
+            Directory.CreateDirectory(Folder);
+            string dest = Path.Combine(Folder, Path.GetFileName(sourcePath));
+            if (!string.Equals(Path.GetFullPath(sourcePath), Path.GetFullPath(dest), StringComparison.OrdinalIgnoreCase))
+                File.Copy(sourcePath, dest, overwrite: true);
+            mgr?.LoadCatalog(dest);
+            return dest;
+        }
+
         // Drop an existing NM block of this name: its NM line and every line up to the next NM.
         private static void RemoveGlass(List<string> lines, string name)
         {

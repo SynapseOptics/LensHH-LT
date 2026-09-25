@@ -62,7 +62,7 @@ public class AgfFileParser
 
                 var parts = trimmed.Split(new[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries);
                 string name = parts.Length > 1 ? parts[1] : "";
-                formula = parts.Length > 2 ? ParseInt(parts[2]) : 0;
+                formula = parts.Length > 2 ? (int)Math.Round(ParseDouble(parts[2])) : 0;   // some catalogs write "1.00000000E+00"
                 double nd = parts.Length > 4 ? ParseDouble(parts[4]) : 1.5;
                 vd = parts.Length > 5 ? ParseDouble(parts[5]) : 50.0;
                 int status = parts.Length > 7 ? ParseInt(parts[7]) : 0;

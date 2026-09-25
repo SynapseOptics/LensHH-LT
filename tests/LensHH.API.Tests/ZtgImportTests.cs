@@ -120,6 +120,40 @@ namespace LensHH.API.Tests
         }
 
         [Fact]
+        public void AGlassFromTheLenssOwnCatalogIsBroughtIn()
+        {
+            // As OpticStudio's Code V converter writes a formula-defined private glass: into a
+            // catalog of its own, named on the lens's GCAT line.
+            File.WriteAllText(Path.Combine(_dir, "CODEV_CONVERTED.AGF"),
+                "CC Code V Private Glass Catalog Data\r\n" +
+                "NM PRVGLASS 2 0 1.5168 64.17 0 0 0\r\nGC\r\nED 0 0 1 0 0\r\n" +
+                "CD 1.03961212 0.00600069867 0.231792344 0.0200179144 1.01046945 103.560653 0 0 0 0\r\n" +
+                "TD 0 0 0 0 0 0 20\r\nOD -1 -1 -1 -1 -1 -1\r\nLD 0.3 2.5\r\n" +
+                "NM UNUSED 2 0 1.6 40 0 0 0\r\nCD 1.2 0.007 0.2 0.02 1.0 100 0 0 0 0\r\nLD 0.3 2.5\r\n");
+            string lens = LensWithTableGlass("PRVGLASS");
+            var text = File.ReadAllText(lens);
+            text = System.Text.RegularExpressions.Regex.Replace(text, @"(?m)^GCAT[^\r\n]*\r?\n", "");
+            text = System.Text.RegularExpressions.Regex.Replace(text, @"(?m)^(MODE SEQ\r?\n)", "$1GCAT CODEV_CONVERTED\r\n");
+            File.WriteAllText(lens, text);
+            Assert.Contains("GCAT CODEV_CONVERTED", File.ReadAllText(lens));
+            var mgr = new GlassCatalogManager();
+
+            var sys = ZmxReader.Read(lens, mgr, out var notes);
+
+            Assert.Equal("PRVGLASS", sys.Surfaces[1].Material);
+            Assert.Contains("CODEV_CONVERTED", mgr.LoadedCatalogs);
+            Assert.Equal(1.5168, mgr.BuildRefractiveIndexArray(sys, 0.5875618)[1], 4);
+            Assert.Contains(notes, n => n.StartsWith("Glass catalog CODEV_CONVERTED") && n.Contains("for PRVGLASS"));
+            Assert.True(File.Exists(Path.Combine(UserGlassCatalog.Folder, "CODEV_CONVERTED.AGF")));   // kept for next time
+
+            // A lens that needs nothing from its catalogs brings nothing in.
+            var mgr2 = new GlassCatalogManager();
+            mgr2.LoadCatalog(Path.Combine(UserGlassCatalog.Folder, "CODEV_CONVERTED.AGF"));
+            ZmxReader.Read(lens, mgr2, out var notes2);
+            Assert.Empty(notes2);
+        }
+
+        [Fact]
         public void TheSchottFitFollowsRealGlass()
         {
             var bk7 = new GlassData { Name = "BK7", DispersionFormula = 2,
