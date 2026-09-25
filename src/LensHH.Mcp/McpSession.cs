@@ -284,7 +284,7 @@ namespace LensHH.Mcp
         public void ExportOslo(string filePath)
         {
             if (_system == null) throw new InvalidOperationException("No optical system loaded.");
-            OsloWriter.Write(_system, filePath);
+            OsloWriter.Write(_system, filePath, GlassCatalog);
         }
 
         public void ExportOptalix(string filePath)

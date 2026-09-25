@@ -1,19 +1,58 @@
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Text;
 using LensHH.Core.Enums;
+using LensHH.Core.Glass;
 using LensHH.Core.Models;
+using LensHH.Core.RayTrace;
 
 namespace LensHH.Core.IO
 {
     /// <summary>
     /// Writes OSLO .len lens files.
+    ///
+    /// <para>The syntax follows what OSLO 6.6 itself writes: an object at infinity takes
+    /// <c>EBR</c> and <c>ANG</c>, a finite one <c>NAO</c> and <c>OBH</c>; a curved object surface
+    /// takes <c>RD</c> on surface 0; an ideal lens is OSLO's perfect lens, <c>PFL</c> and, at a
+    /// finite conjugate, <c>PFM</c>; a model glass is <c>GLA MOD name</c> followed by its index at
+    /// each wavelength of the preceding <c>WV</c> line; and only an aperture that clips is written,
+    /// as <c>AP CHK</c> - OSLO solves the rest. Every quantity it converts - an F-number to an
+    /// entrance beam radius, an EPD to an object NA - is computed by C# paraxial traces, so the
+    /// export is the same with or without an activated engine.</para>
     /// </summary>
     public static class OsloWriter
     {
-        public static void Write(OpticalSystem system, string filePath)
+        /// <param name="glassMgr">The glass catalogs, for the refractive indices a conversion
+        /// needs: an F-number or EPD at a finite object, a field angle at a finite object, or a
+        /// perfect lens at a finite conjugate. Not needed otherwise.</param>
+        public static void Write(OpticalSystem system, string filePath, GlassCatalogManager? glassMgr = null)
         {
+            // Wavelengths, primary first (see the WV line below): model glasses list their
+            // indices in this order too.
+            var wavelengths = OrderedWavelengths(system);
+            double primaryUm = wavelengths.Count > 0 ? wavelengths[0].Value : 0.58756;
+            bool infiniteObject = system.Surfaces.Count == 0
+                || double.IsInfinity(system.Surfaces[0].Thickness)
+                || Math.Abs(system.Surfaces[0].Thickness) >= 1e10;
+            double[]? indices = null;
+            double[] Indices() => indices ??= IndicesAt(primaryUm);
+            // Per-surface indices at a wavelength (index i = the medium after surface i), through the
+            // glass catalogs - the engine's seam to its model-glass dispersion.
+            var indicesByWavelength = new Dictionary<double, double[]>();
+            double[] IndicesAt(double wavelengthUm)
+            {
+                if (!indicesByWavelength.TryGetValue(wavelengthUm, out var arr))
+                {
+                    arr = (glassMgr ?? throw new InvalidOperationException(
+                            "Exporting this lens to OSLO needs its refractive indices, and no glass catalog was given."))
+                        .BuildRefractiveIndexArray(system, wavelengthUm);
+                    indicesByWavelength[wavelengthUm] = arr;
+                }
+                return arr;
+            }
+
             var sb = new StringBuilder();
             sb.AppendLine("// OSLO 5.10");
             sb.AppendLine("// Exported from LensHH-LT");
@@ -49,22 +88,71 @@ namespace LensHH.Core.IO
 
             sb.AppendLine("UNI 1.0");
 
-            // Aperture: EBR = EPD/2
-            double ebr = system.Aperture.Type == ApertureType.EPD
-                ? system.Aperture.Value / 2.0 : 5.0;
-            sb.AppendLine(string.Format(CultureInfo.InvariantCulture, "EBR {0:G8}", ebr));
-
-            // Field angle (max field)
+            // Aperture and field. OSLO writes EBR and ANG for an object at infinity, NAO and OBH
+            // for a finite one; the other aperture types are converted to these. (This line once
+            // wrote EBR 5 for any aperture that was not an EPD, silently: an F/6.3 lens of EFL
+            // 66.04 left as F/6.6.)
             double maxField = 0;
             foreach (var f in system.Fields)
                 if (Math.Abs(f.Y) > maxField) maxField = Math.Abs(f.Y);
-            sb.AppendLine(string.Format(CultureInfo.InvariantCulture, "ANG {0:G8}", maxField));
+            if (infiniteObject)
+            {
+                double ebr;
+                switch (system.Aperture.Type)
+                {
+                    case ApertureType.EPD:
+                        ebr = system.Aperture.Value / 2.0;
+                        break;
+                    case ApertureType.FNumber:
+                        ebr = Math.Abs(ParaxialEfl(system, Indices())) / (2.0 * system.Aperture.Value);
+                        break;
+                    default:
+                        throw new InvalidOperationException(
+                            "An object-space NA needs a finite object; OSLO cannot take one for an object at infinity.");
+                }
+                if (system.FieldType == FieldType.ObjectHeight)
+                    throw new InvalidOperationException(
+                        "Fields given as object heights need a finite object; OSLO takes a field angle for an object at infinity.");
+                sb.AppendLine(string.Format(CultureInfo.InvariantCulture, "EBR {0:R}", ebr));
+                sb.AppendLine(string.Format(CultureInfo.InvariantCulture, "ANG {0:R}", maxField));
+            }
+            else
+            {
+                // Distance from the object to the entrance pupil, which an EPD or a field angle
+                // needs to become an object NA or height. A telecentric object space has none.
+                double ObjectToPupil()
+                {
+                    if (system.TelecentricObjectSpace)
+                        throw new InvalidOperationException(
+                            "A telecentric object space has no finite entrance pupil to convert this aperture or field with; give an object NA and object heights.");
+                    return Math.Abs(ArbitraryRay.ComputeEntrancePupilPosition(system, Indices()) + system.Surfaces[0].Thickness);
+                }
 
-            // Surface 0 (object)
+                double nao;
+                if (system.Aperture.Type == ApertureType.ObjectSpaceNA)
+                    nao = system.Aperture.Value;
+                else
+                {
+                    double pupilRadius = system.Aperture.Type == ApertureType.FNumber
+                        ? Math.Abs(ParaxialEfl(system, Indices())) / (2.0 * system.Aperture.Value)
+                        : system.Aperture.Value / 2.0;
+                    double n0 = Math.Abs(Indices()[0]);
+                    nao = n0 * Math.Sin(Math.Atan(pupilRadius / ObjectToPupil()));
+                }
+                double obh = system.FieldType == FieldType.ObjectHeight
+                    ? maxField
+                    : ObjectToPupil() * Math.Tan(maxField * Math.PI / 180.0);
+                sb.AppendLine(string.Format(CultureInfo.InvariantCulture, "NAO {0:R}", nao));
+                sb.AppendLine(string.Format(CultureInfo.InvariantCulture, "OBH {0:R}", obh));
+            }
+
+            // Surface 0 (object): a curved object surface takes a radius, as OSLO writes it.
             sb.AppendLine("// SRF 0");
             if (system.Surfaces.Count > 0)
             {
                 var s0 = system.Surfaces[0];
+                if (!double.IsInfinity(s0.Radius) && Math.Abs(s0.Curvature) > 1e-15)
+                    sb.AppendLine(string.Format(CultureInfo.InvariantCulture, "  RD {0:G10}", s0.Radius));
                 double th0 = double.IsPositiveInfinity(s0.Thickness) ? 1e20 : s0.Thickness;
                 sb.AppendLine(string.Format(CultureInfo.InvariantCulture, "  TH {0:E7}", th0));
             }
@@ -83,8 +171,29 @@ namespace LensHH.Core.IO
 
                 if (isMirror)
                     sb.AppendLine("  RFH");
+                else if (s.ModelIndexEnabled)
+                {
+                    // A model glass, as OSLO writes one: the wavelengths, then the glass's index at
+                    // each of them, by this program's own model dispersion, so OSLO traces the lens
+                    // this program traces. (It was not written at all, and the surface went out as
+                    // air.)
+                    sb.AppendLine("  WV " + string.Join(" ", wavelengths.Select(w =>
+                        w.Value.ToString("F5", CultureInfo.InvariantCulture))));
+                    sb.AppendLine($"  GLA MOD MODEL{i} " + string.Join(" ", wavelengths.Select(w =>
+                        IndicesAt(w.Value)[i].ToString("R", CultureInfo.InvariantCulture))));
+                }
                 else if (!string.IsNullOrEmpty(s.Material))
                     sb.AppendLine($"  GLA {s.Material}");
+
+                if (s.Type == SurfaceType.Paraxial)
+                {
+                    // OSLO's perfect lens: its focal length, and the magnification it is perfect
+                    // at, which at an object at infinity is 0 and is left unwritten.
+                    sb.AppendLine(string.Format(CultureInfo.InvariantCulture, "  PFL {0:G10}", s.FocalLength));
+                    if (!infiniteObject)
+                        sb.AppendLine(string.Format(CultureInfo.InvariantCulture, "  PFM {0:R}",
+                            PerfectLensMagnification(system, Indices(), i)));
+                }
 
                 if (s.IsStop)
                     sb.AppendLine("  AST");
@@ -106,8 +215,14 @@ namespace LensHH.Core.IO
                     }
                 }
 
-                if (s.SemiDiameter > 0)
-                    sb.AppendLine(string.Format(CultureInfo.InvariantCulture, "  AP CHK {0:G8}", s.SemiDiameter));
+                // Only an aperture that clips: a Fixed semi-diameter, or an automatic one held
+                // under 100 % of the beam. OSLO solves the others itself, and draws with them. (Every
+                // semi-diameter used to go out checked, so an exported lens vignetted where its
+                // source did not.)
+                bool clips = s.SemiDiameterMode == SemiDiameterMode.Fixed
+                    || (s.ClearAperturePercent > 0 && s.ClearAperturePercent < 100.0);
+                if (clips && s.SemiDiameter > 0)
+                    sb.AppendLine(string.Format(CultureInfo.InvariantCulture, "  AP CHK {0:G10}", s.SemiDiameter));
 
                 // Central obscuration / annular pupil — round-trip the same
                 // AY1/AY2/AX1/AX2/ATP/AAC pattern OsloReader interprets.
@@ -167,27 +282,12 @@ namespace LensHH.Core.IO
                     sb.AppendLine("CALLBACK  1");
             }
 
-            // Wavelengths. OSLO has no primary-wavelength keyword: its primary IS
-            // wavelength 1, the first on the WV line (OSLO Program Reference pp. 26,
-            // 123), and OsloReader reads it that way. So the primary goes first, and
-            // the rest follow short to long - OSLO's own middle, short, long order,
-            // d F C for the usual three. Each weight travels with its wavelength.
-            // Written in stored order instead, an F d C lens with d primary opened
-            // in OSLO, and read back here, as an F-line lens. Nothing else in the
-            // file refers to a wavelength by number, so nothing else is renumbered.
-            if (system.Wavelengths.Count > 0)
+            // Wavelengths, in the order OrderedWavelengths gives: primary first.
+            if (wavelengths.Count > 0)
             {
-                int primary = system.PrimaryWavelengthIndex;
-                if (primary < 0 || primary >= system.Wavelengths.Count)
-                    primary = 0;
-                var ordered = system.Wavelengths
-                    .Where((_, i) => i != primary)
-                    .OrderBy(w => w.Value)
-                    .Prepend(system.Wavelengths[primary]);
-
                 var wvSb = new StringBuilder("WV ");
                 var wwSb = new StringBuilder("WW ");
-                foreach (var wl in ordered)
+                foreach (var wl in wavelengths)
                 {
                     wvSb.Append(string.Format(CultureInfo.InvariantCulture, " {0:F5}", wl.Value));
                     wwSb.Append(string.Format(CultureInfo.InvariantCulture, " {0:G}", wl.Weight));
@@ -198,6 +298,61 @@ namespace LensHH.Core.IO
 
             sb.AppendLine($"END {system.Surfaces.Count - 1}");
             System.IO.File.WriteAllText(filePath, sb.ToString());
+        }
+
+        // OSLO has no primary-wavelength keyword: its primary IS wavelength 1, the first on the
+        // WV line (OSLO Program Reference pp. 26, 123), and OsloReader reads it that way. So the
+        // primary goes first, and the rest follow short to long - OSLO's own middle, short, long
+        // order, d F C for the usual three. Each weight travels with its wavelength. Written in
+        // stored order instead, an F d C lens with d primary opened in OSLO, and read back here,
+        // as an F-line lens. Model glasses list their indices in this same order.
+        private static List<Wavelength> OrderedWavelengths(OpticalSystem system)
+        {
+            if (system.Wavelengths.Count == 0)
+                return new List<Wavelength>();
+            int primary = system.PrimaryWavelengthIndex;
+            if (primary < 0 || primary >= system.Wavelengths.Count)
+                primary = 0;
+            return system.Wavelengths
+                .Where((_, i) => i != primary)
+                .OrderBy(w => w.Value)
+                .Prepend(system.Wavelengths[primary])
+                .ToList();
+        }
+
+        // The paraxial EFL, from the C# transfer matrix of the optical surfaces: an axial ray
+        // entering at height 1 leaves with slope c, and EFL = -1/(n' c). The native EFL is not
+        // used because it returns 0 on an engine that is not activated.
+        private static double ParaxialEfl(OpticalSystem system, double[] indices)
+        {
+            int last = system.Surfaces.Count - 2;
+            var (_, _, c, _) = new ParaxialRayTracer(system, indices).ComputeSubsystemMatrix(1, last);
+            if (Math.Abs(c) < 1e-300)
+                throw new InvalidOperationException("The lens is afocal, so an F-number gives it no entrance beam radius.");
+            double nImage = Math.Abs(indices[last]);
+            return -1.0 / (nImage * c);
+        }
+
+        // The lateral magnification a perfect lens works at, from the paraxial axial ray leaving
+        // the object point: m = n u / (n' u') across the lens.
+        private static double PerfectLensMagnification(OpticalSystem system, double[] indices, int s)
+        {
+            double y = system.Surfaces[0].Thickness;   // incident on surface 1, slope 1
+            double u = 1.0;
+            if (s > 1)
+            {
+                var (a, b, c, d) = new ParaxialRayTracer(system, indices).ComputeSubsystemMatrix(1, s - 1);
+                double y1 = a * y + b * u;
+                double u1 = c * y + d * u;
+                y = y1 + system.Surfaces[s - 1].Thickness * u1;
+                u = u1;
+            }
+            double n = Math.Abs(indices[s - 1]);
+            double nPrime = Math.Abs(indices[s]);
+            double uPrime = (n * u - y / system.Surfaces[s].FocalLength) / nPrime;
+            if (Math.Abs(uPrime) < 1e-300)
+                return 1e7;   // imaged at infinity; OSLO caps the magnification there
+            return n * u / (nPrime * uPrime);
         }
 
         // OSLO's LEN NEW lens-name field has a 32-character cap and rejects

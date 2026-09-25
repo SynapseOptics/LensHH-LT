@@ -369,7 +369,7 @@ public class GuiSession
                 CodeVWriter.Write(_system, path, _glassCatalog);
                 break;
             case "oslo":
-                OsloWriter.Write(_system, path);
+                OsloWriter.Write(_system, path, _glassCatalog);
                 break;
             case "optalix":
                 OptalixWriter.Write(_system, path);

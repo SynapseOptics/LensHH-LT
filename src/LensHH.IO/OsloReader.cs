@@ -87,6 +87,7 @@ namespace LensHH.Core.IO
                         if (parts.Length > 1 && TryParseDouble(parts[1], out double ang))
                         {
                             // Single field angle — add on-axis + this angle
+                            system.FieldType = FieldType.ObjectAngle;
                             system.Fields.Clear();
                             system.Fields.Add(new Field(0, 1.0));
                             if (ang > 0)
@@ -94,7 +95,39 @@ namespace LensHH.Core.IO
                         }
                         break;
 
+                    case "NAO":
+                        // Object-space numerical aperture: OSLO's aperture for a finite object.
+                        if (parts.Length > 1 && TryParseDouble(parts[1], out double nao))
+                            system.Aperture = new Aperture(ApertureType.ObjectSpaceNA, nao);
+                        break;
+
+                    case "OBH":
+                        // Object height: OSLO's field for a finite object.
+                        if (parts.Length > 1 && TryParseDouble(parts[1], out double obh))
+                        {
+                            system.FieldType = FieldType.ObjectHeight;
+                            system.Fields.Clear();
+                            system.Fields.Add(new Field(0, 1.0));
+                            if (Math.Abs(obh) > 0)
+                                system.Fields.Add(new Field(Math.Abs(obh), 1.0));
+                        }
+                        break;
+
+                    case "PFL":
+                        // OSLO's perfect lens: an ideal lens of this focal length. (PFM, the
+                        // magnification it is perfect at, has no counterpart here: the ideal lens
+                        // is perfect at every conjugate.)
+                        if (parts.Length > 1 && TryParseDouble(parts[1], out double pfl))
+                        {
+                            currentSurface.Type = SurfaceType.Paraxial;
+                            currentSurface.FocalLength = pfl;
+                        }
+                        break;
+
                     case "WV":
+                        // OSLO repeats the WV line before each model glass, so each one replaces
+                        // the list rather than adding to it.
+                        wavelengths.Clear();
                         for (int i = 1; i < parts.Length; i++)
                         {
                             if (TryParseDouble(parts[i], out double wl))
@@ -145,7 +178,25 @@ namespace LensHH.Core.IO
                         break;
 
                     case "GLA":
-                        if (parts.Length > 1)
+                        if (parts.Length > 3 && parts[1].Equals("MOD", StringComparison.OrdinalIgnoreCase))
+                        {
+                            // GLA MOD <name> <n1> <n2> ...: a model glass, as OSLO writes one - its
+                            // index at each wavelength of the WV line before it.
+                            var modelIndices = new List<double>();
+                            for (int i = 3; i < parts.Length; i++)
+                                if (TryParseDouble(parts[i], out double ni))
+                                    modelIndices.Add(ni);
+                            if (modelIndices.Count > 0)
+                            {
+                                var (nd, vd) = ModelFromIndices(wavelengths, modelIndices);
+                                currentSurface.ModelIndexEnabled = true;
+                                currentSurface.ModelNd = nd;
+                                currentSurface.ModelVd = vd;
+                                currentSurface.ModelDPgF = 0.0;
+                                currentSurface.Material = "";
+                            }
+                        }
+                        else if (parts.Length > 1)
                         {
                             string glass = parts[1].Trim();
                             // OSLO prefixes some glasses with H_ (e.g., H_F5 = F5)
@@ -167,10 +218,13 @@ namespace LensHH.Core.IO
                         }
                         else if (parts.Length > 1 && TryParseDouble(parts[1], out double ap))
                         {
+                            // An aperture that is not checked does not block rays in OSLO; it
+                            // sizes the surface for drawing. Here that is an automatic semi-
+                            // diameter, starting from the size the file gives.
                             if (ap > 0)
                             {
                                 currentSurface.SemiDiameter = ap;
-                                currentSurface.SemiDiameterMode = SemiDiameterMode.Fixed;
+                                currentSurface.SemiDiameterMode = SemiDiameterMode.Auto;
                             }
                         }
                         break;
@@ -335,6 +389,48 @@ namespace LensHH.Core.IO
                 LensUnitConverter.ConvertToMm(system, unitScale);
 
             return system;
+        }
+
+        /// <summary>
+        /// The model glass (nd, Vd) behind OSLO's indices at the file's wavelengths. With the d, F
+        /// and C lines among them it is exact; otherwise a Cauchy fit n = A + B/λ² through the
+        /// indices gives them. A single index carries no dispersion, and is taken as nd with a Vd
+        /// so large that the index is the same at every wavelength.
+        /// </summary>
+        private static (double nd, double vd) ModelFromIndices(List<double> wavelengthsUm, List<double> n)
+        {
+            const double dLine = 0.58756, fLine = 0.48613, cLine = 0.65627;
+            int count = Math.Min(wavelengthsUm.Count, n.Count);
+            if (count < 2)
+                return (n[0], 1e6);
+
+            int Find(double target)
+            {
+                for (int i = 0; i < count; i++)
+                    if (Math.Abs(wavelengthsUm[i] - target) < 1e-4)
+                        return i;
+                return -1;
+            }
+            int id = Find(dLine), iF = Find(fLine), iC = Find(cLine);
+            if (id >= 0 && iF >= 0 && iC >= 0 && Math.Abs(n[iF] - n[iC]) > 1e-12)
+                return (n[id], (n[id] - 1.0) / (n[iF] - n[iC]));
+
+            // Least-squares Cauchy fit in x = 1/λ².
+            double sx = 0, sy = 0, sxx = 0, sxy = 0;
+            for (int i = 0; i < count; i++)
+            {
+                double x = 1.0 / (wavelengthsUm[i] * wavelengthsUm[i]);
+                sx += x; sy += n[i]; sxx += x * x; sxy += x * n[i];
+            }
+            double det = count * sxx - sx * sx;
+            if (Math.Abs(det) < 1e-300)
+                return (n[0], 1e6);
+            double bCoef = (count * sxy - sx * sy) / det;
+            double aCoef = (sy - bCoef * sx) / count;
+            double Cauchy(double lam) => aCoef + bCoef / (lam * lam);
+            double nd = Cauchy(dLine);
+            double dispersion = Cauchy(fLine) - Cauchy(cLine);
+            return (nd, Math.Abs(dispersion) > 1e-12 ? (nd - 1.0) / dispersion : 1e6);
         }
 
         /// <summary>

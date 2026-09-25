@@ -258,7 +258,7 @@ namespace LensHH.API
         public void ExportCodeV(string filePath) { EnsureSystem(); CodeVWriter.Write(_system!, filePath, GlassCatalog); }
 
         /// <summary>Export to OSLO .len file.</summary>
-        public void ExportOslo(string filePath) { EnsureSystem(); OsloWriter.Write(_system!, filePath); }
+        public void ExportOslo(string filePath) { EnsureSystem(); OsloWriter.Write(_system!, filePath, GlassCatalog); }
 
         /// <summary>Export to Optalix .otx file.</summary>
         public void ExportOptalix(string filePath) { EnsureSystem(); OptalixWriter.Write(_system!, filePath); }

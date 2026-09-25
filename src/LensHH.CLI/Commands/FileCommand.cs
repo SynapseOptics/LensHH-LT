@@ -294,7 +294,7 @@ namespace LensHH.CLI.Commands
                     break;
                 case "oslo":
                 case "len":
-                    OsloWriter.Write(system, path);
+                    OsloWriter.Write(system, path, session.EnsureGlassCatalog());
                     break;
                 case "optalix":
                 case "otx":

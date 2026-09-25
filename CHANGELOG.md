@@ -19,6 +19,30 @@ All notable changes to LensHH-LT and the LensHH-LT-Engine.
   again, or have the primary moved to the front of the `WV` line (and its weight on
   the `WW` line) by hand.
 
+- **OSLO export wrote a different lens in six more ways, and now writes what OSLO
+  itself writes.** Each was checked against a file OSLO 6.6 saved:
+  - *Any aperture that was not an entrance-pupil diameter went out as `EBR 5`*, with no
+    warning: the Topogon, F/6.3 at EFL 66.04, arrived as F/6.6. An F-number is now
+    converted to the entrance beam radius, and a finite object gets its object-space
+    NA (`NAO`), converted from an EPD or F-number when need be.
+  - *A finite object's field went out as an angle.* It is now its object height
+    (`OBH`), converted from a field angle when need be.
+  - *A curved object surface lost its radius.* It is written on surface 0.
+  - *An ideal lens was dropped*, leaving a flat surface with no power. It is now OSLO's
+    perfect lens (`PFL`, and at a finite conjugate the magnification `PFM`).
+  - *A model glass was not written*, so the surface went out as air unless a catalog
+    glass had been substituted first. It is now `GLA MOD` with its index at each
+    wavelength, as OSLO writes one.
+  - *Every semi-diameter went out as a checked aperture*, so an exported lens vignetted
+    where its source did not: the vignetted Cooke triplet lost light at its automatic
+    second surface. Only an aperture that clips is now checked — a fixed semi-diameter,
+    or an automatic one held under 100 % — and OSLO solves the rest.
+
+  The importer reads all of these, as OSLO writes them, and reads an aperture OSLO does
+  not check (`AP` without `CHK`, which never blocks a ray there) as an automatic
+  semi-diameter rather than a fixed one. The conversions use C# paraxial traces, so the
+  export is the same whether or not the engine is activated.
+
 ## 1.0.157 — 2026-09-22
 
 ### Fixed
