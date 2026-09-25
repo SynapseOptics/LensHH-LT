@@ -814,8 +814,46 @@ Both settings are saved in `.lhlt` and round-trip through ZEMAX `.zmx`
 | Extension | Meaning |
 |-----------|---------|
 | `.lhlt`   | LensHH-LT native format. Save/load from **File → Save/Open**. |
-| `.zmx`    | ZEMAX prescription. Import via **File → Import ZMX**. Only standard and even-asphere surfaces are honored. Object Space NA (`OBNA`) and object-space telecentric are honored. |
+| `.zmx`    | ZEMAX prescription. **File → Import → Zemax (.zmx)…** and **File → Export → Zemax (.zmx)…**. Only standard and even-asphere surfaces are honored. Object Space NA (`OBNA`) and object-space telecentric are honored. |
+| `.len`    | OSLO lens file. **File → Import → OSLO (.len)…** and **File → Export → OSLO (.len)…**. See [OSLO files](#oslo-files) below. |
 | `.agf`    | Glass catalog. Loaded from `<install>\catalogs\Glass\` on startup. |
+
+### OSLO files
+
+An OSLO `.len` file is a list of OSLO commands, and LensHH-LT writes it the way OSLO itself
+saves a lens, so the file opens in OSLO as the lens you designed:
+
+| In LensHH-LT | In the `.len` file |
+|---|---|
+| Primary wavelength | Written **first** on the `WV` line. OSLO has no primary-wavelength setting of its own: its wavelength 1 *is* the primary. The others follow shortest to longest, which gives OSLO's usual d, F, C order. |
+| Aperture, object at infinity | `EBR`, the entrance beam radius. An F-number aperture is converted to it (EBR = EFL / 2F#). |
+| Aperture, finite object | `NAO`, the object-space NA. An entrance pupil diameter or F-number is converted to it. |
+| Field | `ANG` (the largest field angle) for an object at infinity; `OBH` (the largest object height) for a finite object, converted from an angle if need be. |
+| Curved object surface | Its radius, on surface 0. |
+| Ideal (paraxial) lens | OSLO's **perfect lens**: its focal length (`PFL`), and at a finite object the magnification it works at (`PFM`). |
+| Model glass | `GLA MOD`, with the glass's index at each of the lens's wavelengths, computed by LensHH-LT's own model — so OSLO traces the same indices LensHH-LT does. |
+| Fixed semi-diameter, or clear aperture under 100 % | A **checked** aperture (`AP CHK`): OSLO blocks rays outside it, as LensHH-LT does. |
+| Automatic semi-diameter | An aperture that is **not checked** (`AP`): OSLO draws the surface at that size but never blocks a ray there. An automatic stop is left for OSLO to size from `EBR`. |
+| Lens title | The OSLO lens name, without any word that is a number; the full title is kept in the first note (`SNO1`). OSLO reads a number in the name as a surface count, and refused a lens named "…R 200" as having too many surfaces. |
+
+Import reads the same things back, whether OSLO or LensHH-LT wrote the file. An aperture that
+is **not checked** in OSLO comes in as an automatic semi-diameter, since it never blocked a ray
+there; a checked one comes in as fixed.
+
+**Two things OSLO does its own way:**
+
+- **OSLO's perfect lens obeys the sine condition** (ray height = f · sin of the image-space
+  angle), where LensHH-LT's ideal lens — like ZEMAX's paraxial surface — follows the tangent
+  (height = f · tan). For an object at infinity the two cones differ slightly: an f/5 ideal lens
+  has an effective F/# of 5.000 in OSLO and 5.025 in LensHH-LT, and its relative illumination
+  differs by up to 1 part in 10⁴. At a finite conjugate they agree.
+- **OSLO EDU** accepts at most 10 surfaces and has no special apertures, so a lens with an
+  obscuration or central hole — which LensHH-LT exports as an OSLO special aperture — needs OSLO
+  Standard or Premium.
+
+**`.len` files exported before 1.0.158** could put the wrong wavelength first, drop an ideal lens
+or a model glass (the surface became air), replace any non-EPD aperture with `EBR 5`, and mark
+every aperture checked. Export such lenses again.
 
 ## Keyboard Shortcuts
 
