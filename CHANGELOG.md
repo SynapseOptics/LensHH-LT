@@ -19,7 +19,7 @@ All notable changes to LensHH-LT and the LensHH-LT-Engine.
   again, or have the primary moved to the front of the `WV` line (and its weight on
   the `WW` line) by hand.
 
-- **OSLO export wrote a different lens in six more ways, and now writes what OSLO
+- **OSLO export wrote a different lens in seven more ways, and now writes what OSLO
   itself writes.** Each was checked against a file OSLO 6.6 saved:
   - *Any aperture that was not an entrance-pupil diameter went out as `EBR 5`*, with no
     warning: the Topogon, F/6.3 at EFL 66.04, arrived as F/6.6. An F-number is now
@@ -40,6 +40,11 @@ All notable changes to LensHH-LT and the LensHH-LT-Engine.
     OSLO uses to draw the surface and never to block a ray; left to OSLO's own solve, a
     wide-angle lens's surfaces drew as circles, their paraxial heights exceeding their
     radii. An automatic stop is left to OSLO, which sizes it from `EBR`.
+
+  - *A number in the lens's name could stop OSLO opening the file.* OSLO reads a
+    number standing as a word in `LEN NEW "…"` as the surface count: a lens named
+    "Ideal lens, curved image R 200" was refused with "Maximum number of surfaces
+    is 10". Such words are left out of `LEN NEW`; the full name is kept in `SNO1`.
 
   The importer reads all of these, as OSLO writes them, and reads an aperture OSLO does
   not check (`AP` without `CHK`, which never blocks a ray there) as an automatic

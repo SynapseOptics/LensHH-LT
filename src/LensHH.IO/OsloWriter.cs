@@ -367,9 +367,21 @@ namespace LensHH.Core.IO
         // OSLO's LEN NEW lens-name field has a 32-character cap and rejects
         // embedded double quotes. Strip quotes, collapse whitespace runs to
         // single spaces, trim, and truncate to 32 characters.
+        //
+        // And no word of it may be a number. OSLO's own line is LEN NEW "name" 100 5,
+        // the last number being the surface count, and OSLO reads a number standing as
+        // a word INSIDE the quotes as one of those arguments: "Ideal lens, curved image
+        // R 200" was refused with "Maximum number of surfaces is 10" (OSLO EDU,
+        // 2026-09-25), while the same file named "Ideal lens curved image" opened.
+        // "Topogon US 2031792 Fig 1" only got through because its last number was 1.
+        // Such words are dropped from LEN NEW; SNO1 keeps the full title.
         private static string SanitizeOsloLenName(string title)
         {
-            string s = title.Replace("\"", "'");
+            string s = string.Join(" ", title.Replace("\"", "'")
+                .Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)
+                .Where(w => !double.TryParse(w, NumberStyles.Float, CultureInfo.InvariantCulture, out _)));
+            if (s.Length == 0)
+                s = "Untitled";
             var collapsed = new StringBuilder(s.Length);
             bool prevWs = false;
             foreach (char c in s)

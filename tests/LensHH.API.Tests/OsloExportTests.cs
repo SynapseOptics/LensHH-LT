@@ -140,6 +140,25 @@ namespace LensHH.API.Tests
         }
 
         [Fact]
+        public void NoNumberStandsAsAWordInTheLensName()
+        {
+            // OSLO read "200" in LEN NEW "Ideal lens, curved image R 200" as the surface count and
+            // refused the file. The numbers go from LEN NEW; SNO1 keeps the title whole.
+            var sys = IdealLens(100.0);
+            sys.Title = "Ideal lens, curved image R 200";
+            string text = Export(sys, OsloReader.Read, out var back);
+            Assert.Contains("LEN NEW \"Ideal lens, curved image R\"", Lines(text));
+            Assert.Contains("SNO1 \"Ideal lens, curved image R 200\"", Lines(text));
+            Assert.Equal("Ideal lens, curved image R 200", back!.Title);
+
+            sys.Title = "Topogon US 2031792 Fig 1";
+            Assert.Contains("LEN NEW \"Topogon US Fig\"", Lines(Export(sys, null, out _)));
+
+            sys.Title = "1 2 3";
+            Assert.Contains("LEN NEW \"Untitled\"", Lines(Export(sys, null, out _)));
+        }
+
+        [Fact]
         public void OnlyAnApertureThatClipsIsChecked()
         {
             var sys = IdealLens(100.0);
