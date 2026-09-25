@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Text;
+using System.Text.RegularExpressions;
 using LensHH.Core.Enums;
 using LensHH.Core.Glass;
 using LensHH.Core.Models;
@@ -11,8 +13,18 @@ namespace LensHH.Core.IO
 {
     /// <summary>
     /// Reads Code V .seq lens files.
-    /// Handles SO/S/SI surface definitions, CIR/STO/ASP/CON sub-keywords,
-    /// EPD/FNO aperture, WL wavelengths, YAN field angles.
+    ///
+    /// <para>A .seq is a command stream: <c>;</c> separates commands on a line, <c>&amp;</c>
+    /// continues one onto the next, <c>!</c> starts a comment. The commands read are the ones
+    /// Code V writes for a lens (as Zemax's CODEV-to-OpticStudio macro, v2.06, reads them): the
+    /// surfaces <c>SO</c>/<c>S</c>/<c>SI</c> with <c>STO</c>, <c>CIR</c>, <c>ASP</c>/<c>CON</c>/
+    /// <c>SPH</c> and the <c>K</c> and <c>A</c>..<c>G</c> lines beneath them; <c>RDM</c>
+    /// (radius or curvature) and <c>DIM</c>; the aperture <c>EPD</c>, <c>FNO</c> or <c>NAO</c>;
+    /// fields <c>XAN</c>/<c>YAN</c> or <c>XOB</c>/<c>YOB</c>; <c>WL</c>, <c>WTW</c>, <c>REF</c>,
+    /// <c>WTF</c>; glass by catalog name, as Code V's fictitious-glass code
+    /// (<c>516800.641700</c>) or MIL code (<c>517.642</c>), or from a private catalog
+    /// (<c>PRV</c> ... <c>END</c>). Tilts, decenters, special surfaces and zoom data are not
+    /// converted; the lens's notes list what was left out.</para>
     /// </summary>
     public static class CodeVReader
     {
@@ -27,162 +39,269 @@ namespace LensHH.Core.IO
         /// </summary>
         public static OpticalSystem Read(string filePath, GlassCatalogManager? glassMgr = null)
         {
-            var lines = File.ReadAllLines(filePath);
             var system = new OpticalSystem();
             var resolver = new CodeVGlassResolver(glassMgr);
 
             var surfaces = new List<Surface>();
+            var glassTokens = new Dictionary<Surface, string>();
             var wavelengths = new List<double>();
             var wavelengthWeights = new List<double>();
-            var fieldAnglesY = new List<double>();
+            var fieldsY = new List<double>();
             var fieldWeights = new List<double>();
+            var privateWavelengths = new List<double>();
+            var privateGlasses = new Dictionary<string, List<double>>(StringComparer.OrdinalIgnoreCase);
+            var notConverted = new List<string>();
             int refWavelength = 1; // 1-indexed
             double unitScale = 1.0; // default mm
+            bool radiusMode = true;
+            bool inPrivateCatalog = false;
             Surface? currentSurface = null;
-            int surfIdx = 0;
 
-            foreach (var rawLine in lines)
+            void NotConverted(string what)
             {
-                string line = rawLine.Trim();
-                if (string.IsNullOrEmpty(line) || line.StartsWith("!")) continue;
+                string where = currentSurface != null ? $" (S{surfaces.Count - 1})" : "";
+                notConverted.Add(what + where);
+            }
 
-                var parts = SplitLine(line);
-                if (parts.Length == 0) continue;
-
+            foreach (var command in Commands(File.ReadAllLines(filePath)))
+            {
+                var parts = Tokens(command);
+                if (parts.Count == 0) continue;
                 string keyword = parts[0].ToUpperInvariant();
+
+                // A private glass catalog: PWL gives its wavelengths, then one line per glass, its
+                // quoted name and its index at each of them.
+                if (inPrivateCatalog)
+                {
+                    if (keyword == "END")
+                        inPrivateCatalog = false;
+                    else if (keyword == "PWL")
+                        privateWavelengths = Numbers(parts, 1).Select(nm => nm / 1000.0).ToList();
+                    else if (parts[0].StartsWith("'"))
+                        privateGlasses[Unquote(parts[0])] = Numbers(parts, 1);
+                    continue;
+                }
+
+                // Surface-specific form: RDY S3 50, GLA S3 NBK7 ... acts on the surface it names.
+                Surface? target = currentSurface;
+                int arg = 1;
+                if (parts.Count > 1 && TrySurfaceQualifier(parts[1], surfaces, out var named))
+                {
+                    target = named;
+                    arg = 2;
+                }
+                string? Arg(int k) => arg + k < parts.Count ? parts[arg + k] : null;
+                bool TryArg(int k, out double v)
+                {
+                    v = 0;
+                    var a = Arg(k);
+                    return a != null && TryParseDouble(a, out v);
+                }
+
+                if (IsSurfaceKeyword(keyword))
+                {
+                    currentSurface = new Surface { Index = surfaces.Count };
+                    surfaces.Add(currentSurface);
+                    if (parts.Count > 1 && TryParseDouble(parts[1], out double rc))
+                        SetShape(currentSurface, rc, radiusMode);
+                    if (parts.Count > 2 && TryParseDouble(parts[2], out double th))
+                        currentSurface.Thickness = Thickness(th);
+                    if (parts.Count > 3)
+                        glassTokens[currentSurface] = parts[3];
+                    continue;
+                }
 
                 switch (keyword)
                 {
                     case "TIT":
-                        // Title in single quotes
-                        int q1 = line.IndexOf('\'');
-                        int q2 = line.LastIndexOf('\'');
-                        if (q1 >= 0 && q2 > q1)
-                            system.Title = line.Substring(q1 + 1, q2 - q1 - 1);
+                    case "TITLE":
+                    {
+                        int q1 = command.IndexOf('\'');
+                        int q2 = command.LastIndexOf('\'');
+                        system.Title = q1 >= 0 && q2 > q1
+                            ? command.Substring(q1 + 1, q2 - q1 - 1)
+                            : command.Substring(parts[0].Length).Trim();
+                        break;
+                    }
+
+                    case "PRV":
+                        inPrivateCatalog = true;
+                        break;
+
+                    case "RDM":
+                        radiusMode = !(parts.Count > 1 && parts[1].StartsWith("N", StringComparison.OrdinalIgnoreCase));
+                        break;
+
+                    case "DIM":
+                    case "DDM":
+                        // DIM M = millimeters, DIM C = centimeters, DIM I = inches
+                        if (parts.Count > 1)
+                        {
+                            switch (parts[1].ToUpperInvariant())
+                            {
+                                case "M": case "MM": unitScale = 1.0; break;
+                                case "C": case "CM": unitScale = 10.0; break;
+                                case "I": unitScale = 25.4; break;
+                            }
+                        }
                         break;
 
                     case "EPD":
-                        if (parts.Length > 1 && TryParseDouble(parts[1], out double epd))
-                            system.Aperture = new Aperture(ApertureType.EPD, epd);
+                        if (TryArg(0, out double epd)) system.Aperture = new Aperture(ApertureType.EPD, epd);
                         break;
-
                     case "FNO":
-                        if (parts.Length > 1 && TryParseDouble(parts[1], out double fno))
-                            system.Aperture = new Aperture(ApertureType.FNumber, fno);
+                        if (TryArg(0, out double fno)) system.Aperture = new Aperture(ApertureType.FNumber, fno);
+                        break;
+                    case "NAO":
+                        if (TryArg(0, out double nao)) system.Aperture = new Aperture(ApertureType.ObjectSpaceNA, nao);
+                        break;
+                    case "NA":
+                        NotConverted("NA (image-space numerical aperture)");
                         break;
 
                     case "WL":
                         // Wavelengths in nanometers
-                        for (int i = 1; i < parts.Length; i++)
-                        {
-                            if (TryParseDouble(parts[i], out double wlNm))
-                                wavelengths.Add(wlNm / 1000.0); // nm to um
-                        }
+                        wavelengths = Numbers(parts, 1).Select(nm => nm / 1000.0).ToList();
                         break;
-
                     case "WTW":
-                        for (int i = 1; i < parts.Length; i++)
-                        {
-                            if (TryParseDouble(parts[i], out double wt))
-                                wavelengthWeights.Add(wt);
-                        }
+                        wavelengthWeights = Numbers(parts, 1);
                         break;
-
                     case "REF":
-                        if (parts.Length > 1 && int.TryParse(parts[1], out int r))
-                            refWavelength = r;
+                        if (parts.Count > 1 && int.TryParse(parts[1], out int r)) refWavelength = r;
                         break;
 
                     case "YAN":
-                        for (int i = 1; i < parts.Length; i++)
-                        {
-                            if (TryParseDouble(parts[i], out double ang))
-                                fieldAnglesY.Add(ang);
-                        }
+                    case "YOB":
+                        system.FieldType = keyword == "YOB" ? FieldType.ObjectHeight : FieldType.ObjectAngle;
+                        fieldsY = Numbers(parts, 1);
                         break;
-
+                    case "XAN":
+                    case "XOB":
+                        if (Numbers(parts, 1).Any(x => x != 0))
+                            NotConverted(keyword + " (x fields: this lens is meridional)");
+                        break;
+                    case "YIM":
+                    case "YRI":
+                    case "XIM":
+                    case "XRI":
+                        NotConverted(keyword + " (fields as image heights)");
+                        break;
                     case "WTF":
-                        for (int i = 1; i < parts.Length; i++)
-                        {
-                            if (TryParseDouble(parts[i], out double fw))
-                                fieldWeights.Add(fw);
-                        }
+                        fieldWeights = Numbers(parts, 1);
+                        break;
+                    case "VUX":
+                    case "VLX":
+                    case "VUY":
+                    case "VLY":
+                        if (Numbers(parts, 1).Any(v => v != 0))
+                            NotConverted(keyword + " (vignetting factors)");
                         break;
 
-                    case "SO": // Object surface
-                    case "S":  // Regular surface
-                    case "SI": // Image surface
-                        currentSurface = ParseSurfaceLine(parts, keyword, surfIdx, resolver);
-                        surfaces.Add(currentSurface);
-                        surfIdx++;
+                    case "RDY":
+                    case "CUY":
+                        if (target != null && TryArg(0, out double shape))
+                            SetShape(target, shape, keyword == "RDY");
                         break;
-
-                    case "CIR":
-                        if (currentSurface != null && parts.Length > 1 && TryParseDouble(parts[1], out double cir))
-                        {
-                            currentSurface.SemiDiameter = cir;
-                            currentSurface.SemiDiameterMode = SemiDiameterMode.Fixed;
-                        }
+                    case "THI":
+                        if (target != null && TryArg(0, out double thi))
+                            target.Thickness = Thickness(thi);
+                        break;
+                    case "GLA":
+                        if (target != null && Arg(0) != null)
+                            glassTokens[target] = Arg(0)!;
                         break;
 
                     case "STO":
-                        if (currentSurface != null)
-                            currentSurface.IsStop = true;
+                        if (target != null) target.IsStop = true;
                         break;
 
+                    case "CIR":
+                        if (target == null) break;
+                        string? kind = Arg(0)?.ToUpperInvariant();
+                        if (TryArg(0, out double cir))
+                        {
+                            target.SemiDiameter = cir;
+                            target.SemiDiameterMode = SemiDiameterMode.Fixed;
+                        }
+                        else if ((kind == "OBS" || kind == "HOL") && TryArg(1, out double obs))
+                        {
+                            // An obscuration blocks the centre of the beam; on a mirror, or given
+                            // as a hole, it is the hole in the middle.
+                            if (kind == "HOL" || target.IsMirror || glassTokens.TryGetValue(target, out var g) && IsReflect(g))
+                                target.InnerRadius = obs;
+                            else
+                                target.ObscurationRadius = obs;
+                        }
+                        break;
+                    case "REX":
+                    case "REY":
+                    case "ELX":
+                    case "ELY":
+                        NotConverted(keyword + " (rectangular or elliptical aperture)");
+                        break;
+
+                    case "SPH":
+                        if (target != null)
+                        {
+                            target.Type = SurfaceType.Standard;
+                            target.Conic = 0;
+                            Array.Clear(target.AsphericCoefficients, 0, target.AsphericCoefficients.Length);
+                        }
+                        break;
                     case "ASP":
-                        // ASP ; A <val> ; B <val> ; C <val> ; D <val> ; E <val> ; F <val> ; G <val> ; H <val>
-                        if (currentSurface != null)
-                        {
-                            ParseAspCoefficients(line, currentSurface);
-                            currentSurface.Type = SurfaceType.EvenAsphere;
-                        }
-                        break;
-
                     case "CON":
-                        // CON ; K <val>
-                        if (currentSurface != null)
-                        {
-                            double kVal = ParseNamedValue(line, "K");
-                            if (!double.IsNaN(kVal))
-                            {
-                                currentSurface.Conic = kVal;
-                                if (currentSurface.Type != SurfaceType.EvenAsphere)
-                                    currentSurface.Type = SurfaceType.EvenAsphere;
-                            }
-                        }
+                        if (target != null) target.Type = SurfaceType.EvenAsphere;
                         break;
-
                     case "K":
-                        // Standalone K <val> (conic constant, sometimes without CON prefix)
-                        if (currentSurface != null && parts.Length > 1 && TryParseDouble(parts[1], out double kStandalone))
+                        if (target != null && TryArg(0, out double k))
                         {
-                            currentSurface.Conic = kStandalone;
-                            if (currentSurface.Type != SurfaceType.EvenAsphere)
-                                currentSurface.Type = SurfaceType.EvenAsphere;
+                            target.Conic = k;
+                            target.Type = SurfaceType.EvenAsphere;
                         }
                         break;
-
-                    case "DIM":
-                        // DIM M = millimeters, DIM C = centimeters, DIM I = inches
-                        if (parts.Length > 1)
+                    case "A": case "B": case "C": case "D": case "E": case "F": case "G":
+                    {
+                        // Code V's A is r⁴: A→[1], B→[2] ...
+                        int idx = keyword[0] - 'A' + 1;
+                        if (target != null && TryArg(0, out double c) && idx < target.AsphericCoefficients.Length)
                         {
-                            switch (parts[1].ToUpperInvariant())
-                            {
-                                case "M": unitScale = 1.0; break;    // millimeters
-                                case "C": unitScale = 10.0; break;   // centimeters
-                                case "I": unitScale = 25.4; break;   // inches
-                            }
+                            target.AsphericCoefficients[idx] = c;
+                            target.Type = SurfaceType.EvenAsphere;
                         }
                         break;
+                    }
+                    case "H":
+                    case "J":
+                        if (TryArg(0, out double high) && high != 0)
+                            NotConverted(keyword + " (aspheric term beyond r¹⁶)");
+                        break;
 
-                    case "FTYP":
-                        // Field type: 0 = angle, 1 = object height
-                        if (parts.Length > 1 && int.TryParse(parts[1], out int ft))
-                            system.FieldType = ft == 1 ? FieldType.ObjectHeight : FieldType.ObjectAngle;
+                    case "XDE": case "YDE": case "ZDE":
+                    case "ADE": case "BDE": case "CDE":
+                        if (TryArg(0, out double de) && de != 0)
+                            NotConverted(keyword + " (tilt or decenter)");
+                        break;
+                    case "DAR": case "BEN": case "RET": case "GLB":
+                        NotConverted(keyword + " (coordinate change)");
+                        break;
+                    case "SPS":
+                        NotConverted("SPS " + (Arg(0) ?? "") + " (special surface; read as its base sphere)");
+                        break;
+                    case "CYL": case "XTO": case "YTO":
+                        NotConverted(keyword + " (toroidal surface)");
+                        break;
+                    case "HOE": case "DOE": case "GRT": case "DIF":
+                        NotConverted(keyword + " (diffractive surface)");
+                        break;
+                    case "ZOO":
+                        NotConverted("ZOO (zoom data; the first position is read)");
                         break;
                 }
             }
+
+            // Glass, now that any private catalog has been read.
+            foreach (var kv in glassTokens)
+                ApplyGlass(kv.Key, kv.Value, resolver, privateGlasses, privateWavelengths);
 
             // Cemented-interface SD inheritance: any surface with glass on
             // both sides (= a cemented joint) is by construction the same
@@ -194,8 +313,8 @@ namespace LensHH.Core.IO
             for (int i = 1; i < surfaces.Count; i++)
             {
                 bool isCementedInterface =
-                    IsGlassMaterial(surfaces[i - 1].Material) &&
-                    IsGlassMaterial(surfaces[i].Material);
+                    IsGlassMaterial(surfaces[i - 1]) &&
+                    IsGlassMaterial(surfaces[i]);
                 if (!isCementedInterface) continue;
 
                 var prev = surfaces[i - 1];
@@ -221,11 +340,11 @@ namespace LensHH.Core.IO
             }
 
             // Fields
-            for (int i = 0; i < fieldAnglesY.Count; i++)
+            for (int i = 0; i < fieldsY.Count; i++)
             {
                 double wt = i < fieldWeights.Count ? fieldWeights[i] / 100.0 : 1.0;
-                if (i == 0 && fieldAnglesY[i] == 0 && wt == 0) wt = 1.0;
-                system.Fields.Add(new Field(fieldAnglesY[i], wt > 0 ? wt : 1.0));
+                if (i == 0 && fieldsY[i] == 0 && wt == 0) wt = 1.0;
+                system.Fields.Add(new Field(fieldsY[i], wt > 0 ? wt : 1.0));
             }
             if (system.Fields.Count == 0)
                 system.Fields.Add(new Field(0, 1.0));
@@ -243,6 +362,13 @@ namespace LensHH.Core.IO
                     system.GlassCatalogs.Add(catalog);
             }
 
+            // What the file holds that this lens cannot, so that it is not lost unseen.
+            if (notConverted.Count > 0)
+            {
+                string note = "Code V import - not converted: " + string.Join(", ", notConverted.Distinct()) + ".";
+                system.Notes = string.IsNullOrEmpty(system.Notes) ? note : system.Notes + Environment.NewLine + note;
+            }
+
             // Convert from file units to mm
             if (unitScale != 1.0)
                 LensUnitConverter.ConvertToMm(system, unitScale);
@@ -250,93 +376,209 @@ namespace LensHH.Core.IO
             return system;
         }
 
-        private static Surface ParseSurfaceLine(string[] parts, string keyword, int index,
-            CodeVGlassResolver resolver)
+        /// <summary>
+        /// The file as a list of commands: comments removed, <c>&amp;</c> continuations joined,
+        /// and each line split at the semicolons outside quotes.
+        /// </summary>
+        internal static IEnumerable<string> Commands(IEnumerable<string> lines)
         {
-            var surface = new Surface { Index = index };
-
-            // Format: SO/S/SI <radius> <thickness> <material>
-            if (parts.Length > 1 && TryParseDouble(parts[1], out double radius))
+            var pending = new StringBuilder();
+            foreach (var raw in lines)
             {
-                if (Math.Abs(radius) > 1e-15)
-                    surface.Radius = radius;
-                // else default infinity
-            }
-
-            if (parts.Length > 2 && TryParseDouble(parts[2], out double thickness))
-            {
-                // Code V uses ~1e20 for infinity
-                if (Math.Abs(thickness) > 1e18)
-                    surface.Thickness = double.PositiveInfinity;
-                else
-                    surface.Thickness = thickness;
-            }
-
-            if (parts.Length > 3)
-            {
-                string material = parts[3].Trim();
-                if (material.Equals("AIR", StringComparison.OrdinalIgnoreCase))
+                string line = StripComment(raw).TrimEnd();
+                if (line.EndsWith("&"))
                 {
-                    // no material
+                    pending.Append(line, 0, line.Length - 1).Append(' ');
+                    continue;
                 }
-                else if (material.Equals("REFL", StringComparison.OrdinalIgnoreCase))
+                pending.Append(line);
+                string whole = pending.ToString();
+                pending.Clear();
+
+                foreach (var command in SplitOutsideQuotes(whole, ';'))
                 {
-                    surface.Material = "MIRROR";
-                }
-                else
-                {
-                    // Code V writes glass names without punctuation and may
-                    // qualify them as GLASS_CATALOG. Resolving that against the
-                    // loaded catalogs -- rather than guessing where a dash used
-                    // to be -- is what keeps NBK7 and Hoya's NBFD10 apart.
-                    surface.Material = resolver.Resolve(material);
+                    string c = command.Trim();
+                    if (c.Length > 0) yield return c;
                 }
             }
+            if (pending.Length > 0 && pending.ToString().Trim().Length > 0)
+                yield return pending.ToString().Trim();
+        }
 
-            return surface;
+        private static string StripComment(string line)
+        {
+            bool quoted = false;
+            for (int i = 0; i < line.Length; i++)
+            {
+                if (line[i] == '\'' || line[i] == '"') quoted = !quoted;
+                else if (line[i] == '!' && !quoted) return line.Substring(0, i);
+            }
+            return line;
+        }
+
+        private static IEnumerable<string> SplitOutsideQuotes(string text, char separator)
+        {
+            bool quoted = false;
+            int start = 0;
+            for (int i = 0; i < text.Length; i++)
+            {
+                if (text[i] == '\'' || text[i] == '"') quoted = !quoted;
+                else if (text[i] == separator && !quoted)
+                {
+                    yield return text.Substring(start, i - start);
+                    start = i + 1;
+                }
+            }
+            yield return text.Substring(start);
+        }
+
+        /// <summary>A command's words, a quoted string being one word (quotes kept).</summary>
+        private static List<string> Tokens(string command)
+        {
+            var tokens = new List<string>();
+            var current = new StringBuilder();
+            char quote = '\0';
+            foreach (char ch in command)
+            {
+                if (quote != '\0')
+                {
+                    current.Append(ch);
+                    if (ch == quote) quote = '\0';
+                }
+                else if (ch == '\'' || ch == '"')
+                {
+                    current.Append(ch);
+                    quote = ch;
+                }
+                else if (char.IsWhiteSpace(ch))
+                {
+                    if (current.Length > 0) { tokens.Add(current.ToString()); current.Clear(); }
+                }
+                else current.Append(ch);
+            }
+            if (current.Length > 0) tokens.Add(current.ToString());
+            return tokens;
+        }
+
+        private static string Unquote(string token) => token.Trim().Trim('\'', '"');
+
+        // SO, S, SI - and S followed by its number, which Code V also accepts.
+        private static bool IsSurfaceKeyword(string keyword) =>
+            keyword == "SO" || keyword == "S" || keyword == "SI" || Regex.IsMatch(keyword, @"^S\d+$");
+
+        private static bool TrySurfaceQualifier(string token, List<Surface> surfaces, out Surface? surface)
+        {
+            surface = null;
+            string t = token.ToUpperInvariant();
+            if (t == "SO") surface = surfaces.Count > 0 ? surfaces[0] : null;
+            else if (t == "SI") surface = surfaces.Count > 0 ? surfaces[surfaces.Count - 1] : null;
+            else if (Regex.IsMatch(t, @"^S\d+$"))
+            {
+                int n = int.Parse(t.Substring(1), CultureInfo.InvariantCulture);
+                surface = n < surfaces.Count ? surfaces[n] : null;
+            }
+            else return false;
+            return true;
+        }
+
+        // A radius (RDM, Code V's default) or a curvature (RDM N); zero is a plane either way.
+        private static void SetShape(Surface surface, double value, bool isRadius)
+        {
+            if (Math.Abs(value) <= 1e-15) return;   // default infinity
+            if (isRadius) surface.Radius = value;
+            else surface.Curvature = value;
+        }
+
+        // Code V writes an infinite distance as a large number - 1e10, 0.1E+14, 1e20.
+        private static double Thickness(double value) =>
+            Math.Abs(value) >= 1e9 ? double.PositiveInfinity : value;
+
+        private static bool IsReflect(string token) =>
+            Unquote(token).Equals("REFL", StringComparison.OrdinalIgnoreCase);
+
+        /// <summary>
+        /// The medium after a surface, from its glass token: air, a mirror, a private glass, a
+        /// fictitious or MIL glass code (a model glass here), or a catalog name.
+        /// </summary>
+        private static void ApplyGlass(Surface surface, string token, CodeVGlassResolver resolver,
+            Dictionary<string, List<double>> privateGlasses, List<double> privateWavelengths)
+        {
+            string material = Unquote(token);
+            if (material.Length == 0
+                || material.Equals("AIR", StringComparison.OrdinalIgnoreCase)
+                || material.Equals("REFR", StringComparison.OrdinalIgnoreCase))
+                return;
+
+            if (material.Equals("REFL", StringComparison.OrdinalIgnoreCase))
+            {
+                surface.Material = "MIRROR";
+                return;
+            }
+
+            if (privateGlasses.TryGetValue(material, out var indices) && indices.Count > 0)
+            {
+                var (nd, vd) = OsloReader.ModelFromIndices(privateWavelengths, indices);
+                SetModel(surface, nd, vd);
+                return;
+            }
+
+            if (TryGlassCode(material, out double cnd, out double cvd))
+            {
+                SetModel(surface, cnd, cvd);
+                return;
+            }
+
+            // Code V writes glass names without punctuation and may
+            // qualify them as GLASS_CATALOG. Resolving that against the
+            // loaded catalogs -- rather than guessing where a dash used
+            // to be -- is what keeps NBK7 and Hoya's NBFD10 apart.
+            surface.Material = resolver.Resolve(material);
+        }
+
+        private static void SetModel(Surface surface, double nd, double vd)
+        {
+            surface.Material = null;
+            surface.ModelIndexEnabled = true;
+            surface.ModelNd = nd;
+            surface.ModelVd = vd;
         }
 
         /// <summary>
-        /// Parse ASP line: ASP ; A <val> ; B <val> ; C <val> ...
-        /// Code V: A=r⁴, B=r⁶, C=r⁸, ... Internal: [0]=r², [1]=r⁴, [2]=r⁶, ...
-        /// So A→[1], B→[2], etc.
+        /// A glass given by numbers, as Zemax's converter reads Code V's: with at least four
+        /// digits before the point it is the fictitious-glass code, nd's digits after "1." and
+        /// then Vd/100 (<c>516800.641700</c> is 1.5168 / 64.17); with three or fewer it is the
+        /// MIL code, nd's three digits and Vd's three (<c>517.642</c> is 1.517 / 64.2).
         /// </summary>
-        private static void ParseAspCoefficients(string line, Surface surface)
+        public static bool TryGlassCode(string token, out double nd, out double vd)
         {
-            string[] coeffNames = { "A", "B", "C", "D", "E", "F", "G", "H" };
-            for (int i = 0; i < coeffNames.Length; i++)
+            nd = vd = 0;
+            var m = Regex.Match(token, @"^(\d+)\.(\d+)$");
+            if (!m.Success) return false;
+            string left = m.Groups[1].Value, right = m.Groups[2].Value;
+            var inv = CultureInfo.InvariantCulture;
+            if (left.Length >= 4)
             {
-                double val = ParseNamedValue(line, coeffNames[i]);
-                int idx = i + 1; // A→[1], B→[2], etc.
-                if (!double.IsNaN(val) && idx < surface.AsphericCoefficients.Length)
-                    surface.AsphericCoefficients[idx] = val;
+                nd = double.Parse("1." + left, inv);
+                vd = double.Parse("0." + right, inv) * 100.0;
+                return true;
             }
+            if (token.Length < 8)
+            {
+                string r3 = right.Length >= 3 ? right.Substring(0, 3) : right.PadRight(3, '0');
+                nd = 1.0 + double.Parse(left.PadRight(3, '0'), inv) / 1000.0;
+                vd = double.Parse(r3, inv) / 10.0;
+                return true;
+            }
+            return false;
         }
 
-        /// <summary>
-        /// Parse a named value from a Code V line with ; delimiters.
-        /// E.g., "ASP ; A 1.23E-09 ; B -4.56E-15" → ParseNamedValue(line, "A") → 1.23E-09
-        /// </summary>
-        private static double ParseNamedValue(string line, string name)
+        private static List<double> Numbers(List<string> parts, int from)
         {
-            // Split by ; and find the segment starting with the name
-            var segments = line.Split(';');
-            foreach (var seg in segments)
-            {
-                var trimmed = seg.Trim();
-                var segParts = trimmed.Split(new[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries);
-                if (segParts.Length >= 2 && segParts[0].Equals(name, StringComparison.OrdinalIgnoreCase))
-                {
-                    if (TryParseDouble(segParts[1], out double val))
-                        return val;
-                }
-            }
-            return double.NaN;
-        }
-
-        private static string[] SplitLine(string line)
-        {
-            return line.Split(new[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries);
+            var values = new List<double>();
+            for (int i = from; i < parts.Count; i++)
+                if (TryParseDouble(parts[i], out double v))
+                    values.Add(v);
+            return values;
         }
 
         private static bool TryParseDouble(string s, out double value)
@@ -345,10 +587,11 @@ namespace LensHH.Core.IO
                 CultureInfo.InvariantCulture, out value);
         }
 
-        private static bool IsGlassMaterial(string? material)
+        private static bool IsGlassMaterial(Surface surface)
         {
-            if (string.IsNullOrEmpty(material)) return false;
-            if (material.Equals("MIRROR", StringComparison.OrdinalIgnoreCase)) return false;
+            if (surface.ModelIndexEnabled) return true;
+            if (string.IsNullOrEmpty(surface.Material)) return false;
+            if (surface.Material.Equals("MIRROR", StringComparison.OrdinalIgnoreCase)) return false;
             return true;
         }
     }

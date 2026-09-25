@@ -397,7 +397,7 @@ namespace LensHH.Core.IO
         /// indices gives them. A single index carries no dispersion, and is taken as nd with a Vd
         /// so large that the index is the same at every wavelength.
         /// </summary>
-        private static (double nd, double vd) ModelFromIndices(List<double> wavelengthsUm, List<double> n)
+        internal static (double nd, double vd) ModelFromIndices(List<double> wavelengthsUm, List<double> n)
         {
             const double dLine = 0.58756, fLine = 0.48613, cLine = 0.65627;
             int count = Math.Min(wavelengthsUm.Count, n.Count);

@@ -80,6 +80,34 @@ All notable changes to LensHH-LT and the LensHH-LT-Engine.
 
   All 1019 of Optalix's example lenses import without error.
 
+- **Code V export wrote a different lens, and import misread Code V's own syntax.** Both
+  now follow what Code V writes, as Zemax's Code V-to-OpticStudio converter reads it:
+  - *Any aperture that was not an EPD went out as `FNO` with its value*: an object NA
+    of 0.25 became F/0.25. It is now `EPD`, `FNO` or `NAO` as the lens states it (an
+    F-number at a finite object as the EPD it gives); import reads `NAO`.
+  - *Object heights went out as field angles (`YAN`).* They are `YOB`, and import reads
+    `YOB`.
+  - *A model glass went out as `AIR`.* It is Code V's fictitious-glass code (1.5168 /
+    64.17 as `516800.641700`), or a private glass (`PRV`) with its index at each
+    wavelength where the code cannot carry it. Import reads both, and MIL codes
+    (`517.642`).
+  - *An asphere went out as `ASP` followed by `CON`*, and `CON` makes the surface a plain
+    conic in Code V, so its terms were lost there. It is `ASP` with its `K` and `A`..`G`
+    lines, as Code V writes it; a conic alone is `CON`. A surface with an r² term, which
+    Code V's asphere has no place for, is refused.
+  - *An ideal lens went out as a flat surface in air.* A `.seq` file cannot carry one,
+    and the export now says so rather than writing a different lens.
+  - *Import took only the first command on a line*: in `S 50 5 SK16 ; CIR 10` the `CIR`
+    was lost, and a line continued with `&` was cut short.
+  - *Import ignored an asphere's terms* when they were on their own lines under `ASP`,
+    as Code V writes them, and read the surface as a plain conic.
+  - *Import took Code V's infinite object distance (`0.1E+14`) as a finite one*, and
+    read Optalix's `FTYP` rather than Code V's field commands. Curvature mode (`RDM N`),
+    `TITLE`, quoted glass names and the surface-specific forms (`THI S3 10`) are read.
+  - What a `.seq` file holds that this lens cannot — tilts and decenters, special and
+    toroidal surfaces, zoom data, image-height fields, vignetting factors — is listed in
+    the lens's notes instead of being dropped without a word.
+
 - **A Zemax lens with its stop on a mirror imported as a different lens.** The
   stock-lens rule — which inserts a stop in air ahead of a stock lens whose stop sits
   on its first glass surface — took a mirror for glass. A paraboloid imported with its

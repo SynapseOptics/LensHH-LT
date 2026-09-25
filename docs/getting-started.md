@@ -817,6 +817,7 @@ Both settings are saved in `.lhlt` and round-trip through ZEMAX `.zmx`
 | `.zmx`    | ZEMAX prescription. **File → Import → Zemax (.zmx)…** and **File → Export → Zemax (.zmx)…**. Only standard and even-asphere surfaces are honored. Object Space NA (`OBNA`) and object-space telecentric are honored. |
 | `.len`    | OSLO lens file. **File → Import → OSLO (.len)…** and **File → Export → OSLO (.len)…**. See [OSLO files](#oslo-files) below. |
 | `.otx`    | Optalix lens file. **File → Import → Optalix (.otx)…** and **File → Export → Optalix (.otx)…**. See [Optalix files](#optalix-files) below. |
+| `.seq`    | Code V sequence file. **File → Import → Code V (.seq)…** and **File → Export → Code V (.seq)…**. See [Code V files](#code-v-files) below. |
 | `.agf`    | Glass catalog. Loaded from `<install>\catalogs\Glass\` on startup. |
 
 ### OSLO files
@@ -898,6 +899,39 @@ modules.
 as a diameter — drop an ideal lens or a model glass (the surface became air), write object heights
 with a field type Optalix does not have, and leave apertures that should clip unmarked. Export
 such lenses again.
+
+### Code V files
+
+A Code V `.seq` file is a list of Code V commands. LensHH-LT writes it in the syntax Code V
+itself saves a lens in:
+
+| In LensHH-LT | In the `.seq` file |
+|---|---|
+| Aperture | `EPD`, `FNO` (object at infinity) or `NAO` (finite object), as the lens states it. An F-number at a finite object goes out as the entrance pupil diameter it gives, since Code V defines `FNO` at infinity. |
+| Field | `XAN`/`YAN` for field angles, `XOB`/`YOB` for object heights. |
+| Primary wavelength | `REF`, the primary's number. Wavelengths are in nanometres. |
+| Glass | The catalog name without punctuation, qualified by its catalog when Code V has it: N-BK7 is `NBK7_SCHOTT`. |
+| Model glass | Code V's fictitious-glass code — nd 1.5168, Vd 64.17 is `516800.641700` — or, if it has a partial-dispersion offset, a private glass (`PRV`) given by its index at each wavelength. |
+| Mirror | `REFL`. |
+| Fixed semi-diameter | `CIR`. An automatic one is left for Code V to size. |
+| Obscuration or central hole | `CIR OBS`. |
+| Asphere | `ASP`, then the conic (`K`) and the r⁴ to r¹⁶ coefficients (`A` to `G`); a conic alone is `CON` and `K`. Code V's asphere has no r² term, so a surface with one cannot be exported. |
+
+Import reads the same things back, and also what Code V writes that LensHH-LT does not: several
+commands on one line separated by `;`, lines continued with `&`, curvature mode (`RDM N`), MIL
+glass codes (`517.642`), and Code V's large-number infinity (`0.1E+14`).
+
+**An ideal lens cannot be exported to Code V**, since a `.seq` file has no ideal lens to name;
+the export stops and says so rather than writing a flat surface in its place.
+
+**Some Code V features have no counterpart here**, and import leaves them out: tilts and
+decenters, special surfaces (`SPS`), toroidal and diffractive surfaces, zoom positions (the first
+is read), fields given as image heights, and vignetting factors. Whatever was left out is listed
+in the lens's notes.
+
+**`.seq` files exported before 1.0.158** could write an object NA as an F-number, object heights as
+angles, a model glass as air, and an asphere that Code V reads as a plain conic. Export such lenses
+again.
 
 ## Keyboard Shortcuts
 
