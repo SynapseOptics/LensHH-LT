@@ -163,9 +163,11 @@ shopping for a real one.
 The curve is the **LensHH-LT model glass**: Conrady's dispersion formula,
 with its constants set by the glass's Nd, Abbe number and g–F partial
 dispersion. Like any three-number model it is an approximation of real
-glass. It is closest across the visible and drifts from a real glass's
-curve in the deep blue and the infrared, so use a catalog glass when a
-design depends on its index outside the visible.
+glass. Given a Schott glass's catalog Nd, Vd and dPgF, it follows that
+glass's measured dispersion to about 6 × 10⁻⁵ in index (rms, over 107
+Schott glasses) from 0.40 to 0.70 µm. It drifts further in the deep blue
+and the infrared (about 4 × 10⁻⁴ rms from 0.365 to 1.014 µm), so use a
+catalog glass when a design depends on its index outside the visible.
 
 ### Enabling it
 
