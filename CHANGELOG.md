@@ -4,6 +4,35 @@ All notable changes to LensHH-LT and the LensHH-LT-Engine.
 
 ## 1.0.159 — unreleased
 
+### Changed
+
+- **One pupil for every analysis.** The pupil the Relative Illumination analysis measures —
+  verified against closed-form answers in 1.0.157: the transmitted cone at the image point,
+  about the image surface's normal, each ray referred to the image point — is now the pupil
+  the diffraction MTF, the FFT PSF and the geometric MTF use too. Each used to size the pupil
+  its own way, and none of them the verified way.
+  - **Ray aiming.** Relative illumination always aims at the real stop, as before. The MTF
+    and PSF follow the lens's ray-aiming setting, because their wavefront does: the
+    wavefront and the pupil that scales it must be the same one.
+  - **FFT MTF** (and MTF vs field and through focus). The off-axis pupil scale came from
+    four edge rays of the paraxial pupil, and fell back to a round pupil whenever one of
+    them was vignetted — which is most full-field points of a vignetted lens. It now comes
+    from the whole transmitted pupil. Against the validation reference data the RMS
+    difference falls from 0.018 to 0.011, with the largest gains at vignetted full fields
+    (0.070 to 0.017 on one Cooke triplet) and no case worse; on axis nothing changes.
+  - **FFT PSF.** Off axis the pupil is stretched differently in the tangential and sagittal
+    directions, so the image-plane pixel is too; one axial pixel size was used for both at
+    every field. The PSF is now resampled onto the image plane's own square pixels, so its
+    scale — and the reported pixel size — is right off axis. On axis nothing changes.
+  - **Geometric MTF.** The diffraction cutoff and limit off axis come from the same pupil,
+    not a paraxial cos θ estimate.
+- **The ILL operand runs on the C# engine.** The native ILL still used the relative-
+  illumination calculation 1.0.157 replaced, and disagreed with the analysis — 0.855 where
+  it reads 0.901 on a double Gauss at full field, and 1.000 at every field of a lens on a
+  curved image where it reads 0.356. An optimization with ILL in its merit function now
+  evaluates it exactly as the analysis does, on the C# engine; the optimizer's engine note
+  says so.
+
 ### Fixed
 
 - **Optalix: a mirror inside glass lost its glass, both ways.** In Optalix a glass named
