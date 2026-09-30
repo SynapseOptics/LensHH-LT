@@ -25,6 +25,13 @@ All notable changes to LensHH-LT and the LensHH-LT-Engine.
   infinity at z = −∞; an explicit thickness wins, and with none and no separation from
   the first surface the object stays at infinity as before. An `objectNA` aperture is now
   an object-space NA; it fell through to an EPD of the same number.
+- **OSLO export dropped an r² aspheric term.** OSLO's standard asphere starts at r⁴, so the
+  term was left out and OSLO opened another lens. A surface with one is now refused with a
+  message naming it, as the Code V and Optalix exporters already did.
+- **OSLO export could still end the `LEN NEW` name in a number.** Numbers were dropped from
+  the name before it was cut to 32 characters, and the cut could make a new one:
+  "POSITIVE DOUBLET; 26.50MM DIA; 100.00MM EFL" became "…; 26.50MM DIA; 1", which OSLO
+  reads as the surface count. Numbers are now dropped again after the cut.
 - **Optiland export wrote an object-space NA as an EPD.** It now goes out as Optiland's
   `objectNA`, so a finite-conjugate lens exports and imports back unchanged.
 

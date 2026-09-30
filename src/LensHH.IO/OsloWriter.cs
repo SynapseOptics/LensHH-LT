@@ -29,6 +29,17 @@ namespace LensHH.Core.IO
         /// perfect lens at a finite conjugate. Not needed otherwise.</param>
         public static void Write(OpticalSystem system, string filePath, GlassCatalogManager? glassMgr = null)
         {
+            // OSLO's standard asphere starts at r⁴ (AD); a surface with an r² term cannot be written
+            // faithfully, so it is refused rather than dropped, as the Code V and Optalix writers do.
+            // (The term was silently left out, and OSLO opened another lens.)
+            for (int i = 0; i < system.Surfaces.Count; i++)
+            {
+                var a = system.Surfaces[i].AsphericCoefficients;
+                if (a != null && a.Length > 0 && a[0] != 0.0)
+                    throw new InvalidOperationException(
+                        $"Surface {i} has an r² aspheric term, which OSLO's standard asphere has no place for.");
+            }
+
             // Wavelengths, primary first (see the WV line below): model glasses list their
             // indices in this order too.
             var wavelengths = OrderedWavelengths(system);
@@ -375,27 +386,19 @@ namespace LensHH.Core.IO
         // 2026-09-25), while the same file named "Ideal lens curved image" opened.
         // "Topogon US 2031792 Fig 1" only got through because its last number was 1.
         // Such words are dropped from LEN NEW; SNO1 keeps the full title.
+        //
+        // They are dropped AFTER cutting to 32 characters as well as before: a cut can leave a new
+        // number at the end - "POSITIVE DOUBLET; 26.50MM DIA; 100.00MM EFL" cut to
+        // "...; 26.50MM DIA; 1" - which OSLO reads the same way. (Ported from StockLensDatabaseMCP.)
         private static string SanitizeOsloLenName(string title)
         {
-            string s = string.Join(" ", title.Replace("\"", "'")
+            static string NoNumbers(string t) => string.Join(" ", t
                 .Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)
                 .Where(w => !double.TryParse(w, NumberStyles.Float, CultureInfo.InvariantCulture, out _)));
-            if (s.Length == 0)
-                s = "Untitled";
-            var collapsed = new StringBuilder(s.Length);
-            bool prevWs = false;
-            foreach (char c in s)
-            {
-                bool ws = char.IsWhiteSpace(c);
-                if (ws)
-                {
-                    if (!prevWs && collapsed.Length > 0) collapsed.Append(' ');
-                    prevWs = true;
-                }
-                else { collapsed.Append(c); prevWs = false; }
-            }
-            string trimmed = collapsed.ToString().TrimEnd();
-            return trimmed.Length > 32 ? trimmed.Substring(0, 32).TrimEnd() : trimmed;
+            string s = NoNumbers(title.Replace("\"", "'"));
+            while (s.Length > 32)
+                s = NoNumbers(s.Substring(0, 32));
+            return s.Length == 0 ? "Untitled" : s;
         }
     }
 }

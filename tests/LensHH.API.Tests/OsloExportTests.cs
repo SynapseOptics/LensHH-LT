@@ -159,6 +159,30 @@ namespace LensHH.API.Tests
         }
 
         [Fact]
+        public void CuttingTheNameTo32CharactersLeavesNoNumberAtItsEnd()
+        {
+            // Cut to 32 characters this read "...; 26.50MM DIA; 1", and OSLO took the 1 as the surface
+            // count. The numbers are dropped again after the cut.
+            var sys = IdealLens(100.0);
+            sys.Title = "POSITIVE DOUBLET; 26.50MM DIA; 100.00MM EFL";
+            string text = Export(sys, null, out _);
+            Assert.Contains("LEN NEW \"POSITIVE DOUBLET; 26.50MM DIA;\"", Lines(text));
+            Assert.Contains("SNO1 \"POSITIVE DOUBLET; 26.50MM DIA; 100.00MM EFL\"", Lines(text));
+        }
+
+        [Fact]
+        public void AnR2AsphericTermIsRefusedNotDropped()
+        {
+            // OSLO's standard asphere starts at r^4: the term was left out, and OSLO opened another lens.
+            var sys = IdealLens(100.0);
+            sys.Surfaces.Insert(2, new Surface { Index = 2, Radius = -200.0, Thickness = 5.0, Type = SurfaceType.EvenAsphere });
+            sys.Surfaces[3].Index = 3;
+            sys.Surfaces[2].AsphericCoefficients[0] = 1e-4;
+            var ex = Assert.Throws<InvalidOperationException>(() => Export(sys, null, out _));
+            Assert.Contains("r²", ex.Message);
+        }
+
+        [Fact]
         public void OnlyAnApertureThatClipsIsChecked()
         {
             var sys = IdealLens(100.0);
