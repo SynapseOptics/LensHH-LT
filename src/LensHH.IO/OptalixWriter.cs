@@ -158,8 +158,13 @@ namespace LensHH.Core.IO
                 sb.AppendLine(string.Format(inv, "  CUY {0:E16}", cuy));
                 sb.AppendLine(string.Format(inv, "  THI {0:E16}", thi));
 
+                // A mirror names the medium the light goes on in after it, which is the one it came
+                // in: glass, for a mirror inside an element (a Mangin mirror). Left out, Optalix
+                // puts the reflected light in air.
                 if (!isMirror)
                     WriteMaterial(sb, s, i, IndicesAt, system, inv);
+                else if (MediumSurface(system, i) is int m and >= 0)
+                    WriteMaterial(sb, system.Surfaces[m], m, IndicesAt, system, inv);
 
                 if (s.IsStop)
                     sb.AppendLine("  STO");
@@ -208,6 +213,17 @@ namespace LensHH.Core.IO
             }
 
             System.IO.File.WriteAllText(filePath, sb.ToString());
+        }
+
+        /// <summary>
+        /// The surface whose material is the medium a mirror at <paramref name="i"/> sits in: the
+        /// last surface before it that is not a mirror itself. -1 when there is none.
+        /// </summary>
+        internal static int MediumSurface(OpticalSystem system, int i)
+        {
+            int j = i - 1;
+            while (j >= 0 && system.Surfaces[j].IsMirror) j--;
+            return j;
         }
 
         private static string Weight(double w) =>

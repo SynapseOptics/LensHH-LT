@@ -237,6 +237,11 @@ namespace LensHH.Core.IO
                         break;
 
                     case "GLA":
+                        // On a mirror the glass is the medium the light goes on in after it - the one
+                        // it came in, which the surfaces before it already give. The mirror stays a
+                        // mirror. (Read as the surface's glass, a Mangin mirror became a refracting
+                        // surface, and the lens afocal.)
+                        if (currentIsMirror) break;
                         if (currentSurface != null && parts.Length > 1)
                         {
                             string gla = parts[1].Trim();
@@ -258,6 +263,8 @@ namespace LensHH.Core.IO
 
                     case "PRI":
                         // PRI n1 n2 ...: the index at each WL wavelength - a glass given directly.
+                        // On a mirror, the medium it is in, as GLA there.
+                        if (currentIsMirror) break;
                         if (currentSurface != null && parts.Length > 1)
                         {
                             var pri = new List<double>();

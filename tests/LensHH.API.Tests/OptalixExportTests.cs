@@ -202,6 +202,103 @@ namespace LensHH.API.Tests
             Assert.Throws<InvalidOperationException>(() => Export(sys, out _));
         }
 
+        // A Mangin mirror as Optalix writes one (Telescopes/43-84_Mangin-mirror.otx): the mirror is the
+        // back of the glass, and its GLA names the medium the reflected light goes on in - the glass.
+        private const string Mangin = @"VERS 11.82
+RAIM  2
+EPD  20.0000
+WL   0.5875618
+WTW  100
+REF    1
+FTYP    1
+NFLD    1
+FLD    1   0.000000000       0.000000000      100  1        0
+SUR   0
+  SUT S
+  CUY 0.0000000000000
+  THI  0.1000000000E+21
+SUR   1
+  SUT S
+  CUY -0.2000000000000E-02
+  THI   10.00000000
+  GLA N-BK7
+  STO
+SUR   2
+  SUT SM
+  CUY -0.4000000000000E-02
+  THI  -10.00000000
+  GLA N-BK7
+SUR   3
+  SUT S
+  CUY -0.2000000000000E-02
+  THI  -100.0000000
+SUR   4
+  SUT S
+  CUY 0.0000000000000
+  THI 0.000000000
+";
+
+        /// <summary>The same Mangin mirror, built here: the reflection a plain mirror, inside the glass.</summary>
+        private static OpticalSystem ManginByHand()
+        {
+            var sys = new OpticalSystem { Aperture = new Aperture(ApertureType.EPD, 20.0) };
+            sys.Surfaces.Add(new Surface { Index = 0, Thickness = double.PositiveInfinity });
+            sys.Surfaces.Add(new Surface { Index = 1, Radius = -500.0, Thickness = 10.0, Material = "N-BK7", IsStop = true });
+            sys.Surfaces.Add(new Surface { Index = 2, Radius = -250.0, Thickness = -10.0, Material = "MIRROR" });
+            sys.Surfaces.Add(new Surface { Index = 3, Radius = -500.0, Thickness = -100.0 });
+            sys.Surfaces.Add(new Surface { Index = 4, Thickness = 0 });
+            sys.Wavelengths.Add(new Wavelength(0.5875618, 1.0, true));
+            sys.Fields.Add(new Field { Y = 0 });
+            return sys;
+        }
+
+        // A glass named on a mirror is the medium it sits in, and the mirror stays a mirror. (Read as
+        // the surface's own glass, the Mangin example's mirror became a refracting surface into BK7
+        // and the lens came out afocal.)
+        [Fact]
+        public void AManginMirrorIsAMirrorInGlass()
+        {
+            var path = Path.GetTempFileName() + ".otx";
+            try
+            {
+                File.WriteAllText(path, Mangin);
+                var sys = OptalixReader.Read(path);
+                Assert.True(sys.Surfaces[2].IsMirror);
+                Assert.Equal("N-BK7", sys.Surfaces[1].Material);
+                Assert.True(string.IsNullOrEmpty(sys.Surfaces[3].Material));
+            }
+            finally { File.Delete(path); }
+        }
+
+        // A mirror inside glass goes out with that glass on it, as Optalix writes one. Left off, as it
+        // was, Optalix put the reflected light in air - the focal length of any lens reflecting inside
+        // glass came out wrong there. A mirror in air carries none.
+        [Fact]
+        public void AMirrorInGlassIsWrittenWithItsGlass()
+        {
+            var sys = ManginByHand();
+            string text = Export(sys, out var back);
+            var lines = Lines(text).ToList();
+            int mirror = lines.IndexOf("SUT SM");
+            int next = lines.FindIndex(mirror, l => l.StartsWith("SUR"));
+            Assert.Contains("GLA N-BK7", lines.GetRange(mirror, next - mirror));
+            Assert.True(back.Surfaces[2].IsMirror);
+            Assert.Equal("N-BK7", back.Surfaces[1].Material);
+
+            // A model glass: the mirror carries its fictitious-glass code too.
+            sys.Surfaces[1].Material = null;
+            sys.Surfaces[1].ModelIndexEnabled = true;
+            sys.Surfaces[1].ModelNd = 1.5168;
+            sys.Surfaces[1].ModelVd = 64.17;
+            text = Export(sys, out back);
+            Assert.Equal(2, Lines(text).Count(l => l == "GLA 5168.6417"));
+            Assert.True(back.Surfaces[2].IsMirror);
+
+            // In air, nothing.
+            sys.Surfaces[1].ModelIndexEnabled = false;
+            Assert.Empty(With(Export(sys, out _), "GLA"));
+        }
+
         // Lines copied from the lens files that ship with Optalix: the tube lens of
         // Gross-HOS/Misc/45-132_Chromat-with-tube-lens.otx (an L pair, 1/160 mm), a fictitious glass
         // and a PRI glass from Eye/EYE_NEW_CHROMATIC.OTX, an FH line, and RAIM 2.

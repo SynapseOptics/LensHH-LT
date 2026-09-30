@@ -2,6 +2,24 @@
 
 All notable changes to LensHH-LT and the LensHH-LT-Engine.
 
+## 1.0.159 — unreleased
+
+### Fixed
+
+- **Optalix: a mirror inside glass lost its glass, both ways.** In Optalix a glass named
+  on a mirror (`SUT SM`) is the medium the light goes on in after it — the one it came
+  in: a Mangin mirror is `SUT SM` with `GLA BK7`, as every such file among Optalix's own
+  examples writes it. The importer took that glass for the surface's own and lost the
+  mirror: Optalix's `43-84_Mangin-mirror.otx` opened with its mirror as a refracting
+  surface into BK7, and an effective focal length of 0. The exporter wrote no glass on a
+  mirror, so in Optalix the reflected light went on in air, and any lens reflecting
+  inside glass came out with the wrong focal length there. The importer now reads the
+  glass on a mirror as its medium and keeps the mirror; the exporter writes the medium's
+  glass — catalog or model — on a mirror that sits in glass, and none on one in air.
+  The same change, made in AberrationCalculator's Optalix writer, was checked in Optalix:
+  five ghost layouts, three of them reflecting inside glass, give the focal lengths
+  LensHH-LT does.
+
 ## 1.0.158 — 2026-09-25
 
 ### Fixed
