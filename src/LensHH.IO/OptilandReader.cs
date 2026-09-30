@@ -61,6 +61,8 @@ namespace LensHH.Core.IO
                     system.Aperture = new Aperture(ApertureType.EPD, apertureValue);
                 else if (apertureType.Equals("imageFNO", StringComparison.OrdinalIgnoreCase))
                     system.Aperture = new Aperture(ApertureType.FNumber, apertureValue);
+                else if (apertureType.Equals("objectNA", StringComparison.OrdinalIgnoreCase))
+                    system.Aperture = new Aperture(ApertureType.ObjectSpaceNA, apertureValue);
                 else
                     system.Aperture = new Aperture(ApertureType.EPD, apertureValue);
             }
@@ -212,9 +214,22 @@ namespace LensHH.Core.IO
                             surface.Thickness = 0; // image surface
                         }
 
-                        // Object surface: always infinite thickness
+                        // The object: at infinity when Optiland puts it there (z = -inf), otherwise
+                        // at its distance from the first surface - Optiland writes a finite object at
+                        // z = -d with the first surface at 0. An explicit thickness wins, one of 1e10
+                        // or more being infinity; with none, and no separation from the first surface,
+                        // the object is at infinity as before. (Every object was read as at infinity,
+                        // so a lens at a finite conjugate came in as another lens.)
                         if (i == 0)
-                            surface.Thickness = double.PositiveInfinity;
+                        {
+                            double z0 = zCoords[0];
+                            double t = !double.IsNaN(explicitThickness) ? explicitThickness
+                                     : double.IsInfinity(z0) || double.IsNaN(z0) || zCoords.Count < 2 ? double.PositiveInfinity
+                                     : zCoords[1] - z0;
+                            surface.Thickness = double.IsInfinity(t) || double.IsNaN(t) || Math.Abs(t) >= 1e10 || t <= 0.0
+                                ? double.PositiveInfinity
+                                : t;
+                        }
 
                         // Material (from material_post)
                         if (s.TryGetProperty("material_post", out var matPost) && matPost.ValueKind == JsonValueKind.Object)

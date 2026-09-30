@@ -79,7 +79,13 @@ namespace LensHH.Core.IO
             sb.AppendLine($"{indent}\"version\": 1.0,");
 
             // Aperture
-            string apertureType = system.Aperture.Type == ApertureType.FNumber ? "imageFNO" : "EPD";
+            // An object-space NA is Optiland's objectNA. (It went out as an EPD of the same number.)
+            string apertureType = system.Aperture.Type switch
+            {
+                ApertureType.FNumber => "imageFNO",
+                ApertureType.ObjectSpaceNA => "objectNA",
+                _ => "EPD",
+            };
             sb.AppendLine($"{indent}\"aperture\": {{");
             sb.AppendLine($"{indent}{indent}\"type\": \"{apertureType}\",");
             sb.AppendLine($"{indent}{indent}\"value\": {Fmt(system.Aperture.Value)},");

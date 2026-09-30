@@ -273,5 +273,69 @@ namespace LensHH.API.Tests
             Assert.Contains("OHARA", sys.GlassCatalogs);
             Assert.Equal(2, notes.Count);
         }
+
+        private static string Surface(int z, string material) =>
+            "{\"type\": \"Surface\", \"geometry\": {\"type\": \"StandardGeometry\", \"cs\": {\"z\": " + z + "}, \"radius\": 50.0, \"conic\": 0.0}, " +
+            "\"material_post\": " + material + ", \"is_stop\": false}";
+
+        private const string Air = "{\"type\": \"IdealMaterial\", \"index\": 1.0}";
+
+        // A finite object, laid out as Optiland writes one: the object at z = -d, the first surface at
+        // 0, an object-space NA. Every object used to be read as at infinity, and objectNA as an EPD of
+        // the same number.
+        [Fact]
+        public void AFiniteObjectAndAnObjectNaAreReadAsOptilandWritesThem()
+        {
+            string json = "{\"aperture\": {\"type\": \"objectNA\", \"value\": 0.05}, \"surface_group\": {\"surfaces\": [" +
+                "{\"type\": \"ObjectSurface\", \"geometry\": {\"type\": \"Plane\", \"cs\": {\"z\": -200.0}, \"radius\": Infinity}, \"material_post\": " + Air + "}, " +
+                Surface(0, Air) + ", " + Surface(5, Air) + ", " + Surface(85, Air) + "]}}";
+            string path = Path.Combine(_dir, "finite.json");
+            File.WriteAllText(path, json);
+
+            var sys = OptilandReader.Read(path, Catalogs(), out _);
+
+            Assert.Equal(200.0, sys.Surfaces[0].Thickness, 12);
+            Assert.Equal(ApertureType.ObjectSpaceNA, sys.Aperture.Type);
+            Assert.Equal(0.05, sys.Aperture.Value, 12);
+        }
+
+        // Written out, an object-space NA is Optiland's objectNA, and a finite object keeps its
+        // distance; read back, both come home. (The NA went out as an EPD of the same number, and the
+        // object came back at infinity.)
+        [Fact]
+        public void AnObjectNaAndAFiniteObjectGoOutAndComeBack()
+        {
+            var sys = Doublet();
+            sys.Surfaces[0].Thickness = 200.0;
+            sys.FieldType = FieldType.ObjectHeight;
+            sys.Aperture = new Aperture(ApertureType.ObjectSpaceNA, 0.05);
+            sys.Fields.Clear();
+            sys.Fields.Add(new Field(0.0, 1.0));
+            sys.Fields.Add(new Field(3.0, 1.0));
+            string path = Path.Combine(_dir, "finite_out.json");
+            var mgr = Catalogs();
+            OptilandWriter.Write(sys, path, mgr);
+            string json = File.ReadAllText(path);
+            Assert.Contains("\"type\": \"objectNA\"", json);
+
+            var back = OptilandReader.Read(path, mgr, out _);
+            Assert.Equal(ApertureType.ObjectSpaceNA, back.Aperture.Type);
+            Assert.Equal(0.05, back.Aperture.Value, 12);
+            Assert.Equal(200.0, back.Surfaces[0].Thickness, 9);
+            Assert.Equal(3.0, back.Fields[1].Y, 12);
+        }
+
+        // And an object at infinity, as Optiland writes it (z = -inf), stays there.
+        [Fact]
+        public void AnObjectAtInfinityStaysThere()
+        {
+            string json = "{\"aperture\": {\"type\": \"EPD\", \"value\": 10.0}, \"surface_group\": {\"surfaces\": [" +
+                "{\"type\": \"ObjectSurface\", \"geometry\": {\"type\": \"Plane\", \"cs\": {\"z\": -Infinity}, \"radius\": Infinity}, \"material_post\": " + Air + "}, " +
+                Surface(0, Air) + ", " + Surface(5, Air) + "]}}";
+            string path = Path.Combine(_dir, "infinite.json");
+            File.WriteAllText(path, json);
+
+            Assert.True(double.IsPositiveInfinity(OptilandReader.Read(path, Catalogs(), out _).Surfaces[0].Thickness));
+        }
     }
 }

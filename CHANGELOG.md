@@ -19,6 +19,14 @@ All notable changes to LensHH-LT and the LensHH-LT-Engine.
   The same change, made in AberrationCalculator's Optalix writer, was checked in Optalix:
   five ghost layouts, three of them reflecting inside glass, give the focal lengths
   LensHH-LT does.
+- **Optiland import put every object at infinity, and read an object NA as an EPD.** A
+  lens at a finite conjugate came in as another lens. The object is now at its distance:
+  Optiland writes a finite object at z = −d with the first surface at 0, and an object at
+  infinity at z = −∞; an explicit thickness wins, and with none and no separation from
+  the first surface the object stays at infinity as before. An `objectNA` aperture is now
+  an object-space NA; it fell through to an EPD of the same number.
+- **Optiland export wrote an object-space NA as an EPD.** It now goes out as Optiland's
+  `objectNA`, so a finite-conjugate lens exports and imports back unchanged.
 
 ## 1.0.158 — 2026-09-25
 
