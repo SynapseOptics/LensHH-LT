@@ -150,9 +150,14 @@ namespace LensHH.Core.IO
                     double n0 = Math.Abs(Indices()[0]);
                     nao = n0 * Math.Sin(Math.Atan(pupilRadius / ObjectToPupil()));
                 }
+                // OSLO's OBH is the object point's y (checked in OSLO 6.6: OBH 10, 100 before a
+                // singlet, sends the chief ray down through the stop to an image at y = -9.5). A
+                // field angle here aims the chief ray UP at the pupil, from an object BELOW the
+                // axis (ArbitraryRay), so the height is negative. (This wrote +d tan(angle): the
+                // object on the wrong side, every image in OSLO mirrored.)
                 double obh = system.FieldType == FieldType.ObjectHeight
                     ? maxField
-                    : ObjectToPupil() * Math.Tan(maxField * Math.PI / 180.0);
+                    : -ObjectToPupil() * Math.Tan(maxField * Math.PI / 180.0);
                 sb.AppendLine(string.Format(CultureInfo.InvariantCulture, "NAO {0:R}", nao));
                 sb.AppendLine(string.Format(CultureInfo.InvariantCulture, "OBH {0:R}", obh));
             }

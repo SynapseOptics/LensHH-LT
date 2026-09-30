@@ -90,8 +90,11 @@ namespace LensHH.Core.IO
                             system.FieldType = FieldType.ObjectAngle;
                             system.Fields.Clear();
                             system.Fields.Add(new Field(0, 1.0));
-                            if (ang > 0)
-                                system.Fields.Add(new Field(ang, 1.0));
+                            // By size, as OBH is below: the paraxial field scale takes the largest
+                            // signed field, so a lens whose only field is negative would have none.
+                            // (A negative angle used to be dropped altogether.)
+                            if (Math.Abs(ang) > 0)
+                                system.Fields.Add(new Field(Math.Abs(ang), 1.0));
                         }
                         break;
 
@@ -108,6 +111,10 @@ namespace LensHH.Core.IO
                             system.FieldType = FieldType.ObjectHeight;
                             system.Fields.Clear();
                             system.Fields.Add(new Field(0, 1.0));
+                            // OBH is the object point's y, and a field angle exported from here comes
+                            // out negative (see OsloWriter). It is read by size: the paraxial field
+                            // scale takes the largest signed field, so a negative-only field would be
+                            // lost. For a rotationally symmetric lens that is only a mirror image.
                             if (Math.Abs(obh) > 0)
                                 system.Fields.Add(new Field(Math.Abs(obh), 1.0));
                         }

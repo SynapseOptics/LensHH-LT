@@ -95,7 +95,28 @@ namespace LensHH.API.Tests
         {
             var sys = IdealLens(100.0, objectDistance: 200.0, imageDistance: 200.0);   // fields in degrees
             string text = Export(sys, null, out _);
-            Assert.Equal(200.0 * Math.Tan(10.0 * Math.PI / 180.0), Value(text, "OBH"), 9);
+            // A +10 degree field aims the chief ray up, from an object below the axis; OSLO's OBH
+            // is that point's y.
+            Assert.Equal(-200.0 * Math.Tan(10.0 * Math.PI / 180.0), Value(text, "OBH"), 9);
+        }
+
+        [Theory]
+        [InlineData("ANG -10", FieldType.ObjectAngle)]
+        [InlineData("OBH -10", FieldType.ObjectHeight)]
+        public void ANegativeFieldIsReadBySize(string fieldLine, FieldType type)
+        {
+            // The paraxial field scale takes the largest signed field, so a lens whose only field
+            // is negative would have none; a negative ANG used to be dropped altogether.
+            var path = Path.GetTempFileName() + ".len";
+            try
+            {
+                File.WriteAllText(path, "LEN NEW \"x\"\nUNI 1.0\nEBR 5\n" + fieldLine +
+                                        "\n// SRF 0\n  TH 200\nNXT // SRF 1\n  PFL 100\n  AST\n  TH 200\nNXT // SRF 2\n  TH 0\nEND 2\n");
+                var sys = OsloReader.Read(path);
+                Assert.Equal(type, sys.FieldType);
+                Assert.Equal(new[] { 0.0, 10.0 }, sys.Fields.Select(f => f.Y).ToArray());
+            }
+            finally { File.Delete(path); }
         }
 
         [Fact]
