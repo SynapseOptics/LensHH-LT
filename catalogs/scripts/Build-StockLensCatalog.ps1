@@ -14,6 +14,36 @@
 
 $LensesRoot = 'C:/GIT/SynapseLensHH-LT/LensHH-LT/catalogs/Lenses'
 
+function Repair-StockLensText {
+    # The vendors' .zmx files arrive with some characters already replaced by U+FFFD (the
+    # replacement character): the bytes in the files are EF BF BD, so the loss happened before
+    # this script, and the character cannot be read back. It is restored from context, where the
+    # context settles it, as in the 1005 cases in the catalog (2026-09-30):
+    #   - before a number, "=" or "(" and not after a digit: the diameter sign, "O25.4 mm", "O=7.20mm";
+    #   - before "m" as a unit, after a space or a digit: micro, "1.65-3.0 um", "7-12um";
+    #   - after a digit, before a space, comma, ")" or the end: degrees, "Axicon 0.5 deg", GRIN "8 deg,"
+    #     (one GRIN lens has the loss doubled, "8" + two, where its siblings have one: one degree sign).
+    # Anything else - Edmund's "... CTD TS" + one, TECHSPEC with a registered or trade mark sign,
+    # the text cannot say which - is left as it is.
+    param([AllowNull()] [string] $Text)
+    if ([string]::IsNullOrEmpty($Text)) { return $Text }
+    $F = [char]0xFFFD
+    $Text = [regex]::Replace($Text, "(?<=\d)$F$F(?=,)", [string][char]0x00B0)
+    $sb = New-Object System.Text.StringBuilder
+    for ($i = 0; $i -lt $Text.Length; $i++) {
+        $ch = $Text[$i]
+        if ($ch -ne $F) { [void]$sb.Append($ch); continue }
+        $prev = if ($i -gt 0) { [string]$Text[$i - 1] } else { '' }
+        $next = if ($i + 1 -lt $Text.Length) { $Text.Substring($i + 1) } else { '' }
+        if ($prev -eq [string]$F -or $next.StartsWith([string]$F)) { [void]$sb.Append($ch) }
+        elseif ($next -match '^\s?[\d=(]' -and $prev -notmatch '\d') { [void]$sb.Append([char]0x00D8) }        # diameter
+        elseif (($prev -eq ' ' -or $prev -match '\d') -and $next -match '^m(\b|[,\s)]|$)') { [void]$sb.Append([char]0x00B5) }  # micro
+        elseif ($prev -match '\d' -and $next -match '^(\s|,|\)|$)') { [void]$sb.Append([char]0x00B0) }      # degrees
+        else { [void]$sb.Append($ch) }
+    }
+    return $sb.ToString()
+}
+
 function ConvertFrom-ParaxialText {
     # Parses the text output of mcp__lenshh-lt__get_paraxial_data into a hashtable
     # with the columns Add-StockLens expects.
@@ -198,8 +228,8 @@ function Get-ZmxParsedData {
     # Header pass
     foreach ($line in $lines) {
         $t = $line.Trim()
-        if ($t -match '^NAME\s+(.+)$') { $data.system_name = $matches[1].Trim() }
-        elseif ($t -match '^NOTE\s+\d+\s+(.+)$') { $data.description = $matches[1].Trim() }
+        if ($t -match '^NAME\s+(.+)$') { $data.system_name = Repair-StockLensText $matches[1].Trim() }
+        elseif ($t -match '^NOTE\s+\d+\s+(.+)$') { $data.description = Repair-StockLensText $matches[1].Trim() }
         elseif ($t -match '^ENPD\s+([\d.eE+-]+)') { $data.enp_diameter_mm = [double]$matches[1] }
         elseif ($t -match '^WAVM\s+\d+\s+([\d.eE+-]+)') {
             # WAVM stores wavelength in micrometers
