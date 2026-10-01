@@ -17,9 +17,7 @@ All notable changes to LensHH-LT and the LensHH-LT-Engine.
   - **FFT MTF** (and MTF vs field and through focus). The off-axis pupil scale came from
     four edge rays of the paraxial pupil, and fell back to a round pupil whenever one of
     them was vignetted — which is most full-field points of a vignetted lens. It now comes
-    from the whole transmitted pupil. Against the validation reference data the RMS
-    difference falls from 0.018 to 0.011, with the largest gains at vignetted full fields
-    (0.070 to 0.017 on one Cooke triplet) and no case worse; on axis nothing changes.
+    from the whole transmitted pupil. On axis nothing changes.
   - **FFT PSF.** Off axis the pupil is stretched differently in the tangential and sagittal
     directions, so the image-plane pixel is too; one axial pixel size was used for both at
     every field. The PSF is now resampled onto the image plane's own square pixels, so its
