@@ -59,6 +59,13 @@ All notable changes to LensHH-LT and the LensHH-LT-Engine.
   `___BLANK`: the window was air, the back focus read −0.438 mm where the lens focuses at
   −0.002 mm, and OSLO export failed. The window now has its glass, and the catalog
   database its back focus and a resolved status.
+- **144 stock lenses never appeared in a stock-lens search.** Their glasses — ZnSe,
+  germanium, silicon, MgF₂, D-LAK6M and H-ZLAF52_MOLD — were added to the glass catalogs
+  after the lenses were imported, but the catalog still marked them unresolved, and search,
+  stock matching and the Sasian design search only take resolved lenses. Re-checked, every
+  glass now resolves and their stored focal lengths already match a fresh calculation, so
+  they are now marked resolved. Fourteen remain unresolved, for want of their glass: ten
+  Thorlabs GRIN lenses (SLW-1.8) and four 110V lenses (VIG06).
 - **Stock lens names lost their Ø, µ and ° signs.** 927 names in the stock-lens catalog,
   almost all Thorlabs, showed a replacement character where the vendor's file had the
   sign: "�25.4 mm", "1.65-3.0 �m", "Axicon 0.5�". The vendors' files arrive with the
