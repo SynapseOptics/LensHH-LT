@@ -35,6 +35,15 @@ All notable changes to LensHH-LT and the LensHH-LT-Engine.
 
 ### Fixed
 
+- **Obscured systems had no analyses (1.0.157–1.0.158).** Any design with a central
+  obstruction — a Cassegrain, Ritchey-Chrétien, Houghton, Schmidt-Cassegrain — gave an
+  empty wavefront map, a spot RMS of 0 and an MTF of nothing, and the optimizer's
+  chief-ray operands failed on it. 1.0.157 made the obstruction block light, as it should,
+  but it blocked the chief ray too, and every analysis measures from the chief ray. The
+  chief ray is now a reference that passes the obstruction, as in ZEMAX; every other ray
+  inside it is still blocked. A ZEMAX import also clipped the obstruction's surface at its
+  mechanical radius (MEMA), which ZEMAX sets to the obstruction's own size, so no ray
+  outside it got through either; that radius no longer clips there. Both engines.
 - **Optalix: a mirror inside glass lost its glass, both ways.** In Optalix a glass named
   on a mirror (`SUT SM`) is the medium the light goes on in after it — the one it came
   in: a Mangin mirror is `SUT SM` with `GLA BK7`, as every such file among Optalix's own
