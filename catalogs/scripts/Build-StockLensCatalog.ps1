@@ -23,12 +23,15 @@ function Repair-StockLensText {
     #   - before "m" as a unit, after a space or a digit: micro, "1.65-3.0 um", "7-12um";
     #   - after a digit, before a space, comma, ")" or the end: degrees, "Axicon 0.5 deg", GRIN "8 deg,"
     #     (one GRIN lens has the loss doubled, "8" + two, where its siblings have one: one degree sign).
-    # Anything else - Edmund's "... CTD TS" + one, TECHSPEC with a registered or trade mark sign,
-    # the text cannot say which - is left as it is.
+    #   - after Edmund's "TS" (TECHSPEC) at the end of the text: dropped. A registered or trade mark
+    #     sign, the text cannot say which, and Edmund's other descriptions end in a bare "TS" (the
+    #     18 UV fused silica lenses 26-600..26-622).
+    # Anything else is left as it is.
     param([AllowNull()] [string] $Text)
     if ([string]::IsNullOrEmpty($Text)) { return $Text }
     $F = [char]0xFFFD
     $Text = [regex]::Replace($Text, "(?<=\d)$F$F(?=,)", [string][char]0x00B0)
+    $Text = [regex]::Replace($Text, "(?<=\bTS)$F$", '')
     $sb = New-Object System.Text.StringBuilder
     for ($i = 0; $i -lt $Text.Length; $i++) {
         $ch = $Text[$i]

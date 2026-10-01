@@ -65,8 +65,8 @@ All notable changes to LensHH-LT and the LensHH-LT-Engine.
   character already replaced, so it is restored from context — the diameter sign before a
   number, micro before a metre, degrees after an angle — and the catalog build now does
   the same. Three lens titles are repaired likewise. Eighteen Edmund descriptions ending
-  "CTD TS" + the lost character are left as they are: the text cannot say whether it was
-  ® or ™.
+  "CTD TS" + the lost character (TECHSPEC with ® or ™ — the text cannot say which) now end
+  in a bare "TS", as Edmund's other descriptions do.
 - **OSLO export dropped an r² aspheric term.** OSLO's standard asphere starts at r⁴, so the
   term was left out and OSLO opened another lens. A surface with one is now refused with a
   message naming it, as the Code V and Optalix exporters already did.
