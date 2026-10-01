@@ -131,12 +131,15 @@ namespace LensHH.Core.IO
             {
                 // Distance from the object to the entrance pupil, which an EPD or a field angle
                 // needs to become an object NA or height. A telecentric object space has none.
-                double ObjectToPupil()
+                // Signed, it is the distance the ray trace places a field angle's object point
+                // with (negative when the pupil lies before the object).
+                double ObjectToPupil(bool signed = false)
                 {
                     if (system.TelecentricObjectSpace)
                         throw new InvalidOperationException(
                             "A telecentric object space has no finite entrance pupil to convert this aperture or field with; give an object NA and object heights.");
-                    return Math.Abs(ArbitraryRay.ComputeEntrancePupilPosition(system, Indices()) + system.Surfaces[0].Thickness);
+                    double d = ArbitraryRay.ComputeEntrancePupilPosition(system, Indices()) + system.Surfaces[0].Thickness;
+                    return signed ? d : Math.Abs(d);
                 }
 
                 double nao;
@@ -153,11 +156,12 @@ namespace LensHH.Core.IO
                 // OSLO's OBH is the object point's y (checked in OSLO 6.6: OBH 10, 100 before a
                 // singlet, sends the chief ray down through the stop to an image at y = -9.5). A
                 // field angle here aims the chief ray UP at the pupil, from an object BELOW the
-                // axis (ArbitraryRay), so the height is negative. (This wrote +d tan(angle): the
-                // object on the wrong side, every image in OSLO mirrored.)
+                // axis (ArbitraryRay), so the height is negative - positive only when the pupil
+                // lies before the object. (This wrote +|d| tan(angle): the object on the wrong
+                // side, every image in OSLO mirrored.)
                 double obh = system.FieldType == FieldType.ObjectHeight
                     ? maxField
-                    : -ObjectToPupil() * Math.Tan(maxField * Math.PI / 180.0);
+                    : -ObjectToPupil(signed: true) * Math.Tan(maxField * Math.PI / 180.0);
                 sb.AppendLine(string.Format(CultureInfo.InvariantCulture, "NAO {0:R}", nao));
                 sb.AppendLine(string.Format(CultureInfo.InvariantCulture, "OBH {0:R}", obh));
             }

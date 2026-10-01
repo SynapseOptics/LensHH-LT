@@ -100,6 +100,21 @@ namespace LensHH.API.Tests
             Assert.Equal(-200.0 * Math.Tan(10.0 * Math.PI / 180.0), Value(text, "OBH"), 9);
         }
 
+        [Fact]
+        public void AnObjectAfterItsEntrancePupilGetsAPositiveHeight()
+        {
+            // The stop 150 behind an f = 100 lens: its image, the entrance pupil, is 300 in front
+            // of the lens - 100 before the object at 200. A +10 degree chief ray rises toward that
+            // point, so it starts ABOVE the axis, at +100 tan(10), as the ray trace places it.
+            var sys = IdealLens(100.0, objectDistance: 200.0, imageDistance: 150.0);
+            sys.Surfaces[1].IsStop = false;
+            sys.Surfaces[2].IsStop = true;
+            sys.Surfaces[2].Thickness = 50.0;
+            sys.Surfaces.Add(new Surface { Index = 3, Thickness = 0 });
+            string text = Export(sys, null, out _);
+            Assert.Equal(100.0 * Math.Tan(10.0 * Math.PI / 180.0), Value(text, "OBH"), 6);
+        }
+
         [Theory]
         [InlineData("ANG -10", FieldType.ObjectAngle)]
         [InlineData("OBH -10", FieldType.ObjectHeight)]

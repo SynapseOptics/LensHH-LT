@@ -77,7 +77,8 @@ All notable changes to LensHH-LT and the LensHH-LT-Engine.
 - **OSLO export put a finite object on the wrong side of the axis.** A field angle at a
   finite object became `OBH = +d·tan θ`, but OSLO's OBH is the object point's y, and a
   positive field angle comes from an object below the axis. Every image opened mirrored in
-  OSLO. OBH is now negative for a positive angle. OSLO import also dropped a negative `ANG`,
+  OSLO. OBH is now where the ray trace starts the chief ray: negative for a positive angle,
+  or positive when the entrance pupil lies before the object. OSLO import also dropped a negative `ANG`,
   leaving only the on-axis field; it is now read by its size, as `OBH` already was.
 - **Optiland export wrote an object-space NA as an EPD.** It now goes out as Optiland's
   `objectNA`, so a finite-conjugate lens exports and imports back unchanged.
