@@ -42,6 +42,13 @@ All notable changes to LensHH-LT and the LensHH-LT-Engine.
   still blocked. A `.zmx` import also clipped the obstruction's surface at its mechanical
   radius (MEMA), which the file sets to the obstruction's own size, so no ray
   outside it got through either; that radius no longer clips there. Both engines.
+- **A `.zmx` dummy surface with a tiny fixed size blocked the whole beam.** Some designs hide
+  a flat dummy surface in the layout by giving it a fixed semi-diameter and mechanical
+  radius of 1e-6 mm, with no aperture on it; the importer turned both into clear apertures,
+  and no ray got past. A Maksutov, for one, had no analyses at all. In a `.zmx` file only an
+  aperture blocks light, so a flat surface with air on both sides, that is not the stop and
+  carries no aperture, now imports with an automatic semi-diameter and no mechanical clip.
+  Lens surfaces keep their fixed semi-diameters.
 - **FFT MTF cut-off frequencies are each field's own.** The tangential and sagittal cut-off
   frequencies printed for each field are now where that field's MTF actually ends: the
   on-axis cut-off times the width of the field's transmitted light cone in each direction —

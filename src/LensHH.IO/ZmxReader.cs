@@ -719,15 +719,48 @@ namespace LensHH.Core.IO
             return fields;
         }
 
+        // The .zmx records that put an aperture - something that blocks light - on a surface.
+        private static readonly HashSet<string> ApertureKeywords = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "CLAP", "FLAP", "OBSC", "SQAP", "SQOB", "ELAP", "ELOB", "SPID", "UDAP", "UDOB",
+        };
+
         private static List<Surface> ReadSurfaces(string[] lines)
         {
             var surfaces = new List<Surface>();
             var surfaceBlocks = ExtractSurfaceBlocks(lines);
 
+            var hasAperture = new List<bool>();
             foreach (var block in surfaceBlocks)
             {
                 var surface = ParseSurfaceBlock(block);
                 surfaces.Add(surface);
+                hasAperture.Add(block.Skip(1).Any(l =>
+                {
+                    var p = SplitLine(l);
+                    return p.Length > 0 && ApertureKeywords.Contains(p[0]);
+                }));
+            }
+
+            // A flat air-to-air dummy is not a lens edge. In a .zmx file a semi-diameter blocks
+            // light only through an aperture record on the surface (CLAP, FLAP, OBSC, ...); a
+            // dummy's fixed DIAM and its MEMA size the drawing. LensHH clips at a Fixed semi-
+            // diameter - right for a lens edge, which a stock-lens file fixes to the part - and at
+            // the MEMA it reads into ClapOuterRadius, so a dummy written with DIAM and MEMA
+            // 1e-6 (a Maksutov's, to hide it in the layout) blocked every ray. Such a surface -
+            // flat, air on both sides, not the stop, no aperture record - is imported with an
+            // Auto semi-diameter and no MEMA clip. Lens surfaces keep the Fixed convention.
+            for (int i = 1; i < surfaces.Count - 1; i++)
+            {
+                var s = surfaces[i];
+                if (hasAperture[i] || s.IsStop || s.Type != SurfaceType.Standard || s.Curvature != 0.0
+                    || s.ModelIndexEnabled || surfaces[i - 1].ModelIndexEnabled
+                    || !string.IsNullOrEmpty(s.Material) || !string.IsNullOrEmpty(surfaces[i - 1].Material)
+                    || (s.AsphericCoefficients != null && s.AsphericCoefficients.Any(c => c != 0.0)))
+                    continue;
+                if (s.SemiDiameterMode == Enums.SemiDiameterMode.Fixed)
+                    s.SemiDiameterMode = Enums.SemiDiameterMode.Auto;
+                s.ClapOuterRadius = 0.0;
             }
 
             return surfaces;
