@@ -44,6 +44,16 @@ All notable changes to LensHH-LT and the LensHH-LT-Engine.
   still blocked. A `.zmx` import also clipped the obstruction's surface at its mechanical
   radius (MEMA), which the file sets to the obstruction's own size, so no ray
   outside it got through either; that radius no longer clips there. Both engines.
+- **FFT MTF cut-off frequencies are each field's own.** The tangential and sagittal cut-off
+  frequencies printed for each field are now where that field's MTF actually ends: the
+  on-axis cut-off times the width of the field's transmitted light cone in each direction —
+  the same cone behind the Relative Illumination analysis's effective F/#, so vignetting
+  narrows it. The polychromatic MTF printed the on-axis cut-off at every field; the
+  monochromatic one used the pupil's scale, which on a vignetted field overstated the
+  tangential cut-off about twofold (0.81 of the on-axis value where the clipped cone reaches
+  0.42, on a vignetted Cooke triplet at 20°). The polychromatic cut-off also now comes from
+  the shortest wavelength that carries weight; a wavelength weighted 0 used to set it. The
+  MTF curves and the plotted diffraction limit are unchanged.
 - **Optalix: a mirror inside glass lost its glass, both ways.** In Optalix a glass named
   on a mirror (`SUT SM`) is the medium the light goes on in after it — the one it came
   in: a Mangin mirror is `SUT SM` with `GLA BK7`, as every such file among Optalix's own
