@@ -42,6 +42,14 @@ All notable changes to LensHH-LT and the LensHH-LT-Engine.
   still blocked. A `.zmx` import also clipped the obstruction's surface at its mechanical
   radius (MEMA), which the file sets to the obstruction's own size, so no ray
   outside it got through either; that radius no longer clips there. Both engines.
+- **The optimizer penalized an obscured design for its own obstruction.** A ray stopped by a
+  central obscuration or a central hole was treated as vignetting: penalized on axis
+  always, and at every field with Penalize Vignetting on. Off axis an obstruction away
+  from the pupil casts its shadow off centre, onto pupil samples the merit expects to
+  pass, so the merit of a Schmidt-Cassegrain or a Houghton with Penalize Vignetting read
+  above 10⁵ for an obstruction no design change can remove. A ray an obscuration stops is
+  now dropped from the merit without penalty, on axis or off; vignetting by an outer
+  aperture is penalized as before. Both engines.
 - **A `.zmx` dummy surface with a tiny fixed size blocked the whole beam.** Some designs hide
   a flat dummy surface in the layout by giving it a fixed semi-diameter and mechanical
   radius of 1e-6 mm, with no aperture on it; the importer turned both into clear apertures,
