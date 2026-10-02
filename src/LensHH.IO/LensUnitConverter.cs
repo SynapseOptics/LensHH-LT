@@ -42,6 +42,7 @@ namespace LensHH.Core.IO
                 surface.SemiDiameter *= scale;
                 surface.InnerRadius *= scale;
                 surface.ClapOuterRadius *= scale;
+                surface.MechanicalSemiDiameter *= scale;
                 surface.ObscurationRadius *= scale;
                 surface.FloatingApertureRadius *= scale;
 

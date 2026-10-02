@@ -76,6 +76,8 @@ namespace LensHH.Core.IO
                     InnerRadius = s.InnerRadius,
                     ObscurationRadius = s.ObscurationRadius,
                     FloatingApertureRadius = s.FloatingApertureRadius,
+                    ClapOuterRadius = s.ClapOuterRadius > 0 ? s.ClapOuterRadius : (double?)null,
+                    MechanicalSemiDiameter = s.MechanicalSemiDiameter > 0 ? s.MechanicalSemiDiameter : (double?)null,
                     CurvatureVariable = s.CurvatureVariable,
                     ThicknessVariable = s.ThicknessVariable,
                     ConicVariable = s.ConicVariable,

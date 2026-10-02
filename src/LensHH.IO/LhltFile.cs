@@ -96,6 +96,10 @@ namespace LensHH.Core.IO
         public double InnerRadius { get; set; }
         public double ObscurationRadius { get; set; }
         public double FloatingApertureRadius { get; set; }
+        /// <summary>Outer radius of a clear aperture; blocks rays beyond it. Omitted when none.</summary>
+        public double? ClapOuterRadius { get; set; }
+        /// <summary>Mechanical semi-diameter: the drawn edge, never a ray block. Omitted when none.</summary>
+        public double? MechanicalSemiDiameter { get; set; }
 
         // Aspheric coefficients (only serialized if non-zero)
         public double[]? AsphericCoefficients { get; set; }

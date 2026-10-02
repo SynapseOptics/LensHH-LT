@@ -208,17 +208,17 @@ namespace LensHH.Core.IO
             }
 
             // Stock-lens EPD override: if Aperture is EPD-type and the stop surface
-            // has a CLAP outer radius defined, replace the ENPD-derived value with
-            // the optical CA diameter (= 2 × CLAP outer radius). Vendor stock-lens
-            // .zmx files set ENPD = mechanical OD (the part's full diameter), but
-            // the lens's effective optical aperture is the smaller CLAP zone. Using
-            // CLAP as the EPD prevents marginal rays from being launched outside
-            // the lens's good optical region (which previously caused rays to
-            // appear "through air" past the lens edge in layout drawings).
+            // has a CLAP outer radius SMALLER than the ENPD radius, the CLAP diameter
+            // becomes the EPD. Vendor stock-lens .zmx files set ENPD = mechanical OD
+            // (the part's full diameter), but the lens's effective optical aperture is
+            // the smaller CLAP zone; launching the ENPD beam would put marginal rays
+            // outside it. A CLAP larger than ENPD (a telescope primary's annulus, CLAP
+            // 26 80 under ENPD 150) does not limit the beam, so ENPD stands - the
+            // override used to widen such a pupil to the CLAP.
             if (system.Aperture.Type == ApertureType.EPD)
             {
                 double stopClapOuter = ExtractStopClapOuter(lines, system.StopSurfaceIndex);
-                if (stopClapOuter > 0)
+                if (stopClapOuter > 0 && stopClapOuter * 2.0 < system.Aperture.Value)
                     system.Aperture = new Aperture(ApertureType.EPD, stopClapOuter * 2.0);
             }
 
@@ -258,9 +258,9 @@ namespace LensHH.Core.IO
             // surface's semi-diameter (the "element" ended at the first air surface after it), and
             // turning ray aiming off. On a paraboloid at 0.5 degrees that moved RI by 2e-4.
             if (stopSurf.IsMirror) return;
-            double clap = stopSurf.SemiDiameter > 0
-                ? stopSurf.SemiDiameter
-                : stopSurf.ClapOuterRadius; // MEMA-only vendor files: no DIAM/CLAP, only MEMA
+            double clap = stopSurf.SemiDiameter > 0 ? stopSurf.SemiDiameter
+                : stopSurf.ClapOuterRadius > 0 ? stopSurf.ClapOuterRadius
+                : stopSurf.MechanicalSemiDiameter; // MEMA-only vendor files: no DIAM/CLAP, only MEMA
             if (clap <= 0) return;                                // no aperture info at all
 
             // Walk forward through the bonded element group: contiguous vertices
@@ -277,7 +277,8 @@ namespace LensHH.Core.IO
             double mema = 0.0;
             for (int i = stopIdx; i <= groupEnd; i++)
             {
-                double v = system.Surfaces[i].ClapOuterRadius;
+                var si = system.Surfaces[i];
+                double v = si.MechanicalSemiDiameter > 0 ? si.MechanicalSemiDiameter : si.ClapOuterRadius;
                 if (v > mema) mema = v;
             }
             if (mema <= 0) mema = clap;
@@ -301,6 +302,10 @@ namespace LensHH.Core.IO
                 s.SemiDiameter = mema;
                 s.SemiDiameterMode = SemiDiameterMode.Fixed;
                 s.ClearAperturePercent = cap;
+                // The dummy stop now limits the beam to the CA; the element's faces clip at
+                // their edge, the fixed semi-diameter, and draw there.
+                s.ClapOuterRadius = 0.0;
+                s.MechanicalSemiDiameter = mema;
                 if (i == stopIdx) s.IsStop = false;
             }
 
@@ -375,9 +380,8 @@ namespace LensHH.Core.IO
         /// <summary>
         /// Walk the raw .zmx lines and return the CLAP outer radius written on
         /// the given stop-surface block, or 0 if no CLAP keyword appears there.
-        /// Independent re-scan because ParseSurfaceBlock writes CLAP into
-        /// surface.ClapOuterRadius only when MEMA hasn't already populated it
-        /// — so the surface model alone can't tell us the original CLAP value.
+        /// Reads the file rather than the surface model, so the answer does not
+        /// depend on what later passes do to the parsed surfaces.
         /// </summary>
         private static double ExtractStopClapOuter(string[] lines, int stopIndex)
         {
@@ -745,11 +749,12 @@ namespace LensHH.Core.IO
             // A flat air-to-air dummy is not a lens edge. In a .zmx file a semi-diameter blocks
             // light only through an aperture record on the surface (CLAP, FLAP, OBSC, ...); a
             // dummy's fixed DIAM and its MEMA size the drawing. LensHH clips at a Fixed semi-
-            // diameter - right for a lens edge, which a stock-lens file fixes to the part - and at
-            // the MEMA it reads into ClapOuterRadius, so a dummy written with DIAM and MEMA
-            // 1e-6 (a Maksutov's, to hide it in the layout) blocked every ray. Such a surface -
-            // flat, air on both sides, not the stop, no aperture record - is imported with an
-            // Auto semi-diameter and no MEMA clip. Lens surfaces keep the Fixed convention.
+            // diameter - right for a lens edge, which a stock-lens file fixes to the part - so a
+            // dummy written with a fixed DIAM of 1e-6 (a Maksutov's, to hide it in the layout)
+            // blocked every ray. Such a surface - flat, air on both sides, not the stop, no
+            // aperture record - is imported with an Auto semi-diameter. Its MEMA, kept as the
+            // mechanical semi-diameter, still hides it in the layout and never clips. Lens
+            // surfaces keep the Fixed convention.
             for (int i = 1; i < surfaces.Count - 1; i++)
             {
                 var s = surfaces[i];
@@ -760,7 +765,6 @@ namespace LensHH.Core.IO
                     continue;
                 if (s.SemiDiameterMode == Enums.SemiDiameterMode.Fixed)
                     s.SemiDiameterMode = Enums.SemiDiameterMode.Auto;
-                s.ClapOuterRadius = 0.0;
             }
 
             return surfaces;
@@ -941,28 +945,21 @@ namespace LensHH.Core.IO
                         // CLAP inner_radius outer_radius x_decenter
                         // inner_radius : central hole (annular aperture, e.g. Cassegrain primary).
                         // outer_radius : optical clear-aperture zone (the "good" optical region).
-                        //
-                        // For stock-lens imports we prefer MEMA (mechanical extent) over CLAP
-                        // for ClapOuterRadius (the drawn extent). Apply CLAP only if MEMA
-                        // hasn't already populated it — keeps the answer order-independent
-                        // regardless of which keyword OpticStudio writes first.
+                        // A real aperture: rays beyond outer_radius are blocked.
                         // The CLAP outer is RE-EXTRACTED at end of Read() to override the
                         // system EPD aperture (see ExtractStopClapOuter).
                         if (parts.Length >= 2 && TryParseDouble(parts[1], out double clapInner))
                             surface.InnerRadius = clapInner;
-                        if (parts.Length >= 3 && TryParseDouble(parts[2], out double clapOuter)
-                            && surface.ClapOuterRadius <= 0)
+                        if (parts.Length >= 3 && TryParseDouble(parts[2], out double clapOuter))
                             surface.ClapOuterRadius = clapOuter;
                         break;
 
                     case "MEMA":
-                        // MEMA semi_diameter ... — mechanical maximum aperture (full lens OD / 2).
-                        // Drives ClapOuterRadius (drawn extent) for stock-lens imports, where
-                        // we want the layout to show the part's mechanical edge, not just the
-                        // optical CA zone. Overrides any CLAP value previously set on this
-                        // surface (CLAP only sets ClapOuterRadius when ClapOuterRadius is 0).
+                        // MEMA semi_diameter flag ... - the mechanical semi-diameter (lens OD / 2),
+                        // auto (flag 0) or fixed. In ZEMAX it blocks no ray, fixed or not: it is the
+                        // drawn edge of the part. Kept for the layout and for export only.
                         if (parts.Length >= 2 && TryParseDouble(parts[1], out double memaR) && memaR > 0)
-                            surface.ClapOuterRadius = memaR;
+                            surface.MechanicalSemiDiameter = memaR;
                         break;
 
                     case "OBSC":

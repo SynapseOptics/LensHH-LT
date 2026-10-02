@@ -199,8 +199,13 @@ namespace LensHH.Core.IO
                 if (surface.Conic != 0)
                     sb.AppendLine(FormatDouble("  CONI", surface.Conic));
 
+                // The drawn edge of the part. ZEMAX's MEMA never blocks a ray, like
+                // MechanicalSemiDiameter.
+                if (surface.MechanicalSemiDiameter > 0)
+                    sb.AppendLine($"  MEMA {surface.MechanicalSemiDiameter.ToString("G17", CultureInfo.InvariantCulture)} 1 0 0 1 \"\"");
+
                 // Aperture types
-                if (surface.InnerRadius > 0)
+                if (surface.InnerRadius > 0 || surface.ClapOuterRadius > 0)
                 {
                     double clapOuter = surface.ClapOuterRadius > 0 ? surface.ClapOuterRadius : surface.SemiDiameter;
                     sb.AppendLine($"  CLAP {surface.InnerRadius.ToString("G17", CultureInfo.InvariantCulture)} {clapOuter.ToString("G17", CultureInfo.InvariantCulture)} 0");

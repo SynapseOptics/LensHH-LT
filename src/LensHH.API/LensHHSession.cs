@@ -1417,6 +1417,7 @@ namespace LensHH.API
                 if (surf.SemiDiameterMode == SemiDiameterMode.Fixed && surf.SemiDiameter > 0) surf.SemiDiameter *= s;
                 if (surf.InnerRadius > 0) surf.InnerRadius *= s;
                 if (surf.ClapOuterRadius > 0) surf.ClapOuterRadius *= s;
+                if (surf.MechanicalSemiDiameter > 0) surf.MechanicalSemiDiameter *= s;
                 if (surf.ObscurationRadius > 0) surf.ObscurationRadius *= s;
                 if (surf.FloatingApertureRadius > 0) surf.FloatingApertureRadius *= s;
 

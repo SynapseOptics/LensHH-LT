@@ -110,6 +110,7 @@ namespace LensHH.Core.IO
                 IsStop                 = s.IsStop,
                 InnerRadius            = s.InnerRadius,
                 ClapOuterRadius        = s.ClapOuterRadius,
+                MechanicalSemiDiameter = s.MechanicalSemiDiameter,
                 ObscurationRadius      = s.ObscurationRadius,
                 FloatingApertureRadius = s.FloatingApertureRadius,
             };

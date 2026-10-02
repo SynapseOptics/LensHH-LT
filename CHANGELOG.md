@@ -57,6 +57,16 @@ All notable changes to LensHH-LT and the LensHH-LT-Engine.
   aperture blocks light, so a flat surface with air on both sides, that is not the stop and
   carries no aperture, now imports with an automatic semi-diameter and no mechanical clip.
   Lens surfaces keep their fixed semi-diameters.
+- **`.zmx` import: a part's mechanical size clipped rays, and could change the pupil.** The
+  mechanical semi-diameter (MEMA) was read as a clear aperture, so wherever it was smaller
+  than the beam it vignetted, and where a surface had both, it replaced the real clear
+  aperture (CLAP). It is now a drawing-only mechanical semi-diameter: the layout draws the part
+  to it and the `.zmx` export writes it back, but it never stops a ray. Separately, the stop's
+  clear aperture replaced the file's entrance pupil diameter even when it was larger, which
+  widened the pupil: a Ritchey-Chrétien imported with a 160 mm pupil instead of 150 and lost
+  44 % of its axial rays, and several Thorlabs and Edmund stock lenses were imported with a
+  pupil wider than their clear aperture. It now narrows the pupil only. `.lhlt` files now
+  keep the clear and mechanical radii; a clear aperture was lost on save.
 - **FFT MTF cut-off frequencies are each field's own.** The tangential and sagittal cut-off
   frequencies printed for each field are now where that field's MTF actually ends: the
   on-axis cut-off times the width of the field's transmitted light cone in each direction —
