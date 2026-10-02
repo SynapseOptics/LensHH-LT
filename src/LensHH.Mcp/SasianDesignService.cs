@@ -738,7 +738,9 @@ namespace LensHH.Mcp
                 cmd.CommandText =
                     "SELECT vendor, part_number, family, efl_mm, diameter_mm, nd_primary "
                     + "FROM stock_lenses WHERE import_status='ok' AND n_elements=1 "
-                    + "AND diameter_mm >= @minD AND diameter_mm <= @maxD AND efl_mm IS NOT NULL";
+                    // The beam must fit the clear aperture (enp_diameter_mm); the cap is on the part's
+                    // outer diameter (diameter_mm).
+                    + "AND COALESCE(NULLIF(enp_diameter_mm, 0), diameter_mm) >= @minD AND diameter_mm <= @maxD AND efl_mm IS NOT NULL";
                 cmd.Parameters.AddWithValue("@minD", minDiameter);
                 cmd.Parameters.AddWithValue("@maxD", maxDiameter);
                 using var rdr = cmd.ExecuteReader();

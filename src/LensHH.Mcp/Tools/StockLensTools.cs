@@ -140,7 +140,7 @@ namespace LensHH.Mcp.Tools
             + "  • 'split_pcx'        – two plano-convex singlets, plano sides facing, combined power matches target (both POSITIVE only).\n"
             + "  • 'split_pcc'        – two plano-concave singlets, plano sides facing, combined power matches target (both NEGATIVE only).\n"
             + "  • 'split_pcx_pcc'    – one PCX + one PCC plano-to-plano (the Sasian trick). Combined power can be net positive or net negative. The two different glasses give chromatic trim a single catalog lens can't provide.\n\n"
-            + "Diameter constraints: every candidate's diameter_mm must be >= 2 × targetSemiDiameter; if maxDiameter is given, also <= maxDiameter (filters out preposterous oversized parts like Ø162 mm singlets paired with a Ø47 design).\n\n"
+            + "Diameter constraints: every candidate's clear aperture must be >= 2 × targetSemiDiameter; if maxDiameter is given, its outer diameter must also be <= maxDiameter (filters out preposterous oversized parts like Ø162 mm singlets paired with a Ø47 design).\n\n"
             + "Aspherics: excludeAspherics defaults to TRUE. Aspheric singlets (Thorlabs AL/ACL series, Edmund 'Aspheric*' family) are tuned for single-wavelength laser focusing and behave poorly under polychromatic field-of-view loads. Set excludeAspherics=false if you specifically want them.\n\n"
             + "Ranking: combined-EFL closeness + half-weighted glass-distance from targetNd (if given) + (pair only) aperture-mismatch penalty (favors pairs whose two diameters are similar; punishes mixing Ø25 + Ø162). The mismatch term uses |log2(D_A/D_B)|.\n\n"
             + "Output: one line per candidate / pair, format depends on pattern.")]
@@ -177,11 +177,13 @@ namespace LensHH.Mcp.Tools
             var pool = new List<StockLens>();
             using (var cmd = conn.CreateCommand())
             {
+                // The beam must fit the part's clear aperture (enp_diameter_mm), not its outer
+                // diameter (diameter_mm, about 10% larger); the cap is on the part's size.
                 cmd.CommandText =
                     "SELECT vendor, part_number, family, efl_mm, diameter_mm, nd_primary, vd_primary "
                     + "FROM stock_lenses "
                     + "WHERE import_status='ok' AND n_elements=1 "
-                    + "AND diameter_mm >= @minD "
+                    + "AND COALESCE(NULLIF(enp_diameter_mm, 0), diameter_mm) >= @minD "
                     + (maxDiameter.HasValue ? "AND diameter_mm <= @maxD " : "")
                     + "AND efl_mm IS NOT NULL";
                 cmd.Parameters.AddWithValue("@minD", minDiameter);

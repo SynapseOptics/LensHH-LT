@@ -47,6 +47,34 @@ function Repair-StockLensText {
     return $sb.ToString()
 }
 
+function Test-StockLensNoteIsDescription {
+    # A NOTE line that describes the lens, as Edmund's do ("LENS ACH 18 X 35 YAG-BBAR TS"), and
+    # not one of the other things vendors put there: Thorlabs' disclaimer, split over two lines so
+    # that the last reads "ABS.COM"; a contact address; a bare number; OpticStudio's placeholder
+    # "Notes..."; or a remark on the design's history ("Changed material types due to ...").
+    param([AllowNull()] [string] $Text)
+    if ([string]::IsNullOrWhiteSpace($Text)) { return $false }
+    $t = $Text.Trim()
+    if ($t -match '^ABS\.COM$' -or $t -match 'FOR INFORMATION ONLY' -or $t -match 'TECHSUPPORT@') { return $false }
+    if ($t -match '^\S+@\S+\.\S+$') { return $false }
+    if ($t -match '^[-+]?[\d.]+$') { return $false }
+    if ($t -match '^Notes\.*$') { return $false }
+    if ($t -match '^Changed material types') { return $false }
+    return $true
+}
+
+function Select-StockLensDescription {
+    # The lens's description: the last NOTE line that describes it, else its NAME - which is where
+    # Thorlabs and Ross Optical write theirs ("LA4464-AB, Plano-Convex - UV Fused Silica Lens, with
+    # AB coating"; "PLANO-CONVEX; 29.00MM DIA; 50.00MM EFL") - unless the NAME is only part numbers
+    # ("354062", "355486 /355485").
+    param([string[]] $Notes, [AllowNull()] [string] $Name)
+    $good = @($Notes | Where-Object { Test-StockLensNoteIsDescription $_ })
+    if ($good.Count -gt 0) { return $good[-1].Trim() }
+    if (-not [string]::IsNullOrWhiteSpace($Name) -and $Name.Trim() -notmatch '^[\d\s/-]+$') { return $Name.Trim() }
+    return $null
+}
+
 function ConvertFrom-ParaxialText {
     # Parses the text output of mcp__lenshh-lt__get_paraxial_data into a hashtable
     # with the columns Add-StockLens expects.
@@ -229,10 +257,11 @@ function Get-ZmxParsedData {
     }
 
     # Header pass
+    $notes = New-Object System.Collections.ArrayList
     foreach ($line in $lines) {
         $t = $line.Trim()
         if ($t -match '^NAME\s+(.+)$') { $data.system_name = Repair-StockLensText $matches[1].Trim() }
-        elseif ($t -match '^NOTE\s+\d+\s+(.+)$') { $data.description = Repair-StockLensText $matches[1].Trim() }
+        elseif ($t -match '^NOTE\s+\d+\s+(.+)$') { [void]$notes.Add((Repair-StockLensText $matches[1].Trim())) }
         elseif ($t -match '^ENPD\s+([\d.eE+-]+)') { $data.enp_diameter_mm = [double]$matches[1] }
         elseif ($t -match '^WAVM\s+\d+\s+([\d.eE+-]+)') {
             # WAVM stores wavelength in micrometers
@@ -240,6 +269,7 @@ function Get-ZmxParsedData {
         }
         elseif ($t -match '^DBDT\s+0\s+(\S+)') { $data.part_number = $matches[1] }
     }
+    $data.description = Select-StockLensDescription -Notes $notes -Name $data.system_name
 
     # Surface pass -- accumulate per-surface dicts
     $current = $null
@@ -255,6 +285,8 @@ function Get-ZmxParsedData {
                 conic                = $null
                 aspheric_coeffs      = New-Object System.Collections.ArrayList
                 clear_aperture_mm    = $null
+                mechanical_sd_mm     = $null
+                has_glass            = $false
                 surface_type         = 'STANDARD'
                 is_stop              = 0
             }
@@ -276,9 +308,11 @@ function Get-ZmxParsedData {
         }
         elseif ($t -match '^GLAS\s+(\S+)') {
             $name = $matches[1]
+            $current.has_glass = $true   # a model glass (___BLANK) too: the face is part of the element
             if ($name -ne '___BLANK') { $current.glass_name = $name }
         }
         elseif ($t -match '^DIAM\s+([\d.eE+-]+)') { $current.clear_aperture_mm = [double]$matches[1] }
+        elseif ($t -match '^MEMA\s+([\d.eE+-]+)') { $current.mechanical_sd_mm = [double]$matches[1] }
         elseif ($t -match '^COAT\s+(\S+)') {
             # Per-surface coating; promote first non-empty to lens-level for the pilot
             if (-not $data.coating) { $data.coating = $matches[1] }
@@ -297,19 +331,31 @@ function Get-ZmxParsedData {
     }
     if ($null -ne $current) { [void]$data.surfaces.Add($current) }
 
-    # Mechanical diameter: ENPD when present (it matches the catalog OD for singlets
-    # with a stop at the first surface, which is the common case). Falls back to max
-    # CA-x2 (optical clear aperture) for systems with an internal stop or no ENPD.
-    # For more complex lenses where ENPD != mechanical OD, post-process by parsing
-    # the NOTE description ("Xmm Dia.").
+    # Diameter: the part's outer diameter - twice the largest semi-diameter (DIAM or MEMA) on a
+    # face of the element, a surface with glass after it or before it. ENPD is the beam, and a
+    # vendor sets it to the clear aperture (a 1" lens, ENPD 22.86) or to a laser beam (Thorlabs'
+    # axicons, ENPD 2 on a 25.4 mm part); it used to be the diameter, so a search on diameter
+    # missed parts. ENPD stays the fallback for a file whose faces carry no usable size
+    # (some LightPath molded aspheres give a semi-diameter of 1 or none).
     $maxClap = 0.0
-    foreach ($s in $data.surfaces) {
+    $maxFace = 0.0
+    for ($k = 0; $k -lt $data.surfaces.Count; $k++) {
+        $s = $data.surfaces[$k]
         if ($null -ne $s.clear_aperture_mm -and $s.clear_aperture_mm -gt $maxClap) {
             $maxClap = $s.clear_aperture_mm
         }
+        $face = $s.has_glass -or ($k -gt 0 -and $data.surfaces[$k - 1].has_glass)
+        if (-not $face) { continue }
+        foreach ($v in @($s.clear_aperture_mm, $s.mechanical_sd_mm)) {
+            if ($null -ne $v -and $v -gt $maxFace) { $maxFace = $v }
+        }
     }
-    if ($data.enp_diameter_mm -and $data.enp_diameter_mm -gt 0) {
-        $data.diameter_mm = $data.enp_diameter_mm
+    $od = 2.0 * $maxFace
+    $enpd = if ($data.enp_diameter_mm -and $data.enp_diameter_mm -gt 0) { [double]$data.enp_diameter_mm } else { 0.0 }
+    if ($od -gt 0 -and $od -ge $enpd) {
+        $data.diameter_mm = $od
+    } elseif ($enpd -gt 0) {
+        $data.diameter_mm = $enpd
     } elseif ($maxClap -gt 0) {
         $data.diameter_mm = $maxClap * 2.0
     } else {

@@ -2,6 +2,23 @@
 
 All notable changes to LensHH-LT and the LensHH-LT-Engine.
 
+## 1.0.160 — unreleased
+
+### Fixed
+
+- **Stock-lens descriptions.** 5,732 lenses had no useful description: almost every Thorlabs
+  lens read "ABS.COM", the end of the disclaimer in its file, and Ross Optical's were empty.
+  A lens's description is now the vendor's own text where the file has one, as Edmund's do,
+  and its name otherwise ("LA4464-AB, Plano-Convex - UV Fused Silica Lens, with AB coating").
+- **Stock-lens diameters are the part's diameter.** The catalog listed the entrance-pupil
+  diameter, which the vendor sets to the clear aperture or to a laser beam: a 1" lens read
+  22.86 mm and a 25.4 mm axicon 2 mm, so a search on diameter missed parts. It is now the
+  part's outer diameter. Matching stock lenses to a design still requires the clear aperture
+  to cover the design's beam.
+- **Stock lens titles kept a lost Ø, µ or ° sign.** The catalog's names were repaired in
+  1.0.159, but 924 lens files still showed a replacement character in their title, which is
+  what a stock lens inserted into a design is called. They now have the sign.
+
 ## 1.0.159 — 2026-10-02
 
 ### Changed
