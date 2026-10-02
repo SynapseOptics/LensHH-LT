@@ -2,7 +2,7 @@
 ; Requires Inno Setup 6.x
 
 #define MyAppName "LensHH-LT"
-#define MyAppVersion "1.0.158"
+#define MyAppVersion "1.0.159"
 #define MyAppPublisher "Synapse Optics"
 #define MyAppExeName "LensHH.App.exe"
 #define MyAppURL "https://github.com/SynapseOptics/LensHH-LT"
