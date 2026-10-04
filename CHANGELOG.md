@@ -6,6 +6,15 @@ All notable changes to LensHH-LT and the LensHH-LT-Engine.
 
 ### Fixed
 
+- **The native engine stopped early under Reflect bounds.** With Bound Handling set to
+  Reflect, a variable that crossed one of its bounds had the sign of its derivative turned
+  over in the native engine's Jacobian, so the local optimization stepped it the wrong way,
+  found no improvement and stopped ("no descent at any damping") far from a minimum. Every
+  optimization on the native engine — local, Multistart, Global and basin hopping — was
+  affected once a variable reached a bound. On a Cooke triplet started from parallel plates
+  with its curvatures bounded at zero, the median of 1800 optimized designs now reaches a
+  merit of 8.5 where it stopped at 68, and 163 get below 0.5 where 2 did. The C# engine was
+  not affected, nor was Sigmoid bound handling.
 - **Stock-lens descriptions.** 5,732 lenses had no useful description: almost every Thorlabs
   lens read "ABS.COM", the end of the disclaimer in its file, and Ross Optical's were empty.
   A lens's description is now the vendor's own text where the file has one, as Edmund's do,
