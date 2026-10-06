@@ -2,6 +2,48 @@
 
 All notable changes to LensHH-LT and the LensHH-LT-Engine.
 
+## 1.0.161 — unreleased
+
+### Changed
+
+- **Reflect bounds now hold a variable on its bound.** With Bound Handling set to Reflect, a
+  variable the optimizer pushed against one of its bounds was folded back inside at every
+  step. The next step pushed it out again and it was folded again, gaining a sliver of merit
+  each time, so the optimization rarely met its convergence test and ran to its iteration
+  limit. Now a step that would cross a bound stops on it. A variable on its bound whose
+  improvement lies outside its range is held there while the other variables are optimized,
+  and it is released as soon as the improvement points back inside. This applies to local
+  optimization and to every optimizer built on it: Multistart, Global Search, basin hopping
+  and the DE polish.
+
+  The result is a large improvement for constrained optimization with Reflect bounds.
+  Optimizations converge instead of running to their limit, and they reach much better
+  designs with every variable inside its bounds. Hard thickness bounds can now do the work of
+  CT/CTG/CTA penalty operands. Sigmoid bound handling is unchanged.
+
+### Improved
+
+- **Wavefront (OPD) refinements.** These changes make each ray's OPD more precise. Most
+  designs will see differences of a few thousandths to a hundredth of a wave. Designs far
+  from focus, or with steep chief rays, will see more.
+  - **The reference sphere.** OPD is measured where each ray crosses the reference sphere
+    centred on the chief ray's image point. That crossing is now computed exactly for every
+    exit-pupil position. The sphere's radius is now measured along the chief ray instead of
+    along the axis.
+  - **Agreement.** On the test lenses, every ray's OPD agrees with an independent per-ray
+    reference calculation to within a few millionths of a wave.
+  - **Where it applies:** the wavefront map, the OPD fan and the wavefront merit operands, on
+    both engines.
+- **Ray aiming at a finite object.** With real ray aiming and an object at a finite
+  distance, rays are now aimed at the real stop as seen from the object point. The stop's
+  size is now found from the object point too; it used to be found with a ray parallel to
+  the axis.
+- **Entrance pupil behind the object.** On lenses whose entrance pupil lies behind the
+  object, as on some microscope objectives, every pupil ray now starts toward the lens. Their
+  wavefront has the expected sign.
+- **Skew-ray aiming.** Real ray aiming now solves both pupil coordinates together. A few skew
+  rays near the pupil edge that could fail to aim, and were counted as vignetted, now trace.
+
 ## 1.0.160 — 2026-10-04
 
 ### Fixed
