@@ -123,6 +123,7 @@
         <MenuItem Header="_Global Multi Start Optimization..." Click="GlobalSearch_Click" />
         <MenuItem Header="Global Basin _Hopping HJ+LM..." Click="GlobalBasinHopping_Click" />
         <MenuItem Header="Global _Evolutionary Optimization..." Click="DePipeline_Click" />
+        <MenuItem Header="Sign-Pattern Search (from plates)..." Click="SignPatternSearch_Click" />
         <Separator />
         <MenuItem Header="S_plit Element" Click="SplitElement_Click" />
         <MenuItem Header="Synthesis by _SPC" Click="SynthesisBySpc_Click" />

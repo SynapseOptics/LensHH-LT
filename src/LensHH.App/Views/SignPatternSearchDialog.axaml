@@ -1,0 +1,151 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:LensHH.App.ViewModels"
+        x:Class="LensHH.App.Views.SignPatternSearchDialog"
+        x:DataType="vm:SignPatternSearchDialogViewModel"
+        Title="Sign-Pattern Search"
+        Icon="avares://LensHH.App/Assets/icon_256.png"
+        Width="1040" Height="760"
+        WindowStartupLocation="CenterOwner"
+        CanResize="True"
+        MinWidth="860" MinHeight="600">
+
+  <DockPanel LastChildFill="True" Margin="10">
+
+    <!-- ── Settings + run controls ── -->
+    <Border DockPanel.Dock="Top" BorderBrush="#DDDDDD" BorderThickness="1"
+            CornerRadius="6" Padding="10" Margin="0,0,0,8">
+      <StackPanel Spacing="8">
+        <TextBlock TextWrapping="Wrap" Foreground="#555555" FontSize="12"
+                   Text="For a lens of nearly parallel plates. Every design bounds each variable curvature to one sign (c ≥ 0 or c ≤ 0), draws its glasses at random from the chosen catalog, starts from weak curvatures of those signs, and is locally optimized. The distinct best designs are shown below."/>
+        <TextBlock Text="{Binding PopulationText}" FontSize="12" FontWeight="SemiBold" TextWrapping="Wrap"/>
+
+        <WrapPanel Orientation="Horizontal">
+          <StackPanel Margin="0,0,16,6" Width="170">
+            <TextBlock Text="Designs per n² (n = sign surfaces)" FontSize="11"/>
+            <NumericUpDown Value="{Binding DesignsPerSurfaceSquared}" Minimum="1" Maximum="10000" Increment="10" FormatString="0"
+                           ToolTip.Tip="The population is this number times the square of the number of sign surfaces: 50 × 6² = 1800 for a Cooke triplet."/>
+          </StackPanel>
+          <StackPanel Margin="0,0,16,6" Width="150" VerticalAlignment="Bottom">
+            <CheckBox Content="Substitute glasses" IsChecked="{Binding SubstituteGlass}"
+                      ToolTip.Tip="On: every glass of every design is drawn at random from the catalog. Off: every design keeps the lens's own glasses, and only the sign patterns and starting curvatures differ."/>
+          </StackPanel>
+          <StackPanel Margin="0,0,16,6" Width="190">
+            <TextBlock Text="Glass catalog" FontSize="11"/>
+            <ComboBox HorizontalAlignment="Stretch" IsEnabled="{Binding SubstituteGlass}"
+                      ItemsSource="{Binding GlassCatalogs}" SelectedItem="{Binding SelectedGlassCatalog}"
+                      ToolTip.Tip="Every glass of every design is drawn at random from this substitution catalog."/>
+          </StackPanel>
+          <StackPanel Margin="0,0,16,6" Width="160">
+            <TextBlock Text="Weak radius (× diameter)" FontSize="11"/>
+            <NumericUpDown Value="{Binding WeakRadiusFactor, UpdateSourceTrigger=LostFocus}" Minimum="0.5" Maximum="1000" Increment="1" FormatString="0.0"
+                           ToolTip.Tip="Starting curvatures are random but weak: every starting radius is at least this many times the lens's largest clear diameter."/>
+          </StackPanel>
+          <StackPanel Margin="0,0,16,6" Width="140">
+            <TextBlock Text="LM iterations" FontSize="11"/>
+            <NumericUpDown Value="{Binding LmIterations, UpdateSourceTrigger=LostFocus}" Minimum="1" Maximum="100000" Increment="50" FormatString="0"/>
+          </StackPanel>
+          <StackPanel Margin="0,0,16,6" Width="130">
+            <TextBlock Text="Models to keep" FontSize="11"/>
+            <NumericUpDown Value="{Binding ModelsToKeep, UpdateSourceTrigger=LostFocus}" Minimum="1" Maximum="500" Increment="1" FormatString="0"/>
+          </StackPanel>
+          <StackPanel Margin="0,0,16,6" Width="110">
+            <TextBlock Text="Seed" FontSize="11"/>
+            <NumericUpDown Value="{Binding Seed, UpdateSourceTrigger=LostFocus}" Minimum="0" Maximum="1000000" Increment="1" FormatString="0"/>
+          </StackPanel>
+          <StackPanel Margin="0,0,16,6" Width="180">
+            <TextBlock Text="LM Step" FontSize="11"/>
+            <ComboBox HorizontalAlignment="Stretch"
+                      ItemsSource="{Binding StepOptions}" SelectedItem="{Binding SelectedStep}"
+                      ToolTip.Tip="Diagonal added to the Gauss-Newton matrix in each design's local optimization. LM uses one damping value for every variable; PSD (Dilworth pseudo-second-derivative) estimates each variable's own curvature from successive Jacobians, which suits a start far from any solution, as plates are. PSD III is the stronger variant. Selecting PSD turns Broyden off, because PSD needs successive FRESH Jacobians."/>
+          </StackPanel>
+          <StackPanel Margin="0,0,16,6" Width="150" VerticalAlignment="Bottom">
+            <CheckBox Content="Broyden Update" IsChecked="{Binding UseBroydenUpdate}"
+                      ToolTip.Tip="Reuse a rank-1 Broyden Jacobian update between full recomputes. The default for LM; a PSD step turns it off."/>
+          </StackPanel>
+          <StackPanel Margin="0,0,16,6" Width="120">
+            <TextBlock Text="Engine" FontSize="11"/>
+            <ComboBox SelectedIndex="{Binding EngineModeIndex}" HorizontalAlignment="Stretch">
+              <ComboBoxItem>C#</ComboBoxItem>
+              <ComboBoxItem>Native</ComboBoxItem>
+            </ComboBox>
+          </StackPanel>
+          <StackPanel Margin="0,0,16,6" Width="150">
+            <TextBlock Text="Derivative" FontSize="11"/>
+            <ComboBox SelectedIndex="{Binding DerivativeModeIndex}" HorizontalAlignment="Stretch">
+              <ComboBoxItem>Finite difference</ComboBoxItem>
+              <ComboBoxItem>Analytic</ComboBoxItem>
+            </ComboBox>
+          </StackPanel>
+        </WrapPanel>
+
+        <Grid ColumnDefinitions="Auto,Auto,*,Auto">
+          <Button Grid.Column="0" Content="Run" Width="100"
+                  Command="{Binding RunCommand}" IsEnabled="{Binding CanRun}"
+                  Classes="accent"/>
+          <Button Grid.Column="1" Content="Stop" Width="100" Margin="8,0,0,0"
+                  Command="{Binding StopCommand}" IsEnabled="{Binding IsRunning}"/>
+          <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,12,0">
+            <TextBlock Text="Initial:" Foreground="#888888" FontSize="12"/>
+            <TextBlock Text="{Binding InitialMeritText}" Margin="4,0,12,0" FontSize="12"/>
+            <TextBlock Text="Best:" Foreground="#888888" FontSize="12"/>
+            <TextBlock Text="{Binding BestMeritText}" Margin="4,0,12,0" FontWeight="Bold" FontSize="12"/>
+            <TextBlock Text="Elapsed:" Foreground="#888888" FontSize="12"/>
+            <TextBlock Text="{Binding ElapsedText}" Margin="4,0,0,0" FontSize="12"/>
+          </StackPanel>
+        </Grid>
+
+        <ProgressBar Value="{Binding ProgressFraction}" Minimum="0" Maximum="1" Height="6"/>
+        <TextBlock Text="{Binding StatusText}" FontSize="11" Foreground="#555555" TextWrapping="Wrap"/>
+        <TextBlock Text="{Binding ProgressText}" FontSize="11" Foreground="#888888" TextWrapping="Wrap"/>
+      </StackPanel>
+    </Border>
+
+    <!-- ── Action bar ── -->
+    <Grid DockPanel.Dock="Bottom" ColumnDefinitions="Auto,*,Auto,Auto" Margin="0,8,0,0">
+      <Button Grid.Column="0" Content="Save all…" Click="SaveAll_Click" IsEnabled="{Binding CanSaveAll}"/>
+      <TextBlock Grid.Column="1" VerticalAlignment="Center" Margin="12,0" FontSize="11" Foreground="#888888"
+                 Text="Pattern: one sign per sign surface, + for c ≥ 0, − for c ≤ 0. Click a card's Apply button to load that design."/>
+      <Button Grid.Column="2" Content="Preview" IsEnabled="{Binding !IsRunning}" Width="90" Margin="0,0,8,0" Click="Preview_Click"
+              ToolTip.Tip="Show which merit/Jacobian engine this run will actually use, and why — before starting it."/>
+      <Button Grid.Column="3" Content="Close" Width="90" Click="Close_Click"/>
+    </Grid>
+
+    <!-- ── Gallery ── -->
+    <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+      <ItemsControl ItemsSource="{Binding Cards}">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate>
+            <WrapPanel Orientation="Horizontal"/>
+          </ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:GlobalSearchCardViewModel">
+            <Border Width="272" Margin="6" BorderBrush="#DDDDDD" BorderThickness="1"
+                    CornerRadius="6" Padding="8" Background="White">
+              <StackPanel Spacing="4">
+                <Grid ColumnDefinitions="*,Auto">
+                  <TextBlock Text="{Binding Title}" FontWeight="Bold" FontSize="14"/>
+                  <Border Grid.Column="1" Background="#FFD54F" CornerRadius="3" Padding="5,1"
+                          IsVisible="{Binding IsBest}" VerticalAlignment="Center">
+                    <TextBlock Text="★ best" FontSize="11"/>
+                  </Border>
+                </Grid>
+                <Border Background="White" BorderBrush="#EEEEEE" BorderThickness="1" CornerRadius="3">
+                  <Image Source="{Binding Thumbnail}" Height="128" Stretch="Uniform" Margin="2"/>
+                </Border>
+                <TextBlock Text="{Binding MeritText, StringFormat='Merit: {0}'}" FontSize="12" FontWeight="SemiBold"/>
+                <TextBlock Text="{Binding GlassText}" FontSize="11" Foreground="#555555" TextWrapping="Wrap"/>
+                <TextBlock Text="{Binding InfoText}" FontSize="10" Foreground="#999999" TextWrapping="Wrap"/>
+                <Button Content="Apply this design" HorizontalAlignment="Stretch" Margin="0,2,0,0"
+                        Command="{Binding DataContext.ApplyCardCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                        CommandParameter="{Binding}"/>
+              </StackPanel>
+            </Border>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </ScrollViewer>
+
+  </DockPanel>
+</Window>

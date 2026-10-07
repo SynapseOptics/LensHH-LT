@@ -1078,6 +1078,17 @@ public partial class MainWindow : Window
             VM.Session.NotifySystemChanged("global-search");
     }
 
+    private async void SignPatternSearch_Click(object? sender, RoutedEventArgs e)
+    {
+        // Works on internal clones; only "Apply this design" inside the dialog changes the system.
+        var vm = new SignPatternSearchDialogViewModel(VM.Session);
+        var dialog = new SignPatternSearchDialog { DataContext = vm };
+        await dialog.ShowDialog(this);
+
+        if (vm.Accepted)
+            VM.Session.NotifySystemChanged("sign-pattern-search");
+    }
+
     private async void DePipeline_Click(object? sender, RoutedEventArgs e)
     {
         // The DE pipeline works on internal clones — it never mutates the live

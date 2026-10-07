@@ -401,7 +401,9 @@ namespace LensHH.App.ViewModels
             GlassText = m.GlassSet.Count > 0 ? string.Join(", ", m.GlassSet) : "(no glass elements)";
             FormText = string.IsNullOrEmpty(m.PowerSignSignature) ? "—" : m.PowerSignSignature;
             string track = m.TrackLength.HasValue ? m.TrackLength.Value.ToString("F1") + " mm" : "—";
-            InfoText = $"form {FormText} · track {track} · seed {m.Seed}" + (m.Converged ? "" : " · cap");
+            InfoText = string.IsNullOrEmpty(m.SignPattern)
+                ? $"form {FormText} · track {track} · seed {m.Seed}" + (m.Converged ? "" : " · cap")
+                : $"pattern {m.SignPattern} · form {FormText} · track {track}" + (m.Converged ? "" : " · iteration cap");
         }
 
         public static GlobalSearchCardViewModel Build(GlobalSearchModel m, int rank, LensHH.Core.Glass.GlassCatalogManager glass)

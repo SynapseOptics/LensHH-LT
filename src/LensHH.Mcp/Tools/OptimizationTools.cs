@@ -1171,6 +1171,112 @@ namespace LensHH.Mcp.Tools
         }
 
         [McpServerTool, Description(
+            "Start a Sign-Pattern Search in the background and return a job-id immediately (non-blocking). " +
+            "Meant for a starting lens of nearly parallel plates. " +
+            "The surfaces whose curvature is a variable (and whose bounds allow either sign) are the sign surfaces, n of them; the population is designsPerSurfaceSquared x n^2 designs (a Cooke triplet: 50 x 36 = 1800). " +
+            "Each design bounds every sign surface to c >= 0 or c <= 0 (the patterns are balanced: every one of the 2^n patterns gets an equal share when the population allows), draws every glass at random from glassCatalog, starts each sign surface at a weak random curvature of its sign (|c| <= 1/(weakRadiusFactor x the lens's largest clear diameter)), keeps the thicknesses and merit function, and is locally optimized (LM, lmIterations). " +
+            "The designs run in parallel; the distinct best (modelsToKeep) are written as .lhlt to outputFolder and the merit-best is auto-applied when the job completes. A kept design keeps its pattern's sign bounds (c >= 0 or c <= 0 on each sign surface), so optimizing it further stays in that sign region. " +
+            "Poll optimize_status(jobId) (designs done / population, best merit); optimize_cancel(jobId) stops early and keeps what was found. " +
+            "Params: designsPerSurfaceSquared (50), glassCatalog ('CoreSet28' - any .agf in catalogs/FilteredGlassCatalogues), weakRadiusFactor (10), lmIterations (300), modelsToKeep (24), parallelism (0 = all logical processors), seed (1), useNativeEngine (false - the C# engine is the faster here, the designs running in parallel), analyticDerivative (true, native only), outputFolder ('sign_pattern_results'), stepMethod ('lm' Marquardt damping; 'psd2' or 'psd3' Dilworth pseudo-second-derivative, which estimates each variable's own curvature from successive Jacobians), useBroydenUpdate (default: on for lm, off for psd), substituteGlass (true; false keeps the lens's own glasses in every design, and glassCatalog is not used).")]
+        public string SignPatternSearchStart(
+            int designsPerSurfaceSquared = 50, string glassCatalog = "CoreSet28", double weakRadiusFactor = 10,
+            int lmIterations = 300, int modelsToKeep = 24, int parallelism = 0, int seed = 1,
+            bool useNativeEngine = false, bool analyticDerivative = true,
+            string outputFolder = "sign_pattern_results", string stepMethod = "lm", bool? useBroydenUpdate = null,
+            bool substituteGlass = true)
+        {
+            { var ge = _session.ValidateGlass(); if (ge != null) return ge; }
+            if (_session.MeritFunction == null || _session.MeritFunction.Operands.Count == 0)
+                return "No operands in merit function. Add operands first.";
+            if (!TryParseStepMethod(stepMethod, out var step))
+                return $"Unknown stepMethod \"{stepMethod}\" - expected lm, psd2 or psd3.";
+
+            var settings = new SignPatternSearchSettings
+            {
+                DesignsPerSurfaceSquared = designsPerSurfaceSquared,
+                SubstituteGlass = substituteGlass,
+                GlassCatalog = string.IsNullOrWhiteSpace(glassCatalog) ? "CoreSet28" : glassCatalog.Trim(),
+                WeakRadiusFactor = weakRadiusFactor,
+                LmIterations = lmIterations,
+                ModelsToKeep = modelsToKeep,
+                Parallelism = parallelism,
+                Seed = seed,
+                Step = step,
+                UseBroydenUpdate = useBroydenUpdate,
+            };
+            int n = SignPatternSearchService.SignSurfaces(_session.System).Count;
+            int population = SignPatternSearchService.PopulationSize(_session.System, settings);
+            if (population == 0)
+                return "No surface has a curvature variable that may take either sign: make the curvatures variables first (set_curvature_variables).";
+
+            string folder = string.IsNullOrWhiteSpace(outputFolder) ? "sign_pattern_results" : outputFolder;
+            try { System.IO.Directory.CreateDirectory(folder); }
+            catch (Exception ex) { return $"Cannot create output folder '{folder}': {ex.Message}"; }
+            settings.ArchiveWriter = (name, sys, m) =>
+            {
+                try { LensHH.Core.IO.LhltWriter.Write(sys, System.IO.Path.Combine(folder, name + ".lhlt"), m); }
+                catch { /* best-effort archive */ }
+            };
+
+            var job = new RunningJob(kind: "sign_pattern_search") { MaxTrials = population };
+            var svc = new SignPatternSearchService(_session.System, _session.MeritFunction, _session.GlassCatalog)
+            {
+                Settings = settings,
+                EngineMode = useNativeEngine ? EngineMode.Native : EngineMode.CSharp,
+                NativeDerivativeMode = analyticDerivative
+                    ? LensHH.Core.NativeInterop.MeritDerivativeMode.Analytic
+                    : LensHH.Core.NativeInterop.MeritDerivativeMode.FiniteDifference,
+                FilteredCatalogSearchPaths = FindFilteredCatalogPaths(),
+                OnProgress = p =>
+                {
+                    job.Phase = p.StatusMessage;
+                    job.Trial = p.RestartIndex;
+                    job.MaxTrials = p.MaxRestarts;
+                    if (!double.IsNaN(p.BestMerit)) job.BestMerit = p.BestMerit;
+                },
+            };
+
+            job.Task = Task.Run(() =>
+            {
+                try
+                {
+                    var result = svc.Run(job.Cts.Token);
+                    job.BestMerit = result.Best?.Merit ?? double.NaN;
+                    if (result.Best != null) _session.System.CopyFrom(result.Best.System);
+                    if (result.Models.Count == 0)
+                    {
+                        if (result.Cancelled) job.Cancel();
+                        else job.Complete("Sign-Pattern Search found no design.\n  " + result.Message);
+                        return;
+                    }
+
+                    var sb = new StringBuilder();
+                    sb.AppendLine($"Sign-Pattern Search {(result.Cancelled ? "Stopped" : "Complete")} — {result.Models.Count} distinct design(s)");
+                    sb.AppendLine($"  {result.Message}");
+                    sb.AppendLine($"  Files written to: {System.IO.Path.GetFullPath(folder)}");
+                    sb.AppendLine("  Pattern: one sign per sign surface, + for c >= 0, - for c <= 0. Form: element power signs.");
+                    for (int r = 0; r < result.Models.Count; r++)
+                    {
+                        var mdl = result.Models[r];
+                        string glassTag = mdl.GlassSet.Count > 0 ? string.Join("-", mdl.GlassSet) : "noglass";
+                        string form = string.IsNullOrEmpty(mdl.PowerSignSignature) ? "-" : mdl.PowerSignSignature;
+                        sb.AppendLine($"  #{r + 1}  merit {mdl.Merit:E4}  pattern {mdl.SignPattern}  form {form}  [{glassTag}]");
+                    }
+                    sb.AppendLine("  Best (rank 1) applied to the current system.");
+                    job.Complete(sb.ToString());
+                }
+                catch (OperationCanceledException) { job.Cancel(); }
+                catch (Exception ex) { job.Fault(ex); }
+            });
+
+            _session.AddJob(job);
+            return $"Started sign-pattern search: {population} designs ({n} sign surfaces, {Math.Pow(2, n):G6} patterns), {(substituteGlass ? "glasses from " + settings.GlassCatalog : "the lens's own glasses")}. jobId={job.JobId}\n" +
+                   $"Poll optimize_status(jobId=\"{job.JobId}\") every 10-30 seconds (designs done / population, best merit); " +
+                   $"call optimize_cancel(jobId=\"{job.JobId}\") to stop early. " +
+                   $"Designs are written to '{folder}'; the best is auto-applied when the job completes.";
+        }
+
+        [McpServerTool, Description(
             "Start basin-hopping optimization in the background and return a job-id immediately. " +
             "Poll optimize_status(jobId) for progress (current hop, best merit, accepted/rejected, glass swaps); call optimize_cancel to stop. " +
             "Result auto-applies to the system when the job completes. " +
