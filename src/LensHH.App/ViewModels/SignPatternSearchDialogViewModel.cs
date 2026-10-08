@@ -56,8 +56,8 @@ namespace LensHH.App.ViewModels
         // ── Step method (as Global Search) ──
         public static IReadOnlyList<GlobalSearchDialogViewModel.StepOption> StepOptions =>
             GlobalSearchDialogViewModel.StepOptions;
-        [ObservableProperty] private GlobalSearchDialogViewModel.StepOption _selectedStep = GlobalSearchDialogViewModel.StepOptions[0];
-        [ObservableProperty] private bool _useBroydenUpdate = true;
+        [ObservableProperty] private GlobalSearchDialogViewModel.StepOption _selectedStep = GlobalSearchDialogViewModel.StepOptions[2];   // PSD III
+        [ObservableProperty] private bool _useBroydenUpdate = false;   // PSD's default: it needs fresh Jacobians
 
         /// <summary>Changing the step method resets Broyden to that method's default: PSD differences
         /// two successive FRESH Jacobians, which a rank-1 Broyden update is not.</summary>
@@ -71,10 +71,10 @@ namespace LensHH.App.ViewModels
         [ObservableProperty] private bool _substituteGlass = true;
         [ObservableProperty] private string _selectedGlassCatalog;
         [ObservableProperty] private double _weakRadiusFactor = 10.0;
-        [ObservableProperty] private int _lmIterations = 300;
+        [ObservableProperty] private int _lmIterations = 6000;
         [ObservableProperty] private int _modelsToKeep = 24;
         [ObservableProperty] private int _seed = 1;
-        [ObservableProperty] private int _engineModeIndex = 0;     // 0 = C# (faster here: designs run in parallel), 1 = Native
+        [ObservableProperty] private int _engineModeIndex = 1;     // 0 = C#, 1 = Native (with analytic derivatives the fastest, model-glass variables included)
         [ObservableProperty] private int _derivativeModeIndex = 1; // 0 = FD, 1 = Analytic
 
         /// <summary>The .agf catalogs in the filtered-catalog folder.</summary>
@@ -130,7 +130,7 @@ namespace LensHH.App.ViewModels
             LmIterations = Math.Max(1, LmIterations),
             ModelsToKeep = Math.Max(1, ModelsToKeep),
             Seed = Seed,
-            Step = SelectedStep?.Value ?? StepMethod.LevenbergMarquardt,
+            Step = SelectedStep?.Value ?? StepMethod.PsdIII,
             UseBroydenUpdate = UseBroydenUpdate,
         };
 
