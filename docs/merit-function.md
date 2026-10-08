@@ -345,6 +345,31 @@ parameter and is skipped). Use them to keep an optimized model-glass stack
 inside a manufacturable index / Abbe / partial-dispersion box before you
 substitute real catalog glasses. Inputs: `Surface1`, `Surface2`, `Min` / `Max`.
 
+### Glass map (GMAP)
+
+A box on `Nd` and `Vd` still admits glasses that do not exist: Nd 1.85 with
+Vd 70 sits inside the box Nd 1.5–1.85, Vd 25–70, but real glasses near
+Nd 1.85 have Vd of about 40. `GMAP` keeps the model glasses in the range
+inside the region real glasses occupy on the Nd–Vd map, so that a model-glass
+solution can later be matched by real glasses (Replace Model Glass).
+
+The region comes from the lens's preferred glass catalogs (Catalog
+Preference), or every loaded catalog when none is set; obsolete glasses are
+left out. Its upper and lower edges are curves of Vd against Nd built from the
+highest and lowest Vd in each 0.02 band of Nd, drawn so that every catalog
+glass lies inside. The operand is zero inside the
+region and grows with the Vd distance outside it, and it has an exact
+derivative, so it stays on the fast native analytic path. Inputs: `Surface1`,
+`Surface2`, and `Hx` — a margin in Vd that pulls the edges inward (default 0).
+`Min` / `Max` are not used. Keep the Nd bounds on the model glasses as well:
+the region's curves are extended past the catalog's Nd range.
+
+Give it a small weight. Its value is in Vd units (tens when a glass is far off
+the map), much larger than typical image-quality residuals, so a weight that
+is too large makes the optimizer attend to the glass map before the optics.
+On a Cooke triplet searched from plates, a weight of 0.01 against a wavefront
+merit worked well; 1 was too strong and 0.0001 too weak.
+
 ### Surface sentinel values
 
 `Surface1` and `Surface2` both accept either an **absolute surface

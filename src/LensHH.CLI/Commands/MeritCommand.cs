@@ -269,6 +269,7 @@ namespace LensHH.CLI.Commands
             table.AddRow("DTRGT", "Total diameter-to-thickness-ratio violation (glass)", "surface1, surface2, min, max");
             table.AddRow("RIT/RET", "Total chief-ray incidence/exitance-angle violation", "surface1, surface2, min, max");
             table.AddRow("NDT/VDT/DPGFT", "Total model-glass Nd/Vd/dPgF violation (model-index surfaces)", "surface1, surface2, min, max");
+            table.AddRow("GMAP", "Glass map: model glasses kept inside the real-glass region (Nd-Vd)", "surface1, surface2, hx = margin in Vd");
 
             // Surface property operands
             table.AddRow("DM", "Surface diameter", "surface1");

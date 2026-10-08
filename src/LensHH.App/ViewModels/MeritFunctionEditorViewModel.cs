@@ -117,6 +117,8 @@ public partial class OperandRowViewModel : ObservableObject
         or OperandType.SDT or OperandType.DTRGT
         or OperandType.RIT or OperandType.RET
         or OperandType.NDT or OperandType.VDT or OperandType.DPGFT
+        // Glass map: Surface1/Surface2 (the model glasses it covers) + Hx (margin in Vd).
+        or OperandType.GMAP
             => Category.Boundary,
 
         // Surface property
@@ -308,8 +310,9 @@ public partial class OperandRowViewModel : ObservableObject
 
     public string HxText
     {
-        get => NeedsRayCoords ? _operand.Hx.ToString("G4", CultureInfo.InvariantCulture) : "";
-        set { if (NeedsRayCoords && TryParse(value, out double v)) { _operand.Hx = v; OnPropertyChanged(); } }
+        // GMAP borrows Hx for its margin (Vd units the boundary is pulled inward by).
+        get => (NeedsRayCoords || _operand.Type == OperandType.GMAP) ? _operand.Hx.ToString("G4", CultureInfo.InvariantCulture) : "";
+        set { if ((NeedsRayCoords || _operand.Type == OperandType.GMAP) && TryParse(value, out double v)) { _operand.Hx = v; OnPropertyChanged(); } }
     }
 
     public string HyText
@@ -714,6 +717,7 @@ public partial class MeritFunctionEditorViewModel : ObservableObject
         OperandType.NDT => "NDT — Total model-glass index (Nd) violation over model-index surfaces in range. Params: Surf, Surf2, Min, Max",
         OperandType.VDT => "VDT — Total model-glass Abbe (Vd) violation over model-index surfaces in range. Params: Surf, Surf2, Min, Max",
         OperandType.DPGFT => "DPGFT — Total model-glass partial-dispersion (dPgF) violation over model-index surfaces in range. Params: Surf, Surf2, Min, Max",
+        OperandType.GMAP => "GMAP — Glass map: keeps the model glasses in range inside the region real glasses occupy on the Nd-Vd map (the lens's preferred catalogs, or every loaded catalog; obsolete glasses left out). Zero inside; grows with the Vd distance outside. Params: Surf, Surf2, Hx = margin in Vd pulling the boundary inward (default 0). Min/Max are not used. Use a small weight (about 0.01 against a wavefront merit): its value is in Vd units.",
 
         // Surface property
         OperandType.DM => "DM — Diameter (semi-diameter) of a single surface. Params: Surf",
