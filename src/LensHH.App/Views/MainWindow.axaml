@@ -124,6 +124,7 @@
         <MenuItem Header="Global Basin _Hopping HJ+LM..." Click="GlobalBasinHopping_Click" />
         <MenuItem Header="Global _Evolutionary Optimization..." Click="DePipeline_Click" />
         <MenuItem Header="Sign-Pattern Search (from plates)..." Click="SignPatternSearch_Click" />
+        <MenuItem Header="Replace Model Glass..." Click="ReplaceModelGlass_Click" />
         <Separator />
         <MenuItem Header="S_plit Element" Click="SplitElement_Click" />
         <MenuItem Header="Synthesis by _SPC" Click="SynthesisBySpc_Click" />

@@ -1089,6 +1089,17 @@ public partial class MainWindow : Window
             VM.Session.NotifySystemChanged("sign-pattern-search");
     }
 
+    private async void ReplaceModelGlass_Click(object? sender, RoutedEventArgs e)
+    {
+        // Works on internal clones; only "Apply this design" inside the dialog changes the system.
+        var vm = new ReplaceModelGlassDialogViewModel(VM.Session);
+        var dialog = new ReplaceModelGlassDialog { DataContext = vm };
+        await dialog.ShowDialog(this);
+
+        if (vm.Accepted)
+            VM.Session.NotifySystemChanged("replace-model-glass");
+    }
+
     private async void DePipeline_Click(object? sender, RoutedEventArgs e)
     {
         // The DE pipeline works on internal clones — it never mutates the live

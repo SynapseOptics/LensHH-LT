@@ -1283,6 +1283,107 @@ namespace LensHH.Mcp.Tools
         }
 
         [McpServerTool, Description(
+            "Start Replace Model Glass in the background and return a job-id immediately (non-blocking). " +
+            "Replaces the current lens's model glasses (Nd/Vd/dPgF) by real glasses from glassCatalog, one element at a time, highest element power first; a model glass whose Nd is picked up from another follows it. " +
+            "For each glass, every carried design tries the candidatesPerGlass catalog glasses nearest its model glass on the (Nd, Vd) map (0.01 in Nd weighed as 1 in Vd), with its variable curvatures rescaled to keep the element's power (rescaleCurvature); every candidate is optimized for screenIterations with the remaining model glasses still variable, the best polishFraction (never fewer than beamWidth) for lmIterations, and the best beamWidth distinct glass sets go to the next glass. " +
+            "The finished designs (every glass real, best modelsToKeep) are written as .lhlt to outputFolder and the best is auto-applied when the job completes. Poll optimize_status(jobId); optimize_cancel(jobId) stops (nothing is kept unless every glass was replaced). " +
+            "Params: glassCatalog ('CoreSet28' - any .agf in catalogs/FilteredGlassCatalogues, e.g. a preferred-glass catalog, or a loaded vendor catalog such as SCHOTT), candidatesPerGlass (20), beamWidth (10), screenIterations (30; 0 = every candidate gets lmIterations), polishFraction (0.25), lmIterations (6000), rescaleCurvature (true), modelsToKeep (24), parallelism (0 = all logical processors), useNativeEngine (true), analyticDerivative (true), stepMethod ('psd3', 'psd2' or 'lm'), useBroydenUpdate (default: on for lm, off for psd), outputFolder ('real_glass_results').")]
+        public string ReplaceModelGlassStart(
+            string glassCatalog = "CoreSet28", int candidatesPerGlass = 20, int beamWidth = 10,
+            int screenIterations = 30, double polishFraction = 0.25, int lmIterations = 6000,
+            bool rescaleCurvature = true, int modelsToKeep = 24, int parallelism = 0,
+            bool useNativeEngine = true, bool analyticDerivative = true,
+            string stepMethod = "psd3", bool? useBroydenUpdate = null, string outputFolder = "real_glass_results")
+        {
+            { var ge = _session.ValidateGlass(); if (ge != null) return ge; }
+            if (_session.MeritFunction == null || _session.MeritFunction.Operands.Count == 0)
+                return "No operands in merit function. Add operands first.";
+            if (!TryParseStepMethod(stepMethod, out var step))
+                return $"Unknown stepMethod \"{stepMethod}\" - expected lm, psd2 or psd3.";
+            var groups = ModelGlassReplacementService.ModelGlassGroups(_session.System);
+            if (groups.Count == 0) return "The lens has no model glass to replace.";
+
+            var settings = new ModelGlassReplacementSettings
+            {
+                GlassCatalog = string.IsNullOrWhiteSpace(glassCatalog) ? "CoreSet28" : glassCatalog.Trim(),
+                CandidatesPerGlass = Math.Max(1, candidatesPerGlass),
+                BeamWidth = Math.Max(1, beamWidth),
+                ScreenIterations = Math.Max(0, screenIterations),
+                PolishFraction = polishFraction,
+                LmIterations = Math.Max(1, lmIterations),
+                RescaleCurvature = rescaleCurvature,
+                ModelsToKeep = Math.Max(1, modelsToKeep),
+                Parallelism = parallelism,
+                Step = step,
+                UseBroydenUpdate = useBroydenUpdate,
+            };
+
+            string folder = string.IsNullOrWhiteSpace(outputFolder) ? "real_glass_results" : outputFolder;
+            try { System.IO.Directory.CreateDirectory(folder); }
+            catch (Exception ex) { return $"Cannot create output folder '{folder}': {ex.Message}"; }
+            settings.ArchiveWriter = (name, sys, m) =>
+            {
+                try { LensHH.Core.IO.LhltWriter.Write(sys, System.IO.Path.Combine(folder, name + ".lhlt"), m); }
+                catch { /* best-effort archive */ }
+            };
+
+            var job = new RunningJob(kind: "replace_model_glass");
+            var svc = new ModelGlassReplacementService(_session.System, _session.MeritFunction, _session.GlassCatalog)
+            {
+                Settings = settings,
+                EngineMode = useNativeEngine ? EngineMode.Native : EngineMode.CSharp,
+                NativeDerivativeMode = analyticDerivative
+                    ? LensHH.Core.NativeInterop.MeritDerivativeMode.Analytic
+                    : LensHH.Core.NativeInterop.MeritDerivativeMode.FiniteDifference,
+                FilteredCatalogSearchPaths = FindFilteredCatalogPaths(),
+                OnProgress = p =>
+                {
+                    job.Phase = p.StatusMessage;
+                    job.Trial = p.RestartIndex;
+                    job.MaxTrials = p.MaxRestarts;
+                    if (!double.IsNaN(p.BestMerit)) job.BestMerit = p.BestMerit;
+                },
+            };
+
+            job.Task = Task.Run(() =>
+            {
+                try
+                {
+                    var result = svc.Run(job.Cts.Token);
+                    job.BestMerit = result.Best?.Merit ?? double.NaN;
+                    if (result.Best != null) _session.System.CopyFrom(result.Best.System);
+                    if (result.Models.Count == 0)
+                    {
+                        if (result.Cancelled) job.Cancel();
+                        else job.Complete("Replace Model Glass found no design.\n  " + result.Message);
+                        return;
+                    }
+
+                    var sb = new StringBuilder();
+                    sb.AppendLine($"Replace Model Glass complete — {result.Models.Count} design(s), every glass real");
+                    sb.AppendLine($"  {result.Message}");
+                    sb.AppendLine($"  Files written to: {System.IO.Path.GetFullPath(folder)}");
+                    for (int r = 0; r < result.Models.Count; r++)
+                    {
+                        var mdl = result.Models[r];
+                        sb.AppendLine($"  #{r + 1}  merit {mdl.Merit:E4}  [{string.Join("-", mdl.GlassSet)}]");
+                    }
+                    sb.AppendLine("  Best (rank 1) applied to the current system.");
+                    job.Complete(sb.ToString());
+                }
+                catch (OperationCanceledException) { job.Cancel(); }
+                catch (Exception ex) { job.Fault(ex); }
+            });
+
+            _session.AddJob(job);
+            return $"Started Replace Model Glass: {groups.Count} model glass(es), in order "
+                   + string.Join(", ", groups.Select(g => "surface " + g.Surface))
+                   + $", glasses from {settings.GlassCatalog}. jobId={job.JobId}\n" +
+                   $"Poll optimize_status(jobId=\"{job.JobId}\") every 10-30 seconds; call optimize_cancel(jobId=\"{job.JobId}\") to stop. " +
+                   $"Designs are written to '{folder}'; the best is auto-applied when the job completes.";
+        }
+
+        [McpServerTool, Description(
             "Start basin-hopping optimization in the background and return a job-id immediately. " +
             "Poll optimize_status(jobId) for progress (current hop, best merit, accepted/rejected, glass swaps); call optimize_cancel to stop. " +
             "Result auto-applies to the system when the job completes. " +
