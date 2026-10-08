@@ -1177,13 +1177,16 @@ namespace LensHH.Mcp.Tools
             "Each design bounds every sign surface to c >= 0 or c <= 0 (the patterns are balanced: every one of the 2^n patterns gets an equal share when the population allows), draws every glass at random from glassCatalog, starts each sign surface at a weak random curvature of its sign (|c| <= 1/(weakRadiusFactor x the lens's largest clear diameter)), keeps the thicknesses and merit function, and is locally optimized (stepMethod, lmIterations). " +
             "The designs run in parallel; the distinct best (modelsToKeep) are written as .lhlt to outputFolder and the merit-best is auto-applied when the job completes. A kept design keeps its pattern's sign bounds (c >= 0 or c <= 0 on each sign surface), so optimizing it further stays in that sign region. " +
             "Poll optimize_status(jobId) (designs done / population, best merit); optimize_cancel(jobId) stops early and keeps what was found. " +
-            "Params: designsPerSurfaceSquared (50), glassCatalog ('CoreSet28' - any .agf in catalogs/FilteredGlassCatalogues), weakRadiusFactor (10), lmIterations (6000), modelsToKeep (24), parallelism (0 = all logical processors), seed (1), useNativeEngine (true - with analytic derivatives the fastest, model-glass variables included), analyticDerivative (true, native only), outputFolder ('sign_pattern_results'), stepMethod ('psd3' default, or 'psd2': Dilworth pseudo-second-derivative, which estimates each variable's own curvature from successive Jacobians; 'lm' Marquardt damping), useBroydenUpdate (default: on for lm, off for psd), substituteGlass (true; false keeps the lens's own glasses in every design, and glassCatalog is not used).")]
+            "Params: designsPerSurfaceSquared (50), glassCatalog ('CoreSet28' - any .agf in catalogs/FilteredGlassCatalogues), weakRadiusFactor (10), lmIterations (6000), modelsToKeep (24), parallelism (0 = all logical processors), seed (1), useNativeEngine (true - with analytic derivatives the fastest, model-glass variables included), analyticDerivative (true, native only), outputFolder ('sign_pattern_results'), stepMethod ('psd3' default, or 'psd2': Dilworth pseudo-second-derivative, which estimates each variable's own curvature from successive Jacobians; 'lm' Marquardt damping), useBroydenUpdate (default: on for lm, off for psd), substituteGlass (true; false keeps the lens's own glasses in every design, and glassCatalog is not used), " +
+            "screenIterations (0 = off; above 0 every design is first optimized for only this many iterations - 30 is a good start - and the best polishFraction of them continue to lmIterations, so many more designs are tried in the same time), polishFraction (0.1), " +
+            "randomizeModelGlass (false; true starts every design's model glasses at a random Nd and Vd within their bounds).")]
         public string SignPatternSearchStart(
             int designsPerSurfaceSquared = 50, string glassCatalog = "CoreSet28", double weakRadiusFactor = 10,
             int lmIterations = 6000, int modelsToKeep = 24, int parallelism = 0, int seed = 1,
             bool useNativeEngine = true, bool analyticDerivative = true,
             string outputFolder = "sign_pattern_results", string stepMethod = "psd3", bool? useBroydenUpdate = null,
-            bool substituteGlass = true)
+            bool substituteGlass = true, int screenIterations = 0, double polishFraction = 0.1,
+            bool randomizeModelGlass = false)
         {
             { var ge = _session.ValidateGlass(); if (ge != null) return ge; }
             if (_session.MeritFunction == null || _session.MeritFunction.Operands.Count == 0)
@@ -1203,6 +1206,9 @@ namespace LensHH.Mcp.Tools
                 Seed = seed,
                 Step = step,
                 UseBroydenUpdate = useBroydenUpdate,
+                ScreenIterations = Math.Max(0, screenIterations),
+                PolishFraction = polishFraction,
+                RandomizeModelGlass = randomizeModelGlass,
             };
             int n = SignPatternSearchService.SignSurfaces(_session.System).Count;
             int population = SignPatternSearchService.PopulationSize(_session.System, settings);

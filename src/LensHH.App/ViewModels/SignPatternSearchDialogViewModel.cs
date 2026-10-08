@@ -72,6 +72,12 @@ namespace LensHH.App.ViewModels
         [ObservableProperty] private string _selectedGlassCatalog;
         [ObservableProperty] private double _weakRadiusFactor = 10.0;
         [ObservableProperty] private int _lmIterations = 6000;
+        [ObservableProperty] private int _screenIterations = 0;      // 0 = off: every design to LmIterations
+        [ObservableProperty] private double _polishPercent = 10.0;
+        [ObservableProperty] private bool _randomizeModelGlass = false;
+
+        public bool IsScreening => ScreenIterations > 0;
+        partial void OnScreenIterationsChanged(int value) => OnPropertyChanged(nameof(IsScreening));
         [ObservableProperty] private int _modelsToKeep = 24;
         [ObservableProperty] private int _seed = 1;
         [ObservableProperty] private int _engineModeIndex = 1;     // 0 = C#, 1 = Native (with analytic derivatives the fastest, model-glass variables included)
@@ -128,6 +134,9 @@ namespace LensHH.App.ViewModels
             GlassCatalog = string.IsNullOrWhiteSpace(SelectedGlassCatalog) ? "CoreSet28" : SelectedGlassCatalog,
             WeakRadiusFactor = Math.Max(0.1, WeakRadiusFactor),
             LmIterations = Math.Max(1, LmIterations),
+            ScreenIterations = Math.Max(0, ScreenIterations),
+            PolishFraction = Math.Max(0.001, Math.Min(1.0, PolishPercent / 100.0)),
+            RandomizeModelGlass = RandomizeModelGlass,
             ModelsToKeep = Math.Max(1, ModelsToKeep),
             Seed = Seed,
             Step = SelectedStep?.Value ?? StepMethod.PsdIII,

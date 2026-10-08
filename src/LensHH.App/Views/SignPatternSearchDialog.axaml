@@ -45,6 +45,21 @@
             <TextBlock Text="LM iterations" FontSize="11"/>
             <NumericUpDown Value="{Binding LmIterations, UpdateSourceTrigger=LostFocus}" Minimum="1" Maximum="100000" Increment="50" FormatString="0"/>
           </StackPanel>
+          <StackPanel Margin="0,0,16,6" Width="170">
+            <TextBlock Text="Screen iterations (0 = off)" FontSize="11"/>
+            <NumericUpDown Value="{Binding ScreenIterations, UpdateSourceTrigger=LostFocus}" Minimum="0" Maximum="100000" Increment="10" FormatString="0"
+                           ToolTip.Tip="0: every design is optimized for the full LM iterations. Above 0: every design is first optimized for only this many iterations (30 is a good start), and the best Polish % of them then continue to the full LM iterations. Which basin a design falls into is settled early, so this tries many more designs in the same time."/>
+          </StackPanel>
+          <StackPanel Margin="0,0,16,6" Width="110">
+            <TextBlock Text="Polish %" FontSize="11"/>
+            <NumericUpDown Value="{Binding PolishPercent, UpdateSourceTrigger=LostFocus}" Minimum="0.1" Maximum="100" Increment="1" FormatString="0.#"
+                           IsEnabled="{Binding IsScreening}"
+                           ToolTip.Tip="With screening on: the percentage of screened designs, best merit first, that continue to the full LM iterations."/>
+          </StackPanel>
+          <StackPanel Margin="0,0,16,6" Width="170" VerticalAlignment="Bottom">
+            <CheckBox Content="Random model glass" IsChecked="{Binding RandomizeModelGlass}"
+                      ToolTip.Tip="Start every design's model glasses at a random Nd and Vd within their bounds, instead of the lens's own values. Only a variable Nd or Vd with both a minimum and a maximum is drawn."/>
+          </StackPanel>
           <StackPanel Margin="0,0,16,6" Width="130">
             <TextBlock Text="Models to keep" FontSize="11"/>
             <NumericUpDown Value="{Binding ModelsToKeep, UpdateSourceTrigger=LostFocus}" Minimum="1" Maximum="500" Increment="1" FormatString="0"/>
