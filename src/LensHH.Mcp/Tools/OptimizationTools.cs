@@ -1287,9 +1287,9 @@ namespace LensHH.Mcp.Tools
             "Replaces the current lens's model glasses (Nd/Vd/dPgF) by real glasses from glassCatalog, one element at a time, highest element power first; a model glass whose Nd is picked up from another follows it. " +
             "For each glass, every carried design tries the candidatesPerGlass catalog glasses nearest its model glass on the (Nd, Vd) map (0.01 in Nd weighed as 1 in Vd), with its variable curvatures rescaled to keep the element's power (rescaleCurvature); every candidate is optimized for screenIterations with the remaining model glasses still variable, the best polishFraction (never fewer than beamWidth) for lmIterations, and the best beamWidth distinct glass sets go to the next glass. " +
             "The finished designs (every glass real, best modelsToKeep) are written as .lhlt to outputFolder and the best is auto-applied when the job completes. Poll optimize_status(jobId); optimize_cancel(jobId) stops (nothing is kept unless every glass was replaced). " +
-            "Params: glassCatalog ('CoreSet28' - any .agf in catalogs/FilteredGlassCatalogues, e.g. a preferred-glass catalog, or a loaded vendor catalog such as SCHOTT), candidatesPerGlass (20), beamWidth (10), screenIterations (30; 0 = every candidate gets lmIterations), polishFraction (0.25), lmIterations (6000), rescaleCurvature (true), modelsToKeep (24), parallelism (0 = all logical processors), useNativeEngine (true), analyticDerivative (true), stepMethod ('psd3', 'psd2' or 'lm'), useBroydenUpdate (default: on for lm, off for psd), outputFolder ('real_glass_results').")]
+            "Params: glassCatalog (default: the lens's glass map catalog, set_glass_map_catalog, else 'CoreSet28' - any .agf in catalogs/FilteredGlassCatalogues, e.g. a preferred-glass catalog, or a loaded vendor catalog such as SCHOTT), candidatesPerGlass (20), beamWidth (10), screenIterations (30; 0 = every candidate gets lmIterations), polishFraction (0.25), lmIterations (6000), rescaleCurvature (true), modelsToKeep (24), parallelism (0 = all logical processors), useNativeEngine (true), analyticDerivative (true), stepMethod ('psd3', 'psd2' or 'lm'), useBroydenUpdate (default: on for lm, off for psd), outputFolder ('real_glass_results').")]
         public string ReplaceModelGlassStart(
-            string glassCatalog = "CoreSet28", int candidatesPerGlass = 20, int beamWidth = 10,
+            string glassCatalog = "", int candidatesPerGlass = 20, int beamWidth = 10,
             int screenIterations = 30, double polishFraction = 0.25, int lmIterations = 6000,
             bool rescaleCurvature = true, int modelsToKeep = 24, int parallelism = 0,
             bool useNativeEngine = true, bool analyticDerivative = true,
@@ -1305,7 +1305,9 @@ namespace LensHH.Mcp.Tools
 
             var settings = new ModelGlassReplacementSettings
             {
-                GlassCatalog = string.IsNullOrWhiteSpace(glassCatalog) ? "CoreSet28" : glassCatalog.Trim(),
+                // Default: the lens's glass map catalog, else CoreSet28.
+                GlassCatalog = !string.IsNullOrWhiteSpace(glassCatalog) ? glassCatalog.Trim()
+                    : !string.IsNullOrWhiteSpace(_session.System.GlassMapCatalog) ? _session.System.GlassMapCatalog : "CoreSet28",
                 CandidatesPerGlass = Math.Max(1, candidatesPerGlass),
                 BeamWidth = Math.Max(1, beamWidth),
                 ScreenIterations = Math.Max(0, screenIterations),

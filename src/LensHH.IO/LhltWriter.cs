@@ -52,6 +52,7 @@ namespace LensHH.Core.IO
                 BoundHandling = system.BoundHandling,
                 TelecentricObjectSpace = system.TelecentricObjectSpace,
                 PenalizeVignetting = system.PenalizeVignetting,
+                GlassMapCatalog = string.IsNullOrWhiteSpace(system.GlassMapCatalog) ? null : system.GlassMapCatalog,
                 SemiDiameterSolve = system.SemiDiameterSolve,
                 UseAutomaticVignettingFactors = system.UseAutomaticVignettingFactors,
                 GlassCatalogs = system.GlassCatalogs

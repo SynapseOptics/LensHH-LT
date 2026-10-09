@@ -145,6 +145,10 @@ public class GuiSession
     {
         _glassCatalog = new GlassCatalogManager();
         LoadGlassCatalogs();
+        // Curated catalogs (CoreSet28 and the user's own) live in the filtered-catalog folder; the
+        // lens's glass map catalog is loaded from there by name (EnsureGlassMapCatalog).
+        if (LensHH.App.ViewModels.GlassSubstitutionViewModel.FindFilteredCatalogFolder() is string filtered)
+            _glassCatalog.FilteredCatalogFolders.Add(filtered);
         NewSystem();
     }
 
@@ -444,6 +448,11 @@ public class GuiSession
 
     public void NotifySystemChanged(string sender, bool markDirty = true)
     {
+        // Load the glass map catalog (GMAP) here, on the UI thread, so no optimizer's parallel
+        // merit expansion loads it while other threads read the glass manager.
+        if (!string.IsNullOrWhiteSpace(_system.GlassMapCatalog))
+            _glassCatalog.EnsureCatalogLoaded(_system.GlassMapCatalog);
+
         // Apply pickup solves first (target = source * scale + offset)
         try { LensHH.Core.Analysis.PickupSolver.Solve(_system); }
         catch { /* ignore if system is incomplete */ }

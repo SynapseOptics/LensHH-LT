@@ -166,6 +166,38 @@ public partial class SystemEditorViewModel : ObservableObject
         set { _session.System.SemiDiameterSolve = value; OnPropertyChanged(); }
     }
 
+    private const string NoGlassMapCatalog = "(none)";
+
+    /// <summary>The curated catalogs in the filtered-catalog folder (where CoreSet28 lives),
+    /// after "(none)". The one chosen is the glass map catalog: GMAP keeps model glasses on its
+    /// glasses, and Replace Model Glass starts with it selected.</summary>
+    public string[] GlassMapCatalogs { get; } = BuildGlassMapCatalogs();
+
+    private static string[] BuildGlassMapCatalogs()
+    {
+        var names = new System.Collections.Generic.List<string> { NoGlassMapCatalog };
+        var dir = GlassSubstitutionViewModel.FindFilteredCatalogFolder();
+        if (dir != null && System.IO.Directory.Exists(dir))
+            foreach (var f in System.IO.Directory.GetFiles(dir))
+                if (System.IO.Path.GetExtension(f).Equals(".agf", StringComparison.OrdinalIgnoreCase))
+                    names.Add(System.IO.Path.GetFileNameWithoutExtension(f));
+        names.Sort(1, names.Count - 1, StringComparer.OrdinalIgnoreCase);
+        return names.ToArray();
+    }
+
+    public string GlassMapCatalog
+    {
+        get => string.IsNullOrWhiteSpace(_session.System.GlassMapCatalog)
+            ? NoGlassMapCatalog
+            : (Array.Find(GlassMapCatalogs, n => n.Equals(_session.System.GlassMapCatalog, StringComparison.OrdinalIgnoreCase))
+               ?? _session.System.GlassMapCatalog);
+        set
+        {
+            _session.System.GlassMapCatalog = (value == null || value == NoGlassMapCatalog) ? "" : value;
+            OnPropertyChanged();
+        }
+    }
+
     public SemiDiameterSolve[] SemiDiameterSolveModes =>
         new[] { SemiDiameterSolve.RealRay, SemiDiameterSolve.Paraxial };
 

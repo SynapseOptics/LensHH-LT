@@ -173,6 +173,15 @@ namespace LensHH.Mcp
 
                     // The user's own catalogs: table glasses converted from OpticStudio .ZTG files.
                     UserGlassCatalog.LoadInto(_glassCatalog);
+
+                    // Curated catalogs (CoreSet28 and the user's own) for the glass map catalog.
+                    foreach (var d in new[]
+                    {
+                        Path.Combine(baseDir, "catalogs", "FilteredGlassCatalogues"),
+                        Path.Combine(baseDir, "..", "catalogs", "FilteredGlassCatalogues"),
+                        Path.Combine(baseDir, "..", "..", "..", "..", "..", "catalogs", "FilteredGlassCatalogues"),
+                    })
+                        if (Directory.Exists(d)) { _glassCatalog.FilteredCatalogFolders.Add(Path.GetFullPath(d)); break; }
                 }
                 return _glassCatalog;
             }
@@ -221,6 +230,9 @@ namespace LensHH.Mcp
             _system = result.System;
             MeritFunction = result.MeritFunction;
             _currentFilePath = filePath;
+            // Load the glass map catalog (GMAP) now, before any optimizer reads the manager in parallel.
+            if (!string.IsNullOrWhiteSpace(_system.GlassMapCatalog))
+                GlassCatalog.EnsureCatalogLoaded(_system.GlassMapCatalog);
             ClearLastRender();
         }
 

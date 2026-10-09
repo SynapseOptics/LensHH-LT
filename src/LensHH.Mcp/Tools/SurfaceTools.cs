@@ -885,6 +885,7 @@ namespace LensHH.Mcp.Tools
                 PenalizeVignetting = srcSys.PenalizeVignetting,
                 RayAiming          = srcSys.RayAiming,
                 BoundHandling      = srcSys.BoundHandling,
+                GlassMapCatalog    = srcSys.GlassMapCatalog,
             };
 
             double origObjT   = srcSys.Surfaces[0].Thickness;

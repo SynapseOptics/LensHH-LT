@@ -1,5 +1,6 @@
 using System;
 using System.ComponentModel;
+using System.Linq;
 using System.Text;
 using LensHH.Core.Analysis;
 using LensHH.Core.IO;
@@ -361,6 +362,29 @@ namespace LensHH.Mcp.Tools
                 return $"Unknown bound handling mode '{mode}'. Use 'Sigmoid' or 'Reflect'.";
 
             return $"Bound handling set to {sys.BoundHandling}.";
+        }
+
+        [McpServerTool, Description("Set the glass map catalog: the name (no extension) of a curated .agf in catalogs/FilteredGlassCatalogues, where CoreSet28 lives - for example the user's preferred glasses. The GMAP merit operand keeps model glasses inside the region this catalog's glasses occupy on the Nd-Vd map, and replace_model_glass_start defaults to it. Separate from the preferred-catalog list, which only orders glass-name lookup. Empty string clears it (GMAP then has no effect). Saved with the design.")]
+        public string SetGlassMapCatalog(string catalog)
+        {
+            var sys = _session.System;
+            if (string.IsNullOrWhiteSpace(catalog))
+            {
+                sys.GlassMapCatalog = "";
+                return "Glass map catalog cleared; GMAP has no effect.";
+            }
+            if (!_session.GlassCatalog.EnsureCatalogLoaded(catalog.Trim()))
+            {
+                var available = _session.GlassCatalog.FilteredCatalogFolders
+                    .Where(System.IO.Directory.Exists)
+                    .SelectMany(d => System.IO.Directory.GetFiles(d))
+                    .Where(f => System.IO.Path.GetExtension(f).Equals(".agf", StringComparison.OrdinalIgnoreCase))
+                    .Select(f => System.IO.Path.GetFileNameWithoutExtension(f));
+                return $"Catalog '{catalog}' not found in the filtered-catalog folder. Available: {string.Join(", ", available)}";
+            }
+            sys.GlassMapCatalog = catalog.Trim();
+            int n = _session.GlassCatalog.GetGlassesInCatalog(sys.GlassMapCatalog).Count(g => g.Status != 2);
+            return $"Glass map catalog set to {sys.GlassMapCatalog} ({n} glasses, obsolete excluded).";
         }
 
         [McpServerTool, Description("Set afocal mode on or off. Afocal systems have no finite focal length (e.g. telescopes, beam expanders). afocal=true for afocal, false for focal.")]

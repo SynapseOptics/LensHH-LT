@@ -117,7 +117,7 @@ public partial class OperandRowViewModel : ObservableObject
         or OperandType.SDT or OperandType.DTRGT
         or OperandType.RIT or OperandType.RET
         or OperandType.NDT or OperandType.VDT or OperandType.DPGFT
-        // Glass map: Surface1/Surface2 (the model glasses it covers) + Hx (margin in Vd).
+        // Glass map: Surface1/Surface2 (the model glasses it covers) + weight; no target or Min/Max.
         or OperandType.GMAP
             => Category.Boundary,
 
@@ -310,9 +310,8 @@ public partial class OperandRowViewModel : ObservableObject
 
     public string HxText
     {
-        // GMAP borrows Hx for its margin (Vd units the boundary is pulled inward by).
-        get => (NeedsRayCoords || _operand.Type == OperandType.GMAP) ? _operand.Hx.ToString("G4", CultureInfo.InvariantCulture) : "";
-        set { if ((NeedsRayCoords || _operand.Type == OperandType.GMAP) && TryParse(value, out double v)) { _operand.Hx = v; OnPropertyChanged(); } }
+        get => NeedsRayCoords ? _operand.Hx.ToString("G4", CultureInfo.InvariantCulture) : "";
+        set { if (NeedsRayCoords && TryParse(value, out double v)) { _operand.Hx = v; OnPropertyChanged(); } }
     }
 
     public string HyText
@@ -717,7 +716,7 @@ public partial class MeritFunctionEditorViewModel : ObservableObject
         OperandType.NDT => "NDT — Total model-glass index (Nd) violation over model-index surfaces in range. Params: Surf, Surf2, Min, Max",
         OperandType.VDT => "VDT — Total model-glass Abbe (Vd) violation over model-index surfaces in range. Params: Surf, Surf2, Min, Max",
         OperandType.DPGFT => "DPGFT — Total model-glass partial-dispersion (dPgF) violation over model-index surfaces in range. Params: Surf, Surf2, Min, Max",
-        OperandType.GMAP => "GMAP — Glass map: keeps the model glasses in range inside the region real glasses occupy on the Nd-Vd map (the lens's preferred catalogs, or every loaded catalog; obsolete glasses left out). Zero inside; grows with the Vd distance outside. Params: Surf, Surf2, Hx = margin in Vd pulling the boundary inward (default 0). Min/Max are not used. Use a small weight (about 0.01 against a wavefront merit): its value is in Vd units.",
+        OperandType.GMAP => "GMAP — Glass map: keeps the model glasses in range inside the region the glasses of the Glass Map Catalog (Editors → System) occupy on the Nd-Vd map. Zero inside; the Vd distance outside. Params: Surf, Surf2, Weight only — no Target or Min/Max. Use a small weight (about 0.01 against a wavefront merit): the value is in Vd units. With no Glass Map Catalog set it has no effect.",
 
         // Surface property
         OperandType.DM => "DM — Diameter (semi-diameter) of a single surface. Params: Surf",

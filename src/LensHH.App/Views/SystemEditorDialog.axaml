@@ -88,6 +88,15 @@
                 ToolTip.Tip="How bounded optimization variables (those with a Min and/or Max) are mapped into the optimizer&apos;s search space. Sigmoid is the historical default: smooth, but its gradient vanishes at a bound, so a variable pushed to a limit stops responding. Reflect keeps the variable in physical units and folds out-of-range values back inside, so the gradient never collapses at the bounds — usually better for constrained and stochastic search." />
     </DockPanel>
 
+    <!-- Glass map catalog (GMAP operand, Replace Model Glass) -->
+    <DockPanel>
+      <TextBlock Text="Glass Map Catalog:" Width="120" VerticalAlignment="Center" />
+      <ComboBox ItemsSource="{Binding GlassMapCatalogs}"
+                SelectedItem="{Binding GlassMapCatalog}"
+                HorizontalAlignment="Stretch"
+                ToolTip.Tip="A curated glass catalog from the filtered-catalog folder (where CoreSet28 lives). The GMAP merit operand keeps model glasses inside the region this catalog's glasses occupy on the Nd-Vd map, and Replace Model Glass starts with it selected. (none): GMAP has no effect. Independent of Catalog Preference." />
+    </DockPanel>
+
     <!-- Buttons -->
     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,8,0,0">
       <Button Content="OK" Click="OK_Click" Width="80" />

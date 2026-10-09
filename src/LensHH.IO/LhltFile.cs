@@ -42,6 +42,12 @@ namespace LensHH.Core.IO
         public bool PenalizeVignetting { get; set; }
 
         /// <summary>
+        /// The glass map catalog (a curated catalog in the filtered-catalog folder) the GMAP
+        /// operand keeps model glasses on. Empty when not set. See OpticalSystem.GlassMapCatalog.
+        /// </summary>
+        public string? GlassMapCatalog { get; set; }
+
+        /// <summary>
         /// How Auto semi-diameters are derived: from real traced rays (RealRay, the default and
         /// the historical behaviour) or from the paraxial beam footprint (Paraxial). SYSTEM-WIDE,
         /// and orthogonal to the per-surface Auto/Fixed mode — Fixed surfaces are unaffected.

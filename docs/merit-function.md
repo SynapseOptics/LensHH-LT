@@ -353,16 +353,20 @@ Nd 1.85 have Vd of about 40. `GMAP` keeps the model glasses in the range
 inside the region real glasses occupy on the Nd–Vd map, so that a model-glass
 solution can later be matched by real glasses (Replace Model Glass).
 
-The region comes from the lens's preferred glass catalogs (Catalog
-Preference), or every loaded catalog when none is set; obsolete glasses are
-left out. Its upper and lower edges are curves of Vd against Nd built from the
-highest and lowest Vd in each 0.02 band of Nd, drawn so that every catalog
-glass lies inside. The operand is zero inside the
-region and grows with the Vd distance outside it, and it has an exact
-derivative, so it stays on the fast native analytic path. Inputs: `Surface1`,
-`Surface2`, and `Hx` — a margin in Vd that pulls the edges inward (default 0).
-`Min` / `Max` are not used. Keep the Nd bounds on the model glasses as well:
-the region's curves are extended past the catalog's Nd range.
+The region comes from the lens's **Glass Map Catalog** (Editors → System): a
+curated catalog in the filtered-catalog folder, where CoreSet28 lives — for
+example the preferred glasses of a vendor. It is separate from Catalog
+Preference, which only orders glass-name lookup. Obsolete glasses are left
+out. The region's upper and lower edges are curves of Vd against Nd built
+from the highest and lowest Vd in each 0.02 band of Nd, drawn so that every
+catalog glass lies inside. With no Glass Map Catalog set, GMAP has no effect.
+
+The operand is zero inside the region and grows with the Vd distance outside
+it, and it has an exact derivative, so it stays on the fast native analytic
+path. Inputs: `Surface1`, `Surface2` and the weight. There is no target and
+no `Min` / `Max` to set. Keep the Nd bounds on the model glasses as well: the
+region's curves are extended past the catalog's Nd range. Replace Model Glass
+starts with the same catalog selected, so both phases use the same glasses.
 
 Give it a small weight. Its value is in Vd units (tens when a glass is far off
 the map), much larger than typical image-quality residuals, so a weight that

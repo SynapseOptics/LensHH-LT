@@ -50,7 +50,10 @@ namespace LensHH.App.ViewModels
                          .OrderBy(n => n, StringComparer.OrdinalIgnoreCase).ToList();
             if (names.Count == 0) names.Add("CoreSet28");
             GlassCatalogs = names;
-            _selectedGlassCatalog = names.FirstOrDefault(n => n.Equals("CoreSet28", StringComparison.OrdinalIgnoreCase))
+            // Start with the lens's glass map catalog (Editors → System), else CoreSet28.
+            string mapCatalog = _session.System.GlassMapCatalog;
+            _selectedGlassCatalog = names.FirstOrDefault(n => !string.IsNullOrWhiteSpace(mapCatalog) && n.Equals(mapCatalog, StringComparison.OrdinalIgnoreCase))
+                                    ?? names.FirstOrDefault(n => n.Equals("CoreSet28", StringComparison.OrdinalIgnoreCase))
                                     ?? names[0];
             UpdateGroupsText();
         }
