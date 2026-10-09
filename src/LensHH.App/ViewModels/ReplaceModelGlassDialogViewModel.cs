@@ -73,7 +73,7 @@ namespace LensHH.App.ViewModels
         [ObservableProperty] private string _selectedGlassCatalog;
         [ObservableProperty] private int _candidatesPerGlass = 20;
         [ObservableProperty] private int _beamWidth = 10;
-        [ObservableProperty] private int _screenIterations = 30;
+        [ObservableProperty] private int _screenIterations = 0;   // 0: every candidate fully optimized (short runs rank glass swaps poorly)
         [ObservableProperty] private double _polishPercent = 25.0;
         [ObservableProperty] private int _lmIterations = 6000;
         [ObservableProperty] private bool _rescaleCurvature = true;

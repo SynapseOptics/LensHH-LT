@@ -40,7 +40,7 @@
           <StackPanel Margin="0,0,16,6" Width="150">
             <TextBlock Text="Screen iterations" FontSize="11"/>
             <NumericUpDown Value="{Binding ScreenIterations, UpdateSourceTrigger=LostFocus}" Minimum="0" Maximum="100000" Increment="10" FormatString="0"
-                           ToolTip.Tip="The short optimization every candidate gets. 0: every candidate gets the full LM iterations."/>
+                           ToolTip.Tip="0 (recommended): every candidate is fully optimized for the LM iterations. Above 0: every candidate first gets this many iterations and only the best Polish % continue. A short run ranks glass swaps poorly, because a swap upsets the color balance, so screening can drop the best candidates."/>
           </StackPanel>
           <StackPanel Margin="0,0,16,6" Width="110">
             <TextBlock Text="Polish %" FontSize="11"/>
