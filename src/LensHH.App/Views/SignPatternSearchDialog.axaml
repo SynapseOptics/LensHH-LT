@@ -60,6 +60,10 @@
             <CheckBox Content="Random model glass" IsChecked="{Binding RandomizeModelGlass}"
                       ToolTip.Tip="Start every design's model glasses at a random Nd and Vd within their bounds, instead of the lens's own values. Only a variable Nd or Vd with both a minimum and a maximum is drawn."/>
           </StackPanel>
+          <StackPanel Margin="0,0,16,6" Width="170" VerticalAlignment="Bottom">
+            <CheckBox Content="Random thickness" IsChecked="{Binding RandomizeThickness}"
+                      ToolTip.Tip="Start every design's variable thicknesses at a random value, between the thickness's minimum (0.1 if none) and the smaller of its maximum and the lens's largest clear diameter, instead of the plates' thicknesses. Lets the search reach thick-element forms. The last thickness (to the image) is left to the optimizer."/>
+          </StackPanel>
           <StackPanel Margin="0,0,16,6" Width="130">
             <TextBlock Text="Models to keep" FontSize="11"/>
             <NumericUpDown Value="{Binding ModelsToKeep, UpdateSourceTrigger=LostFocus}" Minimum="1" Maximum="500" Increment="1" FormatString="0"/>

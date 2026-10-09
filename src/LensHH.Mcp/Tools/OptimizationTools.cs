@@ -1179,14 +1179,15 @@ namespace LensHH.Mcp.Tools
             "Poll optimize_status(jobId) (designs done / population, best merit); optimize_cancel(jobId) stops early and keeps what was found. " +
             "Params: designsPerSurfaceSquared (50), glassCatalog ('CoreSet28' - any .agf in catalogs/FilteredGlassCatalogues), weakRadiusFactor (10), lmIterations (6000), modelsToKeep (24), parallelism (0 = all logical processors), seed (1), useNativeEngine (true - with analytic derivatives the fastest, model-glass variables included), analyticDerivative (true, native only), outputFolder ('sign_pattern_results'), stepMethod ('psd3' default, or 'psd2': Dilworth pseudo-second-derivative, which estimates each variable's own curvature from successive Jacobians; 'lm' Marquardt damping), useBroydenUpdate (default: on for lm, off for psd), substituteGlass (true; false keeps the lens's own glasses in every design, and glassCatalog is not used), " +
             "screenIterations (0 = off; above 0 every design is first optimized for only this many iterations - 30 is a good start - and the best polishFraction of them continue to lmIterations, so many more designs are tried in the same time), polishFraction (0.1), " +
-            "randomizeModelGlass (false; true starts every design's model glasses at a random Nd and Vd within their bounds).")]
+            "randomizeModelGlass (false; true starts every design's model glasses at a random Nd and Vd within their bounds), " +
+            "randomizeThickness (false; true starts every design's variable thicknesses, except the last to the image, at a random value between the minimum (0.1 if none) and the smaller of the maximum and the lens's largest clear diameter).")]
         public string SignPatternSearchStart(
             int designsPerSurfaceSquared = 50, string glassCatalog = "CoreSet28", double weakRadiusFactor = 10,
             int lmIterations = 6000, int modelsToKeep = 24, int parallelism = 0, int seed = 1,
             bool useNativeEngine = true, bool analyticDerivative = true,
             string outputFolder = "sign_pattern_results", string stepMethod = "psd3", bool? useBroydenUpdate = null,
             bool substituteGlass = true, int screenIterations = 0, double polishFraction = 0.1,
-            bool randomizeModelGlass = false)
+            bool randomizeModelGlass = false, bool randomizeThickness = false)
         {
             { var ge = _session.ValidateGlass(); if (ge != null) return ge; }
             if (_session.MeritFunction == null || _session.MeritFunction.Operands.Count == 0)
@@ -1209,6 +1210,7 @@ namespace LensHH.Mcp.Tools
                 ScreenIterations = Math.Max(0, screenIterations),
                 PolishFraction = polishFraction,
                 RandomizeModelGlass = randomizeModelGlass,
+                RandomizeThickness = randomizeThickness,
             };
             int n = SignPatternSearchService.SignSurfaces(_session.System).Count;
             int population = SignPatternSearchService.PopulationSize(_session.System, settings);

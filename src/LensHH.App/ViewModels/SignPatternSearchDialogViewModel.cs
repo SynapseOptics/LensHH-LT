@@ -75,6 +75,7 @@ namespace LensHH.App.ViewModels
         [ObservableProperty] private int _screenIterations = 0;      // 0 = off: every design to LmIterations
         [ObservableProperty] private double _polishPercent = 10.0;
         [ObservableProperty] private bool _randomizeModelGlass = false;
+        [ObservableProperty] private bool _randomizeThickness = false;
 
         public bool IsScreening => ScreenIterations > 0;
         partial void OnScreenIterationsChanged(int value) => OnPropertyChanged(nameof(IsScreening));
@@ -137,6 +138,7 @@ namespace LensHH.App.ViewModels
             ScreenIterations = Math.Max(0, ScreenIterations),
             PolishFraction = Math.Max(0.001, Math.Min(1.0, PolishPercent / 100.0)),
             RandomizeModelGlass = RandomizeModelGlass,
+            RandomizeThickness = RandomizeThickness,
             ModelsToKeep = Math.Max(1, ModelsToKeep),
             Seed = Seed,
             Step = SelectedStep?.Value ?? StepMethod.PsdIII,
