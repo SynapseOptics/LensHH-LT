@@ -33,6 +33,8 @@ namespace LensHH.Rendering.TextExport
                 "RMS Wavefront (waves)\t{0:F6}", result.RmsWavefront));
             sb.AppendLine(string.Format(CultureInfo.InvariantCulture,
                 "RMS Fit Residual (waves)\t{0:E4}", result.RmsFit));
+            if (result.Error != null)
+                sb.AppendLine("Fit failed\t" + result.Error);
             sb.AppendLine();
 
             sb.AppendLine("Term\tCoefficient (waves)\tName");

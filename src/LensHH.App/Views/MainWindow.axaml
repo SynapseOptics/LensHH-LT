@@ -107,6 +107,7 @@
         </MenuItem>
         <MenuItem Header="FFT _PSF" Click="FftPsf_Click" />
         <MenuItem Header="_Wavefront Map" Click="WavefrontMap_Click" />
+        <MenuItem Header="_Zernike Coefficients" Click="Zernike_Click" />
       </MenuItem>
       <MenuItem Header="_Optimization">
         <MenuItem Header="_Merit Function" Click="MeritFunctionTab_Click" />
@@ -1514,6 +1515,55 @@
             </Border>
           </DockPanel>
           <Border Background="#80FFFFFF" IsVisible="{Binding SystemData.IsBusy}"
+                  HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+            <TextBlock Text="Computing..." FontSize="18" FontWeight="Bold" Foreground="#555"
+                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+          </Border>
+        </Grid>
+      </TabItem>
+
+      <!-- Zernike Coefficients Tab (visible on demand via Analysis menu) -->
+      <TabItem Header="Zernike" IsVisible="{Binding Zernike.IsVisible}">
+        <Grid>
+          <DockPanel>
+            <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="4" Spacing="6">
+              <TextBlock Text="Field:" VerticalAlignment="Center" />
+              <ComboBox ItemsSource="{Binding Zernike.FieldOptions}" SelectedIndex="{Binding Zernike.SelectedFieldIndex}" Width="140" />
+              <TextBlock Text="Wave:" VerticalAlignment="Center" />
+              <ComboBox ItemsSource="{Binding Zernike.WaveOptions}" SelectedIndex="{Binding Zernike.SelectedWaveIndex}" Width="160" />
+              <TextBlock Text="Type:" VerticalAlignment="Center" />
+              <ComboBox SelectedIndex="{Binding Zernike.TypeIndex}" Width="150">
+                <ComboBoxItem Content="Standard (Noll)" />
+                <ComboBoxItem Content="Fringe" />
+              </ComboBox>
+              <TextBlock Text="Terms:" VerticalAlignment="Center" />
+              <NumericUpDown Value="{Binding Zernike.NumTerms}" Minimum="1" Maximum="{Binding Zernike.MaxTerms}" Increment="1" FormatString="0" Width="110"
+                             ToolTip.Tip="Standard: any number of terms. Fringe: 1 to 37." />
+              <TextBlock Text="Grid:" VerticalAlignment="Center" />
+              <ComboBox ItemsSource="{Binding Zernike.GridSizes}" SelectedItem="{Binding Zernike.GridSize}" Width="80"
+                        ToolTip.Tip="Sampling of the wavefront map the coefficients are fitted to." />
+              <Button Content="Compute" Command="{Binding Zernike.ComputeCommand}" Width="80" />
+              <Button Content="Export Text..." Command="{Binding Zernike.ExportTextCommand}" Width="100" />
+              <Button Content="Copy Table" Command="{Binding Zernike.CopyTableToClipboardCommand}" Width="85" FontSize="11" />
+              <Button Content="Close Tab" Click="CloseZernikeTab_Click" Width="70" FontSize="11" />
+            </StackPanel>
+            <StackPanel DockPanel.Dock="Top" Margin="4,0,4,2">
+              <TextBlock Text="{Binding Zernike.SummaryText}" FontSize="11" Foreground="#555" TextWrapping="Wrap" />
+              <TextBlock Text="{Binding Zernike.StatusText}" FontSize="11" Foreground="#B00020" TextWrapping="Wrap" />
+            </StackPanel>
+            <DataGrid ItemsSource="{Binding Zernike.Rows}" IsReadOnly="True"
+                      AutoGenerateColumns="False" CanUserResizeColumns="True" CanUserSortColumns="False"
+                      GridLinesVisibility="All" FontSize="11" FontFamily="Consolas"
+                      Margin="4" HeadersVisibility="Column"
+                      SelectionMode="Extended" ClipboardCopyMode="IncludeHeader">
+              <DataGrid.Columns>
+                <DataGridTextColumn Header="Term" Binding="{Binding Term}" Width="70" />
+                <DataGridTextColumn Header="Coefficient (waves)" Binding="{Binding Coefficient}" Width="170" />
+                <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*" />
+              </DataGrid.Columns>
+            </DataGrid>
+          </DockPanel>
+          <Border Background="#80FFFFFF" IsVisible="{Binding Zernike.IsBusy}"
                   HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
             <TextBlock Text="Computing..." FontSize="18" FontWeight="Bold" Foreground="#555"
                        HorizontalAlignment="Center" VerticalAlignment="Center" />

@@ -73,6 +73,7 @@ public partial class MainViewModel : ObservableObject
     public TransverseRayFanViewModel TransverseRayFan { get; }
     public OpdFanViewModel OpdFan { get; }
     public WavefrontMapViewModel WavefrontMap { get; }
+    public ZernikeViewModel Zernike { get; }
     public PupilAberrationFanViewModel PupilAberrationFan { get; }
     public LateralColorViewModel LateralColor { get; }
     public ChromaticFocalShiftViewModel ChromaticFocalShift { get; }
@@ -112,6 +113,7 @@ public partial class MainViewModel : ObservableObject
         TransverseRayFan = new TransverseRayFanViewModel(session);
         OpdFan = new OpdFanViewModel(session);
         WavefrontMap = new WavefrontMapViewModel(session);
+        Zernike = new ZernikeViewModel(session);
         PupilAberrationFan = new PupilAberrationFanViewModel(session);
         LateralColor = new LateralColorViewModel(session);
         ChromaticFocalShift = new ChromaticFocalShiftViewModel(session);
@@ -185,6 +187,7 @@ public partial class MainViewModel : ObservableObject
         OpdFan.OpdFanImage = null;
         PupilAberrationFan.PlotImage = null;
         WavefrontMap.WavefrontImage = null;
+        Zernike.Clear();
         Seidel.PlotImage = null;
         FieldCurvature.PlotImage = null;
         Distortion.PlotImage = null;
@@ -221,6 +224,7 @@ public partial class MainViewModel : ObservableObject
             if (OpdFan.IsVisible) await OpdFan.ComputeCommand.ExecuteAsync(null);
             if (PupilAberrationFan.IsVisible) await PupilAberrationFan.ComputeCommand.ExecuteAsync(null);
             if (WavefrontMap.IsVisible) await WavefrontMap.ComputeCommand.ExecuteAsync(null);
+            if (Zernike.IsVisible) await Zernike.ComputeCommand.ExecuteAsync(null);
             if (Seidel.IsVisible) await Seidel.ComputeCommand.ExecuteAsync(null);
             if (FieldCurvature.IsVisible) await FieldCurvature.ComputeCommand.ExecuteAsync(null);
             if (Distortion.IsVisible) await Distortion.ComputeCommand.ExecuteAsync(null);

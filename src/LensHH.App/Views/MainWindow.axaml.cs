@@ -1841,6 +1841,19 @@ public partial class MainWindow : Window
         VM.SelectedTabIndex = 0;
     }
 
+    private async void Zernike_Click(object? sender, RoutedEventArgs e)
+    {
+        VM.Zernike.IsVisible = true;
+        VM.SelectedTabIndex = 24;
+        await VM.Zernike.ComputeCommand.ExecuteAsync(null);
+    }
+
+    private void CloseZernikeTab_Click(object? sender, RoutedEventArgs e)
+    {
+        VM.Zernike.IsVisible = false;
+        VM.SelectedTabIndex = 0;
+    }
+
     private async void PupilAberrationFan_Click(object? sender, RoutedEventArgs e)
     {
         VM.PupilAberrationFan.IsVisible = true;
