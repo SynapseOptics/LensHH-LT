@@ -111,16 +111,22 @@ visible (lateral color).
 **Analysis → OPD Fan**
 
 Optical path difference in waves, plotted against normalized pupil
-coordinate along the meridional (`Py`) and sagittal (`Px`) axes.
-Piston **and** tilt are removed — the same convention used by the
-`WAVEX` merit operand.
+coordinate along the meridional (`Py`) and sagittal (`Px`) axes,
+measured from the chief ray. Tilt is not removed (the `WAVEX` merit
+operand removes piston and tilt; the fan shows the OPD itself).
 
 ![OPD Fan — Cooke triplet, max OPD scale ±2.31 waves](images/CookeTripletAnalyses/OpdFan.png)
 
 OPD sign convention: positive OPD = the test ray arrives **ahead**
-of the reference wavefront. The reference is the chief ray at the
-evaluation wavelength, corrected to the exit pupil for focal
-systems; for afocal systems the reference is a tilted plane wave.
+of the reference wavefront. Each ray is measured to a reference
+sphere centred on the primary wavelength's chief-ray image point,
+through that ray's crossing of the paraxial exit-pupil plane, and the
+chief ray of the evaluation wavelength has OPD zero. Every wavelength
+uses the primary's sphere, so lateral color shows off axis.
+
+For an **afocal** system the reference is a plane instead: perpendicular
+to the primary chief ray, through its crossing of the paraxial
+exit-pupil plane.
 
 Reading the plot is similar to the transverse-ray fan, but the
 shapes are integrals of the ray-fan curves (an antiderivative
@@ -177,9 +183,9 @@ aberration is small and ray aiming makes negligible difference.
 
 **Analysis → Wavefront Map**
 
-Color map of OPD across the pupil (the 2D version of the OPD fan).
-Tilt and piston are removed — same convention as `WAVEX`. Contour
-lines optional.
+Color map of OPD across the pupil (the 2D version of the OPD fan,
+with the same reference sphere, or plane for an afocal system). Tilt
+is not removed. Contour lines optional.
 
 ![Wavefront Map — Cooke triplet, three fields × three wavelengths](images/CookeTripletAnalyses/WavefrontMap.png)
 
@@ -607,29 +613,32 @@ Values follow the standard third-order convention.
 
 ## Zernike Coefficients
 
-> **CLI / MCP / API only — no GUI page.** Run via
-> `lhlt analyze zernike` (CLI), the `lhlt_analyze_zernike` MCP tool,
-> or `LensHHSession.AnalyzeZernike(...)` in the API. Tabular output
-> is produced by `ZernikeTextExport`.
+**Analysis → Zernike Coefficients**, also `analysis zernike` and
+`analysis zernike-fringe` (CLI), the `zernike_standard` and
+`zernike_fringe` MCP tools, and `ZernikeStandard` / `ZernikeFringe` in
+the API. **Copy Table** and **Export Text…** give the table as text.
 
 Decomposes the wavefront at one `(field, wavelength)` into Zernike
 polynomial coefficients. Two ordering conventions are available:
 
-- **Fringe** (sometimes "University of Arizona"): 37 terms,
+- **Fringe** (sometimes "University of Arizona"): up to 37 terms,
   ordered by ascending mode-set within each radial order. Standard
   output for many interferometric instruments.
-- **Standard** (Noll): 36 terms ordered by `n` then `m`. Standard
-  for atmospheric / telescope work.
+- **Standard** (Noll): any number of terms, ordered by `n` then `m`.
+  Standard for atmospheric / telescope work.
 
 | Input | Meaning |
 |---|---|
-| **Number of terms** | How many coefficients to fit. Default 37 (Fringe) / 36 (Standard). |
-| **Pupil Samples** | Grid resolution for the fit. |
+| **Number of terms** | How many coefficients to fit. Default 37; Fringe has at most 37. |
+| **Grid** | Sampling for the fit: n − 1 points a side, the rim included. Default 64. |
 | **Field / Wavelength** | One of each. |
 | **Convention** | Fringe or Standard. |
 
-The piston (Z1) and tilt (Z2, Z3) terms are typically tiny —
-unaberrated tilt has been removed in the wavefront. The dominant
+Each wavelength is fitted to its own chief ray: the reference sphere
+(or plane, afocal) is centred on that wavelength's own chief-ray image
+point, so lateral color does not appear as tilt at the other
+wavelengths, unlike the OPD fan and wavefront map. Piston (Z1) and
+tilt (Z2, Z3) are fitted, not removed, and are usually small. The dominant
 Zernike modes for a well-corrected lens are usually defocus (Z4),
 spherical (Z9 / Z11 in Fringe), and the lower-order coma /
 astigmatism modes.
