@@ -1388,6 +1388,130 @@ namespace LensHH.Mcp.Tools
         }
 
         [McpServerTool, Description(
+            "Start Random Start Optimization in the background and return a job-id immediately (non-blocking). " +
+            "designs copies of the current lens (the first is the lens itself), each with its variables randomized, are optimized for screenIterations; the best polishPercent are optimized for lmIterations, and the distinct best modelsToKeep are written as .lhlt to outputFolder; the best is auto-applied when the job completes. Poll optimize_status(jobId); optimize_cancel(jobId) stops. " +
+            "A variable with both a minimum and a maximum is drawn within them: bounded 'uniform' (anywhere in the range) or 'around' (the start ± boundedPercent of the range, folded inside). " +
+            "Any other variable gets a Gaussian step about its current value with the sigma of its type, folded back off a one-sided bound: curvatureSigma (1/mm; 0 = 1/(5 x largest clear diameter)), thicknessSigma (mm; 0 = 20% of the largest variable thickness, the image distance excepted), conicSigma (0.5), ndSigma (0.05) and vdSigma (5) for model glass. randomizeCurvature/Thickness/Conic/ModelGlass (true) switch a type off (it keeps its values, bounded or not). Aspheric terms and semi-diameters are not randomized. " +
+            "substituteGlass (false) draws every catalog glass at random from glassCatalog ('CoreSet28', any .agf in catalogs/FilteredGlassCatalogues). " +
+            "Other params: modelsToKeep (24), seed (1), parallelism (0 = all logical processors), useNativeEngine (true), analyticDerivative (true), stepMethod ('psd3', 'psd2' or 'lm'), useBroydenUpdate (default: on for lm, off for psd), outputFolder ('random_start_results').")]
+        public string RandomStartStart(
+            int designs = 500, int screenIterations = 30, double polishPercent = 10, int lmIterations = 6000,
+            string bounded = "uniform", double boundedPercent = 25,
+            bool randomizeCurvature = true, double curvatureSigma = 0,
+            bool randomizeThickness = true, double thicknessSigma = 0,
+            bool randomizeConic = true, double conicSigma = 0.5,
+            bool randomizeModelGlass = true, double ndSigma = 0.05, double vdSigma = 5,
+            bool substituteGlass = false, string glassCatalog = "CoreSet28",
+            int modelsToKeep = 24, int seed = 1, int parallelism = 0,
+            bool useNativeEngine = true, bool analyticDerivative = true,
+            string stepMethod = "psd3", bool? useBroydenUpdate = null, string outputFolder = "random_start_results")
+        {
+            { var ge = _session.ValidateGlass(); if (ge != null) return ge; }
+            if (_session.MeritFunction == null || _session.MeritFunction.Operands.Count == 0)
+                return "No operands in merit function. Add operands first.";
+            if (!TryParseStepMethod(stepMethod, out var step))
+                return $"Unknown stepMethod \"{stepMethod}\" - expected lm, psd2 or psd3.";
+            BoundedRandomization boundedMode;
+            switch ((bounded ?? "").Trim().ToLowerInvariant())
+            {
+                case "uniform": case "": boundedMode = BoundedRandomization.UniformInRange; break;
+                case "around": case "aroundstart": boundedMode = BoundedRandomization.AroundStart; break;
+                default: return $"Unknown bounded \"{bounded}\" - expected uniform or around.";
+            }
+
+            var settings = new RandomStartSettings
+            {
+                Designs = Math.Max(1, designs),
+                ScreenIterations = Math.Max(0, screenIterations),
+                PolishFraction = Math.Clamp(polishPercent / 100.0, 1e-6, 1.0),
+                LmIterations = Math.Max(1, lmIterations),
+                Bounded = boundedMode,
+                BoundedFraction = Math.Max(0, boundedPercent / 100.0),
+                RandomizeCurvature = randomizeCurvature,
+                CurvatureSigma = curvatureSigma > 0 ? curvatureSigma : null,
+                RandomizeThickness = randomizeThickness,
+                ThicknessSigma = thicknessSigma > 0 ? thicknessSigma : null,
+                RandomizeConic = randomizeConic,
+                ConicSigma = Math.Max(0, conicSigma),
+                RandomizeModelGlass = randomizeModelGlass,
+                NdSigma = Math.Max(0, ndSigma),
+                VdSigma = Math.Max(0, vdSigma),
+                SubstituteGlass = substituteGlass,
+                GlassCatalog = string.IsNullOrWhiteSpace(glassCatalog) ? "CoreSet28" : glassCatalog.Trim(),
+                ModelsToKeep = Math.Max(1, modelsToKeep),
+                Seed = seed,
+                Parallelism = parallelism,
+                Step = step,
+                UseBroydenUpdate = useBroydenUpdate,
+            };
+
+            string folder = string.IsNullOrWhiteSpace(outputFolder) ? "random_start_results" : outputFolder;
+            try { System.IO.Directory.CreateDirectory(folder); }
+            catch (Exception ex) { return $"Cannot create output folder '{folder}': {ex.Message}"; }
+            settings.ArchiveWriter = (name, sys, m) =>
+            {
+                try { LensHH.Core.IO.LhltWriter.Write(sys, System.IO.Path.Combine(folder, name + ".lhlt"), m); }
+                catch { /* best-effort archive */ }
+            };
+
+            var job = new RunningJob(kind: "random_start");
+            var svc = new RandomStartService(_session.System, _session.MeritFunction, _session.GlassCatalog)
+            {
+                Settings = settings,
+                EngineMode = useNativeEngine ? EngineMode.Native : EngineMode.CSharp,
+                NativeDerivativeMode = analyticDerivative
+                    ? LensHH.Core.NativeInterop.MeritDerivativeMode.Analytic
+                    : LensHH.Core.NativeInterop.MeritDerivativeMode.FiniteDifference,
+                FilteredCatalogSearchPaths = FindFilteredCatalogPaths(),
+                OnProgress = p =>
+                {
+                    job.Phase = p.StatusMessage;
+                    job.Trial = p.RestartIndex;
+                    job.MaxTrials = p.MaxRestarts;
+                    if (!double.IsNaN(p.BestMerit)) job.BestMerit = p.BestMerit;
+                },
+            };
+            var (cs, ts) = svc.ResolvedSigmas();
+
+            job.Task = Task.Run(() =>
+            {
+                try
+                {
+                    var result = svc.Run(job.Cts.Token);
+                    job.BestMerit = result.Best?.Merit ?? double.NaN;
+                    if (result.Best != null) _session.System.CopyFrom(result.Best.System);
+                    if (result.Models.Count == 0)
+                    {
+                        if (result.Cancelled) job.Cancel();
+                        else job.Complete("Random Start Optimization found no design.\n  " + result.Message);
+                        return;
+                    }
+
+                    var sb = new StringBuilder();
+                    sb.AppendLine($"Random Start Optimization complete — {result.Models.Count} design(s) (initial merit {result.InitialMerit:E4})");
+                    sb.AppendLine($"  {result.Message}");
+                    sb.AppendLine($"  Files written to: {System.IO.Path.GetFullPath(folder)}");
+                    for (int r = 0; r < result.Models.Count; r++)
+                    {
+                        var mdl = result.Models[r];
+                        sb.AppendLine($"  #{r + 1}  merit {mdl.Merit:E4}  [{string.Join("-", mdl.GlassSet)}]");
+                    }
+                    sb.AppendLine("  Best (rank 1) applied to the current system.");
+                    job.Complete(sb.ToString());
+                }
+                catch (OperationCanceledException) { job.Cancel(); }
+                catch (Exception ex) { job.Fault(ex); }
+            });
+
+            _session.AddJob(job);
+            return $"Started Random Start Optimization: {settings.Designs} designs, curvature sigma {cs:G4} 1/mm, thickness sigma {ts:G4} mm, "
+                   + $"bounded variables {(boundedMode == BoundedRandomization.UniformInRange ? "uniform in range" : $"start ± {boundedPercent:G3}% of range")}"
+                   + $"{(substituteGlass ? ", glasses from " + settings.GlassCatalog : "")}. jobId={job.JobId}\n" +
+                   $"Poll optimize_status(jobId=\"{job.JobId}\") every 10-30 seconds; call optimize_cancel(jobId=\"{job.JobId}\") to stop. " +
+                   $"Designs are written to '{folder}'; the best is auto-applied when the job completes.";
+        }
+
+        [McpServerTool, Description(
             "Start basin-hopping optimization in the background and return a job-id immediately. " +
             "Poll optimize_status(jobId) for progress (current hop, best merit, accepted/rejected, glass swaps); call optimize_cancel to stop. " +
             "Result auto-applies to the system when the job completes. " +

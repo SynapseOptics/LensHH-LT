@@ -1078,6 +1078,17 @@ public partial class MainWindow : Window
             VM.Session.NotifySystemChanged("global-search");
     }
 
+    private async void RandomStart_Click(object? sender, RoutedEventArgs e)
+    {
+        // Works on internal clones; only "Apply this design" inside the dialog changes the system.
+        var vm = new RandomStartDialogViewModel(VM.Session);
+        var dialog = new RandomStartDialog { DataContext = vm };
+        await dialog.ShowDialog(this);
+
+        if (vm.Accepted)
+            VM.Session.NotifySystemChanged("random-start");
+    }
+
     private async void SignPatternSearch_Click(object? sender, RoutedEventArgs e)
     {
         // Works on internal clones; only "Apply this design" inside the dialog changes the system.

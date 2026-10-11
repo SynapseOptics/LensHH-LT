@@ -1,0 +1,191 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:LensHH.App.ViewModels"
+        x:Class="LensHH.App.Views.RandomStartDialog"
+        x:DataType="vm:RandomStartDialogViewModel"
+        Title="Random Start Optimization"
+        Icon="avares://LensHH.App/Assets/icon_256.png"
+        Width="1400" Height="860"
+        WindowStartupLocation="CenterOwner"
+        CanResize="True"
+        MinWidth="1000" MinHeight="640">
+
+  <DockPanel LastChildFill="True" Margin="10">
+
+    <!-- ── Settings + run controls ── -->
+    <Border DockPanel.Dock="Top" BorderBrush="#DDDDDD" BorderThickness="1"
+            CornerRadius="6" Padding="10" Margin="0,0,0,8">
+      <StackPanel Spacing="8">
+        <TextBlock TextWrapping="Wrap" Foreground="#555555" FontSize="12"
+                   Text="Copies of the current design, each with its variables randomized, are optimized briefly (Screen iterations); the best (Polish %) are then optimized fully (LM iterations), and the distinct best designs are shown below. The first design is the current design itself."/>
+        <TextBlock Text="{Binding VariablesText}" FontSize="12" FontWeight="SemiBold" TextWrapping="Wrap"/>
+
+        <!-- Designs and optimization -->
+        <WrapPanel Orientation="Horizontal">
+          <StackPanel Margin="0,0,16,6" Width="130">
+            <TextBlock Text="Designs" FontSize="11"/>
+            <NumericUpDown Value="{Binding Designs, UpdateSourceTrigger=LostFocus}" Minimum="1" Maximum="1000000" Increment="100" FormatString="0"
+                           ToolTip.Tip="Designs in all, the current design included."/>
+          </StackPanel>
+          <StackPanel Margin="0,0,16,6" Width="140">
+            <TextBlock Text="Screen iterations" FontSize="11"/>
+            <NumericUpDown Value="{Binding ScreenIterations, UpdateSourceTrigger=LostFocus}" Minimum="0" Maximum="100000" Increment="10" FormatString="0"
+                           ToolTip.Tip="The short optimization every design gets. 0: every design gets the full LM iterations."/>
+          </StackPanel>
+          <StackPanel Margin="0,0,16,6" Width="110">
+            <TextBlock Text="Polish %" FontSize="11"/>
+            <NumericUpDown Value="{Binding PolishPercent, UpdateSourceTrigger=LostFocus}" Minimum="0.1" Maximum="100" Increment="1" FormatString="0.#"
+                           ToolTip.Tip="The percentage of screened designs, best first, optimized for the full LM iterations."/>
+          </StackPanel>
+          <StackPanel Margin="0,0,16,6" Width="130">
+            <TextBlock Text="LM iterations" FontSize="11"/>
+            <NumericUpDown Value="{Binding LmIterations, UpdateSourceTrigger=LostFocus}" Minimum="1" Maximum="100000" Increment="50" FormatString="0"/>
+          </StackPanel>
+          <StackPanel Margin="0,0,16,6" Width="180">
+            <TextBlock Text="LM Step" FontSize="11"/>
+            <ComboBox HorizontalAlignment="Stretch" ItemsSource="{Binding StepOptions}" SelectedItem="{Binding SelectedStep}"
+                      ToolTip.Tip="Diagonal added to the Gauss-Newton matrix in each design's local optimization. Selecting PSD turns Broyden off, because PSD needs successive FRESH Jacobians."/>
+          </StackPanel>
+          <StackPanel Margin="0,0,16,6" Width="140" VerticalAlignment="Bottom">
+            <CheckBox Content="Broyden Update" IsChecked="{Binding UseBroydenUpdate}"/>
+          </StackPanel>
+          <StackPanel Margin="0,0,16,6" Width="110">
+            <TextBlock Text="Engine" FontSize="11"/>
+            <ComboBox SelectedIndex="{Binding EngineModeIndex}" HorizontalAlignment="Stretch">
+              <ComboBoxItem>C#</ComboBoxItem>
+              <ComboBoxItem>Native</ComboBoxItem>
+            </ComboBox>
+          </StackPanel>
+          <StackPanel Margin="0,0,16,6" Width="150">
+            <TextBlock Text="Derivative" FontSize="11"/>
+            <ComboBox SelectedIndex="{Binding DerivativeModeIndex}" HorizontalAlignment="Stretch">
+              <ComboBoxItem>Finite difference</ComboBoxItem>
+              <ComboBoxItem>Analytic</ComboBoxItem>
+            </ComboBox>
+          </StackPanel>
+          <StackPanel Margin="0,0,16,6" Width="120">
+            <TextBlock Text="Models to keep" FontSize="11"/>
+            <NumericUpDown Value="{Binding ModelsToKeep, UpdateSourceTrigger=LostFocus}" Minimum="1" Maximum="500" Increment="1" FormatString="0"/>
+          </StackPanel>
+          <StackPanel Margin="0,0,16,6" Width="100">
+            <TextBlock Text="Seed" FontSize="11"/>
+            <NumericUpDown Value="{Binding Seed, UpdateSourceTrigger=LostFocus}" Minimum="0" Maximum="1000000" Increment="1" FormatString="0"/>
+          </StackPanel>
+        </WrapPanel>
+
+        <!-- Randomization -->
+        <Border BorderBrush="#EEEEEE" BorderThickness="1" CornerRadius="4" Padding="8">
+          <StackPanel Spacing="6">
+            <TextBlock Text="Randomization" FontWeight="SemiBold" FontSize="12"/>
+            <StackPanel Orientation="Horizontal" Spacing="12">
+              <TextBlock Text="Variables with a min and a max:" VerticalAlignment="Center" FontSize="12" Width="210"/>
+              <ComboBox Width="260" ItemsSource="{Binding BoundedOptions}" SelectedIndex="{Binding BoundedIndex}"
+                        ToolTip.Tip="Uniform: anywhere between the variable's minimum and maximum. Around the start: within ± the percentage of its range about its current value, folded back inside the bounds."/>
+              <NumericUpDown Width="110" Value="{Binding BoundedPercent, UpdateSourceTrigger=LostFocus}" Minimum="0" Maximum="100" Increment="5" FormatString="0.#"
+                             IsEnabled="{Binding IsAroundStart}" ToolTip.Tip="± this percentage of the variable's range."/>
+              <TextBlock Text="% of the range" VerticalAlignment="Center" FontSize="11" Foreground="#777777"/>
+            </StackPanel>
+            <TextBlock FontSize="12" TextWrapping="Wrap"
+                       Text="Other variables (no bounds, or a bound on one side only): a Gaussian step about the current value with the sigma of its type, folded back off a one-sided bound. The sigmas start at values computed for this lens."/>
+            <Grid ColumnDefinitions="210,170,Auto" RowDefinitions="Auto,Auto,Auto,Auto" Margin="0,2,0,0">
+              <CheckBox Grid.Row="0" Grid.Column="0" Content="Curvature" IsChecked="{Binding RandomizeCurvature}"/>
+              <NumericUpDown Grid.Row="0" Grid.Column="1" Value="{Binding CurvatureSigma, UpdateSourceTrigger=LostFocus}" Minimum="0" Increment="0.001" FormatString="0.######"
+                             IsEnabled="{Binding RandomizeCurvature}" Margin="0,2"/>
+              <TextBlock Grid.Row="0" Grid.Column="2" Text="1/mm   (default 1/(5 × the lens's largest clear diameter))" VerticalAlignment="Center" FontSize="11" Foreground="#777777" Margin="8,0,0,0"/>
+
+              <CheckBox Grid.Row="1" Grid.Column="0" Content="Thickness" IsChecked="{Binding RandomizeThickness}"/>
+              <NumericUpDown Grid.Row="1" Grid.Column="1" Value="{Binding ThicknessSigma, UpdateSourceTrigger=LostFocus}" Minimum="0" Increment="0.5" FormatString="0.####"
+                             IsEnabled="{Binding RandomizeThickness}" Margin="0,2"/>
+              <TextBlock Grid.Row="1" Grid.Column="2" Text="mm   (default 20% of the largest variable thickness, the image distance excepted)" VerticalAlignment="Center" FontSize="11" Foreground="#777777" Margin="8,0,0,0"/>
+
+              <CheckBox Grid.Row="2" Grid.Column="0" Content="Conic" IsChecked="{Binding RandomizeConic}"/>
+              <NumericUpDown Grid.Row="2" Grid.Column="1" Value="{Binding ConicSigma, UpdateSourceTrigger=LostFocus}" Minimum="0" Increment="0.1" FormatString="0.###"
+                             IsEnabled="{Binding RandomizeConic}" Margin="0,2"/>
+              <TextBlock Grid.Row="2" Grid.Column="2" Text="(unitless)" VerticalAlignment="Center" FontSize="11" Foreground="#777777" Margin="8,0,0,0"/>
+
+              <CheckBox Grid.Row="3" Grid.Column="0" Content="Model glass Nd / Vd" IsChecked="{Binding RandomizeModelGlass}"/>
+              <StackPanel Grid.Row="3" Grid.Column="1" Orientation="Horizontal" Spacing="4" Margin="0,2">
+                <NumericUpDown Width="83" Value="{Binding NdSigma, UpdateSourceTrigger=LostFocus}" Minimum="0" Increment="0.01" FormatString="0.###"
+                               IsEnabled="{Binding RandomizeModelGlass}"/>
+                <NumericUpDown Width="83" Value="{Binding VdSigma, UpdateSourceTrigger=LostFocus}" Minimum="0" Increment="1" FormatString="0.#"
+                               IsEnabled="{Binding RandomizeModelGlass}"/>
+              </StackPanel>
+              <TextBlock Grid.Row="3" Grid.Column="2" Text="index / Abbe number" VerticalAlignment="Center" FontSize="11" Foreground="#777777" Margin="8,0,0,0"/>
+            </Grid>
+            <TextBlock FontSize="11" Foreground="#777777" TextWrapping="Wrap"
+                       Text="Aspheric coefficients and semi-diameters are not randomized. An unticked type keeps its current values, bounded or not."/>
+          </StackPanel>
+        </Border>
+
+        <!-- Glass -->
+        <StackPanel Orientation="Horizontal" Spacing="12">
+          <CheckBox Content="Substitute glasses" IsChecked="{Binding SubstituteGlass}"
+                    ToolTip.Tip="Every catalog glass of every design (the first excepted) is drawn at random from the chosen catalog. Model glasses are not substituted."/>
+          <ComboBox Width="200" ItemsSource="{Binding GlassCatalogs}" SelectedItem="{Binding SelectedGlassCatalog}" IsEnabled="{Binding SubstituteGlass}"/>
+        </StackPanel>
+
+        <Grid ColumnDefinitions="Auto,Auto,*,Auto">
+          <Button Grid.Column="0" Content="Run" Width="100" Command="{Binding RunCommand}" IsEnabled="{Binding CanRun}" Classes="accent"/>
+          <Button Grid.Column="1" Content="Stop" Width="100" Margin="8,0,0,0" Command="{Binding StopCommand}" IsEnabled="{Binding IsRunning}"/>
+          <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,12,0">
+            <TextBlock Text="Initial:" Foreground="#888888" FontSize="12"/>
+            <TextBlock Text="{Binding InitialMeritText}" Margin="4,0,12,0" FontSize="12"/>
+            <TextBlock Text="Best:" Foreground="#888888" FontSize="12"/>
+            <TextBlock Text="{Binding BestMeritText}" Margin="4,0,12,0" FontWeight="Bold" FontSize="12"/>
+            <TextBlock Text="Elapsed:" Foreground="#888888" FontSize="12"/>
+            <TextBlock Text="{Binding ElapsedText}" Margin="4,0,0,0" FontSize="12"/>
+          </StackPanel>
+        </Grid>
+
+        <ProgressBar Value="{Binding ProgressFraction}" Minimum="0" Maximum="1" Height="6"/>
+        <TextBlock Text="{Binding StatusText}" FontSize="11" Foreground="#555555" TextWrapping="Wrap"/>
+        <TextBlock Text="{Binding ProgressText}" FontSize="11" Foreground="#888888" TextWrapping="Wrap"/>
+      </StackPanel>
+    </Border>
+
+    <!-- ── Action bar ── -->
+    <Grid DockPanel.Dock="Bottom" ColumnDefinitions="Auto,*,Auto,Auto" Margin="0,8,0,0">
+      <Button Grid.Column="0" Content="Save all…" Click="SaveAll_Click" IsEnabled="{Binding CanSaveAll}"/>
+      <TextBlock Grid.Column="1" VerticalAlignment="Center" Margin="12,0" FontSize="11" Foreground="#888888"
+                 Text="Click a card's Apply button to load that design."/>
+      <Button Grid.Column="2" Content="Preview" IsEnabled="{Binding !IsRunning}" Width="90" Margin="0,0,8,0" Click="Preview_Click"
+              ToolTip.Tip="Show which merit/Jacobian engine this run will actually use, and why — before starting it."/>
+      <Button Grid.Column="3" Content="Close" Width="90" Click="Close_Click"/>
+    </Grid>
+
+    <!-- ── Gallery ── -->
+    <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+      <ItemsControl ItemsSource="{Binding Cards}">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate>
+            <WrapPanel Orientation="Horizontal"/>
+          </ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:GlobalSearchCardViewModel">
+            <Border Width="272" Margin="6" BorderBrush="#DDDDDD" BorderThickness="1" CornerRadius="6" Padding="8" Background="White">
+              <StackPanel Spacing="4">
+                <Grid ColumnDefinitions="*,Auto">
+                  <TextBlock Text="{Binding Title}" FontWeight="Bold" FontSize="14"/>
+                  <Border Grid.Column="1" Background="#FFD54F" CornerRadius="3" Padding="5,1" IsVisible="{Binding IsBest}" VerticalAlignment="Center">
+                    <TextBlock Text="★ best" FontSize="11"/>
+                  </Border>
+                </Grid>
+                <Border Background="White" BorderBrush="#EEEEEE" BorderThickness="1" CornerRadius="3">
+                  <Image Source="{Binding Thumbnail}" Height="128" Stretch="Uniform" Margin="2"/>
+                </Border>
+                <TextBlock Text="{Binding MeritText, StringFormat='Merit: {0}'}" FontSize="12" FontWeight="SemiBold"/>
+                <TextBlock Text="{Binding GlassText}" FontSize="11" Foreground="#555555" TextWrapping="Wrap"/>
+                <TextBlock Text="{Binding InfoText}" FontSize="10" Foreground="#999999" TextWrapping="Wrap"/>
+                <Button Content="Apply this design" HorizontalAlignment="Stretch" Margin="0,2,0,0"
+                        Command="{Binding DataContext.ApplyCardCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                        CommandParameter="{Binding}"/>
+              </StackPanel>
+            </Border>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </ScrollViewer>
+
+  </DockPanel>
+</Window>
