@@ -80,12 +80,13 @@ public partial class ZernikeViewModel : ObservableObject
             WaveOptions.Add($"{i + 1}: {LabelFormat.Wavelength(system.Wavelengths[i].Value, system.Wavelengths)}{primary}");
         }
 
+        // Clearing the lists blanks the combo boxes without telling the view model, so an index
+        // that does not change (field 1 is index 0, the default) would leave its box blank.
+        // Passing through -1 makes every index a change the boxes follow.
+        SelectedFieldIndex = -1;
+        SelectedWaveIndex = -1;
         SelectedFieldIndex = field >= 0 && field < FieldOptions.Count ? field : 0;
         SelectedWaveIndex = wave >= 0 && wave < WaveOptions.Count ? wave : system.PrimaryWavelengthIndex;
-        // Clearing the lists blanks the combo boxes; an index that did not change (field 1 is
-        // index 0, the default) raises no change of its own, so the boxes would stay blank.
-        OnPropertyChanged(nameof(SelectedFieldIndex));
-        OnPropertyChanged(nameof(SelectedWaveIndex));
     }
 
     [RelayCommand]
@@ -98,7 +99,9 @@ public partial class ZernikeViewModel : ObservableObject
         {
             var system = _session.System;
             var glassMgr = _session.GlassCatalog;
-            if (FieldOptions.Count == 0 || SelectedWaveIndex < 0) RefreshOptions();
+            // Every time, as the other analysis tabs do: the first Compute runs as the tab opens,
+            // after its combo boxes exist, so this is what fills them.
+            RefreshOptions();
 
             int field = Math.Clamp(SelectedFieldIndex, 0, system.Fields.Count - 1);
             int wave = Math.Clamp(SelectedWaveIndex, 0, system.Wavelengths.Count - 1);
