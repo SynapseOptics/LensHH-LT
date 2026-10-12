@@ -31,9 +31,10 @@ and the programmatic interfaces.
   interpretation tips.
 - **[Merit Function Reference](merit-function.md)** — every merit function
   operand with its inputs, meaning, and typical usage.
-- **[Optimization](optimization.md)** — the optimizers (Local LM,
-  Multistart, Global Search, Basin Hopping) plus design-shape operators
-  (split-element, SPC synthesis), and when to use each.
+- **[Optimization](optimization.md)** — the optimizers (Local LM, Random
+  Start, Multistart, Basin Hopping and the global modes), the searches for a
+  new form or real glasses (Sign-Pattern Search, Replace Model Glass), the
+  design-shape operators (split-element, SPC synthesis), and when to use each.
 - **[Semi-Diameter as an Optimization Variable](semi-diameter-variables.md)** —
   make a Fixed-aperture surface's clear-aperture semi-diameter a
   variable and let the optimizer size the aperture directly; worked

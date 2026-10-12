@@ -3,7 +3,11 @@
 LensHH-LT ships three core optimizers — Local, Multistart, and Basin
 Hopping — plus two global modes: **Global Multi Start Optimization**
 (many Multistart restarts) and **Global Evolutionary Optimization** (a
-GPU-capable Differential-Evolution population search). All of them
+GPU-capable Differential-Evolution population search) — and three
+searches built on the local optimizer: **Random Start**, which screens many
+randomized copies of a design; **Sign-Pattern Search**, which starts a
+design from parallel plates; and **Replace Model Glass**, which turns model
+glasses into catalog glasses. All of them
 minimize the same merit function (see the
 [Merit Function Reference](merit-function.md)) but differ in how they
 explore the variable space.
@@ -25,11 +29,16 @@ Skip step 1 if you start from a known-good design; never skip step 3.
 | Optimizer | Good for | Not good for |
 |---|---|---|
 | **Local (LM)** | Refining a design you already trust — polish the last 10% of merit. | Escaping a bad starting point. |
+| **Random Start** | Trying many random starts around a design you have, cheaply: every start gets a short screen and only the best get a full optimization. You choose how each kind of variable is randomized. | Changing the lens form by sign (use Sign-Pattern Search). |
 | **Multistart** | Probing several random starts, LM from each. Cheap way to find a better basin and to vary glass choices. | Genuinely topology-changing exploration (it won't, e.g., find a Cooke triplet from a flat-plate start). |
 | **Basin Hopping** | Heavy single-design exploration — the deepest one run can travel (can change topology). Random perturbations + Hooke-Jeeves pattern search + LM refinement, optionally with glass substitution. | Fast iteration — it's the slowest per run. |
 | **Global Multi Start Optimization** | Surveying the solution space — collecting a *gallery* of distinct, locally-optimized design forms (different power patterns + glasses) to choose among, rather than one winner. | Driving a single design to its absolute lowest merit (use Local/Multistart). |
 | **Global Basin Hopping** | The deepest *single* answer — many parallel Basin-Hopping (HJ+LM) chains that pool their best basin and reseed each stalled chain from the others' elite, running until you stop. The most thorough escape for one design when you can spend the compute. | Surveying many forms or quick iteration — it pours all chains into one answer (use Global Multi Start for a gallery) and is the most compute-intensive. |
 | **Global Evolutionary Optimization** | Building a *gallery* of polished starting designs from a poor or power-free start (e.g. parallel plates) by evolving a whole population in parallel — GPU-accelerated. The fastest "no design → many viable forms" route. | Driving a single chosen design to its absolute lowest merit. |
+| **Sign-Pattern Search** | Starting a new design from parallel plates: every pattern of curvature signs gets its share of the designs, so the search covers different lens forms. | Refining a design you already have. |
+| **Replace Model Glass** | Turning an optimized model-glass design into real glasses, one element at a time, keeping several candidate glass sets open. | Lenses with no model glasses. |
+
+![The Optimization menu: the core optimizers with Random Start Optimization below Local Optimization, the global modes, then Sign-Pattern Search and Replace Model Glass, then the element tools.](images/OptimizationMenu.png)
 
 ## Preview: what will actually run (new in 1.0.152)
 
@@ -121,7 +130,7 @@ bound shows up as a vanishing gradient, not a hard wall.
 ### Bound handling: Sigmoid or Reflect (new in 1.0.147)
 
 That vanishing gradient is a real limitation, and you can now choose the
-mapping that produces it. **System → System Editor → Bound Handling** offers
+mapping that produces it. **Editors → System… → Bound Handling** offers
 two modes; the setting is system-level (it applies to every optimizer — Local,
 Multistart, Basin Hopping, the evolutionary searches) and is saved in `.lhlt`.
 
@@ -406,6 +415,79 @@ physically meaningless — surface 2's air thickness comes out to
 `−0.58` mm and surface 3's glass thickness to `−3.74` mm. Always
 constrain thicknesses, by either of the two methods above, before
 trusting an LM result.
+
+## Random Start Optimization
+
+**Optimization → Random Start Optimization…** (new in 1.0.162)
+
+Random Start tries many copies of the current design, each with its
+variables drawn at random, and keeps the distinct best. Every design gets
+a short local optimization (the *screen*); the best fraction of them then
+gets a full one (the *polish*). Which basin a design falls into is
+settled in the first few iterations, so screening lets one run try many
+more starting points in the same time. The first design is always the
+current design itself, unchanged, so the result is never worse than the
+local optimum you started from.
+
+![The Random Start Optimization dialog before a run, on a lens with no model glasses. The top row sets how many designs, the screen and polish, and the local optimizer; the Randomization box sets how each kind of variable is drawn.](images/RandomStartSettings.png)
+
+### How the variables are drawn
+
+Each variable is drawn according to whether it has a range:
+
+- **Variables with both a minimum and a maximum** are drawn within them,
+  either **Uniform within min and max** (anywhere in the range) or
+  **Around the start, ± % of the range** (within that fraction of the
+  range on either side of the current value, folded back inside the
+  bounds).
+- **Every other variable** — no bounds, or a bound on one side only —
+  takes a random step about its current value, drawn from a normal
+  distribution with the **sigma** of its type, and is folded back off a
+  one-sided bound. Each type has its own sigma and its own checkbox:
+
+  | Type | Default sigma |
+  |---|---|
+  | Curvature | 1 / (5 × the lens's largest clear diameter), in 1/mm |
+  | Thickness | 20% of the largest variable thickness (the distance to the image excepted), in mm |
+  | Conic | 0.5 |
+  | Model glass | Nd 0.05, Vd 5 |
+
+  The curvature and thickness boxes open filled in with the values
+  computed for the current lens. Unticking a type keeps every variable
+  of that type at its current value, bounded or not.
+
+Aspheric coefficients and semi-diameters are not randomized: aspheric
+terms span too many orders of magnitude for one sigma, and the apertures
+follow the rays. Curvatures are not forced to either sign; for a search
+over the signs of the curvatures, see
+[Sign-Pattern Search](#sign-pattern-search-from-plates).
+
+**Substitute glasses** draws every catalog glass of every design (not the
+first) at random from the chosen catalog. Model glasses are not
+substituted; their Nd and Vd are randomized as above.
+
+### Settings
+
+| Setting | Default | Meaning |
+|---|---|---|
+| Designs | 50000 | Designs in all, the current design included. |
+| Screen iterations | 30 | The short optimization every design gets. 0 gives every design the full LM iterations. |
+| Polish % | 10 | The best screened designs, as a percentage, that continue to the full LM iterations. |
+| LM iterations | 6000 | Iterations of the full optimization. |
+| LM Step / Broyden | PSD III / off | As in the [Local Optimizer](#lm-step-damping-or-psd-new-in-10150). |
+| Engine / Derivative | Native / Analytic | |
+| Models to keep | 24 | Distinct designs shown, best merit first. |
+| Seed | 1 | The same seed draws the same designs. |
+| Substitute glasses / Glass catalog | on / CoreSet28 | On: every catalog glass of every design but the first is drawn at random from the catalog. Off: every design keeps the lens's own glasses. |
+
+Two designs count as the same when they share a glass set and a pattern
+of element power signs and their merits are within 2% of each other; only
+the better is kept. **Preview** shows which engine the run will use, as
+in every optimization dialog. Each result card has **Apply this design**;
+**Save all…** writes every kept design to a folder.
+
+The same search is available to MCP clients as `random_start_start` (non-blocking — poll
+`optimize_status`).
 
 ## Multistart
 
@@ -1345,6 +1427,77 @@ Global Basin Hopping is available everywhere the other optimizers are: the GUI
 dialog above, the CLI (`optimize global-basin … timeout= globalmin= savechains=`),
 the MCP tool `global_basin_hopping_start` (non-blocking — poll `optimize_status`),
 and the .NET API (`IOptimization.GlobalBasinHopping`).
+
+## Sign-Pattern Search (from plates)
+
+**Optimization → Sign-Pattern Search (from plates)…** (new in 1.0.162)
+
+A starting point for a new design: a lens of nearly parallel plates, with
+the curvatures variable. Each design in the search bounds every variable
+curvature to one sign (c ≥ 0 or c ≤ 0), starts from weak curvatures of
+those signs and, if asked, from random glasses, and is locally optimized.
+Because the bounds hold each design to its pattern of signs, the search
+covers different lens forms instead of letting every start fall into the
+same one. The distinct best designs are shown as cards, labelled by their
+sign pattern (`+` for c ≥ 0, `−` for c ≤ 0, one per sign surface).
+
+![The Sign-Pattern Search dialog before a run, set up for model glass: Substitute glasses off, Random model glass and Random thickness on, and a 30-iteration screen.](images/SignPatternSearchSettings.png)
+
+The population is **Designs per n²** times the square of the number of
+sign surfaces n — 50 × 6² = 1800 for a Cooke triplet — shared evenly among
+the 2ⁿ sign patterns. With many surfaces there are more patterns than
+designs, and each design gets a different pattern.
+
+| Setting | Default | Meaning |
+|---|---|---|
+| Designs per n² | 50 | Sets the population, as above. |
+| Substitute glasses / Glass catalog | on / CoreSet28 | On: every glass of every design is drawn at random from the catalog. Off: every design keeps the lens's own glasses. |
+| Weak radius (× diameter) | 10 | Every starting radius is at least this many times the lens's largest clear diameter. |
+| LM iterations | 6000 | |
+| Screen iterations / Polish % | 0 (off) / 10 | Above 0, every design first gets this many iterations and the best Polish % continue to the full LM iterations — many more designs in the same time. 30 is a good start. |
+| Random model glass | off | Start each design's model glasses at a random Nd and Vd within their bounds. Only an Nd or Vd variable with both a minimum and a maximum is drawn. |
+| Random thickness | off | Start each design's variable thicknesses at a random value, between the thickness's minimum (0.1 mm if none) and the smaller of its maximum and the lens's largest clear diameter. Lets the search reach thick-element forms. The distance to the image is left to the optimizer. |
+| LM Step / Broyden | PSD III / off | PSD suits a start far from any solution, as plates are. |
+| Engine / Derivative | Native / Analytic | Model-glass variables are differentiated analytically on the native engine. |
+| Models to keep, Seed | 24, 1 | |
+
+Each kept design keeps its sign bounds; remove them in the Variable
+Editor before optimizing it further if the signs should be free. The
+search is available to MCP clients as `sign_pattern_search_start`.
+
+## Replace Model Glass
+
+**Optimization → Replace Model Glass…** (new in 1.0.162)
+
+Turns a design that uses [model glasses](glass-catalogs.md#model-glass-nd--vd--dpgf)
+into one that uses real glasses from a catalog. Start from an optimized
+lens with model glasses — for example the result of a Sign-Pattern Search
+with model glass, kept to the region real glasses occupy by the
+[GMAP operand](merit-function.md#glass-map-gmap).
+
+The model glasses are replaced one element at a time, the most powerful
+element first; a model glass whose Nd is picked up from another follows
+it. For each glass, the catalog glasses nearest the model glass on the
+(Nd, Vd) map are tried — a change of 0.01 in Nd counts as much as a change
+of 1 in Vd — with the element's curvatures rescaled so that it starts with
+the same power. Every candidate is optimized with the remaining model
+glasses still variable, and the best designs are carried on to the next
+glass, each trying its own candidates (a beam search). The finished
+designs, every glass real, are shown as cards.
+
+![The Replace Model Glass dialog before a run.](images/ReplaceModelGlassSettings.png)
+
+| Setting | Default | Meaning |
+|---|---|---|
+| Glass catalog | the lens's Glass Map Catalog, else CoreSet28 | Where every replacement glass comes from: one of your filtered catalogs or a whole vendor catalog. |
+| Candidates per glass | 20 | Nearest catalog glasses tried for each model glass. |
+| Designs carried | 10 | Best designs carried from one glass to the next. More keeps more choices open, at more cost. |
+| Screen iterations / Polish % | 0 / 25 | 0 (recommended): every candidate gets the full LM iterations. A short run ranks glass swaps poorly, because a swap upsets the color balance, so screening can drop the best candidates. |
+| LM iterations | 6000 | |
+| Keep element power | on | Rescale the element's variable curvatures by (n_model − 1)/(n_glass − 1) when its glass is swapped. |
+| LM Step / Broyden, Engine / Derivative, Models to keep | PSD III / off, Native / Analytic, 24 | |
+
+The search is available to MCP clients as `replace_model_glass_start`.
 
 ## Split Element
 

@@ -351,9 +351,10 @@ A box on `Nd` and `Vd` still admits glasses that do not exist: Nd 1.85 with
 Vd 70 sits inside the box Nd 1.5–1.85, Vd 25–70, but real glasses near
 Nd 1.85 have Vd of about 40. `GMAP` keeps the model glasses in the range
 inside the region real glasses occupy on the Nd–Vd map, so that a model-glass
-solution can later be matched by real glasses (Replace Model Glass).
+solution can later be matched by real glasses
+([Replace Model Glass](optimization.md#replace-model-glass)).
 
-The region comes from the lens's **Glass Map Catalog** (Editors → System): a
+The region comes from the lens's [**Glass Map Catalog**](getting-started.md#glass-map-catalog) (Editors → System…): a
 curated catalog in the filtered-catalog folder, where CoreSet28 lives — for
 example the preferred glasses of a vendor. It is separate from Catalog
 Preference, which only orders glass-name lookup. Obsolete glasses are left
@@ -363,8 +364,8 @@ catalog glass lies inside. With no Glass Map Catalog set, GMAP has no effect.
 
 The operand is zero inside the region and grows with the Vd distance outside
 it, and it has an exact derivative, so it stays on the fast native analytic
-path. Inputs: `Surface1`, `Surface2` and the weight. There is no target and
-no `Min` / `Max` to set. Keep the Nd bounds on the model glasses as well: the
+path. Inputs: `Surface1`, `Surface2` and the weight. Mode and Bound 1 stay at
+Target and 0. Keep the Nd bounds on the model glasses as well: the
 region's curves are extended past the catalog's Nd range. Replace Model Glass
 starts with the same catalog selected, so both phases use the same glasses.
 
@@ -373,6 +374,8 @@ the map), much larger than typical image-quality residuals, so a weight that
 is too large makes the optimizer attend to the glass map before the optics.
 On a Cooke triplet searched from plates, a weight of 0.01 against a wavefront
 merit worked well; 1 was too strong and 0.0001 too weak.
+
+![A GMAP row (row 5) in the Merit Function editor: the range of surfaces in Surf and Surf2 and the weight. Mode and Bound 1 stay at Target and 0.](images/MeritFunctionGmap.png)
 
 ### Surface sentinel values
 

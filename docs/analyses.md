@@ -621,6 +621,8 @@ the API. **Copy Table** and **Export Text…** give the table as text.
 Decomposes the wavefront at one `(field, wavelength)` into Zernike
 polynomial coefficients. Two ordering conventions are available:
 
+![The Zernike Coefficients tab: field, wavelength, Standard or Fringe, number of terms and grid across the top; the P-V, RMS and fit residual below them; then one row per term.](images/ZernikeCoefficients.png)
+
 - **Fringe** (sometimes "University of Arizona"): up to 37 terms,
   ordered by ascending mode-set within each radial order. Standard
   output for many interferometric instruments.

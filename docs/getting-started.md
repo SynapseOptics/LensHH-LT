@@ -780,7 +780,7 @@ but a stack of flat glass plates.
 
 ## System Aperture & Object-Space Telecentric
 
-The **System Editor** (**System → System Editor**) sets how the aperture is
+The **System Editor** (**Editors → System…**) sets how the aperture is
 specified. Pick the **Aperture Type** and enter its **Aperture Value**:
 
 | Aperture Type | Value means | Notes |
@@ -808,6 +808,24 @@ ray run parallel to the axis before the first surface.
 
 Both settings are saved in `.lhlt` and round-trip through ZEMAX `.zmx`
 (`OBNA` aperture; the object-space telecentric flag rides on the `FTYP` line).
+
+### Glass Map Catalog
+
+The System Editor's **Glass Map Catalog** names a catalog of glasses you
+consider usable — one of your filtered catalogs, kept with CoreSet28 in
+`catalogs/FilteredGlassCatalogues` (see [Custom / Filtered
+Catalogs](glass-catalogs.md#custom--filtered-catalogs)). It does two
+things:
+
+- the [GMAP operand](merit-function.md#glass-map-gmap) keeps model glasses
+  inside the region of the Nd–Vd map that this catalog's glasses occupy;
+- [Replace Model Glass](optimization.md#replace-model-glass) draws its
+  replacement glasses from it by default.
+
+It is saved in `.lhlt`. MCP clients set it with `set_glass_map_catalog`.
+
+![The System Editor. **Glass Map Catalog** is one of its drop-downs.](images/SystemEditorBoundHandling.png)
+
 
 ## File Types
 
