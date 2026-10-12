@@ -462,6 +462,7 @@ namespace LensHH.Mcp.Tools
             var sys = _session.System;
             int wl = sys.PrimaryWavelengthIndex;
             var result = ZernikeCalculator.ComputeStandard(sys, _session.GlassCatalog, fieldIndex, wl, numTerms);
+            if (result.Error != null) return "The Zernike fit failed: " + result.Error;
 
             var sb = new StringBuilder();
             sb.AppendLine($"Standard Zernike Coefficients - Field {fieldIndex}");
@@ -486,6 +487,7 @@ namespace LensHH.Mcp.Tools
             var sys = _session.System;
             int wl = sys.PrimaryWavelengthIndex;
             var result = ZernikeCalculator.ComputeFringe(sys, _session.GlassCatalog, fieldIndex, wl, numTerms);
+            if (result.Error != null) return "The Zernike fit failed: " + result.Error;
 
             var sb = new StringBuilder();
             sb.AppendLine($"Fringe Zernike Coefficients - Field {fieldIndex}");

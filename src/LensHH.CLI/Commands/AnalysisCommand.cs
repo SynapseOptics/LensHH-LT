@@ -1398,6 +1398,11 @@ namespace LensHH.CLI.Commands
             var result = fringe
                 ? ZernikeCalculator.ComputeFringe(system, glassMgr, fieldIdx, primaryWl, numTerms)
                 : ZernikeCalculator.ComputeStandard(system, glassMgr, fieldIdx, primaryWl, numTerms);
+            if (result.Error != null)
+            {
+                AnsiConsole.MarkupLine($"[red]The Zernike fit failed: {Markup.Escape(result.Error)}[/]");
+                return;
+            }
 
             string type = fringe ? "Fringe" : "Standard";
             AnsiConsole.MarkupLine($"[bold]{type} Zernike Coefficients - Field {fieldIdx + 1}[/]");
