@@ -102,7 +102,7 @@ namespace LensHH.App.ViewModels
         [ObservableProperty] private double _vdSigma = 5.0;
 
         // ── Glass ──
-        [ObservableProperty] private bool _substituteGlass = false;
+        [ObservableProperty] private bool _substituteGlass = true;
         [ObservableProperty] private string _selectedGlassCatalog;
         public IReadOnlyList<string> GlassCatalogs { get; }
 

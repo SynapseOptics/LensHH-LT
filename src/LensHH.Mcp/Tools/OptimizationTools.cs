@@ -1392,7 +1392,7 @@ namespace LensHH.Mcp.Tools
             "designs copies of the current lens (the first is the lens itself), each with its variables randomized, are optimized for screenIterations; the best polishPercent are optimized for lmIterations, and the distinct best modelsToKeep are written as .lhlt to outputFolder; the best is auto-applied when the job completes. Poll optimize_status(jobId); optimize_cancel(jobId) stops. " +
             "A variable with both a minimum and a maximum is drawn within them: bounded 'uniform' (anywhere in the range) or 'around' (the start ± boundedPercent of the range, folded inside). " +
             "Any other variable gets a Gaussian step about its current value with the sigma of its type, folded back off a one-sided bound: curvatureSigma (1/mm; 0 = 1/(5 x largest clear diameter)), thicknessSigma (mm; 0 = 20% of the largest variable thickness, the image distance excepted), conicSigma (0.5), ndSigma (0.05) and vdSigma (5) for model glass. randomizeCurvature/Thickness/Conic/ModelGlass (true) switch a type off (it keeps its values, bounded or not). Aspheric terms and semi-diameters are not randomized. " +
-            "substituteGlass (false) draws every catalog glass at random from glassCatalog ('CoreSet28', any .agf in catalogs/FilteredGlassCatalogues). " +
+            "substituteGlass (true) draws every catalog glass at random from glassCatalog ('CoreSet28', any .agf in catalogs/FilteredGlassCatalogues). " +
             "Other params: modelsToKeep (24), seed (1), parallelism (0 = all logical processors), useNativeEngine (true), analyticDerivative (true), stepMethod ('psd3', 'psd2' or 'lm'), useBroydenUpdate (default: on for lm, off for psd), outputFolder ('random_start_results').")]
         public string RandomStartStart(
             int designs = 50000, int screenIterations = 30, double polishPercent = 10, int lmIterations = 6000,
@@ -1401,7 +1401,7 @@ namespace LensHH.Mcp.Tools
             bool randomizeThickness = true, double thicknessSigma = 0,
             bool randomizeConic = true, double conicSigma = 0.5,
             bool randomizeModelGlass = true, double ndSigma = 0.05, double vdSigma = 5,
-            bool substituteGlass = false, string glassCatalog = "CoreSet28",
+            bool substituteGlass = true, string glassCatalog = "CoreSet28",
             int modelsToKeep = 24, int seed = 1, int parallelism = 0,
             bool useNativeEngine = true, bool analyticDerivative = true,
             string stepMethod = "psd3", bool? useBroydenUpdate = null, string outputFolder = "random_start_results")

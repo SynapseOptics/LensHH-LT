@@ -82,6 +82,10 @@ public partial class ZernikeViewModel : ObservableObject
 
         SelectedFieldIndex = field >= 0 && field < FieldOptions.Count ? field : 0;
         SelectedWaveIndex = wave >= 0 && wave < WaveOptions.Count ? wave : system.PrimaryWavelengthIndex;
+        // Clearing the lists blanks the combo boxes; an index that did not change (field 1 is
+        // index 0, the default) raises no change of its own, so the boxes would stay blank.
+        OnPropertyChanged(nameof(SelectedFieldIndex));
+        OnPropertyChanged(nameof(SelectedWaveIndex));
     }
 
     [RelayCommand]
