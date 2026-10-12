@@ -2,6 +2,70 @@
 
 All notable changes to LensHH-LT and the LensHH-LT-Engine.
 
+## 1.0.162 — 2026-10-12
+
+### Added
+
+- **Random Start Optimization** (Optimization menu, below Local Optimization). Copies of the
+  current design, each with its variables randomized, get a short optimization (the screen);
+  the best of them then get a full one (the polish), and the distinct best designs are shown
+  as cards. A variable with a minimum and a maximum is drawn within them, uniformly or within
+  a percentage of the range about its current value; every other variable takes a random step
+  whose size is set per type (curvature, thickness, conic, model glass). Substitute glasses
+  draws each design's catalog glasses from a chosen catalog. The first design is the current
+  design itself, so the result is never worse than the local optimum you started from.
+  Defaults: 50000 designs, a 30-iteration screen, the best 10% polished for 6000 iterations,
+  glasses substituted from CoreSet28. MCP: `random_start_start`.
+- **Sign-Pattern Search (from plates).** For a lens of nearly parallel plates. Each design
+  bounds every variable curvature to one sign and starts from weak curvatures of those signs;
+  every pattern of signs gets an equal share of the designs, so the search covers different
+  lens forms instead of letting every start fall into the same one. Options: substitute
+  glasses from a catalog, screen every design briefly and polish the best, start model
+  glasses at a random Nd and Vd, and start thicknesses at random values. MCP:
+  `sign_pattern_search_start`.
+- **Replace Model Glass.** Turns an optimized model-glass design into one with real glasses,
+  one element at a time, the most powerful first. For each glass, the catalog glasses nearest
+  the model glass on the Nd–Vd map are tried with the element's power kept, every candidate
+  is optimized with the remaining model glasses still variable, and the best designs are
+  carried on to the next glass. MCP: `replace_model_glass_start`.
+- **Glass Map Catalog** (Editors → System…). A curated catalog of the glasses you consider
+  usable, saved in `.lhlt`. The GMAP operand keeps model glasses inside the region of the
+  Nd–Vd map its glasses occupy, and Replace Model Glass draws its glasses from it by default.
+  MCP: `set_glass_map_catalog`.
+- **GMAP operand.** Keeps the model glasses of a range of surfaces inside the Glass Map
+  Catalog's region of the Nd–Vd map. It is zero inside the region, grows with the distance
+  outside it, and has an exact derivative, so it runs on the native engine with analytic
+  derivatives.
+- **Zernike Coefficients tab** (Analysis menu). Standard (Noll, up to 231 terms) or Fringe
+  (37 terms) coefficients at a chosen field and wavelength, with the P-V, RMS and fit
+  residual; Copy Table and Export Text.
+
+### Improved
+
+- **Model-glass variables on the native engine.** Nd, Vd and dPgF variables now run on the
+  native engine with analytic derivatives, which makes model-glass optimization much faster.
+  Bounded model-glass variables are now handled on the native engine as on the C# engine, and
+  the NDT, VDT and DPGFT operands now have their analytic derivatives there too.
+- **Zernike coefficients.** On the test lenses, the coefficients now agree with an
+  independent reference calculation to within a millionth of a wave, at every field and
+  wavelength.
+  - **Where the fit is made:** at the pupil points where the wavefront is traced, rim
+    included.
+  - **Reference at each wavelength:** each wavelength's coefficients refer to its own chief
+    ray, so its tilt terms describe its wavefront about its own image point. The wavefront
+    map and OPD fan still refer every wavelength to the primary chief ray.
+  - **Term sets:** the 37-term Fringe set and Standard sets beyond 37 terms return every
+    coefficient, and Standard terms 23–28 follow the Noll order.
+  - **When a fit cannot be made**, the tab, CLI and MCP say so instead of reporting zeros.
+- **Afocal lenses.** The wavefront of an afocal lens is now measured on a plane
+  perpendicular to the chief ray through the exit pupil, and its tilt is kept in the
+  wavefront map and OPD fan. On two test telescopes, every ray agrees with an independent
+  reference calculation to within a few hundred-thousandths of a wave. Afocal designs will
+  see larger changes than focal ones. This applies to the wavefront map, the OPD fan, the
+  Zernike coefficients and the wavefront merit operands, on both engines.
+- **FFT PSF scale.** The image-plane pixel size now follows the pupil's sampling exactly.
+  The PSF's scale changes by about one part in the pupil grid size (1.6% at 64).
+
 ## 1.0.161 — 2026-10-05
 
 ### Changed
