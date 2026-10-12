@@ -74,7 +74,7 @@ namespace LensHH.App.ViewModels
         }
 
         // ── Designs and optimization ──
-        [ObservableProperty] private int _designs = 500;
+        [ObservableProperty] private int _designs = 50000;
         [ObservableProperty] private int _screenIterations = 30;
         [ObservableProperty] private double _polishPercent = 10.0;
         [ObservableProperty] private int _lmIterations = 6000;

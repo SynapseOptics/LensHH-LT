@@ -1395,7 +1395,7 @@ namespace LensHH.Mcp.Tools
             "substituteGlass (false) draws every catalog glass at random from glassCatalog ('CoreSet28', any .agf in catalogs/FilteredGlassCatalogues). " +
             "Other params: modelsToKeep (24), seed (1), parallelism (0 = all logical processors), useNativeEngine (true), analyticDerivative (true), stepMethod ('psd3', 'psd2' or 'lm'), useBroydenUpdate (default: on for lm, off for psd), outputFolder ('random_start_results').")]
         public string RandomStartStart(
-            int designs = 500, int screenIterations = 30, double polishPercent = 10, int lmIterations = 6000,
+            int designs = 50000, int screenIterations = 30, double polishPercent = 10, int lmIterations = 6000,
             string bounded = "uniform", double boundedPercent = 25,
             bool randomizeCurvature = true, double curvatureSigma = 0,
             bool randomizeThickness = true, double thicknessSigma = 0,
