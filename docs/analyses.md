@@ -225,8 +225,10 @@ complex wavefront `exp(i 2π OPD)`.
 | **Wavelength** | Individual wavelength or polychromatic (incoherent sum of per-wavelength PSFs, weight-averaged). |
 
 Reported metrics (above the image): peak intensity normalized to
-the diffraction-limited peak (= **Strehl ratio**) and peak
-position relative to the chief ray.
+the diffraction-limited peak (= **Strehl ratio**) and the pixel size.
+The image is centred on the point where the primary wavelength's chief
+ray meets the image surface, at every wavelength, so a polychromatic
+PSF shows the lateral colour.
 
 Use the FFT PSF to inspect the actual image of a point source —
 useful for predicting how a star or pinhole will look on the
