@@ -105,7 +105,7 @@ public partial class SpotDiagramViewModel : ObservableObject
             string fieldUnit = system.FieldType == Core.Enums.FieldType.ObjectHeight ? "mm" : "deg";
             var titles = new string[numFields];
             for (int f = 0; f < numFields; f++)
-                titles[f] = $"{system.Fields[f].Y:F1} {fieldUnit}";
+                titles[f] = $"{LabelFormat.FieldValue(system.Fields[f].Y, system.Fields)} {fieldUnit}";
 
             var waveLabels = new string[system.Wavelengths.Count];
             for (int w = 0; w < system.Wavelengths.Count; w++)
@@ -285,7 +285,7 @@ public partial class SpotDiagramViewModel : ObservableObject
         {
             double fieldY = system.Fields[f].Y;
             sb.AppendLine(SpotDiagramTextExport.Export(_lastResults[f],
-                $"Field {f + 1}: {fieldY:F1} {fieldUnit}",
+                $"Field {f + 1}: {LabelFormat.FieldValue(fieldY, system.Fields)} {fieldUnit}",
                 wavelengths, fieldY, fieldUnit));
             sb.AppendLine();
         }

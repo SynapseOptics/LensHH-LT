@@ -70,7 +70,7 @@ public partial class FftPsfViewModel : ObservableObject
 
             var titles = new string[numFields];
             for (int f = 0; f < numFields; f++)
-                titles[f] = $"F{f + 1}: {system.Fields[f].Y:F1} {fieldUnit}, {LabelFormat.Wavelength(system.Wavelengths[waveIdx].Value, system.Wavelengths)}";
+                titles[f] = $"F{f + 1}: {LabelFormat.FieldValue(system.Fields[f].Y, system.Fields)} {fieldUnit}, {LabelFormat.Wavelength(system.Wavelengths[waveIdx].Value, system.Wavelengths)}";
 
             var bitmap = await Task.Run(() =>
             {
@@ -189,7 +189,7 @@ public partial class FftPsfViewModel : ObservableObject
 
             string wlStr = double.IsNaN(wlUm) ? "?" : wlUm.ToString(wlFmt, System.Globalization.CultureInfo.InvariantCulture);
             sb.AppendLine(FftPsfTextExport.Export(r,
-                $"FFT PSF \u2014 Field {r.FieldIndex + 1}: {fieldY:F1} {fieldUnit}, W{r.WavelengthIndex + 1}: {wlStr} \u00b5m",
+                $"FFT PSF \u2014 Field {r.FieldIndex + 1}: {LabelFormat.FieldValue(fieldY, system.Fields)} {fieldUnit}, W{r.WavelengthIndex + 1}: {wlStr} \u00b5m",
                 fieldY, wlUm, fieldUnit));
             sb.AppendLine();
         }

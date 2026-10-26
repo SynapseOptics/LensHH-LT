@@ -74,7 +74,7 @@ public partial class SingleRayTraceViewModel : ObservableObject
         for (int i = 0; i < system.Fields.Count; i++)
         {
             string unit = system.FieldType == Core.Enums.FieldType.ObjectAngle ? "\u00b0" : " mm";
-            FieldOptions.Add($"{i + 1}: {system.Fields[i].Y}{unit}");
+            FieldOptions.Add($"{i + 1}: {LabelFormat.FieldValue(system.Fields[i].Y, system.Fields)}{unit}");
         }
         if (SelectedFieldIndex >= FieldOptions.Count)
             SelectedFieldIndex = 0;

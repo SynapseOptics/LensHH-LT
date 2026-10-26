@@ -85,7 +85,7 @@ public partial class GeoMtfVsFreqViewModel : ObservableObject
             string fieldUnit = system.FieldType == Core.Enums.FieldType.ObjectHeight ? "mm" : "deg";
             var fieldLabels = new string[numFields];
             for (int f = 0; f < numFields; f++)
-                fieldLabels[f] = $"{system.Fields[f].Y:F1} {fieldUnit}";
+                fieldLabels[f] = $"{LabelFormat.FieldValue(system.Fields[f].Y, system.Fields)} {fieldUnit}";
             _lastFieldLabels = fieldLabels;
 
             double maxFreq = maxFreqSetting;
@@ -123,8 +123,8 @@ public partial class GeoMtfVsFreqViewModel : ObservableObject
             int wIdx = SelectedWavelengthIndex - 1;
             string wlFmt = "F" + LabelFormat.WavelengthDigits(system.Wavelengths);
             string label = poly
-                ? $"Field {f + 1}: {system.Fields[f].Y:F1} {fieldUnit}, Polychromatic"
-                : $"Field {f + 1}: {system.Fields[f].Y:F1} {fieldUnit}, {system.Wavelengths[wIdx].Value.ToString(wlFmt, System.Globalization.CultureInfo.InvariantCulture)} um";
+                ? $"Field {f + 1}: {LabelFormat.FieldValue(system.Fields[f].Y, system.Fields)} {fieldUnit}, Polychromatic"
+                : $"Field {f + 1}: {LabelFormat.FieldValue(system.Fields[f].Y, system.Fields)} {fieldUnit}, {system.Wavelengths[wIdx].Value.ToString(wlFmt, System.Globalization.CultureInfo.InvariantCulture)} um";
             sb.AppendLine(FftMtfTextExport.Export(_lastResults[f], label,
                 _lastResults[f].CutoffT, _lastResults[f].CutoffS,
                 system.Fields[f].Y,
@@ -274,7 +274,7 @@ public partial class GeoMtfVsFocusViewModel : ObservableObject
         FieldOptions.Clear();
         FieldOptions.Add("All Fields");
         for (int f = 0; f < system.Fields.Count; f++)
-            FieldOptions.Add($"F{f + 1}: {system.Fields[f].Y:F1} {fieldUnit}");
+            FieldOptions.Add($"F{f + 1}: {LabelFormat.FieldValue(system.Fields[f].Y, system.Fields)} {fieldUnit}");
         if (prevF >= 0 && prevF < FieldOptions.Count)
             SelectedFieldIndex = prevF;
         else
@@ -320,7 +320,7 @@ public partial class GeoMtfVsFocusViewModel : ObservableObject
 
                 var fieldLabels = new string[numFields];
                 for (int f = 0; f < numFields; f++)
-                    fieldLabels[f] = $"{system.Fields[f].Y:F1} {fieldUnit}";
+                    fieldLabels[f] = $"{LabelFormat.FieldValue(system.Fields[f].Y, system.Fields)} {fieldUnit}";
 
                 string title = $"Geometric MTF vs Focus \u2014 {SpatialFrequency:G} cy/mm, {wlLabel}";
                 string svg = MtfThroughFocusRenderer.RenderAllFields(results, fieldLabels, title);
@@ -338,7 +338,7 @@ public partial class GeoMtfVsFocusViewModel : ObservableObject
                 _lastResult = result;
                 _lastResults = null;
 
-                string title = $"Geometric MTF vs Focus \u2014 {SpatialFrequency:G} cy/mm, {system.Fields[fieldIdx].Y:F1} {fieldUnit}, {wlLabel}";
+                string title = $"Geometric MTF vs Focus \u2014 {SpatialFrequency:G} cy/mm, {LabelFormat.FieldValue(system.Fields[fieldIdx].Y, system.Fields)} {fieldUnit}, {wlLabel}";
                 string svg = MtfThroughFocusRenderer.Render(result, title);
                 PlotImage = SvgHelper.ToBitmap(svg);
             }

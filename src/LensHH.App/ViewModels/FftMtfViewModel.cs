@@ -79,7 +79,7 @@ public partial class FftMtfViewModel : ObservableObject
             string fieldUnit = system.FieldType == Core.Enums.FieldType.ObjectHeight ? "mm" : "deg";
             var fieldLabels = new string[numFields];
             for (int f = 0; f < numFields; f++)
-                fieldLabels[f] = $"{system.Fields[f].Y:F1} {fieldUnit}";
+                fieldLabels[f] = $"{LabelFormat.FieldValue(system.Fields[f].Y, system.Fields)} {fieldUnit}";
 
             var fieldResults = await Task.Run(() =>
             {
@@ -205,8 +205,8 @@ public partial class FftMtfViewModel : ObservableObject
             double cutS = result.CutoffS > 0 ? result.CutoffS : result.MaxFrequency;
 
             string label = polychromatic
-                ? $"Field {f + 1}: {fieldY:F1} {fieldUnit}, Polychromatic"
-                : $"Field {f + 1}: {fieldY:F1} {fieldUnit}, Wave {waveIdx + 1}: {wlAt(waveIdx)} um";
+                ? $"Field {f + 1}: {LabelFormat.FieldValue(fieldY, system.Fields)} {fieldUnit}, Polychromatic"
+                : $"Field {f + 1}: {LabelFormat.FieldValue(fieldY, system.Fields)} {fieldUnit}, Wave {waveIdx + 1}: {wlAt(waveIdx)} um";
 
             sb.AppendLine(FftMtfTextExport.Export(result,
                 label, cutT, cutS, fieldY,

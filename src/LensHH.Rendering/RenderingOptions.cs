@@ -78,6 +78,49 @@ namespace LensHH.Rendering
         }
 
         /// <summary>
+        /// Format one field value (angle or height, no unit) against the
+        /// system's full field list, so every field label in a plot uses the
+        /// same number of decimals and only as many as the set needs.
+        /// </summary>
+        public static string FieldValue(double value, IEnumerable<LensHH.Core.Models.Field> fields)
+        {
+            int digits = FieldDigits(fields.Select(f => f.Y));
+            return value.ToString("F" + digits, CultureInfo.InvariantCulture);
+        }
+
+        /// <summary>
+        /// Decimal digits for a set of field values. Uses the fewest digits
+        /// (at least 1) that show every value exactly, so typed fields such as
+        /// 0 / 7 / 10 / 14 read "0.0 / 7.0 / 10.0 / 14.0" and 12.25 stays 12.25.
+        /// Computed fields (e.g. 0.0732555171413312) are shown to four
+        /// significant figures of the largest field instead of being rounded
+        /// to one decimal: 0.0733 / 0.1464 / 0.2193 / 0.2918. Digits are then
+        /// added, up to 10, until every label is distinct.
+        /// </summary>
+        public static int FieldDigits(IEnumerable<double> fieldValues)
+        {
+            const double tolerance = 1e-9;
+            var values = fieldValues?.ToList() ?? new List<double>();
+            if (values.Count == 0) return 1;
+
+            int exact = 10;
+            for (int d = 1; d <= 10; d++)
+            {
+                if (values.All(v => Math.Abs(Math.Round(v, d) - v) <= tolerance)) { exact = d; break; }
+            }
+
+            double maxAbs = values.Max(v => Math.Abs(v));
+            int significant = maxAbs > 0 ? 3 - (int)Math.Floor(Math.Log10(maxAbs)) : 1;
+            int digits = Math.Max(1, Math.Min(10, Math.Min(exact, significant)));
+
+            while (digits < 10 &&
+                   values.Select(v => v.ToString("F" + digits, CultureInfo.InvariantCulture)).Distinct().Count()
+                       != values.Distinct().Count())
+                digits++;
+            return digits;
+        }
+
+        /// <summary>
         /// Format a wavelength value for a legend label (in micrometers).
         /// Default precision is enough to keep typical visible/UV/IR wavelengths
         /// distinguishable; for systems with closely-spaced wavelengths

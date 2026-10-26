@@ -119,7 +119,7 @@ public partial class FftMtfVsFocusViewModel : ObservableObject
         FieldOptions.Clear();
         FieldOptions.Add("All Fields");
         for (int f = 0; f < system.Fields.Count; f++)
-            FieldOptions.Add($"F{f + 1}: {system.Fields[f].Y:F1} {fieldUnit}");
+            FieldOptions.Add($"F{f + 1}: {LabelFormat.FieldValue(system.Fields[f].Y, system.Fields)} {fieldUnit}");
         SelectedFieldIndex = prevF >= 0 && prevF < FieldOptions.Count ? prevF : 0;
     }
 
@@ -168,7 +168,7 @@ public partial class FftMtfVsFocusViewModel : ObservableObject
 
                 var fieldLabels = new string[numFields];
                 for (int f = 0; f < numFields; f++)
-                    fieldLabels[f] = $"{system.Fields[f].Y:F1} {fieldUnit}";
+                    fieldLabels[f] = $"{LabelFormat.FieldValue(system.Fields[f].Y, system.Fields)} {fieldUnit}";
 
                 string freqUnit = system.IsAfocal ? "cy/arc-min" : "cy/mm";
                 string title = $"FFT MTF vs Focus \u2014 {freq:G} {freqUnit}, {wlLabel}";
@@ -191,7 +191,7 @@ public partial class FftMtfVsFocusViewModel : ObservableObject
                 _lastResults = null;
 
                 string freqUnit = system.IsAfocal ? "cy/arc-min" : "cy/mm";
-                string title = $"FFT MTF vs Focus \u2014 {freq:G} {freqUnit}, {system.Fields[fieldIdx].Y:F1} {fieldUnit}, {wlLabel}";
+                string title = $"FFT MTF vs Focus \u2014 {freq:G} {freqUnit}, {LabelFormat.FieldValue(system.Fields[fieldIdx].Y, system.Fields)} {fieldUnit}, {wlLabel}";
                 string svg = MtfThroughFocusRenderer.Render(result, title);
                 PlotImage = SvgHelper.ToBitmap(svg);
             }

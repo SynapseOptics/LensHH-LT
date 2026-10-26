@@ -69,7 +69,7 @@ public class AnalysisDispatcher
                 if (maxAberr < 0.1) maxAberr = 0.1;
                 string fUnit = system.FieldType == LensHH.Core.Enums.FieldType.ObjectHeight ? "mm" : "deg";
                 var pTitles = pResults.Select((r, i) =>
-                    $"{system.Fields[i].Y:F1} {fUnit}").ToArray();
+                    $"{LabelFormat.FieldValue(system.Fields[i].Y, system.Fields)} {fUnit}").ToArray();
                 string pHtml = PupilAberrationFanRenderer.RenderPage(pResults, pTitles, sysTitle,
                     system.Wavelengths.Count, maxAberr);
                 return ($"{sysTitle} \u2014 Pupil Aberration Fan", SvgBitmapHelper.HtmlPageToBitmap(pHtml, 1));
@@ -113,7 +113,7 @@ public class AnalysisDispatcher
                     for (int f = 0; f < n; f++)
                     {
                         fieldResults[f] = FftMtfCalculator.ComputeVsFrequency(system, _glass, f, wIdx);
-                        labels[f] = $"F{f + 1} ({system.Fields[f].Y} {fieldUnit})";
+                        labels[f] = $"F{f + 1} ({LabelFormat.FieldValue(system.Fields[f].Y, system.Fields)} {fieldUnit})";
                     }
                     double onAxisCutoff = fieldResults.Length > 0 ? fieldResults[0].MaxFrequency : 0;
                     string svg = FftMtfRenderer.RenderAllFields(fieldResults, labels,
@@ -312,7 +312,7 @@ public class AnalysisDispatcher
 
         var titles = new string[numFields];
         for (int f = 0; f < numFields; f++)
-            titles[f] = $"{system.Fields[f].Y:F1} {fieldUnit}";
+            titles[f] = $"{LabelFormat.FieldValue(system.Fields[f].Y, system.Fields)} {fieldUnit}";
 
         int spotWlDigits = LensHH.Rendering.LabelFormat.WavelengthDigits(
             system.Wavelengths.Select(w => w.Value));

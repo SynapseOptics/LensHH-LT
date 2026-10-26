@@ -674,7 +674,7 @@ namespace LensHH.Mcp.Tools
             var results = new SpotDiagramResult[sys.Fields.Count];
             for (int i = 0; i < sys.Fields.Count; i++)
                 results[i] = SpotDiagram.Compute(sys, _session.GlassCatalog, i);
-            var titles = results.Select((r, i) => $"F{i + 1} ({sys.Fields[i].Y})").ToArray();
+            var titles = results.Select((r, i) => $"F{i + 1} ({LabelFormat.FieldValue(sys.Fields[i].Y, sys.Fields)})").ToArray();
             return SpotDiagramRenderer.RenderPage(results, titles, sys.Title ?? "Spot Diagram");
         }
 
@@ -684,7 +684,7 @@ namespace LensHH.Mcp.Tools
             var results = new RayFanResult[sys.Fields.Count];
             for (int i = 0; i < sys.Fields.Count; i++)
                 results[i] = TransverseRayFan.Compute(sys, _session.GlassCatalog, i);
-            var titles = results.Select((r, i) => $"F{i + 1} ({sys.Fields[i].Y})").ToArray();
+            var titles = results.Select((r, i) => $"F{i + 1} ({LabelFormat.FieldValue(sys.Fields[i].Y, sys.Fields)})").ToArray();
             return RayFanRenderer.RenderPage(results, titles, sys.Title ?? "Ray Fan");
         }
 
@@ -694,7 +694,7 @@ namespace LensHH.Mcp.Tools
             var results = new OpdFanResult[sys.Fields.Count];
             for (int i = 0; i < sys.Fields.Count; i++)
                 results[i] = OpdFan.Compute(sys, _session.GlassCatalog, i);
-            var titles = results.Select((r, i) => $"F{i + 1} ({sys.Fields[i].Y})").ToArray();
+            var titles = results.Select((r, i) => $"F{i + 1} ({LabelFormat.FieldValue(sys.Fields[i].Y, sys.Fields)})").ToArray();
             return OpdFanRenderer.RenderPage(results, titles, sys.Title ?? "OPD Fan");
         }
 

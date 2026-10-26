@@ -73,7 +73,7 @@ public partial class ZernikeViewModel : ObservableObject
 
         string unit = system.FieldType == Core.Enums.FieldType.ObjectAngle ? "°" : " mm";
         for (int i = 0; i < system.Fields.Count; i++)
-            FieldOptions.Add($"{i + 1}: {system.Fields[i].Y}{unit}");
+            FieldOptions.Add($"{i + 1}: {LabelFormat.FieldValue(system.Fields[i].Y, system.Fields)}{unit}");
         for (int i = 0; i < system.Wavelengths.Count; i++)
         {
             string primary = i == system.PrimaryWavelengthIndex ? " *" : "";

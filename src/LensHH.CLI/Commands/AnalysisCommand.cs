@@ -1675,7 +1675,7 @@ namespace LensHH.CLI.Commands
                     {
                         results[f] = Core.Analysis.SpotDiagram.Compute(system, glassMgr, f,
                             numRings: 6, numArms: 12, wavelengthIndex: layoutWaveIdx);
-                        labels[f] = $"{system.Fields[f].Y} {fieldUnit}";
+                        labels[f] = $"{LabelFormat.FieldValue(system.Fields[f].Y, system.Fields)} {fieldUnit}";
                     }
                     string spotTitle = layoutWaveIdx >= 0 && layoutWaveIdx < system.Wavelengths.Count
                         ? $"Spot Diagram (\u03BB = {system.Wavelengths[layoutWaveIdx].Value:G4} \u00B5m)"
@@ -1690,7 +1690,7 @@ namespace LensHH.CLI.Commands
                     for (int f = 0; f < system.Fields.Count; f++)
                     {
                         results[f] = Core.Analysis.TransverseRayFan.Compute(system, glassMgr, f);
-                        labels[f] = $"{system.Fields[f].Y} {fieldUnit}";
+                        labels[f] = $"{LabelFormat.FieldValue(system.Fields[f].Y, system.Fields)} {fieldUnit}";
                     }
                     html = Rendering.RayFanRenderer.RenderPage(results, labels, "Transverse Ray Fan",
                         numWavelengths: system.Wavelengths.Count);
@@ -1703,7 +1703,7 @@ namespace LensHH.CLI.Commands
                     for (int f = 0; f < system.Fields.Count; f++)
                     {
                         results[f] = Core.Analysis.OpdFan.Compute(system, glassMgr, f);
-                        labels[f] = $"{system.Fields[f].Y} {fieldUnit}";
+                        labels[f] = $"{LabelFormat.FieldValue(system.Fields[f].Y, system.Fields)} {fieldUnit}";
                     }
                     html = Rendering.OpdFanRenderer.RenderPage(results, labels, "OPD Fan",
                         numWavelengths: system.Wavelengths.Count);
@@ -1776,7 +1776,7 @@ namespace LensHH.CLI.Commands
                     for (int f = 0; f < system.Fields.Count; f++)
                     {
                         results[f] = new[] { Core.Analysis.FftMtfCalculator.ComputePolychromatic(system, glassMgr, f) };
-                        labels[f] = $"{system.Fields[f].Y} {fieldUnit}";
+                        labels[f] = $"{LabelFormat.FieldValue(system.Fields[f].Y, system.Fields)} {fieldUnit}";
                     }
                     html = Rendering.FftMtfRenderer.RenderPage(results, labels, "FFT MTF (Polychromatic)");
                     break;
@@ -1789,7 +1789,7 @@ namespace LensHH.CLI.Commands
                     for (int f = 0; f < system.Fields.Count; f++)
                     {
                         results[f] = WavefrontMapCalculator.Compute(system, glassMgr, f, wIdx);
-                        labels[f] = $"{system.Fields[f].Y} {fieldUnit}";
+                        labels[f] = $"{LabelFormat.FieldValue(system.Fields[f].Y, system.Fields)} {fieldUnit}";
                     }
                     html = WavefrontMapRenderer.RenderPage(results, labels, "Wavefront Map");
                     break;
@@ -1813,7 +1813,7 @@ namespace LensHH.CLI.Commands
                     {
                         results[f] = new[] { GeometricMtfKidger.Compute(system, glassMgr, f,
                             system.PrimaryWavelengthIndex) };
-                        labels[f] = $"{system.Fields[f].Y} {fieldUnit}";
+                        labels[f] = $"{LabelFormat.FieldValue(system.Fields[f].Y, system.Fields)} {fieldUnit}";
                     }
                     html = FftMtfRenderer.RenderPage(results, labels, "Geometric MTF");
                     break;
@@ -1834,7 +1834,7 @@ namespace LensHH.CLI.Commands
                     {
                         results[f] = FftMtfCalculator.ComputeThroughFocusPolychromatic(
                             system, glassMgr, f, 30, 0.1, 21, 64);
-                        labels[f] = $"{system.Fields[f].Y} {fieldUnit}";
+                        labels[f] = $"{LabelFormat.FieldValue(system.Fields[f].Y, system.Fields)} {fieldUnit}";
                     }
                     html = "<!DOCTYPE html><html><body>" +
                         MtfThroughFocusRenderer.RenderAllFields(results, labels, "FFT MTF vs Focus") +
@@ -1857,7 +1857,7 @@ namespace LensHH.CLI.Commands
                     {
                         results[f] = GeometricMtfKidger.ComputeThroughFocus(system, glassMgr,
                             f, 30, system.PrimaryWavelengthIndex, 0.1, 21);
-                        labels[f] = $"{system.Fields[f].Y} {fieldUnit}";
+                        labels[f] = $"{LabelFormat.FieldValue(system.Fields[f].Y, system.Fields)} {fieldUnit}";
                     }
                     html = "<!DOCTYPE html><html><body>" +
                         MtfThroughFocusRenderer.RenderAllFields(results, labels, "Geometric MTF vs Focus") +

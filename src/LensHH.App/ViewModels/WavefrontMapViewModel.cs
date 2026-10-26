@@ -52,7 +52,7 @@ public partial class WavefrontMapViewModel : ObservableObject
             for (int f = 0; f < numFields; f++)
                 for (int w = 0; w < numWaves; w++)
                     titles[f * numWaves + w] =
-                        $"F{f + 1}: {system.Fields[f].Y:F1} {fieldUnit}, {LabelFormat.Wavelength(system.Wavelengths[w].Value, system.Wavelengths)}";
+                        $"F{f + 1}: {LabelFormat.FieldValue(system.Fields[f].Y, system.Fields)} {fieldUnit}, {LabelFormat.Wavelength(system.Wavelengths[w].Value, system.Wavelengths)}";
 
             var bitmap = await Task.Run(() =>
             {
@@ -198,7 +198,7 @@ public partial class WavefrontMapViewModel : ObservableObject
 
             string wlStr = double.IsNaN(wlUm) ? "?" : wlUm.ToString(wlFmt, System.Globalization.CultureInfo.InvariantCulture);
             sb.AppendLine(WavefrontMapTextExport.Export(r,
-                $"Field {r.FieldIndex + 1}: {fieldY:F1} {fieldUnit}, W{r.WavelengthIndex + 1}: {wlStr} \u00b5m",
+                $"Field {r.FieldIndex + 1}: {LabelFormat.FieldValue(fieldY, system.Fields)} {fieldUnit}, W{r.WavelengthIndex + 1}: {wlStr} \u00b5m",
                 fieldY, wlUm, fieldUnit));
             sb.AppendLine();
         }
