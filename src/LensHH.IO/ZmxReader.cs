@@ -26,8 +26,114 @@ namespace LensHH.Core.IO
             var notes = ResolveTableGlasses(system, filePath, glassMgr);
             if (glassMgr != null)
                 notes.AddRange(LoadLensCatalogs(system, filePath, glassMgr));
+            notes.AddRange(ConvertImageHeightFields(system, ReadFileLines(filePath), glassMgr));
             importNotes = notes;
             return system;
+        }
+
+        /// <summary>
+        /// LensHH-LT fields are object angles or object heights. OpticStudio can also give a
+        /// field as the image height it lands at, paraxial (FTYP 2) or real (FTYP 3); those used
+        /// to be read as object angles, so 0-20 mm of image height became 0-20 degrees and an
+        /// SCT's off-axis rays all failed. Each image height is now turned into the object field
+        /// that reaches it at the primary wavelength: an angle for an object at infinity, else an
+        /// object height. A paraxial image height scales with tan(angle) or object height, so one
+        /// paraxial trace gives every field; a real image height is solved with the chief ray.
+        /// </summary>
+        private static List<string> ConvertImageHeightFields(OpticalSystem system, string[] lines,
+                                                             Glass.GlassCatalogManager? glassMgr)
+        {
+            var notes = new List<string>();
+            int code = ReadFieldTypeCode(lines);
+            if (code != 2 && code != 3) return notes;
+
+            var inv = CultureInfo.InvariantCulture;
+            string kind = code == 2 ? "paraxial image heights" : "real image heights";
+            bool atInfinity = system.Surfaces.Count > 0 && double.IsInfinity(system.Surfaces[0].Thickness);
+            system.FieldType = atInfinity ? FieldType.ObjectAngle : FieldType.ObjectHeight;
+            string unit = atInfinity ? "°" : " mm";
+            var heights = system.Fields.Select(f => f.Y).ToList();
+
+            if (glassMgr == null)
+            {
+                notes.Add($"The fields are {kind} in mm, which LensHH-LT does not have; with no glass catalog to trace with, they were kept as object {(atInfinity ? "angles" : "heights")} and need converting.");
+                FieldValidation.FilterImportedFields(system);
+                return notes;
+            }
+
+            int wave = Math.Max(0, system.Wavelengths.FindIndex(w => w.IsPrimary));
+            const double refField = 1.0;   // 1 degree or 1 mm: the paraxial reference field
+            var savedFields = system.Fields;
+            double paraxialAtRef;
+            try
+            {
+                system.Fields = new List<Field> { new Field { Y = 0 }, new Field { Y = refField } };
+                paraxialAtRef = Analysis.SystemDataCalculator.Calculate(system, glassMgr).ParaxialImageHeight;
+            }
+            finally { system.Fields = savedFields; }
+
+            if (!(Math.Abs(paraxialAtRef) > 1e-12) || double.IsNaN(paraxialAtRef))
+            {
+                notes.Add($"The fields are {kind} in mm, which LensHH-LT does not have, and the paraxial image height could not be found to convert them; they were kept as object {(atInfinity ? "angles" : "heights")}.");
+                FieldValidation.FilterImportedFields(system);
+                return notes;
+            }
+
+            // Paraxial image height per unit of tan(angle) (or per mm of object height).
+            double perUnit = Math.Abs(paraxialAtRef) / (atInfinity ? Math.Tan(refField * Math.PI / 180.0) : refField);
+            double Paraxial(double h) => atInfinity
+                ? Math.Atan(Math.Abs(h) / perUnit) * 180.0 / Math.PI * Math.Sign(h)
+                : Math.Abs(h) / perUnit * Math.Sign(h);
+
+            double? RealImageY(double field)
+            {
+                var r = Analysis.RayTraceListing.Trace(system, glassMgr, field, 0.0, 0.0, wave);
+                if (!r.Success || r.Surfaces.Count == 0) return null;
+                return Math.Abs(r.Surfaces[r.Surfaces.Count - 1].Y);
+            }
+
+            int unsolved = 0;
+            for (int i = 0; i < system.Fields.Count; i++)
+            {
+                double h = heights[i];
+                double field = Paraxial(h);
+                if (code == 3 && h != 0)
+                {
+                    // Secant on |y_image(field)| = |h|, from the paraxial answer.
+                    double target = Math.Abs(h), x0 = field, x1 = field * 1.001;
+                    double? y0 = RealImageY(x0), y1 = RealImageY(x1);
+                    bool solved = false;
+                    for (int it = 0; it < 30 && y0.HasValue && y1.HasValue; it++)
+                    {
+                        double f0 = y0.Value - target, f1 = y1.Value - target;
+                        if (Math.Abs(f1) <= 1e-9 * Math.Max(1.0, target)) { field = x1; solved = true; break; }
+                        if (f1 == f0) break;
+                        double x2 = x1 - f1 * (x1 - x0) / (f1 - f0);
+                        x0 = x1; y0 = y1; x1 = x2; y1 = RealImageY(x1);
+                    }
+                    if (!solved) unsolved++;
+                }
+                system.Fields[i].Y = field;
+            }
+            FieldValidation.FilterImportedFields(system);
+
+            string list = string.Join(", ", heights.Select(h => h.ToString("0.###", inv)));
+            string converted = string.Join(", ", system.Fields.Select(f => f.Y.ToString("0.######", inv) + unit));
+            notes.Add($"The fields were {kind} ({list} mm), which LensHH-LT does not have; they were converted to the object {(atInfinity ? "angles" : "heights")} that reach them at the primary wavelength: {converted}." +
+                      (unsolved > 0 ? $" {unsolved} could not be solved with a real ray and use the paraxial value." : ""));
+            return notes;
+        }
+
+        /// <summary>The OpticStudio field type code on the FTYP line (0 if absent).</summary>
+        private static int ReadFieldTypeCode(string[] lines)
+        {
+            foreach (var line in lines)
+            {
+                if (!line.StartsWith("FTYP")) continue;
+                var parts = SplitLine(line);
+                return parts.Length > 1 && int.TryParse(parts[1], out int code) ? code : 0;
+            }
+            return 0;
         }
 
         /// <summary>
@@ -179,7 +285,10 @@ namespace LensHH.Core.IO
                                             && ReadTelecentricObjectSpace(lines);
             system.Wavelengths = ReadWavelengths(lines);
             system.Fields = ReadFields(lines);
-            FieldValidation.FilterImportedFields(system);
+            // Image-height fields are filtered once they are object fields (ConvertImageHeightFields).
+            int fieldTypeCode = ReadFieldTypeCode(lines);
+            if (fieldTypeCode != 2 && fieldTypeCode != 3)
+                FieldValidation.FilterImportedFields(system);
             system.Surfaces = ReadSurfaces(lines);
 
             SetPrimaryWavelength(system, lines);
