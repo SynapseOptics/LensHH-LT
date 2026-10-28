@@ -18,6 +18,7 @@ const order = [
   { file: 'vignetting-factors.md',      title: 'Automatic Vignetting Factors' },
   { file: 'semi-diameter-variables.md', title: 'Semi-Diameter as an Optimization Variable' },
   { file: 'gpu-acceleration.md',        title: 'GPU Acceleration' },
+  { file: 'tolerancing.md',     title: 'Tolerancing' },
   { file: 'glass-catalogs.md',  title: 'Glass Catalogs' },
   { file: 'api-cli-mcp.md',     title: 'API, CLI, and MCP' },
   { file: 'building.md',        title: 'Building from Source' },

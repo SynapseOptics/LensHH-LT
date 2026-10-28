@@ -26,6 +26,7 @@ const order = [
   { file: 'analyses.md',        title: 'Analyses Reference' },
   { file: 'merit-function.md',  title: 'Merit Function Reference' },
   { file: 'optimization.md',    title: 'Optimization' },
+  { file: 'tolerancing.md',     title: 'Tolerancing' },
   { file: 'glass-catalogs.md',  title: 'Glass Catalogs' },
   { file: 'api-cli-mcp.md',     title: 'API, CLI, and MCP' },
 ];

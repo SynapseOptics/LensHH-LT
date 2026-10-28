@@ -45,6 +45,8 @@ and the programmatic interfaces.
 - **[GPU Acceleration](gpu-acceleration.md)** — configure the GPU
   options in Preferences and confirm they're running with the live GPU
   status chip; which optimizers use the GPU and which don't.
+- **[Tolerancing](tolerancing.md)** — sensitivity and Monte Carlo of a lens's
+  manufacturing errors, with Monte Carlo MTF plots and trial lens files.
 - **[Glass Catalogs](glass-catalogs.md)** — AGF format, the five shipping
   catalogs, preference order, custom catalogs via GlassCatalogGenerator,
   and glass substitution during optimization.
@@ -79,10 +81,12 @@ LensHH-LT supports the common workflow of a general-purpose lens designer:
 - Merit-function-driven optimization with variables and pickups.
 - Glass catalogs in AGF format (five catalogs ship with the installer).
 
+- Tolerancing: sensitivity and Monte Carlo, with tilts and decentres
+  as Coordinate Breaks and irregularity as Zernike departures.
+
 It does **not** handle configurations, coatings,
-thermal/environmental effects, tolerancing data, tilts and
-decenters, folds, or non-standard surface types. For those,
-see the full LensHH product.
+thermal/environmental effects, folds, or freeform surface types. For
+those, see the full LensHH product.
 
 ## Feedback
 

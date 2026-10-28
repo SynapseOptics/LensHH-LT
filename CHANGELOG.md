@@ -2,6 +2,30 @@
 
 All notable changes to LensHH-LT and the LensHH-LT-Engine.
 
+## Unreleased
+
+### New
+
+- **Tolerancing** (Optimization ▸ Tolerancing…, CLI `tolerance`, MCP `ToleranceDefaults`,
+  `ToleranceSensitivity`, `ToleranceMonteCarlo`). Tolerance sets in a plain text format, with a
+  starting set at a shop grade; sensitivity, worst first; Monte Carlo of lenses drawn within the
+  tolerances, each refocused by its back focus, judged by RMS wavefront or MTF, with the MTF that
+  half and 90 % of the lenses reach plotted per field. Monte Carlo lenses can be saved as lens
+  files that open and analyse like any other, with a table of every trial.
+- **Coordinate Break** surfaces: decentre and tilt the frame for the surfaces after them.
+- **Zernike departure** on Standard and Even Asphere surfaces: Fringe Z1 to Z35 over a
+  normalization radius, for irregularity (Surface Properties ▸ Zernike, CLI `surface zernike`,
+  MCP `SetZernike`). Terms can be optimization variables.
+- **Glass offset**: changes of Nd and Vd of a surface's glass, its partial dispersions kept, for
+  melt data (Surface Properties ▸ Glass Model, CLI `surface edit index-offset= abbe-offset=`).
+
+### Fixed
+
+- The optical path through a tilted Coordinate Break left out the ray's slide back to the tilted
+  vertex plane, so wavefront, OPD, PSF and MTF read a tilt across the pupil as aberration.
+- The GPU differential-evolution searches now step aside for a lens with a surface the GPU does
+  not trace (ABCD, Coordinate Break), instead of tracing it as a plane.
+
 ## 1.0.163 — 2026-10-28
 
 ### Fixed
