@@ -670,6 +670,13 @@ and AOE (angle of exitance).
 | **Wavelength index** | 0-based index into the wavelength list. |
 | **Px / Py** | Normalized pupil coordinate (–1 to +1). (0, 0) = chief ray; (0, 1) = upper marginal; (1, 0) = sagittal marginal. |
 
+When the ray does not get through, the window says where and why: the
+surface it failed at, and whether it missed that surface, was clipped by
+its aperture (with the ray's radius and the aperture's), was blocked by an
+obscuration, was totally internally reflected, or could not be aimed at the
+requested point on the stop. The CLI (`analysis ray-trace`) and the MCP
+`SingleRayTrace` tool report the same.
+
 Use this when a higher-level analysis is giving a surprising
 answer and you want to step through one ray manually. The same
 ray-trace results are exposed in the merit function via the `RX` /

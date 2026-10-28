@@ -832,7 +832,7 @@ It is saved in `.lhlt`. MCP clients set it with `set_glass_map_catalog`.
 | Extension | Meaning |
 |-----------|---------|
 | `.lhlt`   | LensHH-LT native format. Save/load from **File → Save/Open**. |
-| `.zmx`    | ZEMAX prescription. **File → Import → Zemax (.zmx)…** and **File → Export → Zemax (.zmx)…**. Only standard and even-asphere surfaces are honored. Object Space NA (`OBNA`) and object-space telecentric are honored. Table glasses (`.ZTG`) are converted; see [OpticStudio table glasses](#opticstudio-table-glasses-ztg) below. |
+| `.zmx`    | ZEMAX prescription. **File → Import → Zemax (.zmx)…** and **File → Export → Zemax (.zmx)…**. Only standard and even-asphere surfaces are honored. Object Space NA (`OBNA`) and object-space telecentric are honored. Fields given as paraxial or real image heights become the object angles (or heights) that reach them. A "Float by Stop Size" aperture becomes the entrance pupil diameter that fills the stop: the paraxial image of the stop, at the primary wavelength. It is fixed from then on, so a later change to the stop does not resize it; the import notes give the value. Table glasses (`.ZTG`) are converted; see [OpticStudio table glasses](#opticstudio-table-glasses-ztg) below. |
 | `.len`    | OSLO lens file. **File → Import → OSLO (.len)…** and **File → Export → OSLO (.len)…**. See [OSLO files](#oslo-files) below. |
 | `.otx`    | Optalix lens file. **File → Import → Optalix (.otx)…** and **File → Export → Optalix (.otx)…**. See [Optalix files](#optalix-files) below. |
 | `.seq`    | Code V sequence file. **File → Import → Code V (.seq)…** and **File → Export → Code V (.seq)…**. See [Code V files](#code-v-files) below. |
