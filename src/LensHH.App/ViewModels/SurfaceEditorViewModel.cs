@@ -34,13 +34,8 @@ public partial class SurfaceRowViewModel : ObservableObject
         (_surface.Index == _session.System.Surfaces.Count - 1 ? "IMG" : _surface.Index.ToString());
 
     // Type as string-based combo (Avalonia ComboBox works better with string/index).
-    // "ABCD" (index 3) is a BASE surface (both editions), always offered. "Coordinate
-    // Break" (index 4) is a PRO surface type — offered only when the edition enables it
-    // (AppCapabilities.CoordinateBreakSupported), mirroring how the Hx column is gated.
     public static string[] TypeOptions { get; } =
-        LensHH.App.AppCapabilities.CoordinateBreakSupported
-            ? new[] { "Standard", "Even Asphere", "Paraxial", "ABCD", "Coordinate Break" }
-            : new[] { "Standard", "Even Asphere", "Paraxial", "ABCD" };
+        { "Standard", "Even Asphere", "Paraxial", "ABCD", "Coordinate Break" };
 
     public string TypeDisplay => _surface.Type switch
     {

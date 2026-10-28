@@ -19,7 +19,10 @@ namespace LensHH.CLI.Commands
   [green]surface remove <index>[/]              Remove surface at index
   [green]surface edit <index> <param>=<value>[/] Edit surface parameters
     Parameters: radius, thickness, material, semi-diameter, semi-diameter-mode=auto|fixed, conic, stop,
-               inner-radius, obscuration, type=standard|paraxial, focal-length (mm, ideal lens)
+               inner-radius, obscuration, type=standard|paraxial|even-asphere|coordinate-break,
+               focal-length (mm, ideal lens)
+    Coordinate break: decenter-x, decenter-y (lens units), tilt-x, tilt-y, tilt-z (degrees),
+               order=0 (decenter then tilt) | 1 (tilt then decenter)
   [green]surface set-asphere <index> <a1> <a2> ...[/] Set aspheric coefficients
   [green]surface clear-fixed-diameters[/]   Reset all semi-diameters to auto mode
   [green]surface set-ca <s1> <s2> <percent>[/]  Set clear aperture % for surface range (Auto only)
@@ -262,6 +265,37 @@ namespace LensHH.CLI.Commands
                         else if (kv[1].Equals("even-asphere", StringComparison.OrdinalIgnoreCase) ||
                                  kv[1].Equals("even_asphere", StringComparison.OrdinalIgnoreCase))
                             surface.Type = SurfaceType.EvenAsphere;
+                        else if (kv[1].Equals("coordinate-break", StringComparison.OrdinalIgnoreCase) ||
+                                 kv[1].Equals("coordinate_break", StringComparison.OrdinalIgnoreCase))
+                            surface.Type = SurfaceType.CoordinateBreak;
+                        break;
+                    case "decenter-x":
+                    case "decenter-y":
+                    case "tilt-x":
+                    case "tilt-y":
+                    case "tilt-z":
+                        if (surface.Type != SurfaceType.CoordinateBreak)
+                        {
+                            AnsiConsole.MarkupLine($"[red]Surface {idx} is not a coordinate break; set type=coordinate-break first.[/]");
+                            return;
+                        }
+                        if (double.TryParse(kv[1], NumberStyles.Float, CultureInfo.InvariantCulture, out double cbv))
+                            surface.SetParameter(kv[0].ToLowerInvariant() switch
+                            {
+                                "decenter-x" => 1,
+                                "decenter-y" => 2,
+                                "tilt-x" => 3,
+                                "tilt-y" => 4,
+                                _ => 5,
+                            }, cbv);
+                        break;
+                    case "order":
+                        if (surface.Type != SurfaceType.CoordinateBreak)
+                        {
+                            AnsiConsole.MarkupLine($"[red]Surface {idx} is not a coordinate break; set type=coordinate-break first.[/]");
+                            return;
+                        }
+                        if (kv[1] == "0" || kv[1] == "1") surface.SetSetting(1, int.Parse(kv[1]));
                         break;
                     case "focal-length":
                         // Paraxial ideal-lens focal length (mm); setting it makes the surface Paraxial.

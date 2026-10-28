@@ -426,7 +426,7 @@ namespace LensHH.Mcp.Tools
             return $"Surface {surfaceIndex} removed. System now has {sys.Surfaces.Count} surfaces.";
         }
 
-        [McpServerTool, Description("Edit a surface property. property can be: radius, thickness, material, conic, semi_diameter, semi_diameter_mode (auto/fixed), inner_radius, obscuration, stop (true/false), type (standard/paraxial), focal_length (mm, for a paraxial ideal-lens surface). value is the new value as a string.")]
+        [McpServerTool, Description("Edit a surface property. property can be: radius, thickness, material, conic, semi_diameter, semi_diameter_mode (auto/fixed), inner_radius, obscuration, stop (true/false), type (standard/paraxial/even_asphere/coordinate_break), focal_length (mm, for a paraxial ideal-lens surface), and for a coordinate break decenter_x, decenter_y (lens units), tilt_x, tilt_y, tilt_z (degrees) and order (0 = decenter then tilt, 1 = tilt then decenter). value is the new value as a string.")]
         public string EditSurface(int surfaceIndex, string property, string value)
         {
             var sys = _session.System;
@@ -486,8 +486,28 @@ namespace LensHH.Mcp.Tools
                     else if (value.Equals("even_asphere", StringComparison.OrdinalIgnoreCase) ||
                              value.Equals("evenasphere", StringComparison.OrdinalIgnoreCase))
                         s.Type = SurfaceType.EvenAsphere;
+                    else if (value.Equals("coordinate_break", StringComparison.OrdinalIgnoreCase) ||
+                             value.Equals("coordinatebreak", StringComparison.OrdinalIgnoreCase))
+                        s.Type = SurfaceType.CoordinateBreak;
                     else
-                        return "Use 'standard', 'paraxial', or 'even_asphere'.";
+                        return "Use 'standard', 'paraxial', 'even_asphere', or 'coordinate_break'.";
+                    break;
+                case "decenter_x":
+                case "decenter_y":
+                case "tilt_x":
+                case "tilt_y":
+                case "tilt_z":
+                    if (s.Type != SurfaceType.CoordinateBreak)
+                        return $"Surface {surfaceIndex} is not a coordinate break; set type=coordinate_break first.";
+                    if (double.TryParse(value, out double cbv))
+                        s.SetParameter(CoordinateBreakSlot(property.ToLowerInvariant()), cbv);
+                    else return $"Invalid {property} value.";
+                    break;
+                case "order":
+                    if (s.Type != SurfaceType.CoordinateBreak)
+                        return $"Surface {surfaceIndex} is not a coordinate break; set type=coordinate_break first.";
+                    if (value == "0" || value == "1") s.SetSetting(1, int.Parse(value));
+                    else return "Use 0 (decenter then tilt) or 1 (tilt then decenter).";
                     break;
                 case "focal_length":
                     // Focal length applies to a Paraxial (ideal-lens) surface; setting it
@@ -504,6 +524,16 @@ namespace LensHH.Mcp.Tools
             }
             return $"Surface {surfaceIndex} {property} set to {value}.";
         }
+
+        // A coordinate break's parameter slots, 1-based: decenter X, decenter Y, tilt X, Y, Z.
+        private static int CoordinateBreakSlot(string property) => property switch
+        {
+            "decenter_x" => 1,
+            "decenter_y" => 2,
+            "tilt_x" => 3,
+            "tilt_y" => 4,
+            _ => 5,
+        };
 
         [McpServerTool, Description("Set even asphere coefficients on a surface. Provide coefficients as comma-separated values for A2,A4,A6,A8,A10,A12,A14,A16 (up to 8 terms).")]
         public string SetAsphere(int surfaceIndex, string coefficients)
@@ -612,6 +642,13 @@ namespace LensHH.Mcp.Tools
                     if (s.AsphericCoefficients[i] != 0)
                         sb.Append($" A{2 * (i + 1)}={s.AsphericCoefficients[i]:E4}");
                 sb.AppendLine();
+            }
+
+            if (s.Type == SurfaceType.CoordinateBreak)
+            {
+                sb.AppendLine($"  Decenter X: {s.GetParameter(1):G10}  Decenter Y: {s.GetParameter(2):G10}");
+                sb.AppendLine($"  Tilt X: {s.GetParameter(3):G10}°  Tilt Y: {s.GetParameter(4):G10}°  Tilt Z: {s.GetParameter(5):G10}°");
+                sb.AppendLine($"  Order: {s.GetSetting(1)} ({(s.GetSetting(1) == 0 ? "decenter then tilt" : "tilt then decenter")})");
             }
 
             return sb.ToString();

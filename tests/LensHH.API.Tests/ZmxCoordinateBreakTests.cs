@@ -7,8 +7,7 @@ using Xunit;
 
 namespace LensHH.API.Tests
 {
-    // ZEMAX (.zmx) + native (.lhlt) I/O of the Coordinate Break (PRO) surface.
-    // The FORMAT handling is public; the trace/optimization/LDE editing is PRO-gated.
+    // ZEMAX (.zmx) + native (.lhlt) I/O of the Coordinate Break surface.
     // Slot map (ZEMAX PARM is 1-based -> Surface.Parameters is 0-based):
     //   PARM 1-5 = Decenter X, Decenter Y, Tilt X, Tilt Y, Tilt Z; PARM 6 = Order.
     public class ZmxCoordinateBreakTests
