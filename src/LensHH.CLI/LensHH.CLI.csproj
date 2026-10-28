@@ -16,6 +16,7 @@
     </Reference>
     <ProjectReference Include="..\LensHH.IO\LensHH.IO.csproj" />
     <ProjectReference Include="..\LensHH.Rendering\LensHH.Rendering.csproj" />
+    <ProjectReference Include="..\LensHH.Tolerancing\LensHH.Tolerancing.csproj" />
     <!--
       RenderApp is launched as a separate Avalonia GUI process via a
       named pipe, not linked. The build-but-don't-link reference makes

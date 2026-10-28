@@ -146,9 +146,11 @@ public static class Mtf
     /// <summary>
     /// Tangential and sagittal MTF at each of <paramref name="frequencies"/> (cycles/mm) for field
     /// <paramref name="field"/> (0-based), interpolated on the FFT's own frequency grid. NaN where the
-    /// lens cannot be traced; 0 beyond the cutoff.
+    /// lens cannot be traced; 0 beyond the cutoff. A <paramref name="pupil"/> measured once on the
+    /// nominal lens spares each trial measuring its own, which is most of an MTF's cost.
     /// </summary>
-    public static (double[] T, double[] S) Curve(Built lens, int field, IReadOnlyList<double> frequencies, int gridSize = 64)
+    public static (double[] T, double[] S) Curve(Built lens, int field, IReadOnlyList<double> frequencies, int gridSize = 64,
+                                                 FftMtfCalculator.PupilGeometry? pupil = null)
     {
         var t = new double[frequencies.Count];
         var s = new double[frequencies.Count];
@@ -156,7 +158,7 @@ public static class Mtf
         try
         {
             double step = frequencies.Count > 1 ? Math.Max(1e-6, Math.Min(5.0, frequencies[1] - frequencies[0])) : 5.0;
-            r = FftMtfCalculator.ComputePolychromatic(lens.System, lens.Glass, field, gridSize, step);
+            r = FftMtfCalculator.ComputePolychromatic(lens.System, lens.Glass, field, gridSize, step, pupil: pupil);
         }
         catch (Exception e) when (e is InvalidOperationException or ArithmeticException or ArgumentException)
         {

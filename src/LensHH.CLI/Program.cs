@@ -28,6 +28,7 @@ namespace LensHH.CLI
             dispatcher.Register(new GlassCommand());
             dispatcher.Register(new MeritCommand());
             dispatcher.Register(new OptimizeCommand());
+            dispatcher.Register(new ToleranceCommand());
             dispatcher.Register(new VariableCommand());
             dispatcher.Register(new DedupCommand());
 

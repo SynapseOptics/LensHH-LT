@@ -29,11 +29,19 @@ public sealed class NominalLens
         FileFieldCount = System.Fields.Count;
         if (fields == FieldSymmetry.Y) MirrorFields(System);
         Paraxial = Built.ParaxialOf(System, Glass);
+        Nd = Glass.BuildRefractiveIndexArray(System, ModelGlass.LambdaD);
+        NF = Glass.BuildRefractiveIndexArray(System, ModelGlass.LambdaF);
+        NC = Glass.BuildRefractiveIndexArray(System, ModelGlass.LambdaC);
     }
 
     public OpticalSystem System { get; }
     public GlassCatalogManager Glass { get; }
     public ParaxialResult Paraxial { get; }
+
+    /// <summary>Index of the medium after each surface at the d, F and C lines.</summary>
+    public double[] Nd { get; }
+    public double[] NF { get; }
+    public double[] NC { get; }
 
     /// <summary>The fields the lens gives, before their mirror images: the first this many.</summary>
     public int FileFieldCount { get; }
@@ -47,8 +55,7 @@ public sealed class NominalLens
         if (surface < 1 || surface >= System.Surfaces.Count - 1) return false;
         var s = System.Surfaces[surface];
         if (s.IsMirror) return false;
-        double n = Glass.BuildRefractiveIndexArray(System, ModelGlass.LambdaD)[surface];
-        return Math.Abs(n - 1.0) > 1e-9;
+        return Math.Abs(Nd[surface] - 1.0) > 1e-9;
     }
 
     /// <summary>
@@ -190,6 +197,11 @@ public sealed class Built
         for (int i = 0; i < source.Count; i++)
         {
             var s = source[i];
+            // The wavefront's plane-wave reference for an object at infinity is taken on surface 1,
+            // in its own frame. A break there would put it in the tilted one, so a moved first
+            // surface gets a plain plane in front of its break.
+            if (i == 1 && moves.TryGetValue(1, out var first) && !first.IsIdentity)
+                surfaces.Add(new Surface { Thickness = 0.0, Material = source[0].Material, Comment = "Reference plane" });
             if (!moves.TryGetValue(i, out var move) || move.IsIdentity)
             {
                 map[i] = surfaces.Count;

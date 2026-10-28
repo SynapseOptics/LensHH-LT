@@ -64,6 +64,23 @@ public class ToleranceTests
         Assert.Equal(nominal.Criterion, moved.Criterion, 6);
     }
 
+    // A wedge of an arcminute on a Cooke triplet costs hundredths of a wave. It once cost waves: a
+    // break's slide back to its vertex plane was left out of the optical path, and a break on
+    // surface 1 put the plane-wave reference in the tilted frame - both tilts across the pupil.
+    [Theory]
+    [InlineData(1)]
+    [InlineData(4)]
+    public void ASmallWedgeAddsLittle(int surface)
+    {
+        var glass = Lenses.Glass();
+        var lens = new NominalLens(LhltReader.Read(Lenses.CookeTriplet).System, glass);
+        var rms = new RmsWavefrontCriterion();
+        double nominal = rms.Evaluate(lens.Perturb().Build());
+        var trial = lens.Perturb();
+        new SurfaceTilt(surface, Axis.X).Apply(trial, 1.0 / 60.0);
+        Assert.InRange(rms.Evaluate(trial.Build()) - nominal, -0.02, 0.05);
+    }
+
     [Fact]
     public void ASetReadsFromText()
     {

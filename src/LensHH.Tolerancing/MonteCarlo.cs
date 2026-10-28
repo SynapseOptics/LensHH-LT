@@ -27,6 +27,9 @@ public sealed record MonteCarloOptions
 
     /// <summary>How many trials to save, the first so many; the CSV lists them all.</summary>
     public int SaveTrials { get; init; } = 20;
+
+    /// <summary>Trials run at once; 0 for one per processor.</summary>
+    public int Parallelism { get; init; }
 }
 
 /// <summary>One Monte Carlo lens: its errors, the compensator's move, the criterion, and its MTF.</summary>
@@ -44,6 +47,9 @@ public sealed record MonteCarloResult(string Criterion, IReadOnlyList<ToleranceI
                                       IReadOnlyList<TrialResult> Trials, double NominalCriterion,
                                       IReadOnlyList<double> Frequencies, IReadOnlyList<int> Fields)
 {
+    /// <summary>The criterion the lenses were judged by, for quoting its values.</summary>
+    public ICriterion? CriterionInfo { get; init; }
+
     /// <summary>The nominal lens's MTF, refocused, at each kept field and frequency.</summary>
     public IReadOnlyList<double[]> NominalMtfT { get; init; } = Array.Empty<double[]>();
     public IReadOnlyList<double[]> NominalMtfS { get; init; } = Array.Empty<double[]>();
@@ -127,14 +133,22 @@ public static class MonteCarlo
         // The nominal, refocused: the reference the compensator moves from, and the MTF the bands sit under.
         var nominal = Sensitivity.Evaluate(lens, Array.Empty<(Tolerance, double)>(), criterion, compensator, out var nominalLens);
         double reference = double.IsFinite(nominal.Change) ? nominal.Change : 0.0;
-        var (nominalT, nominalS) = MtfOf(nominalLens.Build(), fields, freqs, options.MtfGridSize);
+        var nominalBuilt = nominalLens.Build();
+        // Each field's pupil, measured once on the nominal lens: a trial's errors barely move it.
+        var pupils = freqs.Count == 0 ? Array.Empty<LensHH.Core.Analysis.FftMtfCalculator.PupilGeometry>()
+            : fields.Select(f => LensHH.Core.Analysis.FftMtfCalculator.MeasurePupil(nominalBuilt.System, nominalBuilt.Glass, f)).ToArray();
+        var (nominalT, nominalS) = MtfOf(nominalBuilt, fields, freqs, options.MtfGridSize, pupils);
 
         string? dir = options.SaveDirectory;
         if (dir != null) Directory.CreateDirectory(dir);
 
         var trials = new TrialResult[options.Trials];
         int done = 0;
-        Parallel.For(0, options.Trials, new ParallelOptions { CancellationToken = cancel }, k =>
+        Parallel.For(0, options.Trials, new ParallelOptions
+        {
+            CancellationToken = cancel,
+            MaxDegreeOfParallelism = options.Parallelism > 0 ? options.Parallelism : -1,
+        }, k =>
         {
             var x = Draw(groups, items, options.Statistics, TrialRandom(options.Seed, k));
             var r = Sensitivity.Evaluate(lens, items.Select((item, i) => (item.Tolerance, x[i])), criterion, compensator, out var trial);
@@ -143,7 +157,7 @@ public static class MonteCarlo
             if (double.IsFinite(r.Criterion))
             {
                 var built = trial.Build();
-                var (t, s) = MtfOf(built, fields, freqs, options.MtfGridSize);
+                var (t, s) = MtfOf(built, fields, freqs, options.MtfGridSize, pupils);
                 trialResult = trialResult with { MtfT = t, MtfS = s };
                 if (dir != null && k < options.SaveTrials)
                     trialResult = trialResult with { File = Save(built, dir, k + 1, items, x, r) };
@@ -156,17 +170,19 @@ public static class MonteCarlo
         {
             NominalMtfT = nominalT,
             NominalMtfS = nominalS,
+            CriterionInfo = criterion,
         };
         if (dir != null) File.WriteAllText(Path.Combine(dir, "trials.csv"), Csv(result, criterion));
         return result;
     }
 
-    private static (double[][] T, double[][] S) MtfOf(Built lens, IReadOnlyList<int> fields, IReadOnlyList<double> freqs, int grid)
+    private static (double[][] T, double[][] S) MtfOf(Built lens, IReadOnlyList<int> fields, IReadOnlyList<double> freqs, int grid,
+                                                      IReadOnlyList<LensHH.Core.Analysis.FftMtfCalculator.PupilGeometry> pupils)
     {
         if (freqs.Count == 0) return (Array.Empty<double[]>(), Array.Empty<double[]>());
         var t = new double[fields.Count][];
         var s = new double[fields.Count][];
-        for (int f = 0; f < fields.Count; f++) (t[f], s[f]) = Mtf.Curve(lens, fields[f], freqs, grid);
+        for (int f = 0; f < fields.Count; f++) (t[f], s[f]) = Mtf.Curve(lens, fields[f], freqs, grid, pupils[f]);
         return (t, s);
     }
 
