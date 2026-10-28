@@ -1,0 +1,164 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:LensHH.App.ViewModels"
+        x:Class="LensHH.App.Views.ToleranceDialog"
+        x:DataType="vm:ToleranceDialogViewModel"
+        Title="Tolerancing"
+        Icon="avares://LensHH.App/Assets/icon_256.png"
+        Width="1300" Height="880"
+        WindowStartupLocation="CenterOwner"
+        CanResize="True"
+        MinWidth="1000" MinHeight="640">
+
+  <DockPanel LastChildFill="True" Margin="10">
+
+    <!-- ── Status and progress ── -->
+    <Grid DockPanel.Dock="Bottom" ColumnDefinitions="*,240" Margin="0,8,0,0">
+      <TextBlock Grid.Column="0" Text="{Binding Status}" VerticalAlignment="Center" TextWrapping="Wrap" />
+      <ProgressBar Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding Progress}" Height="14"
+                   IsVisible="{Binding IsRunning}" />
+    </Grid>
+
+    <Grid ColumnDefinitions="440,12,*">
+
+      <!-- ── Tolerances ── -->
+      <DockPanel Grid.Column="0" LastChildFill="True">
+        <StackPanel DockPanel.Dock="Top" Spacing="6" Margin="0,0,0,6">
+          <TextBlock Text="Tolerances" FontWeight="SemiBold" FontSize="14" />
+          <TextBlock TextWrapping="Wrap" Foreground="#555555" FontSize="12"
+                     Text="One per line: CODE surfaces ±t, or CODE surfaces min max, then optionally uniform, normal[:k] or endpoint, and pivot:d on an element tilt. Codes: TRAD radius, TFRN power and TIRR irregularity in fringes, TRSI symmetric irregularity, TTHI thickness, TIND index, TABB Abbe number, TCON conic, TSDX/TSDY surface decentre, TSTX/TSTY surface tilt (deg); for an element (first-last surfaces) TEDX/TEDY decentre and TETX/TETY tilt (deg)." />
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <ComboBox ItemsSource="{Binding Grades}" SelectedIndex="{Binding GradeIndex}" Width="140" />
+            <Button Content="Generate" Command="{Binding GenerateCommand}"
+                    ToolTip.Tip="Replace the set with a starting set at this shop grade" />
+            <Button Content="Load .tol…" Click="Load_Click" />
+            <Button Content="Save .tol…" Click="Save_Click" />
+          </StackPanel>
+        </StackPanel>
+        <TextBox Text="{Binding TolerancesText}" AcceptsReturn="True" TextWrapping="NoWrap"
+                 FontFamily="Consolas, Menlo, monospace" FontSize="12" />
+      </DockPanel>
+
+      <!-- ── Settings, run, results ── -->
+      <DockPanel Grid.Column="2" LastChildFill="True">
+        <Border DockPanel.Dock="Top" BorderBrush="#DDDDDD" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,0,8">
+          <StackPanel Spacing="8">
+            <WrapPanel Orientation="Horizontal">
+              <StackPanel Margin="0,0,16,6" Width="150">
+                <TextBlock Text="Criterion" FontSize="11" />
+                <ComboBox ItemsSource="{Binding Criteria}" SelectedIndex="{Binding CriterionIndex}" HorizontalAlignment="Stretch"
+                          ToolTip.Tip="RMS wavefront error over the fields and wavelengths, or the MTF at one field, frequency and orientation" />
+              </StackPanel>
+              <StackPanel Margin="0,0,16,6" Width="80" IsVisible="{Binding IsMtfCriterion}">
+                <TextBlock Text="Field" FontSize="11" />
+                <NumericUpDown Value="{Binding MtfField}" Minimum="1" Maximum="{Binding FieldCount}" FormatString="0" />
+              </StackPanel>
+              <StackPanel Margin="0,0,16,6" Width="110" IsVisible="{Binding IsMtfCriterion}">
+                <TextBlock Text="Frequency (cy/mm)" FontSize="11" />
+                <NumericUpDown Value="{Binding MtfFrequency}" Minimum="0.1" Increment="5" FormatString="0.##" />
+              </StackPanel>
+              <StackPanel Margin="0,0,16,6" Width="120" IsVisible="{Binding IsMtfCriterion}">
+                <TextBlock Text="Orientation" FontSize="11" />
+                <ComboBox ItemsSource="{Binding Orientations}" SelectedIndex="{Binding OrientationIndex}" HorizontalAlignment="Stretch" />
+              </StackPanel>
+              <StackPanel Margin="0,0,16,6" VerticalAlignment="Bottom">
+                <CheckBox Content="Polychromatic" IsChecked="{Binding Polychromatic}" />
+              </StackPanel>
+              <StackPanel Margin="0,0,16,6" VerticalAlignment="Bottom">
+                <CheckBox Content="Mirror fields to −y" IsChecked="{Binding MirrorFields}"
+                          ToolTip.Tip="Judge each field and its mirror image: a decentre or tilt can make one side worse than the other" />
+              </StackPanel>
+            </WrapPanel>
+
+            <WrapPanel Orientation="Horizontal">
+              <StackPanel Margin="0,0,16,6" VerticalAlignment="Bottom">
+                <CheckBox Content="Refocus each lens (back focus)" IsChecked="{Binding Compensate}" />
+              </StackPanel>
+              <StackPanel Margin="0,0,16,6" Width="130" IsEnabled="{Binding Compensate}">
+                <TextBlock Text="Focus travel ± (mm)" FontSize="11" />
+                <TextBox Text="{Binding TravelText}" Watermark="unlimited"
+                         ToolTip.Tip="How far the focus may move either way from where it focuses the nominal lens" />
+              </StackPanel>
+              <StackPanel Margin="0,0,16,6" Width="100">
+                <TextBlock Text="Lenses" FontSize="11" />
+                <NumericUpDown Value="{Binding Trials}" Minimum="1" Maximum="100000" Increment="100" FormatString="0" />
+              </StackPanel>
+              <StackPanel Margin="0,0,16,6" Width="80">
+                <TextBlock Text="Seed" FontSize="11" />
+                <NumericUpDown Value="{Binding Seed}" Minimum="0" FormatString="0" />
+              </StackPanel>
+              <StackPanel Margin="0,0,16,6" Width="140">
+                <TextBlock Text="Errors spread" FontSize="11" />
+                <ComboBox ItemsSource="{Binding DistributionNames}" SelectedIndex="{Binding DistributionIndex}" HorizontalAlignment="Stretch"
+                          ToolTip.Tip="For a tolerance that names no distribution of its own" />
+              </StackPanel>
+              <StackPanel Margin="0,0,16,6" VerticalAlignment="Bottom">
+                <CheckBox Content="x and y as one error" IsChecked="{Binding PairsAsOne}"
+                          ToolTip.Tip="Draw each decentre or tilt's x and y together, uniform over a disc, rather than independently" />
+              </StackPanel>
+            </WrapPanel>
+
+            <WrapPanel Orientation="Horizontal">
+              <StackPanel Margin="0,0,16,6" Width="130">
+                <TextBlock Text="MTF up to (cy/mm)" FontSize="11" />
+                <NumericUpDown Value="{Binding MtfMaxFrequency}" Minimum="0" Increment="10" FormatString="0.##"
+                               ToolTip.Tip="Keep each lens's polychromatic MTF up to this frequency; 0 for none" />
+              </StackPanel>
+              <StackPanel Margin="0,0,16,6" Width="90">
+                <TextBlock Text="Step" FontSize="11" />
+                <NumericUpDown Value="{Binding MtfStep}" Minimum="0.1" Increment="1" FormatString="0.##" />
+              </StackPanel>
+              <StackPanel Margin="0,0,8,6" VerticalAlignment="Bottom">
+                <CheckBox Content="Save" IsChecked="{Binding SaveTrials}" />
+              </StackPanel>
+              <StackPanel Margin="0,0,8,6" Width="70" IsEnabled="{Binding SaveTrials}">
+                <TextBlock Text="Lenses" FontSize="11" />
+                <NumericUpDown Value="{Binding SaveCount}" Minimum="0" FormatString="0" />
+              </StackPanel>
+              <StackPanel Margin="0,0,8,6" Width="330" IsEnabled="{Binding SaveTrials}">
+                <TextBlock Text="To folder (lens files, trials.csv, MTF plots)" FontSize="11" />
+                <TextBox Text="{Binding SaveDirectory}" />
+              </StackPanel>
+              <Button Content="…" Click="Browse_Click" VerticalAlignment="Bottom" Margin="0,0,0,6" IsEnabled="{Binding SaveTrials}" />
+            </WrapPanel>
+
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <Button Content="Sensitivity" Command="{Binding RunSensitivityCommand}"
+                      ToolTip.Tip="Each tolerance at both ends of its range, worst first" />
+              <Button Content="Monte Carlo" Command="{Binding RunMonteCarloCommand}"
+                      ToolTip.Tip="Random lenses drawn within the tolerances" />
+              <Button Content="Cancel" Command="{Binding CancelCommand}" />
+            </StackPanel>
+          </StackPanel>
+        </Border>
+
+        <TabControl SelectedIndex="{Binding SelectedTab}">
+          <TabItem Header="Report">
+            <TextBox Text="{Binding Report}" IsReadOnly="True" AcceptsReturn="True" TextWrapping="NoWrap"
+                     FontFamily="Consolas, Menlo, monospace" FontSize="12" />
+          </TabItem>
+          <TabItem Header="Monte Carlo MTF">
+            <DockPanel LastChildFill="True">
+              <ComboBox DockPanel.Dock="Top" ItemsSource="{Binding MtfFields}" SelectedIndex="{Binding MtfFieldIndex}"
+                        Width="220" Margin="0,4,0,6" />
+              <Image Source="{Binding MtfImage}" Stretch="Uniform" />
+            </DockPanel>
+          </TabItem>
+          <TabItem Header="Trial lenses">
+            <DockPanel LastChildFill="True">
+              <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0,4,0,6">
+                <TextBlock VerticalAlignment="Center" TextWrapping="Wrap" Foreground="#555555" FontSize="12"
+                           Text="Each saved trial is a lens file: its decentres and tilts as Coordinate Breaks, irregularity as Zernike departures, glass errors as offsets, refocused." />
+              </StackPanel>
+              <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="8" Margin="0,6,0,0">
+                <Button Content="Open in LensHH" Command="{Binding OpenTrialCommand}"
+                        ToolTip.Tip="Close this window and open the selected trial lens" />
+              </StackPanel>
+              <ListBox ItemsSource="{Binding TrialFiles}" SelectedItem="{Binding SelectedTrial}" />
+            </DockPanel>
+          </TabItem>
+        </TabControl>
+      </DockPanel>
+    </Grid>
+  </DockPanel>
+</Window>

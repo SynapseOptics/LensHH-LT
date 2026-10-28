@@ -1078,6 +1078,18 @@ public partial class MainWindow : Window
             VM.Session.NotifySystemChanged("global-search");
     }
 
+    private async void Tolerancing_Click(object? sender, RoutedEventArgs e)
+    {
+        // Tolerancing runs on copies of the lens; the design itself never changes. A saved trial
+        // lens the user asks to see is opened once the window closes.
+        var vm = new ToleranceDialogViewModel(VM.Session);
+        var dialog = new ToleranceDialog { DataContext = vm };
+        await dialog.ShowDialog(this);
+
+        if (vm.OpenPath != null)
+            VM.OpenFile(vm.OpenPath, "lhlt");
+    }
+
     private async void RandomStart_Click(object? sender, RoutedEventArgs e)
     {
         // Works on internal clones; only "Apply this design" inside the dialog changes the system.

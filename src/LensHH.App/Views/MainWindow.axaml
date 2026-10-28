@@ -132,6 +132,8 @@
         <MenuItem Header="S_plit Element" Click="SplitElement_Click" />
         <MenuItem Header="Synthesis by _SPC" Click="SynthesisBySpc_Click" />
         <MenuItem Header="Search _Best Asphere Surface..." Click="AsphereSearch_Click" />
+        <Separator />
+        <MenuItem Header="_Tolerancing..." Click="Tolerancing_Click" />
       </MenuItem>
       <!-- Optional host-contributed menu. Empty (and hidden) in the standard build;
            a host may populate AppExtensions.MenuItems before the window loads. -->

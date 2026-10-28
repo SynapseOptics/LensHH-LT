@@ -61,6 +61,7 @@
     </Reference>
     <ProjectReference Include="..\LensHH.IO\LensHH.IO.csproj" />
     <ProjectReference Include="..\LensHH.Rendering\LensHH.Rendering.csproj" />
+    <ProjectReference Include="..\LensHH.Tolerancing\LensHH.Tolerancing.csproj" />
   </ItemGroup>
 
   <!-- Copy native library to output for activation gate and native ray tracing -->
