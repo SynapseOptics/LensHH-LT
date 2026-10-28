@@ -24,6 +24,13 @@ All notable changes to LensHH-LT and the LensHH-LT-Engine.
 
 - The optical path through a tilted Coordinate Break left out the ray's slide back to the tilted
   vertex plane, so wavefront, OPD, PSF and MTF read a tilt across the pupil as aberration.
+- The working F/# behind the FFT and geometric MTF, the PSF and System Data was taken from the
+  direction of the upper marginal ray alone. For a decentred or tilted lens, whose whole axial cone
+  leaves at an angle, that added the cone's tilt: the MTF's frequency scale was off by several
+  percent, more for a decentre along y than along x. It is now the angle between opposite marginal
+  rays, unchanged for a centred lens.
+- Distortion of a decentred or tilted lens counted the shift of the whole image as distortion; image
+  heights are now measured from where the axial chief ray lands.
 - The GPU differential-evolution searches now step aside for a lens with a surface the GPU does
   not trace (ABCD, Coordinate Break), instead of tracing it as a plane.
 
