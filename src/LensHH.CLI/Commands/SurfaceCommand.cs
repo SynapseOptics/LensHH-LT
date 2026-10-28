@@ -24,6 +24,9 @@ namespace LensHH.CLI.Commands
     Coordinate break: decenter-x, decenter-y (lens units), tilt-x, tilt-y, tilt-z (degrees),
                order=0 (decenter then tilt) | 1 (tilt then decenter)
   [green]surface set-asphere <index> <a1> <a2> ...[/] Set aspheric coefficients
+  [green]surface zernike <index> [[clear]] [[radius=<r>]] [[z<n>=<sag>]] ...[/]
+    Fringe Zernike departure (Z1-Z35, sag in lens units) on a Standard or Even Asphere
+    surface, for irregularity. radius defaults to the semi-diameter.
   [green]surface clear-fixed-diameters[/]   Reset all semi-diameters to auto mode
   [green]surface set-ca <s1> <s2> <percent>[/]  Set clear aperture % for surface range (Auto only)
   [green]surface variable <param> <surfaces> [[on|off]] [[noinf]] [[min=<v>]] [[max=<v>]][/]
@@ -61,6 +64,9 @@ namespace LensHH.CLI.Commands
                     break;
                 case "set-asphere":
                     SetAsphere(session, args);
+                    break;
+                case "zernike":
+                    SetZernike(session, args);
                     break;
                 case "variable":
                     SetVariable(session, args);
@@ -309,6 +315,39 @@ namespace LensHH.CLI.Commands
             }
 
             AnsiConsole.MarkupLine($"[green]Surface {idx} updated.[/]");
+        }
+
+        private void SetZernike(Session session, string[] args)
+        {
+            var sys = session.EnsureSystem();
+            if (args.Length < 2 || !int.TryParse(args[1], out int idx) || idx < 0 || idx >= sys.Surfaces.Count)
+            {
+                AnsiConsole.MarkupLine("[red]Usage: surface zernike <index> [[clear]] [[radius=<r>]] [[z<n>=<sag>]] ...[/]");
+                return;
+            }
+
+            var surface = sys.Surfaces[idx];
+            bool clear = false;
+            double? radius = null;
+            var terms = new List<(int, double)>();
+            foreach (var a in args.Skip(2))
+            {
+                if (a.Equals("clear", StringComparison.OrdinalIgnoreCase)) { clear = true; continue; }
+                var kv = a.Split('=', 2);
+                if (kv.Length == 2 &&
+                    double.TryParse(kv[1], NumberStyles.Float, CultureInfo.InvariantCulture, out double v))
+                {
+                    string key = kv[0].ToLowerInvariant();
+                    if (key == "radius") { radius = v; continue; }
+                    if (key.StartsWith("z") && int.TryParse(key.Substring(1), out int f)) { terms.Add((f, v)); continue; }
+                }
+                AnsiConsole.MarkupLine($"[red]Not understood: {Markup.Escape(a)}[/]");
+                return;
+            }
+
+            string? error = ZernikeDeparture.Set(surface, radius, terms, clear);
+            if (error != null) { AnsiConsole.MarkupLine($"[red]{Markup.Escape(error)}[/]"); return; }
+            AnsiConsole.WriteLine(ZernikeDeparture.Describe(surface));
         }
 
         private void SetAsphere(Session session, string[] args)

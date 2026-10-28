@@ -555,6 +555,30 @@ namespace LensHH.Mcp.Tools
             return $"Surface {surfaceIndex} set to Even Asphere with {Math.Min(parts.Length, 8)} coefficients.";
         }
 
+        [McpServerTool, Description("Set a Fringe Zernike departure on a Standard or Even Asphere surface, for irregularity. terms is a comma-separated list like 'Z4=0.0001, Z9=-2e-5' (Fringe Z1..Z35, each a sag in lens units over the normalization radius). normalizationRadius defaults to the semi-diameter when none is set yet. clear=true removes any existing terms first. Returns the departure.")]
+        public string SetZernike(int surfaceIndex, string terms, double? normalizationRadius = null, bool clear = false)
+        {
+            var sys = _session.System;
+            if (surfaceIndex < 0 || surfaceIndex >= sys.Surfaces.Count)
+                return $"Surface index {surfaceIndex} out of range.";
+
+            var list = new List<(int, double)>();
+            foreach (var part in (terms ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries))
+            {
+                var kv = part.Trim().Split('=', 2);
+                if (kv.Length != 2 || !kv[0].Trim().StartsWith("Z", StringComparison.OrdinalIgnoreCase)
+                    || !int.TryParse(kv[0].Trim().Substring(1), out int f)
+                    || !double.TryParse(kv[1].Trim(), System.Globalization.NumberStyles.Float,
+                                        System.Globalization.CultureInfo.InvariantCulture, out double v))
+                    return $"Not understood: '{part.Trim()}'. Use e.g. Z4=0.0001.";
+                list.Add((f, v));
+            }
+
+            var s = sys.Surfaces[surfaceIndex];
+            string? error = ZernikeDeparture.Set(s, normalizationRadius, list, clear);
+            return error ?? $"Surface {surfaceIndex}:\n" + ZernikeDeparture.Describe(s);
+        }
+
         [McpServerTool, Description("Set a surface variable for optimization. property can be: radius, thickness, conic, aspheric (with optional index 0-7), focal_length/focal_power (a paraxial ideal-lens surface — the optimizer varies POWER, so min/max are in DIOPTERS = 1000/f). Set variable=true to make variable, false to fix. Optional: min and max bounds for constrained optimization.")]
         public string SetVariable(int surfaceIndex, string property, bool variable, double? min = null, double? max = null)
         {
@@ -650,6 +674,9 @@ namespace LensHH.Mcp.Tools
                 sb.AppendLine($"  Tilt X: {s.GetParameter(3):G10}°  Tilt Y: {s.GetParameter(4):G10}°  Tilt Z: {s.GetParameter(5):G10}°");
                 sb.AppendLine($"  Order: {s.GetSetting(1)} ({(s.GetSetting(1) == 0 ? "decenter then tilt" : "tilt then decenter")})");
             }
+
+            if (s.HasZernikeDeparture)
+                sb.AppendLine(ZernikeDeparture.Describe(s));
 
             return sb.ToString();
         }

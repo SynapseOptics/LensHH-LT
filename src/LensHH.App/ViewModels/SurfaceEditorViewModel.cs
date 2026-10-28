@@ -68,6 +68,24 @@ public partial class SurfaceRowViewModel : ObservableObject
             };
             if (_surface.Type != newType)
             {
+                // The generic parameter slots mean different things in each family — a Zernike
+                // departure on Standard/Even Asphere, decenters and tilts on a Coordinate Break,
+                // A..D on an ABCD — so crossing families starts them afresh.
+                static int Family(SurfaceType t) => t switch
+                {
+                    SurfaceType.Standard or SurfaceType.EvenAsphere => 0,
+                    SurfaceType.CoordinateBreak => 1,
+                    SurfaceType.Abcd => 2,
+                    _ => 3,
+                };
+                if (Family(_surface.Type) != Family(newType))
+                {
+                    Array.Clear(_surface.Parameters, 0, _surface.Parameters.Length);
+                    Array.Clear(_surface.Settings, 0, _surface.Settings.Length);
+                    Array.Clear(_surface.ParameterVariable, 0, _surface.ParameterVariable.Length);
+                    Array.Clear(_surface.ParameterMin, 0, _surface.ParameterMin.Length);
+                    Array.Clear(_surface.ParameterMax, 0, _surface.ParameterMax.Length);
+                }
                 _surface.Type = newType;
                 // A fresh ABCD surface defaults to the IDENTITY matrix (A=D=1, B=C=0) so it
                 // passes rays through unchanged until the user edits it — an all-zero matrix

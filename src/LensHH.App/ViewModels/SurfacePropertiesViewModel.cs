@@ -187,6 +187,43 @@ public partial class ParameterStateViewModel : ObservableObject
     }
 }
 
+/// <summary>One Fringe Zernike term of a surface's departure (Zernike tab row).</summary>
+public partial class ZernikeTermRow : ObservableObject
+{
+    private readonly Surface _surface;
+    private readonly int _fringe;
+    private readonly Action _onFirstTerm;
+
+    public ZernikeTermRow(Surface surface, int fringe, Action onFirstTerm)
+    {
+        _surface = surface;
+        _fringe = fringe;
+        _onFirstTerm = onFirstTerm;
+    }
+
+    public string Label => $"Z{_fringe}";
+    public string Name => ZernikeDeparture.TermName(_fringe);
+
+    public double Value
+    {
+        get => _surface.Parameters[_fringe];
+        set
+        {
+            _surface.Parameters[_fringe] = value;
+            // A term needs a normalization radius to mean anything; start from the semi-diameter.
+            if (value != 0 && !(_surface.Parameters[0] > 0) && _surface.SemiDiameter > 0)
+                _onFirstTerm();
+            OnPropertyChanged();
+        }
+    }
+
+    public bool IsVariable
+    {
+        get => _surface.ParameterVariable[_fringe];
+        set { _surface.ParameterVariable[_fringe] = value; OnPropertyChanged(); }
+    }
+}
+
 /// <summary>
 /// ViewModel for the Surface Properties modal dialog (tabbed).
 /// </summary>
@@ -207,6 +244,24 @@ public partial class SurfacePropertiesViewModel : ObservableObject
     /// <summary>True for an ABCD ray-transfer-matrix surface (BASE — both editions) —
     /// drives the ABCD tab's visibility. Its shape is the 4 matrix params A/B/C/D.</summary>
     public bool IsAbcd => _surface.Type == SurfaceType.Abcd;
+
+    /// <summary>True for a surface that can carry a Zernike departure (Standard, Even Asphere)
+    /// — drives the Zernike tab's visibility.</summary>
+    public bool CanHaveZernike => _surface.Type is SurfaceType.Standard or SurfaceType.EvenAsphere;
+
+    /// <summary>The departure's normalization radius (parameter 1), in lens units.</summary>
+    public double ZernikeRadius
+    {
+        get => _surface.Parameters[0];
+        set { _surface.Parameters[0] = value; OnPropertyChanged(); }
+    }
+
+    private List<ZernikeTermRow>? _zernikeTerms;
+    /// <summary>Fringe Z1..Z35, each a sag in lens units.</summary>
+    public List<ZernikeTermRow> ZernikeTerms => _zernikeTerms ??=
+        Enumerable.Range(1, ZernikeDeparture.MaxTerms)
+            .Select(j => new ZernikeTermRow(_surface, j, () => ZernikeRadius = _surface.SemiDiameter))
+            .ToList();
 
     // Variable/Pickup tab
     public ParameterStateViewModel CurvatureState { get; }

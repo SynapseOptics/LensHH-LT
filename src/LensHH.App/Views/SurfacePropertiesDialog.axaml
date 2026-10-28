@@ -509,6 +509,37 @@
       </TabItem>
 
       <!-- ═══ ABCD Tab (base ray-transfer-matrix surface) ═══ -->
+      <TabItem Header="Zernike" IsVisible="{Binding CanHaveZernike}">
+        <ScrollViewer>
+          <StackPanel Margin="12" Spacing="8">
+            <TextBlock Text="A Fringe Zernike departure added to this surface's sag, for irregularity. Each term is a sag in lens units over the normalization radius (usually the semi-diameter). Analyses of a lens with a departure run on the CPU."
+                       TextWrapping="Wrap" FontSize="12" Foreground="#666" />
+            <DockPanel>
+              <TextBlock Text="Normalization radius:" Width="150" VerticalAlignment="Center" />
+              <TextBox Text="{Binding ZernikeRadius, UpdateSourceTrigger=LostFocus}" Width="160" HorizontalAlignment="Left" />
+            </DockPanel>
+            <Grid ColumnDefinitions="50,170,200,70" Margin="0,4,0,0">
+              <TextBlock Grid.Column="0" Text="Term" FontWeight="SemiBold" />
+              <TextBlock Grid.Column="1" Text="Name" FontWeight="SemiBold" />
+              <TextBlock Grid.Column="2" Text="Coefficient" FontWeight="SemiBold" />
+              <TextBlock Grid.Column="3" Text="Variable" FontWeight="SemiBold" HorizontalAlignment="Center" />
+            </Grid>
+            <ItemsControl ItemsSource="{Binding ZernikeTerms}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:ZernikeTermRow">
+                  <Grid ColumnDefinitions="50,170,200,70" Margin="0,1">
+                    <TextBlock Grid.Column="0" Text="{Binding Label}" VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="1" Text="{Binding Name}" VerticalAlignment="Center" />
+                    <TextBox Grid.Column="2" Text="{Binding Value, UpdateSourceTrigger=LostFocus}" />
+                    <CheckBox Grid.Column="3" IsChecked="{Binding IsVariable}" HorizontalAlignment="Center" />
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+
       <TabItem Header="ABCD" IsVisible="{Binding IsAbcd}">
         <ScrollViewer>
           <StackPanel Margin="12" Spacing="12">
