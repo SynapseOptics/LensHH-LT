@@ -16,6 +16,8 @@ All notable changes to LensHH-LT and the LensHH-LT-Engine.
 - **Real ray aiming from a launch that fails.** When a ray's unaimed launch does not reach the
   stop (a 100° wide angle's 50° field totally reflects at surface 3), the aim now starts from
   the first launch that does. One sagittal marginal ray failed while its mirror image traced.
+- **Field labels** in plots and lists take as many decimals as the field list needs, instead of
+  one, so fields such as 0.0733° and 0.1464° no longer show as 0.1° alike.
 - **Ray trace listing: the primary wavelength.** Only the primary wavelength is labelled
   "(primary)"; every wavelength used to be.
 
