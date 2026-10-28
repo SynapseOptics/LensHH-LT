@@ -26,9 +26,66 @@ namespace LensHH.Core.IO
             var notes = ResolveTableGlasses(system, filePath, glassMgr);
             if (glassMgr != null)
                 notes.AddRange(LoadLensCatalogs(system, filePath, glassMgr));
-            notes.AddRange(ConvertImageHeightFields(system, ReadFileLines(filePath), glassMgr));
+            var lines = ReadFileLines(filePath);
+            notes.AddRange(ResolveFloatByStopSize(system, lines, glassMgr));
+            notes.AddRange(ConvertImageHeightFields(system, lines, glassMgr));
             importNotes = notes;
             return system;
+        }
+
+        /// <summary>
+        /// OpticStudio's "Float by Stop Size" aperture makes the entrance pupil the paraxial image
+        /// of the stop: the paraxial marginal ray reaches the stop at its semi-diameter. LensHH-LT
+        /// has no floating aperture, so it gets that EPD as a fixed value. ReadCore can only set
+        /// 2 × the stop semi-diameter, which is right only when nothing stands before the stop;
+        /// the Cox inverse telephoto got EPD 0.332 where the stop's image is 0.264 (F/2.86 for F/3.59).
+        /// A paraxial ray parallel to the axis has the same height at the entrance pupil and at
+        /// the object side of surface 1, so its height at the stop per unit height is the pupil
+        /// magnification, for an object at any distance.
+        /// </summary>
+        private static List<string> ResolveFloatByStopSize(OpticalSystem system, string[] lines,
+                                                           Glass.GlassCatalogManager? glassMgr)
+        {
+            var notes = new List<string>();
+            if (!lines.Any(l => l.StartsWith("FLOA")) || system.Aperture.Type != ApertureType.EPD) return notes;
+
+            var inv = CultureInfo.InvariantCulture;
+            int stop = system.StopSurfaceIndex;
+            double stopSd = stop > 0 && stop < system.Surfaces.Count ? system.Surfaces[stop].SemiDiameter : 0;
+            if (!(stopSd > 0))
+            {
+                notes.Add(string.Format(inv, "The aperture floats by stop size, but the stop has no semi-diameter; the entrance pupil diameter was set to {0:0.######}.", system.Aperture.Value));
+                return notes;
+            }
+            if (glassMgr == null || stop == 1)
+            {
+                if (stop != 1)
+                    notes.Add(string.Format(inv, "The aperture floats by stop size; with no glass catalog to trace with, the entrance pupil diameter was set to twice the stop semi-diameter ({0:0.######}).", system.Aperture.Value));
+                return notes;
+            }
+
+            double magnification;
+            try
+            {
+                double wlUm = system.Wavelengths.Count > 0
+                    ? system.Wavelengths[Math.Max(0, system.PrimaryWavelengthIndex)].Value : 0.58756;
+                var indices = glassMgr.BuildRefractiveIndexArray(system, wlUm);
+                var (a, _, c, _) = new RayTrace.ParaxialRayTracer(system, indices).ComputeSubsystemMatrix(1, stop - 1);
+                double gap = system.Surfaces[stop - 1].Thickness;
+                magnification = a + c * (double.IsInfinity(gap) || Math.Abs(gap) >= 1e10 ? 0 : gap);
+            }
+            catch (Exception) { magnification = double.NaN; }
+
+            if (!(Math.Abs(magnification) > 1e-12) || double.IsNaN(magnification) || double.IsInfinity(magnification))
+            {
+                notes.Add(string.Format(inv, "The aperture floats by stop size, and the paraxial image of the stop could not be found; the entrance pupil diameter was set to twice the stop semi-diameter ({0:0.######}).", system.Aperture.Value));
+                return notes;
+            }
+
+            double epd = 2.0 * stopSd / Math.Abs(magnification);
+            system.Aperture = new Aperture(ApertureType.EPD, epd);
+            notes.Add(string.Format(inv, "The aperture floats by stop size, which LensHH-LT does not have; it was set to the entrance pupil diameter that fills the stop (semi-diameter {0:0.######}) at the primary wavelength: EPD {1:0.########}. It stays fixed from here on, so a change to the stop or the lens before it no longer resizes the pupil.", stopSd, epd));
+            return notes;
         }
 
         /// <summary>
@@ -298,7 +355,9 @@ namespace LensHH.Core.IO
             // FLOA "Float by Stop Size": ReadAperture marked the EPD with value
             // 0 as a sentinel. Resolve to 2 × stop-surface SemiDiameter now that
             // surfaces are parsed. If the stop has no SemiDiameter set, the
-            // hardcoded 10.0 fallback below kicks in.
+            // hardcoded 10.0 fallback below kicks in. Read() then replaces it with
+            // the paraxial image of the stop, once glass is there to trace with
+            // (ResolveFloatByStopSize).
             if (system.Aperture.Type == ApertureType.EPD && system.Aperture.Value == 0.0)
             {
                 int floaStopIdx = system.StopSurfaceIndex;

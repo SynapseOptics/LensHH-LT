@@ -127,7 +127,7 @@ public partial class SingleRayTraceViewModel : ObservableObject
 
             if (!result.Success)
             {
-                StatusText = "Ray trace failed.";
+                StatusText = "Ray trace failed. " + result.FailureReason;
                 return;
             }
 

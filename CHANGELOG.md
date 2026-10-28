@@ -2,6 +2,32 @@
 
 All notable changes to LensHH-LT and the LensHH-LT-Engine.
 
+## 1.0.163 (unreleased)
+
+### Fixed
+
+- **.zmx import: Float by Stop Size.** The entrance pupil is now the paraxial image of the stop
+  instead of twice the stop semi-diameter, which is right only when nothing stands before the
+  stop. Cox's inverse telephoto came in at EPD 0.332 (F/2.86) where the stop's image is 0.2639
+  (F/3.59), and its marginal rays failed with Real and Robust aiming. The EPD is fixed after
+  import, and the import notes say so.
+- **.zmx import: image-height fields** (FTYP 2 and 3) become the object angles or heights that
+  reach them, instead of being read as angles.
+- **Real ray aiming from a launch that fails.** When a ray's unaimed launch does not reach the
+  stop (a 100° wide angle's 50° field totally reflects at surface 3), the aim now starts from
+  the first launch that does. One sagittal marginal ray failed while its mirror image traced.
+- **Ray trace listing: the primary wavelength.** Only the primary wavelength is labelled
+  "(primary)"; every wavelength used to be.
+
+### Added
+
+- **Why a ray failed.** A failed ray in the ray trace listing (CLI `analysis ray-trace`, the
+  Single Ray Trace window, MCP `SingleRayTrace`) gives the surface and the cause: it missed the
+  surface, was clipped by an aperture (with the ray's radius and the aperture's), was blocked by
+  an obscuration, was totally reflected, or ray aiming did not converge.
+- **CLI paraxial data to 10 significant digits** (`analysis paraxial`, and the fields in
+  `system info`), instead of four decimals.
+
 ## 1.0.162 — 2026-10-12
 
 ### Added

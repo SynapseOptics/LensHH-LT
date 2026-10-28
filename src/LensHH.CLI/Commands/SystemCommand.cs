@@ -127,7 +127,7 @@ namespace LensHH.CLI.Commands
                 string varStr = f.Variable ? "V" : "";
                 if (f.Variable && (f.Min.HasValue || f.Max.HasValue))
                     varStr += $" [{f.Min?.ToString("G4") ?? "---"}, {f.Max?.ToString("G4") ?? "---"}]";
-                fTable.AddRow((i + 1).ToString(), f.Y.ToString("F4"), f.Weight.ToString("F2"), varStr);
+                fTable.AddRow((i + 1).ToString(), f.Y.ToString("G10", CultureInfo.InvariantCulture), f.Weight.ToString("F2"), varStr);
             }
             AnsiConsole.Write(fTable);
         }

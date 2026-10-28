@@ -25,7 +25,7 @@ namespace LensHH.Mcp.Tools
             var result = RayTraceListing.Trace(sys, glassMgr, fieldY, px, py, wavelengthIndex);
 
             if (!result.Success)
-                return "Ray trace failed.";
+                return $"Ray trace failed. Failure surface: {result.FailureSurfaceIndex}. Failure cause: {result.FailureCause}. {result.FailureReason}";
 
             var sb = new StringBuilder();
             string fieldUnit = sys.FieldType == Core.Enums.FieldType.ObjectAngle ? "deg" : "mm";

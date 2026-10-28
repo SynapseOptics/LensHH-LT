@@ -165,6 +165,10 @@ namespace LensHH.CLI.Commands
         private static string _wlFmt(LensHH.Core.Models.OpticalSystem system)
             => "F" + LensHH.Rendering.LabelFormat.WavelengthDigits(system.Wavelengths);
 
+        // Paraxial data to 10 significant digits: four decimals left a 0.95 mm EFL at 1e-4.
+        private static string ParaxialNum(double v)
+            => v.ToString("G10", System.Globalization.CultureInfo.InvariantCulture);
+
         private void RunParaxial(Session session)
         {
             var system = session.EnsureValidSystem();
@@ -182,34 +186,34 @@ namespace LensHH.CLI.Commands
             {
                 table.AddRow("Angular Magnification", result.AngularMagnification.ToString("G6"), "x");
                 table.AddEmptyRow();
-                table.AddRow("Entrance Pupil Diameter", result.EntrancePupilDiameter.ToString("F4"), "mm");
-                table.AddRow("Entrance Pupil Position", result.EntrancePupilPosition.ToString("F4"), "mm");
-                table.AddRow("Exit Pupil Diameter", result.ExitPupilDiameter.ToString("F4"), "mm");
-                table.AddRow("Exit Pupil Position", result.ExitPupilPosition.ToString("F4"), "mm");
+                table.AddRow("Entrance Pupil Diameter", ParaxialNum(result.EntrancePupilDiameter), "mm");
+                table.AddRow("Entrance Pupil Position", ParaxialNum(result.EntrancePupilPosition), "mm");
+                table.AddRow("Exit Pupil Diameter", ParaxialNum(result.ExitPupilDiameter), "mm");
+                table.AddRow("Exit Pupil Position", ParaxialNum(result.ExitPupilPosition), "mm");
                 table.AddEmptyRow();
-                table.AddRow("Total Track", result.TotalTrack.ToString("F4"), "mm");
-                table.AddRow("Maximum Field", result.MaximumField.ToString("F4"), result.FieldUnit);
+                table.AddRow("Total Track", ParaxialNum(result.TotalTrack), "mm");
+                table.AddRow("Maximum Field", ParaxialNum(result.MaximumField), result.FieldUnit);
             }
             else
             {
-                table.AddRow("Effective Focal Length", result.Efl.ToString("F4"), "mm");
-                table.AddRow("Back Focal Length", result.Bfl.ToString("F4"), "mm");
-                table.AddRow("Front Focal Length", result.Ffl.ToString("F4"), "mm");
+                table.AddRow("Effective Focal Length", ParaxialNum(result.Efl), "mm");
+                table.AddRow("Back Focal Length", ParaxialNum(result.Bfl), "mm");
+                table.AddRow("Front Focal Length", ParaxialNum(result.Ffl), "mm");
                 table.AddEmptyRow();
-                table.AddRow("Image Space F/#", result.ImageSpaceFNumber.ToString("F4"), "");
-                table.AddRow("Working F/#", result.WorkingFNumber.ToString("F4"), "");
+                table.AddRow("Image Space F/#", ParaxialNum(result.ImageSpaceFNumber), "");
+                table.AddRow("Working F/#", ParaxialNum(result.WorkingFNumber), "");
                 table.AddRow("Image Space NA", result.ImageSpaceNA.ToString("F6"), "");
                 table.AddEmptyRow();
-                table.AddRow("Entrance Pupil Diameter", result.EntrancePupilDiameter.ToString("F4"), "mm");
-                table.AddRow("Entrance Pupil Position", result.EntrancePupilPosition.ToString("F4"), "mm");
-                table.AddRow("Exit Pupil Diameter", result.ExitPupilDiameter.ToString("F4"), "mm");
-                table.AddRow("Exit Pupil Position", result.ExitPupilPosition.ToString("F4"), "mm");
+                table.AddRow("Entrance Pupil Diameter", ParaxialNum(result.EntrancePupilDiameter), "mm");
+                table.AddRow("Entrance Pupil Position", ParaxialNum(result.EntrancePupilPosition), "mm");
+                table.AddRow("Exit Pupil Diameter", ParaxialNum(result.ExitPupilDiameter), "mm");
+                table.AddRow("Exit Pupil Position", ParaxialNum(result.ExitPupilPosition), "mm");
                 table.AddEmptyRow();
-                table.AddRow("Paraxial Image Height", result.ParaxialImageHeight.ToString("F4"), "mm");
+                table.AddRow("Paraxial Image Height", ParaxialNum(result.ParaxialImageHeight), "mm");
                 table.AddRow("Paraxial Magnification", result.ParaxialMagnification.ToString("G6"), "");
                 table.AddEmptyRow();
-                table.AddRow("Total Track", result.TotalTrack.ToString("F4"), "mm");
-                table.AddRow("Maximum Field", result.MaximumField.ToString("F4"), result.FieldUnit);
+                table.AddRow("Total Track", ParaxialNum(result.TotalTrack), "mm");
+                table.AddRow("Maximum Field", ParaxialNum(result.MaximumField), result.FieldUnit);
             }
 
             AnsiConsole.Write(table);
@@ -1486,7 +1490,8 @@ namespace LensHH.CLI.Commands
             var sb = new System.Text.StringBuilder();
             sb.AppendLine("Real Ray Trace Listing");
             sb.AppendLine($"Field {fieldNum}: {fieldY} {fieldUnit}, Px={px}, Py={py}");
-            sb.AppendLine($"Wavelength: {result.Wavelength.ToString(_wlFmt(system), System.Globalization.CultureInfo.InvariantCulture)} um (primary)");
+            bool isPrimary = waveIdx < 0 || waveIdx == system.PrimaryWavelengthIndex;
+            sb.AppendLine($"Wavelength: {result.Wavelength.ToString(_wlFmt(system), System.Globalization.CultureInfo.InvariantCulture)} um{(isPrimary ? " (primary)" : "")}");
             sb.AppendLine($"Success: {result.Success}");
             sb.AppendLine();
 
@@ -1506,6 +1511,9 @@ namespace LensHH.CLI.Commands
             else
             {
                 sb.AppendLine("Ray trace failed.");
+                sb.AppendLine($"Failure surface: {result.FailureSurfaceIndex}");
+                sb.AppendLine($"Failure cause: {result.FailureCause}");
+                sb.AppendLine(result.FailureReason);
             }
 
             if (outFile != null)
