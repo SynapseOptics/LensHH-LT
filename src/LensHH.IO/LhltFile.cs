@@ -153,6 +153,11 @@ namespace LensHH.Core.IO
         public double? ModelDPgFMin { get; set; }
         public double? ModelDPgFMax { get; set; }
 
+        // Glass offset of the medium after the surface (melt data, a toleranced index or Abbe
+        // number): changes of n_d and V_d. Written only when set.
+        public double? IndexOffset { get; set; }
+        public double? AbbeOffset { get; set; }
+
         // Paraxial (ideal thin lens) — only meaningful when Type == Paraxial.
         // FocalLength = the single shape parameter f (PositiveInfinity = zero power).
         // Can be a Variable (bounds below) or a Pickup (carried in the pickups list).

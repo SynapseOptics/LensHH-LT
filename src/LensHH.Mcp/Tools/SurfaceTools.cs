@@ -426,7 +426,7 @@ namespace LensHH.Mcp.Tools
             return $"Surface {surfaceIndex} removed. System now has {sys.Surfaces.Count} surfaces.";
         }
 
-        [McpServerTool, Description("Edit a surface property. property can be: radius, thickness, material, conic, semi_diameter, semi_diameter_mode (auto/fixed), inner_radius, obscuration, stop (true/false), type (standard/paraxial/even_asphere/coordinate_break), focal_length (mm, for a paraxial ideal-lens surface), and for a coordinate break decenter_x, decenter_y (lens units), tilt_x, tilt_y, tilt_z (degrees) and order (0 = decenter then tilt, 1 = tilt then decenter). value is the new value as a string.")]
+        [McpServerTool, Description("Edit a surface property. property can be: radius, thickness, material, conic, semi_diameter, semi_diameter_mode (auto/fixed), inner_radius, obscuration, stop (true/false), type (standard/paraxial/even_asphere/coordinate_break), focal_length (mm, for a paraxial ideal-lens surface), and for a coordinate break decenter_x, decenter_y (lens units), tilt_x, tilt_y, tilt_z (degrees) and order (0 = decenter then tilt, 1 = tilt then decenter), and index_offset / abbe_offset (changes of Nd and Vd of the glass after the surface, as melt data or a tolerance). value is the new value as a string.")]
         public string EditSurface(int surfaceIndex, string property, string value)
         {
             var sys = _session.System;
@@ -502,6 +502,14 @@ namespace LensHH.Mcp.Tools
                     if (double.TryParse(value, out double cbv))
                         s.SetParameter(CoordinateBreakSlot(property.ToLowerInvariant()), cbv);
                     else return $"Invalid {property} value.";
+                    break;
+                case "index_offset":
+                    if (double.TryParse(value, out double dn)) s.IndexOffset = dn;
+                    else return "Invalid index_offset value.";
+                    break;
+                case "abbe_offset":
+                    if (double.TryParse(value, out double dv)) s.AbbeOffset = dv;
+                    else return "Invalid abbe_offset value.";
                     break;
                 case "order":
                     if (s.Type != SurfaceType.CoordinateBreak)
@@ -677,6 +685,8 @@ namespace LensHH.Mcp.Tools
 
             if (s.HasZernikeDeparture)
                 sb.AppendLine(ZernikeDeparture.Describe(s));
+            if (s.HasGlassOffset)
+                sb.AppendLine($"  Glass offset: ΔNd {s.IndexOffset:G6}, ΔVd {s.AbbeOffset:G6}");
 
             return sb.ToString();
         }

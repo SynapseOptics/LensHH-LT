@@ -1,0 +1,292 @@
+using System.Globalization;
+using System.Text;
+using LensHH.Core.IO;
+
+namespace LensHH.Tolerancing;
+
+/// <summary>How a Monte Carlo is run.</summary>
+public sealed record MonteCarloOptions
+{
+    public int Trials { get; init; } = 200;
+    public int Seed { get; init; } = 1;
+
+    /// <summary>How errors spread over their ranges when a tolerance names no distribution.</summary>
+    public StatisticsModel Statistics { get; init; } = StatisticsModel.Default;
+
+    /// <summary>
+    /// Frequencies, cycles/mm, at which each trial's MTF is kept for the Monte Carlo MTF plots; empty
+    /// for none. Every file field is kept, tangential and sagittal.
+    /// </summary>
+    public IReadOnlyList<double> MtfFrequencies { get; init; } = Array.Empty<double>();
+
+    /// <summary>The FFT MTF's pupil grid.</summary>
+    public int MtfGridSize { get; init; } = 64;
+
+    /// <summary>A folder to save trials to as .lhlt lens files, with a CSV of every trial; null for none.</summary>
+    public string? SaveDirectory { get; init; }
+
+    /// <summary>How many trials to save, the first so many; the CSV lists them all.</summary>
+    public int SaveTrials { get; init; } = 20;
+}
+
+/// <summary>One Monte Carlo lens: its errors, the compensator's move, the criterion, and its MTF.</summary>
+public sealed record TrialResult(int Index, IReadOnlyList<double> Errors, double Criterion, double Compensator, bool AtLimit)
+{
+    /// <summary>Tangential MTF at each kept field (outer) and frequency (inner); empty when none was asked for.</summary>
+    public IReadOnlyList<double[]> MtfT { get; init; } = Array.Empty<double[]>();
+    public IReadOnlyList<double[]> MtfS { get; init; } = Array.Empty<double[]>();
+
+    /// <summary>The trial's lens file, when it was saved.</summary>
+    public string? File { get; init; }
+}
+
+public sealed record MonteCarloResult(string Criterion, IReadOnlyList<ToleranceItem> Items,
+                                      IReadOnlyList<TrialResult> Trials, double NominalCriterion,
+                                      IReadOnlyList<double> Frequencies, IReadOnlyList<int> Fields)
+{
+    /// <summary>The nominal lens's MTF, refocused, at each kept field and frequency.</summary>
+    public IReadOnlyList<double[]> NominalMtfT { get; init; } = Array.Empty<double[]>();
+    public IReadOnlyList<double[]> NominalMtfS { get; init; } = Array.Empty<double[]>();
+
+    private double[] Criteria => Trials.Select(t => t.Criterion).ToArray();
+
+    public int Untraceable => Trials.Count(t => !double.IsFinite(t.Criterion));
+
+    public double Mean => Criteria.Where(double.IsFinite).DefaultIfEmpty(double.NaN).Average();
+
+    /// <summary>The criterion that a fraction <paramref name="p"/> of the lenses do better than.</summary>
+    public double Percentile(double p) => Stats.Percentile(Criteria, p);
+
+    /// <summary>The fraction of lenses with the criterion at or below <paramref name="limit"/>.</summary>
+    public double Yield(double limit) => Trials.Count(t => t.Criterion <= limit) / (double)Trials.Count;
+
+    public int CompensatorAtLimit => Trials.Count(t => t.AtLimit);
+
+    public (double Min, double Max) CompensatorRange
+    {
+        get
+        {
+            var moves = Trials.Select(t => t.Compensator).Where(double.IsFinite).ToArray();
+            return moves.Length == 0 ? (0.0, 0.0) : (moves.Min(), moves.Max());
+        }
+    }
+
+    /// <summary>
+    /// The MTF at each frequency that a fraction <paramref name="p"/> of the lenses reach or exceed,
+    /// for field <paramref name="fieldSlot"/> of <see cref="Fields"/>: p = 0.9 is the curve 90 % of
+    /// the lenses built are above. An untraceable lens counts as an MTF of 0.
+    /// </summary>
+    public double[] MtfAtLeast(int fieldSlot, MtfOrientation orientation, double p)
+    {
+        var curve = new double[Frequencies.Count];
+        for (int k = 0; k < curve.Length; k++)
+        {
+            var values = Trials.Select(t =>
+            {
+                var m = orientation == MtfOrientation.Tangential ? t.MtfT : t.MtfS;
+                double v = m.Count > fieldSlot ? m[fieldSlot][k] : double.NaN;
+                return double.IsFinite(v) ? v : 0.0;
+            }).ToArray();
+            curve[k] = Stats.Percentile(values, 1.0 - p);
+        }
+        return curve;
+    }
+
+    /// <summary>
+    /// The fraction of lenses whose MTF at frequency index <paramref name="k"/> is at least each of
+    /// <paramref name="levels"/>, for one field and orientation: the yield curve.
+    /// </summary>
+    public double[] MtfYield(int fieldSlot, MtfOrientation orientation, int k, IReadOnlyList<double> levels)
+    {
+        var values = Trials.Select(t =>
+        {
+            var m = orientation == MtfOrientation.Tangential ? t.MtfT : t.MtfS;
+            double v = m.Count > fieldSlot ? m[fieldSlot][k] : double.NaN;
+            return double.IsFinite(v) ? v : 0.0;
+        }).ToArray();
+        return levels.Select(l => values.Count(v => v >= l) / (double)values.Length).ToArray();
+    }
+}
+
+public static class MonteCarlo
+{
+    public static MonteCarloResult Run(NominalLens lens, IReadOnlyList<ToleranceItem> items, ICriterion criterion,
+                                       FocusCompensator? compensator, MonteCarloOptions options,
+                                       IProgress<int>? progress = null, CancellationToken cancel = default)
+    {
+        ArgumentNullException.ThrowIfNull(lens);
+        ArgumentNullException.ThrowIfNull(items);
+        ArgumentNullException.ThrowIfNull(options);
+        if (options.Trials < 1) throw new ArgumentException("a Monte Carlo needs at least one trial");
+        ToleranceCheck.Validate(lens, items);
+
+        var groups = Groups(items, options.Statistics);
+        var fields = Enumerable.Range(0, lens.FileFieldCount).ToList();
+        var freqs = options.MtfFrequencies;
+
+        // The nominal, refocused: the reference the compensator moves from, and the MTF the bands sit under.
+        var nominal = Sensitivity.Evaluate(lens, Array.Empty<(Tolerance, double)>(), criterion, compensator, out var nominalLens);
+        double reference = double.IsFinite(nominal.Change) ? nominal.Change : 0.0;
+        var (nominalT, nominalS) = MtfOf(nominalLens.Build(), fields, freqs, options.MtfGridSize);
+
+        string? dir = options.SaveDirectory;
+        if (dir != null) Directory.CreateDirectory(dir);
+
+        var trials = new TrialResult[options.Trials];
+        int done = 0;
+        Parallel.For(0, options.Trials, new ParallelOptions { CancellationToken = cancel }, k =>
+        {
+            var x = Draw(groups, items, options.Statistics, TrialRandom(options.Seed, k));
+            var r = Sensitivity.Evaluate(lens, items.Select((item, i) => (item.Tolerance, x[i])), criterion, compensator, out var trial);
+            var trialResult = new TrialResult(k + 1, x, r.Criterion,
+                                              double.IsFinite(r.Criterion) ? r.Change - reference : double.NaN, r.AtLimit);
+            if (double.IsFinite(r.Criterion))
+            {
+                var built = trial.Build();
+                var (t, s) = MtfOf(built, fields, freqs, options.MtfGridSize);
+                trialResult = trialResult with { MtfT = t, MtfS = s };
+                if (dir != null && k < options.SaveTrials)
+                    trialResult = trialResult with { File = Save(built, dir, k + 1, items, x, r) };
+            }
+            trials[k] = trialResult;
+            progress?.Report(Interlocked.Increment(ref done));
+        });
+
+        var result = new MonteCarloResult(criterion.Name, items, trials, nominal.Criterion, freqs, fields)
+        {
+            NominalMtfT = nominalT,
+            NominalMtfS = nominalS,
+        };
+        if (dir != null) File.WriteAllText(Path.Combine(dir, "trials.csv"), Csv(result, criterion));
+        return result;
+    }
+
+    private static (double[][] T, double[][] S) MtfOf(Built lens, IReadOnlyList<int> fields, IReadOnlyList<double> freqs, int grid)
+    {
+        if (freqs.Count == 0) return (Array.Empty<double[]>(), Array.Empty<double[]>());
+        var t = new double[fields.Count][];
+        var s = new double[fields.Count][];
+        for (int f = 0; f < fields.Count; f++) (t[f], s[f]) = Mtf.Curve(lens, fields[f], freqs, grid);
+        return (t, s);
+    }
+
+    private static string Save(Built lens, string dir, int trial, IReadOnlyList<ToleranceItem> items,
+                               IReadOnlyList<double> x, Compensated r)
+    {
+        var system = lens.System;
+        system.Title = $"Monte Carlo trial {trial}" + (string.IsNullOrEmpty(system.Title) ? "" : $" of {system.Title}");
+        var notes = new StringBuilder();
+        notes.AppendLine($"Monte Carlo trial {trial}. Errors:");
+        for (int i = 0; i < items.Count; i++)
+            notes.AppendLine($"  {items[i].Tolerance.Code} {ToleranceSpec.Surfaces(items[i].Tolerance)} = {x[i].ToString("G6", CultureInfo.InvariantCulture)}");
+        notes.AppendLine($"Compensator change {r.Change.ToString("G6", CultureInfo.InvariantCulture)}; criterion {r.Criterion.ToString("G6", CultureInfo.InvariantCulture)}.");
+        system.Notes = notes.ToString();
+        string path = Path.Combine(dir, $"MC_{trial:D4}.lhlt");
+        LhltWriter.Write(system, path);
+        return path;
+    }
+
+    /// <summary>Every trial's errors, compensator, criterion and saved file, one row each.</summary>
+    public static string Csv(MonteCarloResult result, ICriterion criterion)
+    {
+        var c = CultureInfo.InvariantCulture;
+        var sb = new StringBuilder();
+        sb.Append("trial,criterion,compensator,at_limit");
+        foreach (var item in result.Items) sb.Append(',').Append(item.Tolerance.Code).Append(' ').Append(ToleranceSpec.Surfaces(item.Tolerance));
+        sb.AppendLine(",file");
+        foreach (var t in result.Trials)
+        {
+            sb.Append(t.Index.ToString(c)).Append(',')
+              .Append(criterion.Quoted(t.Criterion).ToString("G8", c)).Append(',')
+              .Append(t.Compensator.ToString("G8", c)).Append(',')
+              .Append(t.AtLimit ? "1" : "0");
+            foreach (double v in t.Errors) sb.Append(',').Append(v.ToString("G8", c));
+            sb.Append(',').AppendLine(t.File == null ? "" : Path.GetFileName(t.File));
+        }
+        return sb.ToString();
+    }
+
+    /// <summary>
+    /// The tolerances drawn together: each x and y pair of one decentre or tilt when the statistics
+    /// draw them in polar form and neither names its own distribution, and every other alone.
+    /// </summary>
+    public static List<int[]> Groups(IReadOnlyList<ToleranceItem> items, StatisticsModel statistics)
+    {
+        var pairs = new List<(int X, int Y)>();
+        if (statistics.Polar != null)
+            for (int i = 0; i < items.Count; i++)
+            {
+                if (items[i].Tolerance is not IAxisTolerance { Axis: Axis.X } x || items[i].Distribution != null) continue;
+                var partner = x.WithAxis(Axis.Y);
+                for (int j = 0; j < items.Count; j++)
+                    if (items[j].Tolerance.Equals(partner) && items[j].Distribution == null) { pairs.Add((i, j)); break; }
+            }
+        var paired = new HashSet<int>(pairs.SelectMany(p => new[] { p.X, p.Y }));
+        var groups = new List<int[]>();
+        for (int i = 0; i < items.Count; i++)
+        {
+            if (!paired.Contains(i)) { groups.Add(new[] { i }); continue; }
+            foreach (var p in pairs.Where(p => p.X == i))
+            {
+                if (Math.Abs(items[p.X].HalfWidth - items[p.Y].HalfWidth) > 1e-12 * items[p.X].HalfWidth)
+                    throw new ArgumentException($"{items[p.X]} and {items[p.Y]} are drawn as one error and need one tolerance");
+                groups.Add(new[] { p.X, p.Y });
+            }
+        }
+        return groups;
+    }
+
+    /// <summary>One lens's errors, in the units of each tolerance.</summary>
+    public static double[] Draw(IReadOnlyList<int[]> groups, IReadOnlyList<ToleranceItem> items,
+                                StatisticsModel statistics, Random random)
+    {
+        var x = new double[items.Count];
+        foreach (var g in groups)
+        {
+            if (g.Length == 1)
+            {
+                var item = items[g[0]];
+                x[g[0]] = item.Center + item.HalfWidth * (item.Distribution ?? statistics.Axis).Sample(random);
+                continue;
+            }
+            double rho = items[g[0]].HalfWidth * statistics.Polar!.SampleRadius(random);
+            double theta = 2.0 * Math.PI * random.NextDouble();
+            x[g[0]] = items[g[0]].Center + rho * Math.Cos(theta);
+            x[g[1]] = items[g[1]].Center + rho * Math.Sin(theta);
+        }
+        return x;
+    }
+
+    /// <summary>The trial's own generator: the draws are the same however the trials are threaded.</summary>
+    private static Random TrialRandom(int seed, int trial) => new(unchecked(seed * 1_000_003 + trial * 7919 + 17));
+}
+
+/// <summary>Checks a tolerance set against a lens before a run, so a mistake is reported, not traced as a failed lens.</summary>
+public static class ToleranceCheck
+{
+    public static void Validate(NominalLens lens, IReadOnlyList<ToleranceItem> items)
+    {
+        foreach (var item in items)
+        {
+            var trial = lens.Perturb();
+            try { item.Tolerance.Apply(trial, item.Max != 0 ? item.Max : item.Min); }
+            catch (Exception e) when (e is InvalidOperationException or ArgumentException)
+            {
+                throw new ArgumentException($"{item}: {e.Message}", e);
+            }
+        }
+    }
+}
+
+internal static class Stats
+{
+    /// <summary>The value a fraction <paramref name="p"/> of <paramref name="values"/> lie at or below, interpolated.</summary>
+    public static double Percentile(IReadOnlyList<double> values, double p)
+    {
+        if (values.Count == 0) return double.NaN;
+        var sorted = values.OrderBy(v => v).ToArray();
+        double at = Math.Clamp(p, 0.0, 1.0) * (sorted.Length - 1);
+        int lo = (int)Math.Floor(at), hi = Math.Min(lo + 1, sorted.Length - 1);
+        return double.IsInfinity(sorted[hi]) ? sorted[hi] : sorted[lo] + (at - lo) * (sorted[hi] - sorted[lo]);
+    }
+}

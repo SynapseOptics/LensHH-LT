@@ -114,6 +114,7 @@ namespace LensHH.Core.IO
                     ModelNdMin = ls.ModelNdMin, ModelNdMax = ls.ModelNdMax,
                     ModelVdMin = ls.ModelVdMin, ModelVdMax = ls.ModelVdMax,
                     ModelDPgFMin = ls.ModelDPgFMin, ModelDPgFMax = ls.ModelDPgFMax,
+                    IndexOffset = ls.IndexOffset ?? 0, AbbeOffset = ls.AbbeOffset ?? 0,
                     FocalLength = ls.FocalLength, FocalLengthVariable = ls.FocalLengthVariable,
                     FocalPowerMin = ls.FocalPowerMin, FocalPowerMax = ls.FocalPowerMax
                 };

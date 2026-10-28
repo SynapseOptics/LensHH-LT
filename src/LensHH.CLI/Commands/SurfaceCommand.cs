@@ -23,6 +23,7 @@ namespace LensHH.CLI.Commands
                focal-length (mm, ideal lens)
     Coordinate break: decenter-x, decenter-y (lens units), tilt-x, tilt-y, tilt-z (degrees),
                order=0 (decenter then tilt) | 1 (tilt then decenter)
+    Glass offset: index-offset (change of Nd), abbe-offset (change of Vd) of the glass after the surface
   [green]surface set-asphere <index> <a1> <a2> ...[/] Set aspheric coefficients
   [green]surface zernike <index> [[clear]] [[radius=<r>]] [[z<n>=<sag>]] ...[/]
     Fringe Zernike departure (Z1-Z35, sag in lens units) on a Standard or Even Asphere
@@ -294,6 +295,14 @@ namespace LensHH.CLI.Commands
                                 "tilt-y" => 4,
                                 _ => 5,
                             }, cbv);
+                        break;
+                    case "index-offset":
+                        if (double.TryParse(kv[1], NumberStyles.Float, CultureInfo.InvariantCulture, out double dn))
+                            surface.IndexOffset = dn;
+                        break;
+                    case "abbe-offset":
+                        if (double.TryParse(kv[1], NumberStyles.Float, CultureInfo.InvariantCulture, out double dv))
+                            surface.AbbeOffset = dv;
                         break;
                     case "order":
                         if (surface.Type != SurfaceType.CoordinateBreak)

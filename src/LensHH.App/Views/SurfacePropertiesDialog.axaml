@@ -330,6 +330,22 @@
               </StackPanel>
             </Border>
 
+            <Border BorderBrush="#CCC" BorderThickness="1" CornerRadius="4" Padding="12,8">
+              <StackPanel Spacing="6">
+                <TextBlock Text="Glass offset" FontWeight="SemiBold" FontSize="14" />
+                <TextBlock TextWrapping="Wrap" Foreground="Gray" FontSize="12"
+                           Text="Changes of Nd and Vd from the glass above, as a melt sheet or an index tolerance gives them. The partial dispersions stay. Analyses of a lens with an offset run on the CPU." />
+                <DockPanel>
+                  <TextBlock Text="Δ Nd:" Width="70" VerticalAlignment="Center" />
+                  <TextBox Text="{Binding IndexOffset, UpdateSourceTrigger=LostFocus}" Width="160" HorizontalAlignment="Left" />
+                </DockPanel>
+                <DockPanel>
+                  <TextBlock Text="Δ Vd:" Width="70" VerticalAlignment="Center" />
+                  <TextBox Text="{Binding AbbeOffset, UpdateSourceTrigger=LostFocus}" Width="160" HorizontalAlignment="Left" />
+                </DockPanel>
+              </StackPanel>
+            </Border>
+
           </StackPanel>
         </ScrollViewer>
       </TabItem>

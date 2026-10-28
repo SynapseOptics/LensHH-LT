@@ -11,7 +11,7 @@ namespace LensHH.API.Tests
     public class ZernikeDepartureIoTests
     {
         [Fact]
-        public void LhltRoundTripKeepsTheDeparture()
+        public void LhltRoundTripKeepsTheDepartureAndTheGlassOffset()
         {
             var sys = new OpticalSystem { Aperture = new Aperture(ApertureType.EPD, 10.0) };
             sys.Surfaces.Add(new Surface { Index = 0, Thickness = double.PositiveInfinity });
@@ -23,6 +23,8 @@ namespace LensHH.API.Tests
             front.AsphericCoefficients[1] = 1e-6;
             Assert.Null(ZernikeDeparture.Set(front, null, new[] { (5, 2e-4), (9, -1e-4) }));
             front.ParameterVariable[9] = true;
+            front.IndexOffset = 3e-4;
+            front.AbbeOffset = -0.5;
             sys.Surfaces.Add(front);
             sys.Surfaces.Add(new Surface { Index = 2, Radius = -80, Thickness = 45 });
             sys.Surfaces.Add(new Surface { Index = 3 });
@@ -40,6 +42,8 @@ namespace LensHH.API.Tests
                 Assert.Equal(-1e-4, ZernikeDeparture.Term(s, 9));
                 Assert.True(s.ParameterVariable[9]);
                 Assert.Equal(1e-6, s.AsphericCoefficients[1]);
+                Assert.Equal(3e-4, s.IndexOffset);
+                Assert.Equal(-0.5, s.AbbeOffset);
             }
             finally { File.Delete(path); }
         }

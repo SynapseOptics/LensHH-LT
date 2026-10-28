@@ -249,6 +249,20 @@ public partial class SurfacePropertiesViewModel : ObservableObject
     /// — drives the Zernike tab's visibility.</summary>
     public bool CanHaveZernike => _surface.Type is SurfaceType.Standard or SurfaceType.EvenAsphere;
 
+    /// <summary>Change of Nd of the medium after this surface (Glass Model tab).</summary>
+    public double IndexOffset
+    {
+        get => _surface.IndexOffset;
+        set { _surface.IndexOffset = value; OnPropertyChanged(); }
+    }
+
+    /// <summary>Change of Vd of the medium after this surface (Glass Model tab).</summary>
+    public double AbbeOffset
+    {
+        get => _surface.AbbeOffset;
+        set { _surface.AbbeOffset = value; OnPropertyChanged(); }
+    }
+
     /// <summary>The departure's normalization radius (parameter 1), in lens units.</summary>
     public double ZernikeRadius
     {
