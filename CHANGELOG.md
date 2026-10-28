@@ -12,7 +12,8 @@ All notable changes to LensHH-LT and the LensHH-LT-Engine.
   tolerances, each refocused by its back focus, judged by RMS wavefront or MTF, with the MTF that
   half and 90 % of the lenses reach plotted per field. Monte Carlo lenses can be saved as lens
   files that open and analyse like any other, with a table of every trial.
-- **Coordinate Break** surfaces: decentre and tilt the frame for the surfaces after them.
+- **Coordinate Break** surfaces: decentre and tilt the frame for the surfaces after them. A lens
+  decentred or tilted by one is for analysis; the optimizers refuse it.
 - **Zernike departure** on Standard and Even Asphere surfaces: Fringe Z1 to Z35 over a
   normalization radius, for irregularity (Surface Properties ▸ Zernike, CLI `surface zernike`,
   MCP `SetZernike`). Terms can be optimization variables.

@@ -105,9 +105,9 @@ The three are surface settings in their own right, not only for tolerancing:
   partial dispersions kept, for melt data.
 - **Coordinate Break.** Decentres and tilts the coordinate frame for every surface after it.
 
-A lens with a Zernike departure or a glass offset is traced on the CPU. The merit function
-assumes a lens symmetric about its y-z plane, so do not optimize a lens decentred in x or tilted
-about y; tolerancing judges each lens with the full pupil and is not affected. Paraxial values
+A lens with a Zernike departure or a glass offset is traced on the CPU. A lens with a Coordinate
+Break that decentres or tilts is for analysis only: the optimizers refuse it, since the merit
+function assumes a centred lens. Optimize the centred design, then tolerance it. Paraxial values
 (focal length, pupils, Seidel sums) are those of the lens without its tilts and decentres.
 
 ## From the CLI and MCP

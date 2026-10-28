@@ -39,5 +39,30 @@ namespace LensHH.API.Tests
             Assert.Equal(dy, r.SurfaceRays[4].Y, 9);
             Assert.Equal(0.0, r.SurfaceRays[4].X, 9);
         }
+
+        // A decentred or tilted lens is for analysis, not optimization: the optimizer refuses it,
+        // and accepts the same lens once its breaks are zero.
+        [Fact]
+        public void ADecentredLensIsNotOptimized()
+        {
+            var sys = new OpticalSystem { Aperture = new Aperture(ApertureType.EPD, 2.0) };
+            sys.Surfaces.Add(new Surface { Thickness = double.PositiveInfinity });
+            var before = Break(0.1, 0); before.Thickness = 0; sys.Surfaces.Add(before);
+            sys.Surfaces.Add(new Surface { Curvature = 0.02, CurvatureVariable = true, Thickness = 0 });
+            var after = Break(-0.1, 1); after.Thickness = 50; sys.Surfaces.Add(after);
+            sys.Surfaces.Add(new Surface { Thickness = 0 });
+            for (int i = 0; i < sys.Surfaces.Count; i++) sys.Surfaces[i].Index = i;
+            sys.Wavelengths.Add(new Wavelength(0.5876, 1.0, true));
+            sys.Fields.Add(new Field { Y = 0 });
+
+            var optimizer = new LensHH.Core.Optimization.LocalOptimizer(
+                sys, new LensHH.Core.MeritFunction.MeritFunction(), new LensHH.Core.Glass.GlassCatalogManager());
+            var e = Assert.Throws<System.InvalidOperationException>(() => optimizer.CollectVariables());
+            Assert.Contains("Surface 1", e.Message);
+
+            before.SetParameter(2, 0); after.SetParameter(2, 0);
+            optimizer.CollectVariables();
+            Assert.Single(optimizer.Variables);
+        }
     }
 }
