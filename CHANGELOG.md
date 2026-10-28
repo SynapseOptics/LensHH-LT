@@ -29,6 +29,8 @@ All notable changes to LensHH-LT and the LensHH-LT-Engine.
   leaves at an angle, that added the cone's tilt: the MTF's frequency scale was off by several
   percent, more for a decentre along y than along x. It is now the angle between opposite marginal
   rays, unchanged for a centred lens.
+- With the object at infinity and a tilted or decentring Coordinate Break as surface 1, the
+  wavefront, OPD fan, Zernike, PSF and MTF read the break's tilt across the pupil as aberration.
 - Distortion of a decentred or tilted lens counted the shift of the whole image as distortion; image
   heights are now measured from where the axial chief ray lands.
 - The GPU differential-evolution searches now step aside for a lens with a surface the GPU does
