@@ -15,6 +15,9 @@ public abstract record Tolerance(int Surface)
     public abstract string Units { get; }
     public abstract void Apply(TrialLens lens, double amount);
 
+    /// <summary>The surface values the tolerance changes that a pickup could set instead.</summary>
+    public virtual IEnumerable<(int Surface, PickupParameter Parameter)> Changes => Array.Empty<(int, PickupParameter)>();
+
     protected static void CheckSurface(TrialLens lens, int surface)
     {
         if (surface < 1 || surface >= lens.System.Surfaces.Count - 1)
@@ -48,6 +51,7 @@ public sealed record PowerFringes(int Surface, double TestWavelengthUm = PowerFr
 
     public override string Code => "TFRN";
     public override string Units => "fringes";
+    public override IEnumerable<(int Surface, PickupParameter Parameter)> Changes => new[] { (Surface, PickupParameter.Radius) };
 
     public override void Apply(TrialLens lens, double amount)
     {
@@ -150,6 +154,7 @@ public sealed record RadiusChange(int Surface) : Tolerance(Surface)
 {
     public override string Code => "TRAD";
     public override string Units => "mm";
+    public override IEnumerable<(int Surface, PickupParameter Parameter)> Changes => new[] { (Surface, PickupParameter.Radius) };
 
     public override void Apply(TrialLens lens, double amount)
     {
@@ -170,6 +175,8 @@ public sealed record ThicknessChange(int Surface, int? Adjust = null) : Toleranc
 {
     public override string Code => "TTHI";
     public override string Units => "mm";
+    public override IEnumerable<(int Surface, PickupParameter Parameter)> Changes =>
+        Adjust is int a ? new[] { (Surface, PickupParameter.Thickness), (a, PickupParameter.Thickness) } : new[] { (Surface, PickupParameter.Thickness) };
 
     public override void Apply(TrialLens lens, double amount)
     {
@@ -227,6 +234,7 @@ public sealed record ConicChange(int Surface) : Tolerance(Surface)
 {
     public override string Code => "TCON";
     public override string Units => "";
+    public override IEnumerable<(int Surface, PickupParameter Parameter)> Changes => new[] { (Surface, PickupParameter.Conic) };
 
     public override void Apply(TrialLens lens, double amount)
     {
@@ -287,8 +295,7 @@ public sealed record ElementDecentre(int Surface, int Last, Axis Axis) : Toleran
     {
         CheckSurface(lens, Surface);
         CheckSurface(lens, Last);
-        var move = Axis == Axis.X ? Placement.Decentre(amount, 0.0) : Placement.Decentre(0.0, amount);
-        for (int s = Surface; s <= Last; s++) lens.MoveWithElement(s, move);
+        lens.MoveElement(Surface, Last, Axis == Axis.X ? Placement.Decentre(amount, 0.0) : Placement.Decentre(0.0, amount));
     }
 }
 
@@ -309,13 +316,7 @@ public sealed record ElementTilt(int Surface, int Last, Axis Axis, double PivotO
         CheckSurface(lens, Surface);
         CheckSurface(lens, Last);
         double a = amount * Math.PI / 180.0;
-        double fromFirst = 0.0;       // this vertex's distance from the first, along the axis
-        for (int s = Surface; s <= Last; s++)
-        {
-            double pivot = PivotOffset - fromFirst;
-            lens.MoveWithElement(s, Axis == Axis.X ? Placement.TiltAbout(a, 0.0, pivot) : Placement.TiltAbout(0.0, a, pivot));
-            fromFirst += lens.System.Surfaces[s].Thickness;
-        }
+        lens.MoveElement(Surface, Last, Axis == Axis.X ? Placement.TiltAbout(a, 0.0, PivotOffset) : Placement.TiltAbout(0.0, a, PivotOffset));
     }
 }
 

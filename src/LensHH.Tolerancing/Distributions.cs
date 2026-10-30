@@ -283,23 +283,34 @@ internal static class Special
 }
 
 /// <summary>
-/// SplitMix64 (Steele, Lea and Flood 2014): a generator seeded in a few operations, for the model's
-/// own Monte Carlo, which seeds one per lens so that its draws are the same however they are threaded.
+/// SplitMix64 (Steele, Lea and Flood 2014): a generator seeded in a few operations, one per Monte
+/// Carlo lens, so that the lens's draws are the same however the lenses are threaded.
+///
+/// <para>Each lens's generator starts from <see cref="ForTrial"/>, the run's seed and the lens's
+/// number put through SplitMix64's own mixing function. Seeding .NET's <see cref="Random"/> with
+/// numbers a fixed step apart, as was done before, related the lenses: each one's first error was
+/// correlated with the next one's by about 0.5, and the first errors of a run fell on a near-regular
+/// grid across their range rather than at random. Starting this generator at states a fixed step
+/// apart would be worse: its stream at s + γ is its stream at s one draw later.</para>
 /// </summary>
-internal sealed class SplitMix : Random
+public sealed class SplitMix : Random
 {
     private ulong _state;
 
     public SplitMix(ulong seed) => _state = seed;
 
-    public override double NextDouble()
+    /// <summary>The generator for lens <paramref name="trial"/> of a run seeded <paramref name="seed"/>.</summary>
+    public static SplitMix ForTrial(int seed, int trial) => new(Mix(((ulong)(uint)seed << 32) | (uint)trial));
+
+    /// <summary>SplitMix64's finalizer: a one-to-one scrambling of 64 bits.</summary>
+    public static ulong Mix(ulong z)
     {
-        ulong z = _state += 0x9E3779B97F4A7C15UL;
         z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9UL;
         z = (z ^ (z >> 27)) * 0x94D049BB133111EBUL;
-        z ^= z >> 31;
-        return (z >> 11) * (1.0 / 9007199254740992.0);
+        return z ^ (z >> 31);
     }
+
+    public override double NextDouble() => (Mix(_state += 0x9E3779B97F4A7C15UL) >> 11) * (1.0 / 9007199254740992.0);
 
     protected override double Sample() => NextDouble();
 }

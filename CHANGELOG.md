@@ -9,9 +9,13 @@ All notable changes to LensHH-LT and the LensHH-LT-Engine.
 - **Tolerancing** (Optimization ▸ Tolerancing…, CLI `tolerance`, MCP `ToleranceDefaults`,
   `ToleranceSensitivity`, `ToleranceMonteCarlo`). Tolerance sets in a plain text format, with a
   starting set at a shop grade; sensitivity, worst first; Monte Carlo of lenses drawn within the
-  tolerances, each refocused by its back focus, judged by RMS wavefront or MTF, with the MTF that
-  half and 90 % of the lenses reach plotted per field. Monte Carlo lenses can be saved as lens
-  files that open and analyse like any other, with a table of every trial.
+  tolerances, each refocused, judged by RMS wavefront or MTF, with the MTF that half and 90 % of
+  the lenses reach plotted per field. Compensators beside the back focus: any air space, and an
+  element's decentre or tilt in its cell, each with an optional travel, solved together. The lens's
+  pickups hold through every error and adjustment. Monte Carlo lenses can be saved as lens files
+  that open and analyse like any other - every surface with its own thickness, each moved element
+  between a pair of Coordinate Breaks whose second picks up the first - with a table of every
+  trial.
 - **Coordinate Break** surfaces: decentre and tilt the frame for the surfaces after them. A lens
   decentred or tilted by one is for analysis; the optimizers refuse it.
 - **Zernike departure** on Standard and Even Asphere surfaces: Fringe Z1 to Z35 over a

@@ -26,7 +26,7 @@
         <StackPanel DockPanel.Dock="Top" Spacing="6" Margin="0,0,0,6">
           <TextBlock Text="Tolerances" FontWeight="SemiBold" FontSize="14" />
           <TextBlock TextWrapping="Wrap" Foreground="#555555" FontSize="12"
-                     Text="One per line: CODE surfaces ±t, or CODE surfaces min max, then optionally uniform, normal[:k] or endpoint, and pivot:d on an element tilt. Codes: TRAD radius, TFRN power and TIRR irregularity in fringes, TRSI symmetric irregularity, TTHI thickness, TIND index, TABB Abbe number, TCON conic, TSDX/TSDY surface decentre, TSTX/TSTY surface tilt (deg); for an element (first-last surfaces) TEDX/TEDY decentre and TETX/TETY tilt (deg)." />
+                     Text="One per line: CODE surfaces ±t, or CODE surfaces min max, then optionally uniform, normal[:k] or endpoint, and pivot:d on an element tilt. Codes: TRAD radius, TFRN power and TIRR irregularity in fringes, TRSI symmetric irregularity, TTHI thickness, TIND index, TABB Abbe number, TCON conic, TSDX/TSDY surface decentre, TSTX/TSTY surface tilt (deg); for an element (first-last surfaces) TEDX/TEDY decentre and TETX/TETY tilt (deg). Compensators: COMP surface [±travel], the thickness after it, and CEDX/CEDY/CETX/CETY first-last [±travel]; with none, the back focus." />
           <StackPanel Orientation="Horizontal" Spacing="8">
             <ComboBox ItemsSource="{Binding Grades}" SelectedIndex="{Binding GradeIndex}" Width="140" />
             <Button Content="Generate" Command="{Binding GenerateCommand}"

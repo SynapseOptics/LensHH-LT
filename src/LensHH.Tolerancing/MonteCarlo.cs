@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using LensHH.Core.Enums;
 using LensHH.Core.IO;
 
 namespace LensHH.Tolerancing;
@@ -39,6 +40,9 @@ public sealed record TrialResult(int Index, IReadOnlyList<double> Errors, double
     public IReadOnlyList<double[]> MtfT { get; init; } = Array.Empty<double[]>();
     public IReadOnlyList<double[]> MtfS { get; init; } = Array.Empty<double[]>();
 
+    /// <summary>Each of the compensator's adjustments beside the focus, as it was set, in its units; empty when it has none.</summary>
+    public IReadOnlyList<double> Adjustments { get; init; } = Array.Empty<double>();
+
     /// <summary>The trial's lens file, when it was saved.</summary>
     public string? File { get; init; }
 }
@@ -49,6 +53,9 @@ public sealed record MonteCarloResult(string Criterion, IReadOnlyList<ToleranceI
 {
     /// <summary>The criterion the lenses were judged by, for quoting its values.</summary>
     public ICriterion? CriterionInfo { get; init; }
+
+    /// <summary>The compensator the lenses were refocused by; null for none.</summary>
+    public FocusCompensator? Compensator { get; init; }
 
     /// <summary>The nominal lens's MTF, refocused, at each kept field and frequency.</summary>
     public IReadOnlyList<double[]> NominalMtfT { get; init; } = Array.Empty<double[]>();
@@ -153,14 +160,17 @@ public static class MonteCarlo
             var x = Draw(groups, items, options.Statistics, TrialRandom(options.Seed, k));
             var r = Sensitivity.Evaluate(lens, items.Select((item, i) => (item.Tolerance, x[i])), criterion, compensator, out var trial);
             var trialResult = new TrialResult(k + 1, x, r.Criterion,
-                                              double.IsFinite(r.Criterion) ? r.Change - reference : double.NaN, r.AtLimit);
+                                              double.IsFinite(r.Criterion) ? r.Change - reference : double.NaN, r.AtLimit)
+            {
+                Adjustments = r.Adjustments ?? Array.Empty<double>(),
+            };
             if (double.IsFinite(r.Criterion))
             {
                 var built = trial.Build();
                 var (t, s) = MtfOf(built, fields, freqs, options.MtfGridSize, pupils);
                 trialResult = trialResult with { MtfT = t, MtfS = s };
                 if (dir != null && k < options.SaveTrials)
-                    trialResult = trialResult with { File = Save(built, dir, k + 1, items, x, r) };
+                    trialResult = trialResult with { File = Save(trial.Readable(), dir, k + 1, items, x, r, compensator) };
             }
             trials[k] = trialResult;
             progress?.Report(Interlocked.Increment(ref done));
@@ -171,6 +181,7 @@ public static class MonteCarlo
             NominalMtfT = nominalT,
             NominalMtfS = nominalS,
             CriterionInfo = criterion,
+            Compensator = compensator,
         };
         if (dir != null) File.WriteAllText(Path.Combine(dir, "trials.csv"), Csv(result, criterion));
         return result;
@@ -186,16 +197,22 @@ public static class MonteCarlo
         return (t, s);
     }
 
-    private static string Save(Built lens, string dir, int trial, IReadOnlyList<ToleranceItem> items,
-                               IReadOnlyList<double> x, Compensated r)
+    private static string Save(LensHH.Core.Models.OpticalSystem system, string dir, int trial, IReadOnlyList<ToleranceItem> items,
+                               IReadOnlyList<double> x, Compensated r, FocusCompensator? compensator)
     {
-        var system = lens.System;
         system.Title = $"Monte Carlo trial {trial}" + (string.IsNullOrEmpty(system.Title) ? "" : $" of {system.Title}");
         var notes = new StringBuilder();
         notes.AppendLine($"Monte Carlo trial {trial}. Errors:");
         for (int i = 0; i < items.Count; i++)
             notes.AppendLine($"  {items[i].Tolerance.Code} {ToleranceSpec.Surfaces(items[i].Tolerance)} = {x[i].ToString("G6", CultureInfo.InvariantCulture)}");
-        notes.AppendLine($"Compensator change {r.Change.ToString("G6", CultureInfo.InvariantCulture)}; criterion {r.Criterion.ToString("G6", CultureInfo.InvariantCulture)}.");
+        var c = CultureInfo.InvariantCulture;
+        if (compensator != null)
+        {
+            notes.AppendLine($"Refocused by surface {compensator.Surface}'s thickness, changed by {r.Change.ToString("G6", c)}.");
+            for (int k = 0; k < compensator.Adjustments.Count; k++)
+                notes.AppendLine($"  {ToleranceSpec.Format(compensator.Adjustments[k] with { Travel = null })} = {(r.Adjustments?[k] ?? 0.0).ToString("G6", c)}");
+        }
+        notes.AppendLine($"Criterion {r.Criterion.ToString("G6", c)}.");
         system.Notes = notes.ToString();
         string path = Path.Combine(dir, $"MC_{trial:D4}.lhlt");
         LhltWriter.Write(system, path);
@@ -208,6 +225,8 @@ public static class MonteCarlo
         var c = CultureInfo.InvariantCulture;
         var sb = new StringBuilder();
         sb.Append("trial,criterion,compensator,at_limit");
+        var adjustments = result.Compensator?.Adjustments ?? Array.Empty<Adjustment>();
+        foreach (var a in adjustments) sb.Append(',').Append(ToleranceSpec.Format(a with { Travel = null }));
         foreach (var item in result.Items) sb.Append(',').Append(item.Tolerance.Code).Append(' ').Append(ToleranceSpec.Surfaces(item.Tolerance));
         sb.AppendLine(",file");
         foreach (var t in result.Trials)
@@ -216,6 +235,8 @@ public static class MonteCarlo
               .Append(criterion.Quoted(t.Criterion).ToString("G8", c)).Append(',')
               .Append(t.Compensator.ToString("G8", c)).Append(',')
               .Append(t.AtLimit ? "1" : "0");
+            for (int k = 0; k < adjustments.Count; k++)
+                sb.Append(',').Append(k < t.Adjustments.Count ? t.Adjustments[k].ToString("G8", c) : "");
             foreach (double v in t.Errors) sb.Append(',').Append(v.ToString("G8", c));
             sb.Append(',').AppendLine(t.File == null ? "" : Path.GetFileName(t.File));
         }
@@ -274,7 +295,7 @@ public static class MonteCarlo
     }
 
     /// <summary>The trial's own generator: the draws are the same however the trials are threaded.</summary>
-    private static Random TrialRandom(int seed, int trial) => new(unchecked(seed * 1_000_003 + trial * 7919 + 17));
+    private static Random TrialRandom(int seed, int trial) => SplitMix.ForTrial(seed, trial);
 }
 
 /// <summary>Checks a tolerance set against a lens before a run, so a mistake is reported, not traced as a failed lens.</summary>
@@ -284,6 +305,10 @@ public static class ToleranceCheck
     {
         foreach (var item in items)
         {
+            foreach (var (surface, parameter) in item.Tolerance.Changes)
+                if (PickupOf(lens, surface, parameter) is int source)
+                    throw new ArgumentException(
+                        $"{item}: surface {surface}'s {Name(parameter)} is a pickup of surface {source}'s, which would undo the error; tolerance surface {source} instead");
             var trial = lens.Perturb();
             try { item.Tolerance.Apply(trial, item.Max != 0 ? item.Max : item.Min); }
             catch (Exception e) when (e is InvalidOperationException or ArgumentException)
@@ -292,6 +317,18 @@ public static class ToleranceCheck
             }
         }
     }
+
+    /// <summary>The surface a pickup sets this value of the surface from, or null when nothing picks it up.</summary>
+    public static int? PickupOf(NominalLens lens, int surface, PickupParameter parameter) =>
+        lens.System.Pickups.FirstOrDefault(p => p.TargetSurfaceIndex == surface && p.Parameter == parameter)?.SourceSurfaceIndex;
+
+    public static string Name(PickupParameter parameter) => parameter switch
+    {
+        PickupParameter.Radius => "radius",
+        PickupParameter.Thickness => "thickness",
+        PickupParameter.Conic => "conic",
+        _ => parameter.ToString(),
+    };
 }
 
 internal static class Stats

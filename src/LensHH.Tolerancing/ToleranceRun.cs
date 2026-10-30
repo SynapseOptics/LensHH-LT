@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using LensHH.Core.Enums;
 using LensHH.Core.Glass;
 using LensHH.Core.Models;
 
@@ -63,8 +64,15 @@ public static class ToleranceRun
                + ToleranceSpec.FormatSet(items);
     }
 
+    /// <summary>
+    /// The lens, the criterion and the compensator a run uses. The compensator is the back focus
+    /// (<see cref="ToleranceSettings.Compensate"/>, <see cref="ToleranceSettings.Travel"/>) unless the
+    /// tolerance set names its own (<see cref="ToleranceSpec.ParseCompensators"/>): then the thickness
+    /// before the image if it is one of them, or else the first COMP, is the focus, and the rest are
+    /// solved with it. Without a COMP the focus is the back focus.
+    /// </summary>
     public static (NominalLens Lens, ICriterion Criterion, FocusCompensator? Compensator) Prepare(
-        OpticalSystem system, GlassCatalogManager glass, ToleranceSettings settings)
+        OpticalSystem system, GlassCatalogManager glass, ToleranceSettings settings, string tolerances = "")
     {
         var lens = new NominalLens(system, glass, settings.Fields);
         var rms = new RmsWavefrontCriterion { Polychromatic = settings.Polychromatic };
@@ -79,10 +87,40 @@ public static class ToleranceRun
         FocusCompensator? compensator = null;
         if (settings.Compensate)
         {
-            compensator = FocusCompensator.BackFocus(lens, settings.Travel);
-            if (settings.Travel != null) compensator = compensator.Centred(lens, criterion);
+            var named = ToleranceSpec.ParseCompensators(tolerances);
+            var spaces = named.OfType<SpaceAdjustment>().ToList();
+            var focus = spaces.FirstOrDefault(s => s.Surface == lens.BackFocusSurface) ?? spaces.FirstOrDefault();
+            compensator = focus != null
+                ? new FocusCompensator(focus.Surface, focus.Travel)
+                : FocusCompensator.BackFocus(lens, settings.Travel);
+            compensator = compensator with { Adjustments = named.Where(a => !ReferenceEquals(a, focus)).ToList() };
+            Check(lens, compensator);
+            if (compensator.Travel != null) compensator = compensator.Centred(lens, criterion);
         }
         return (lens, criterion, compensator);
+    }
+
+    /// <summary>Refuses a compensator that is not on the lens, or that a pickup would set back.</summary>
+    private static void Check(NominalLens lens, FocusCompensator compensator)
+    {
+        var spaces = new[] { compensator.Surface }
+            .Concat(compensator.Adjustments.OfType<SpaceAdjustment>().Select(a => a.Surface)).ToList();
+        foreach (int s in spaces)
+        {
+            if (s < 1 || s > lens.BackFocusSurface)
+                throw new ArgumentException($"COMP {s}: the compensator is a thickness between surface 1 and surface {lens.BackFocusSurface}");
+            if (ToleranceCheck.PickupOf(lens, s, PickupParameter.Thickness) is int source)
+                throw new ArgumentException($"COMP {s}: surface {s}'s thickness is a pickup of surface {source}'s, which would set it back; compensate by surface {source}");
+        }
+        if (spaces.Count != spaces.Distinct().Count()) throw new ArgumentException("a thickness is named as a compensator twice");
+        foreach (var a in compensator.Adjustments.Where(a => a is not SpaceAdjustment))
+        {
+            try { a.Apply(lens.Perturb(), 0.0); }
+            catch (Exception e) when (e is ArgumentException or InvalidOperationException)
+            {
+                throw new ArgumentException($"{ToleranceSpec.Format(a)}: {e.Message}", e);
+            }
+        }
     }
 
     public static StatisticsModel ParseStatistics(string text)
@@ -111,7 +149,7 @@ public static class ToleranceRun
                                                ToleranceSettings settings, IProgress<int>? progress = null,
                                                CancellationToken cancel = default)
     {
-        var (lens, criterion, compensator) = Prepare(system, glass, settings);
+        var (lens, criterion, compensator) = Prepare(system, glass, settings, tolerances);
         return Tolerancing.Sensitivity.Run(lens, Parse(tolerances, settings), criterion, compensator, progress, cancel);
     }
 
@@ -119,7 +157,7 @@ public static class ToleranceRun
                                               ToleranceSettings settings, IProgress<int>? progress = null,
                                               CancellationToken cancel = default)
     {
-        var (lens, criterion, compensator) = Prepare(system, glass, settings);
+        var (lens, criterion, compensator) = Prepare(system, glass, settings, tolerances);
         var options = new MonteCarloOptions
         {
             Trials = settings.Trials,
@@ -136,6 +174,16 @@ public static class ToleranceRun
         return result;
     }
 
+    /// <summary>The compensator as a list: the focus thickness, its travel, and each adjustment.</summary>
+    public static string Compensators(FocusCompensator c)
+    {
+        var inv = CultureInfo.InvariantCulture;
+        var parts = new List<string> { $"surface {c.Surface}'s thickness (focus{(c.Travel is double t ? $", ±{t.ToString("G6", inv)} mm" : "")})" };
+        parts.AddRange(c.Adjustments.Select(a => ToleranceSpec.Format(a with { Travel = null }) +
+                                                (a.Travel is double at ? $" (±{at.ToString("G6", inv)} {a.Units})" : "")));
+        return string.Join(", ", parts);
+    }
+
     private static string G(double v) => double.IsFinite(v) ? v.ToString("G5", CultureInfo.InvariantCulture) : "untraceable";
 
     /// <summary>The sensitivity table, worst first, with the estimate it gives.</summary>
@@ -144,7 +192,8 @@ public static class ToleranceRun
         var sb = new StringBuilder();
         sb.AppendLine($"Sensitivity: {table.Criterion}");
         sb.AppendLine($"  Nominal {G(table.Nominal)}; refocused {G(table.NominalCompensated)}" +
-                      (table.Compensator != null ? $" (back focus {table.NominalCompensator:+0.0000;-0.0000} mm)" : ""));
+                      (table.Compensator != null ? $" (focus {table.NominalCompensator:+0.0000;-0.0000} mm)" : ""));
+        if (table.Compensator != null) sb.AppendLine($"  Compensators: {Compensators(table.Compensator)}");
         sb.AppendLine();
         sb.AppendLine($"  {"Tolerance",-14} {"Min",10} {"Max",10} {"At min",11} {"At max",11} {"Worst +",10}" +
                       (table.Compensator != null ? $" {"Focus min",10} {"Focus max",10}" : ""));
@@ -176,9 +225,17 @@ public static class ToleranceRun
             sb.AppendLine($"  {p * 100,3:F0} % of lenses {(floor ? "at least" : "at most")} {G(q(r.Percentile(p)))}");
         if (r.Untraceable > 0) sb.AppendLine($"  {r.Untraceable} could not be traced");
         var (lo, hi) = r.CompensatorRange;
+        if (r.Compensator != null) sb.AppendLine($"  Compensators: {Compensators(r.Compensator)}");
         if (r.Trials.Any(t => double.IsFinite(t.Compensator) && t.Compensator != 0))
-            sb.AppendLine($"  Back focus moved {lo:+0.0000;-0.0000} to {hi:+0.0000;-0.0000} mm" +
-                          (r.CompensatorAtLimit > 0 ? $"; {r.CompensatorAtLimit} at the end of its travel" : ""));
+            sb.AppendLine($"  Focus (surface {r.Compensator?.Surface}) moved {lo:+0.0000;-0.0000} to {hi:+0.0000;-0.0000} mm" +
+                          (r.CompensatorAtLimit > 0 ? $"; {r.CompensatorAtLimit} at the end of a travel" : ""));
+        var adjustments = r.Compensator?.Adjustments ?? Array.Empty<Adjustment>();
+        for (int k = 0; k < adjustments.Count; k++)
+        {
+            var moves = r.Trials.Where(t => double.IsFinite(t.Criterion) && t.Adjustments.Count > k).Select(t => t.Adjustments[k]).ToList();
+            if (moves.Count > 0)
+                sb.AppendLine($"  {ToleranceSpec.Format(adjustments[k] with { Travel = null })} moved {moves.Min():+0.0000;-0.0000} to {moves.Max():+0.0000;-0.0000} {adjustments[k].Units}");
+        }
 
         if (r.Frequencies.Count > 0)
         {

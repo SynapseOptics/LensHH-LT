@@ -106,15 +106,16 @@ public class PlacementTests
         var trial = nominal.Perturb();
         new SurfaceTilt(2, Axis.Y).Apply(trial, 0.2);
         var built = trial.Build();
-        Assert.Equal(6, built.System.Surfaces.Count);
+        Assert.Equal(7, built.System.Surfaces.Count);
         Assert.Equal(3, built.Map[2]);
         var into = built.System.Surfaces[2];
-        var back = built.System.Surfaces[4];
+        var back = built.System.Surfaces[5];
         Assert.Equal(SurfaceType.CoordinateBreak, into.Type);
         Assert.Equal(0.2, into.GetParameter(4), 12);
         Assert.Equal(-0.2, back.GetParameter(4), 12);
         Assert.Equal(1, back.GetSetting(1));
         Assert.Equal(47.0, back.Thickness, 12);
-        Assert.Equal(0.0, built.System.Surfaces[3].Thickness);
+        Assert.Equal(47.0, built.System.Surfaces[3].Thickness);
+        Assert.Equal(-47.0, built.System.Surfaces[4].Thickness);
     }
 }

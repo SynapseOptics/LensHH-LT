@@ -92,7 +92,8 @@ public static class DefaultTolerances
             items.Add(ToleranceItem.Symmetric(new ElementTilt(first, end, Axis.X), g.ElementTiltDeg));
             items.Add(ToleranceItem.Symmetric(new ElementTilt(first, end, Axis.Y), g.ElementTiltDeg));
         }
-        return items;
+        // A value a pickup sets is toleranced on its source, which carries the error to it.
+        return items.Where(i => i.Tolerance.Changes.All(c => ToleranceCheck.PickupOf(lens, c.Surface, c.Parameter) == null)).ToList();
     }
 
     /// <summary>

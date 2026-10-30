@@ -62,6 +62,7 @@ public static class ToleranceSpec
             var line = raw.Split('#')[0].Trim();
             if (line.Length == 0) continue;
             var f = line.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
+            if (IsCompensator(f[0])) continue;
             try
             {
                 if (f.Length < 3 || f.Length > 6) throw new FormatException("expected CODE surfaces ±t, or CODE surfaces min max [distribution] [pivot:d]");
@@ -95,6 +96,67 @@ public static class ToleranceSpec
         }
         return items;
     }
+
+    public static bool IsCompensator(string code) =>
+        code.ToUpperInvariant() is "COMP" or "CEDX" or "CEDY" or "CETX" or "CETY";
+
+    /// <summary>
+    /// The compensators of a tolerance set, one per line among the tolerances: <c>COMP s [±t]</c>, the
+    /// thickness after surface s, and <c>CEDX</c>, <c>CEDY</c>, <c>CETX</c>, <c>CETY first-last [±t]</c>,
+    /// an element or group decentred or tilted in its cell (lens units, degrees); t is the travel
+    /// either way, none if left out. <c>COMP 6 0.5</c> refocuses by surface 6's thickness within
+    /// ±0.5; <c>CETX 3-4</c> lets the middle element tilt freely about x as well.
+    /// </summary>
+    public static List<Adjustment> ParseCompensators(string text)
+    {
+        var list = new List<Adjustment>();
+        int lineNumber = 0;
+        foreach (var raw in text.Split('\n'))
+        {
+            lineNumber++;
+            var line = raw.Split('#')[0].Trim();
+            if (line.Length == 0) continue;
+            var f = line.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
+            if (!IsCompensator(f[0])) continue;
+            try
+            {
+                if (f.Length < 2 || f.Length > 3) throw new FormatException("expected COMP surface [±travel], or CEDX|CEDY|CETX|CETY first-last [±travel]");
+                string code = f[0].ToUpperInvariant();
+                var range = f[1].Split('-');
+                if (range.Length > 2 || !int.TryParse(range[0], NumberStyles.Integer, CultureInfo.InvariantCulture, out int first)
+                    || (range.Length == 2 && !int.TryParse(range[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out _)))
+                    throw new FormatException($"'{f[1]}' is not a surface or a range of them");
+                int last = range.Length == 2 ? int.Parse(range[1], CultureInfo.InvariantCulture) : first;
+                if (last < first) throw new FormatException($"'{f[1]}' is not a range of surfaces");
+                if (code == "COMP" && last != first) throw new FormatException("COMP takes one surface, the thickness after it");
+                double? travel = null;
+                if (f.Length == 3)
+                {
+                    if (!double.TryParse(f[2], NumberStyles.Float, CultureInfo.InvariantCulture, out double t) || !(Math.Abs(t) > 0.0))
+                        throw new FormatException($"'{f[2]}' is not a travel");
+                    travel = Math.Abs(t);
+                }
+                Adjustment a = code switch
+                {
+                    "COMP" => new SpaceAdjustment(first),
+                    "CEDX" => new ElementDecentreAdjustment(first, last, Axis.X),
+                    "CEDY" => new ElementDecentreAdjustment(first, last, Axis.Y),
+                    "CETX" => new ElementTiltAdjustment(first, last, Axis.X),
+                    _ => new ElementTiltAdjustment(first, last, Axis.Y),
+                };
+                list.Add(a with { Travel = travel });
+            }
+            catch (FormatException e)
+            {
+                throw new FormatException($"line {lineNumber}: '{line}': {e.Message}", e);
+            }
+        }
+        return list;
+    }
+
+    /// <summary>A compensator as <see cref="ParseCompensators"/> reads it.</summary>
+    public static string Format(Adjustment a) =>
+        $"{a.Code} {a.Surfaces}{(a.Travel is double t ? " " + t.ToString("G6", CultureInfo.InvariantCulture) : "")}";
 
     /// <summary>A tolerance set as <see cref="ParseSet"/> reads it.</summary>
     public static string FormatSet(IEnumerable<ToleranceItem> items) =>

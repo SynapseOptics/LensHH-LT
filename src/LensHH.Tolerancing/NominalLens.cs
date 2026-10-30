@@ -84,10 +84,20 @@ public sealed class NominalLens
     public TrialLens Perturb() => new(this);
 }
 
+/// <summary>An element or group, surfaces <see cref="First"/> to <see cref="Last"/>, moved as one: the move is given at its first vertex.</summary>
+public readonly record struct ElementMove(int First, int Last, Placement Move)
+{
+    public bool Contains(int surface) => First <= surface && surface <= Last;
+}
+
 /// <summary>
 /// One perturbed copy of a <see cref="NominalLens"/>. Tolerances change its surfaces and glass
-/// directly and record its surfaces' moves; <see cref="Build"/> makes the system to trace, each
-/// moved surface between a pair of Coordinate Breaks.
+/// directly and record its elements' and surfaces' moves; <see cref="Build"/> makes the system to
+/// trace, each moved surface between a pair of Coordinate Breaks, and <see cref="Readable"/> the
+/// same lens as a designer would lay it out, to save.
+///
+/// <para>The lens's pickups are solved on what is built, so an error or a compensator's move of a
+/// pickup's source carries to its target, as the design ties them.</para>
 /// </summary>
 public sealed class TrialLens
 {
@@ -101,7 +111,7 @@ public sealed class TrialLens
     {
         Nominal = other.Nominal;
         System = other.System.DeepClone();
-        foreach (var (k, v) in other._elementMoves) _elementMoves[k] = v;
+        _elementMoves.AddRange(other._elementMoves);
         foreach (var (k, v) in other._surfaceMoves) _surfaceMoves[k] = v;
     }
 
@@ -113,44 +123,106 @@ public sealed class TrialLens
     /// <summary>The lens's surfaces, numbered as the nominal's: tolerances change these.</summary>
     public OpticalSystem System { get; }
 
-    private readonly Dictionary<int, Placement> _elementMoves = new();
+    private readonly List<ElementMove> _elementMoves = new();
     private readonly Dictionary<int, Placement> _surfaceMoves = new();
 
-    /// <summary>Moves the surface as part of its element or group - decentred or tilted in the barrel.</summary>
-    public void MoveWithElement(int surface, Placement move) => Add(_elementMoves, surface, move);
+    /// <summary>
+    /// Moves an element or group, surfaces <paramref name="first"/> to <paramref name="last"/>, as a
+    /// rigid body - decentred or tilted in the barrel - by a move given at its first vertex. A second
+    /// move of the same surfaces is made inside the first.
+    /// </summary>
+    public void MoveElement(int first, int last, Placement move)
+    {
+        int k = _elementMoves.FindIndex(m => m.First == first && m.Last == last);
+        if (k >= 0) _elementMoves[k] = _elementMoves[k] with { Move = move.Within(_elementMoves[k].Move) };
+        else _elementMoves.Add(new ElementMove(first, last, move));
+    }
 
     /// <summary>
     /// Moves the surface on its own element - a wedge. It is made inside the element's move,
     /// whichever was applied first, so a wedged element tilted in its cell is both at once.
     /// </summary>
-    public void MoveSurface(int surface, Placement move) => Add(_surfaceMoves, surface, move);
+    public void MoveSurface(int surface, Placement move) =>
+        _surfaceMoves[surface] = _surfaceMoves.TryGetValue(surface, out var sofar) ? move.Within(sofar) : move;
 
-    private static void Add(Dictionary<int, Placement> moves, int surface, Placement move) =>
-        moves[surface] = moves.TryGetValue(surface, out var sofar) ? move.Within(sofar) : move;
+    /// <summary>
+    /// The element moves, the outermost first: a group's before an element's inside it. Moves of the
+    /// same size keep the order they were made in.
+    /// </summary>
+    public IReadOnlyList<ElementMove> ElementMoves =>
+        _elementMoves.Where(m => !m.Move.IsIdentity).OrderByDescending(m => m.Last - m.First).ToList();
 
-    /// <summary>Each moved surface's composite placement: its own move inside its element's.</summary>
-    public IReadOnlyDictionary<int, Placement> Moves
+    public IReadOnlyDictionary<int, Placement> SurfaceMoves => _surfaceMoves;
+
+    /// <summary>
+    /// Each moved surface's composite placement on <paramref name="system"/>: its elements' moves,
+    /// outermost first, each carried to this vertex, then its own move inside them.
+    /// </summary>
+    public IReadOnlyDictionary<int, Placement> MovesOn(OpticalSystem system)
     {
-        get
+        var elements = ElementMoves;
+        var all = new Dictionary<int, Placement>();
+        var moved = elements.SelectMany(e => Enumerable.Range(e.First, e.Last - e.First + 1)).Union(_surfaceMoves.Keys);
+        foreach (int s in moved)
         {
-            var all = new Dictionary<int, Placement>();
-            foreach (int s in _elementMoves.Keys.Union(_surfaceMoves.Keys))
-            {
-                var element = _elementMoves.TryGetValue(s, out var e) ? e : Placement.Identity;
-                var own = _surfaceMoves.TryGetValue(s, out var o) ? o : Placement.Identity;
-                all[s] = own.Within(element);
-            }
-            return all;
+            var p = Placement.Identity;
+            foreach (var e in elements.Where(e => e.Contains(s)))
+                p = e.Move.At(Distance(system, e.First, s)).Within(p);
+            if (_surfaceMoves.TryGetValue(s, out var own)) p = own.Within(p);
+            all[s] = p;
         }
+        return all;
     }
 
-    /// <summary>The lens as it now stands, as a system LensHH traces and saves.</summary>
-    public Built Build() => Built.From(System, Moves, Nominal.Glass);
+    /// <summary>Along the axis from vertex <paramref name="from"/> to vertex <paramref name="to"/>, by the thicknesses between.</summary>
+    internal static double Distance(OpticalSystem system, int from, int to)
+    {
+        double z = 0.0;
+        for (int k = from; k < to; k++) z += system.Surfaces[k].Thickness;
+        return z;
+    }
+
+    /// <summary>The lens's surfaces with its pickups solved: what is built from.</summary>
+    private OpticalSystem Solved()
+    {
+        var system = System.DeepClone();
+        PickupSolver.Solve(system);
+        return system;
+    }
+
+    /// <summary>
+    /// The lens as it now stands, as a system LensHH traces: laid out as <see cref="ReadableLayout"/>
+    /// does, every surface keeping its thickness and each move a pair of Coordinate Breaks whose
+    /// second picks up the first. Moves of elements that overlap without one inside the other cannot
+    /// be nested so; then each moved surface is put between a pair of its own.
+    /// </summary>
+    public Built Build()
+    {
+        var system = Solved();
+        var elements = ElementMoves;
+        if (!ReadableLayout.CanNest(elements)) return BuildSurfaceBySurface();
+        var (laid, map) = ReadableLayout.Lay(system, elements, _surfaceMoves);
+        return Built.Laid(laid, map, Nominal.Glass);
+    }
+
+    /// <summary>
+    /// The lens with each moved surface between a pair of breaks of its own, placed by its elements'
+    /// and its own moves together: the other way to build it, and a check on the first.
+    /// </summary>
+    public Built BuildSurfaceBySurface()
+    {
+        var system = Solved();
+        return Built.From(system, MovesOn(system), Nominal.Glass);
+    }
+
+    /// <summary>The lens as it now stands, to save: the system <see cref="Build"/> traces.</summary>
+    public OpticalSystem Readable() => Build().System;
 }
 
 /// <summary>
-/// A trial lens made traceable: every moved surface s becomes three, a Coordinate Break into its
-/// frame, the surface itself with no thickness, and the break back (Order 1, the same values
+/// A trial lens made traceable, as <see cref="ReadableLayout"/> lays it out or, for element moves
+/// that cannot nest, by <see cref="From"/>: every moved surface s becomes three, a Coordinate Break
+/// into its frame, the surface itself with no thickness, and the break back (Order 1, the same values
 /// negated) carrying the thickness. A move along the axis, Dz, goes on the thickness before and comes
 /// off the thickness after. <see cref="Map"/> gives each original surface's index in <see cref="System"/>.
 /// </summary>
@@ -181,6 +253,8 @@ public sealed class Built
     /// <summary>A lens as it stands, with no moves to make: a saved trial read back, to judge again.</summary>
     public static Built Of(OpticalSystem system, GlassCatalogManager glass) =>
         From(system, new Dictionary<int, Placement>(), glass);
+
+    internal static Built Laid(OpticalSystem system, int[] map, GlassCatalogManager glass) => new(system, map, glass);
 
     internal static Built From(OpticalSystem trial, IReadOnlyDictionary<int, Placement> moves, GlassCatalogManager glass)
     {

@@ -16,8 +16,14 @@ public sealed record FocusCompensator(int Surface, double? Travel = null)
     /// <summary>The middle of the travel, as a change from the lens's thickness: where it refocuses the nominal lens.</summary>
     public double Center { get; init; }
 
-    /// <summary>This compensator with no travel limit.</summary>
-    public FocusCompensator Free() => this with { Travel = null };
+    /// <summary>
+    /// Adjustments made beside the focus and solved with it (<see cref="CompensatorSolver"/>): air
+    /// spaces, element tilts and decentres. None by default, and then the focus is found alone.
+    /// </summary>
+    public IReadOnlyList<Adjustment> Adjustments { get; init; } = Array.Empty<Adjustment>();
+
+    /// <summary>This compensator with no travel limit on the focus or any adjustment.</summary>
+    public FocusCompensator Free() => this with { Travel = null, Adjustments = Adjustments.Select(a => a with { Travel = null }).ToList() };
 
     /// <summary>The thickness before the image: refocusing.</summary>
     public static FocusCompensator BackFocus(NominalLens lens, double? travel = null) => new(lens.BackFocusSurface, travel);
@@ -37,7 +43,11 @@ public sealed record FocusCompensator(int Surface, double? Travel = null)
         return focused with { Criterion = criterion.Evaluate(lens.Build()) };
     }
 
-    private Compensated Refocus(TrialLens lens, ICriterion criterion)
+    private Compensated Refocus(TrialLens lens, ICriterion criterion) =>
+        Adjustments.Count == 0 ? RefocusAlone(lens, criterion) : CompensatorSolver.Solve(this, lens, criterion);
+
+    /// <summary>The focus alone, by Brent's method on the criterion; on <paramref name="lens"/> itself, where it leaves the thickness.</summary>
+    internal Compensated RefocusAlone(TrialLens lens, ICriterion criterion)
     {
         var surface = lens.System.Surfaces[Surface];
         double start = lens.Nominal.System.Surfaces[Surface].Thickness;
@@ -91,7 +101,11 @@ public sealed record FocusCompensator(int Surface, double? Travel = null)
 }
 
 /// <summary>A compensator's change from its nominal value, the criterion it reaches, and whether it ran out of travel.</summary>
-public readonly record struct Compensated(double Change, double Criterion, bool AtLimit = false);
+public readonly record struct Compensated(double Change, double Criterion, bool AtLimit = false)
+{
+    /// <summary>Each of the compensator's <see cref="FocusCompensator.Adjustments"/>, as it was set, in its units; null when it has none.</summary>
+    public IReadOnlyList<double>? Adjustments { get; init; }
+}
 
 /// <summary>Brent's minimization on an interval (Brent 1973, ch. 5; the routine is fmin).</summary>
 public static class Brent

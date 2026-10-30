@@ -19,11 +19,14 @@ namespace LensHH.Mcp.Tools
             "TFRN power (fringes), TIRR irregularity (fringes), TRSI symmetric irregularity (fringes), TTHI thickness (mm), " +
             "TIND index, TABB Abbe number, TCON conic, TSDX/TSDY surface decentre (mm), TSTX/TSTY surface tilt (deg), and " +
             "for an element given as first-last surfaces TEDX/TEDY decentre (mm), TETX/TETY tilt (deg). " +
+            "Compensators go on lines of their own: COMP surface [±travel], the thickness after it, and CEDX/CEDY/CETX/CETY " +
+            "first-last [±travel], an element decentred (mm) or tilted (deg) in its cell; without them each lens is refocused " +
+            "by its back focus. The lens's pickups hold through every error and compensator. " +
             "Either pass the text, or a path to a .tol file.";
 
         private const string Options =
-            " criterion: 'rms' (RMS wavefront, waves) or 'mtf:field:frequency:t|s'. compensate: refocus each lens by the back " +
-            "focus; travel limits it (mm). polychromatic=false uses the primary wavelength. mirrorFields mirrors each field to -y.";
+            " criterion: 'rms' (RMS wavefront, waves) or 'mtf:field:frequency:t|s'. compensate: refocus each lens, by the back " +
+            "focus or the compensators the set names; travel limits the back focus (mm). polychromatic=false uses the primary wavelength. mirrorFields mirrors each field to -y.";
 
         private static string Read(string tolerances) =>
             !tolerances.Contains('\n') && File.Exists(tolerances) ? File.ReadAllText(tolerances) : tolerances;

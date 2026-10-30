@@ -75,6 +75,58 @@ public sealed class RmsWavefrontCriterion : ICriterion
         return weights > 0.0 ? Math.Sqrt(sum / weights) : double.PositiveInfinity;
     }
 
+    /// <summary>
+    /// The criterion as a vector whose length is W: every pupil sample of every field and wavelength,
+    /// its wavefront less the map's mean, scaled by √(weight / Σ weight / samples). A sample that does
+    /// not arrive is NaN, so a vector keeps its length from lens to lens. Null when the lens cannot be
+    /// traced. For a compensator's least squares.
+    /// </summary>
+    public double[]? Vector(Built lens)
+    {
+        var system = lens.System;
+        var waves = Polychromatic
+            ? Enumerable.Range(0, system.Wavelengths.Count)
+            : new[] { system.PrimaryWavelengthIndex };
+        var parts = new List<(double Weight, WavefrontResult Map)>();
+        double weights = 0.0;
+        try
+        {
+            for (int f = 0; f < system.Fields.Count; f++)
+                foreach (int w in waves)
+                {
+                    double weight = system.Fields[f].Weight * system.Wavelengths[w].Weight;
+                    if (weight <= 0.0) continue;
+                    var map = WavefrontMapCalculator.Compute(system, lens.Glass, f, w, GridSize);
+                    if (!AnyValid(map)) return null;
+                    parts.Add((weight, map));
+                    weights += weight;
+                }
+        }
+        catch (Exception e) when (e is InvalidOperationException or ArithmeticException or ArgumentException)
+        {
+            return null;
+        }
+        if (!(weights > 0.0)) return null;
+
+        var vector = new List<double>();
+        foreach (var (weight, map) in parts)
+        {
+            int n = 0;
+            double sum = 0.0;
+            foreach (var (v, ok) in Samples(map)) if (ok) { sum += v; n++; }
+            double mean = sum / n, scale = Math.Sqrt(weight / weights / n);
+            foreach (var (v, ok) in Samples(map)) vector.Add(ok ? scale * (v - mean) : double.NaN);
+        }
+        return vector.ToArray();
+    }
+
+    private static IEnumerable<(double Value, bool Valid)> Samples(WavefrontResult map)
+    {
+        for (int i = 0; i < map.Opd.GetLength(0); i++)
+            for (int j = 0; j < map.Opd.GetLength(1); j++)
+                yield return (map.Opd[i, j], map.Valid[i, j]);
+    }
+
     private static bool AnyValid(WavefrontResult map)
     {
         foreach (bool v in map.Valid) if (v) return true;

@@ -38,6 +38,14 @@ public readonly record struct Placement(double[] R, double Dx, double Dy, double
     }
 
     /// <summary>
+    /// The same rigid move seen from a point <paramref name="z"/> further along the axis: a move of an
+    /// element given at its first vertex, as it places the vertex <paramref name="z"/> behind it.
+    /// <c>d' = d + Rᵀ z − z</c>; R is unchanged.
+    /// </summary>
+    public Placement At(double z) =>
+        z == 0.0 ? this : this with { Dx = Dx + R[6] * z, Dy = Dy + R[7] * z, Dz = Dz + R[8] * z - z };
+
+    /// <summary>
     /// This move made inside <paramref name="outer"/>'s frame: first the outer, then this one.
     /// <c>p_s = R_i (R_o (p − d_o) − d_i)</c>, so <c>R = R_i R_o</c> and <c>d = d_o + R_oᵀ d_i</c>.
     /// </summary>

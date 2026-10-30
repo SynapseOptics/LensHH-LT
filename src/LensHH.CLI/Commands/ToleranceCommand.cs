@@ -21,10 +21,13 @@ namespace LensHH.CLI.Commands
     then optionally uniform | normal[[:k]] | endpoint, and pivot:d on an element tilt. # comments.
     Codes: TRAD TFRN TIRR TRSI TTHI TIND TABB TCON TSDX TSDY TSTX TSTY, and for an element
     (surfaces first-last) TEDX TEDY TETX TETY.
+    Compensators, also one per line: COMP surface [[±travel]] (the thickness after it), and
+    CEDX CEDY CETX CETY first-last [[±travel]] (an element decentred or tilted in its cell).
+    Without them each lens is refocused by its back focus.
   Options:
     criterion=rms | mtf:field:frequency:t|s   What the lens is judged by (RMS wavefront by default)
     mono              Primary wavelength only
-    nofocus           No back-focus compensator;  travel=<mm> limits the compensator
+    nofocus           No compensator at all;  travel=<mm> limits the back focus when the set names none
     fields=y | file   Mirror each field to -y as well (default), or the lens's fields only
     wave=<um>         Test wavelength for fringes (0.6328)
     show=<n>          Sensitivity: show the n worst only
