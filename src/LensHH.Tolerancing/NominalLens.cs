@@ -6,8 +6,35 @@ using LensHH.Core.RayTrace;
 
 namespace LensHH.Tolerancing;
 
-/// <summary>Which field points a lens is judged at: the file's, or each with its mirror image at −y as well.</summary>
-public enum FieldSymmetry { File, Y }
+/// <summary>
+/// Which directions across the field a lens is judged in: its fields as the file gives them (+y),
+/// on both sides of the axis in y (+y and −y), or in x as well (+y, +x, −y, −x).
+/// </summary>
+public enum FieldSymmetry { File, Y, XY }
+
+/// <summary>
+/// One direction a lens is judged in: the lens and its image turned about the axis by
+/// <see cref="Turn"/> degrees, so that its +y fields fall on the lens where this direction's would.
+/// A Coordinate Break's tilt about z re-expresses the ray in the turned frame, so a turn of 90°
+/// puts a +y field on the lens's +x.
+/// </summary>
+public readonly record struct FieldView(string Name, double Turn)
+{
+    public static readonly FieldView PlusY = new("+y", 0.0);
+    public static readonly FieldView PlusX = new("+x", 90.0);
+    public static readonly FieldView MinusY = new("−y", 180.0);
+    public static readonly FieldView MinusX = new("−x", 270.0);
+
+    public static readonly IReadOnlyList<FieldView> All = new[] { PlusY, PlusX, MinusY, MinusX };
+
+    /// <summary>The directions a symmetry judges in, +y first.</summary>
+    public static IReadOnlyList<FieldView> Of(FieldSymmetry symmetry) => symmetry switch
+    {
+        FieldSymmetry.File => new[] { PlusY },
+        FieldSymmetry.Y => new[] { PlusY, MinusY },
+        _ => All,
+    };
+}
 
 /// <summary>
 /// The lens as designed, with what perturbing it needs: its own copy of the system (semi-diameters
@@ -16,7 +43,7 @@ public enum FieldSymmetry { File, Y }
 /// </summary>
 public sealed class NominalLens
 {
-    public NominalLens(OpticalSystem system, GlassCatalogManager glass, FieldSymmetry fields = FieldSymmetry.Y)
+    public NominalLens(OpticalSystem system, GlassCatalogManager glass, FieldSymmetry fields = FieldSymmetry.XY)
     {
         Glass = glass ?? throw new ArgumentNullException(nameof(glass));
         System = (system ?? throw new ArgumentNullException(nameof(system))).DeepClone();
@@ -27,7 +54,7 @@ public sealed class NominalLens
                     $"surface {s.Index} is a {s.Type}: tolerancing is for a centred lens of refracting surfaces");
         SemiDiameterSolver.Solve(System, Glass);
         FileFieldCount = System.Fields.Count;
-        if (fields == FieldSymmetry.Y) MirrorFields(System);
+        Views = FieldView.Of(fields);
         Paraxial = Built.ParaxialOf(System, Glass);
         Nd = Glass.BuildRefractiveIndexArray(System, ModelGlass.LambdaD);
         NF = Glass.BuildRefractiveIndexArray(System, ModelGlass.LambdaF);
@@ -43,8 +70,15 @@ public sealed class NominalLens
     public double[] NF { get; }
     public double[] NC { get; }
 
-    /// <summary>The fields the lens gives, before their mirror images: the first this many.</summary>
+    /// <summary>The fields the lens gives.</summary>
     public int FileFieldCount { get; }
+
+    /// <summary>
+    /// The directions each lens is judged in. A rotationally symmetric lens performs the same in
+    /// every one; a decenter or tilt breaks that, and a lens judged on one side of the field only
+    /// can look better than it is on the others.
+    /// </summary>
+    public IReadOnlyList<FieldView> Views { get; }
 
     /// <summary>The surface before the image: its thickness is the back focus.</summary>
     public int BackFocusSurface => System.Surfaces.Count - 2;
@@ -56,28 +90,6 @@ public sealed class NominalLens
         var s = System.Surfaces[surface];
         if (s.IsMirror) return false;
         return Math.Abs(Nd[surface] - 1.0) > 1e-9;
-    }
-
-    /// <summary>
-    /// Adds each off-axis field's mirror image, −y, after the lens's own fields, and splits the
-    /// weight between the two. A rotationally symmetric lens performs the same at y and −y; a
-    /// decenter or tilt breaks that, and a lens judged on one side of the field only can look
-    /// better than it is on the other.
-    /// </summary>
-    public static void MirrorFields(OpticalSystem system)
-    {
-        var mirrored = new List<Field>();
-        foreach (var f in system.Fields)
-        {
-            if (Math.Abs(f.Y) < 1e-12) continue;
-            f.Weight /= 2.0;
-            mirrored.Add(new Field
-            {
-                Y = -f.Y, Weight = f.Weight,
-                VDX = f.VDX, VDY = f.VDY, VCX = f.VCX, VCY = f.VCY, TAN = f.TAN,
-            });
-        }
-        system.Fields.AddRange(mirrored);
     }
 
     /// <summary>A copy of the lens to perturb, sharing nothing with this one.</summary>
@@ -202,7 +214,7 @@ public sealed class TrialLens
         var elements = ElementMoves;
         if (!ReadableLayout.CanNest(elements)) return BuildSurfaceBySurface();
         var (laid, map) = ReadableLayout.Lay(system, elements, _surfaceMoves);
-        return Built.Laid(laid, map, Nominal.Glass);
+        return Built.Laid(laid, map, Nominal.Glass, Nominal.Views);
     }
 
     /// <summary>
@@ -212,7 +224,7 @@ public sealed class TrialLens
     public Built BuildSurfaceBySurface()
     {
         var system = Solved();
-        return Built.From(system, MovesOn(system), Nominal.Glass);
+        return Built.From(system, MovesOn(system), Nominal.Glass, Nominal.Views);
     }
 
     /// <summary>The lens as it now stands, to save: the system <see cref="Build"/> traces.</summary>
@@ -228,16 +240,52 @@ public sealed class TrialLens
 /// </summary>
 public sealed class Built
 {
-    private Built(OpticalSystem system, int[] map, GlassCatalogManager glass)
+    private Built(OpticalSystem system, int[] map, GlassCatalogManager glass, IReadOnlyList<FieldView>? views = null)
     {
         System = system;
         Map = map;
         Glass = glass;
+        Directions = views ?? new[] { FieldView.PlusY };
     }
 
     public OpticalSystem System { get; }
     public int[] Map { get; }
     public GlassCatalogManager Glass { get; }
+
+    /// <summary>The directions across the field the lens is judged in, +y first.</summary>
+    public IReadOnlyList<FieldView> Directions { get; }
+
+    private IReadOnlyList<Built>? _views;
+
+    /// <summary>
+    /// The lens turned to each of its <see cref="Directions"/> (<see cref="FieldTurn"/>), its fields'
+    /// weights shared among them: each off-axis field's weight split evenly, and the field on the
+    /// axis, the same in every direction, judged once, in the first. A criterion summed over the
+    /// views with these weights is the lens's over the whole field. The lens itself when it is
+    /// judged at +y alone.
+    /// </summary>
+    public IReadOnlyList<Built> Views => _views ??= MakeViews();
+
+    private IReadOnlyList<Built> MakeViews()
+    {
+        if (Directions.Count == 1 && Directions[0].Turn == 0.0) return new[] { this };
+        var views = new List<Built>();
+        for (int v = 0; v < Directions.Count; v++)
+        {
+            var (turned, map) = FieldTurn.Apply(System, Directions[v].Turn);
+            foreach (var f in turned.Fields)
+                f.Weight = Math.Abs(f.Y) < 1e-12 ? (v == 0 ? f.Weight : 0.0) : f.Weight / Directions.Count;
+            views.Add(new Built(turned, Map.Select(i => map[i]).ToArray(), Glass, new[] { Directions[v] }));
+        }
+        return views;
+    }
+
+    /// <summary>The lens turned to one direction, its fields' weights as the file gives them: to show it so.</summary>
+    public Built Toward(FieldView direction)
+    {
+        var (turned, map) = FieldTurn.Apply(System, direction.Turn);
+        return new Built(turned, Map.Select(i => map[i]).ToArray(), Glass, new[] { direction });
+    }
 
     private ParaxialResult? _paraxial;
 
@@ -251,19 +299,21 @@ public sealed class Built
     }
 
     /// <summary>A lens as it stands, with no moves to make: a saved trial read back, to judge again.</summary>
-    public static Built Of(OpticalSystem system, GlassCatalogManager glass) =>
-        From(system, new Dictionary<int, Placement>(), glass);
+    public static Built Of(OpticalSystem system, GlassCatalogManager glass, IReadOnlyList<FieldView>? views = null) =>
+        From(system, new Dictionary<int, Placement>(), glass, views);
 
-    internal static Built Laid(OpticalSystem system, int[] map, GlassCatalogManager glass) => new(system, map, glass);
+    internal static Built Laid(OpticalSystem system, int[] map, GlassCatalogManager glass, IReadOnlyList<FieldView> views) =>
+        new(system, map, glass, views);
 
-    internal static Built From(OpticalSystem trial, IReadOnlyDictionary<int, Placement> moves, GlassCatalogManager glass)
+    internal static Built From(OpticalSystem trial, IReadOnlyDictionary<int, Placement> moves, GlassCatalogManager glass,
+                               IReadOnlyList<FieldView>? views = null)
     {
         var system = trial.DeepClone();
         var map = new int[trial.Surfaces.Count];
         if (moves.Count == 0 || moves.Values.All(m => m.IsIdentity))
         {
             for (int i = 0; i < map.Length; i++) map[i] = i;
-            return new Built(system, map, glass);
+            return new Built(system, map, glass, views);
         }
 
         var source = system.Surfaces.ToList();
@@ -301,7 +351,7 @@ public sealed class Built
             system.Surfaces.Add(surfaces[k]);
         }
         RenumberSurfaceReferences(system, map);
-        return new Built(system, map, glass);
+        return new Built(system, map, glass, views);
     }
 
     private static Surface Break(double dx, double dy, double tx, double ty, double tz, int order,

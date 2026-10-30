@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -16,6 +18,118 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty] private int _selectedTabIndex = 0;
     [ObservableProperty] private bool _isBusy;
     [ObservableProperty] private bool _hasUnresolvedGlass;
+
+    /// <summary>The directions across the field the analyses and layout can show, as <see cref="LensHH.Tolerancing.FieldView.All"/>.</summary>
+    public string[] FieldDirectionNames { get; } = System.Linq.Enumerable.ToArray(System.Linq.Enumerable.Select(LensHH.Tolerancing.FieldView.All, v => v.Name));
+
+    /// <summary>
+    /// The direction the analyses and the layout show (<see cref="GuiSession.FieldDirection"/>):
+    /// 0 = +y, the lens's own fields; 1 = +x, 2 = −y, 3 = −x, the lens turned about its axis.
+    /// </summary>
+    [ObservableProperty] private int _fieldDirectionIndex;
+
+    public bool IsFieldPlusY => FieldDirectionIndex == 0;
+    public bool IsFieldPlusX => FieldDirectionIndex == 1;
+    public bool IsFieldMinusY => FieldDirectionIndex == 2;
+    public bool IsFieldMinusX => FieldDirectionIndex == 3;
+
+    /// <summary>
+    /// The field directions are offered only for a lens that differs from one direction to
+    /// another - decentred, tilted or irregular, as a Monte Carlo trial is. A centred lens is the
+    /// same in all four, and +y shows it.
+    /// </summary>
+    public bool ShowFieldDirections => !_session.IsRotationallySymmetric;
+
+    /// <summary>True while the analyses recompute for a new direction: the selector waits for them.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanChooseFieldDirection))]
+    [NotifyCanExecuteChangedFor(nameof(SetFieldDirectionCommand))]
+    private bool _isChangingFieldDirection;
+
+    /// <summary>A direction can be chosen when no analysis is being computed.</summary>
+    public bool CanChooseFieldDirection => !IsChangingFieldDirection && !IsBusy && !AnyAnalysisBusy;
+
+    private readonly List<(System.ComponentModel.INotifyPropertyChanged Analysis, System.Reflection.PropertyInfo IsBusy)> _analyses = new();
+
+    /// <summary>Whether any analysis is computing, however it was started: its own tab, a button, F5.</summary>
+    private bool AnyAnalysisBusy => _analyses.Any(a => a.IsBusy.GetValue(a.Analysis) is true);
+
+    /// <summary>Follows every analysis's IsBusy, so the field direction waits for whichever is computing.</summary>
+    private void WatchAnalyses(params object[] analyses)
+    {
+        foreach (var a in analyses)
+        {
+            if (a is not System.ComponentModel.INotifyPropertyChanged notifier
+                || a.GetType().GetProperty("IsBusy") is not { PropertyType: var t } busy || t != typeof(bool)) continue;
+            _analyses.Add((notifier, busy));
+            notifier.PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName != "IsBusy") return;
+                OnPropertyChanged(nameof(CanChooseFieldDirection));
+                SetFieldDirectionCommand.NotifyCanExecuteChanged();
+            };
+        }
+    }
+
+    [RelayCommand(CanExecute = nameof(CanChooseFieldDirection))]
+    private void SetFieldDirection(string index) => FieldDirectionIndex = int.Parse(index, System.Globalization.CultureInfo.InvariantCulture);
+
+    partial void OnFieldDirectionIndexChanged(int value)
+    {
+        var all = LensHH.Tolerancing.FieldView.All;
+        _session.FieldDirection = all[Math.Clamp(value, 0, all.Count - 1)];
+        OnPropertyChanged(nameof(IsFieldPlusY));
+        OnPropertyChanged(nameof(IsFieldPlusX));
+        OnPropertyChanged(nameof(IsFieldMinusY));
+        OnPropertyChanged(nameof(IsFieldMinusX));
+        if (!_quietDirection) _ = ShowFieldDirection();
+    }
+
+    private bool _quietDirection;
+
+    /// <summary>Redraws the layout and recomputes the analyses for the new direction, one change at a time.</summary>
+    private async Task ShowFieldDirection()
+    {
+        IsChangingFieldDirection = true;
+        try
+        {
+            StatusText = $"Showing the fields at {_session.FieldDirection.Name}...";
+            Layout.Render();
+            await UpdateAllAnalyses();
+            StatusText = FieldDirectionIndex == 0 ? "Analyses show the fields at +y"
+                : $"Analyses show the fields at {_session.FieldDirection.Name}: the lens turned {_session.FieldDirection.Turn:G3}° about its axis";
+        }
+        finally
+        {
+            IsChangingFieldDirection = false;
+        }
+    }
+
+    /// <summary>
+    /// The lens has no Coordinate Break that decentres or tilts. Optimization and tolerancing are
+    /// for such a lens - the design as drawn - and their menus are disabled for any other, a Monte
+    /// Carlo trial among them (the optimizers refuse one too).
+    /// </summary>
+    public bool IsCentred => !_session.HasSystem || _session.System.FirstTiltedOrDecentredBreak() == 0;
+
+    /// <summary>A lens the same in every direction goes back to +y, quietly: its analyses are recomputed for the change anyway.</summary>
+    private void RefreshFieldDirections()
+    {
+        OnPropertyChanged(nameof(ShowFieldDirections));
+        OnPropertyChanged(nameof(IsCentred));
+        if (!ShowFieldDirections && FieldDirectionIndex != 0)
+        {
+            _quietDirection = true;
+            try { FieldDirectionIndex = 0; }
+            finally { _quietDirection = false; }
+        }
+    }
+
+    partial void OnIsBusyChanged(bool value)
+    {
+        OnPropertyChanged(nameof(CanChooseFieldDirection));
+        SetFieldDirectionCommand.NotifyCanExecuteChanged();
+    }
 
     // ── License menu visibility ────────────────────────────────────
     // Visibility derived from ActivationManager.IsActivated (any token
@@ -120,6 +234,10 @@ public partial class MainViewModel : ObservableObject
         LongitudinalAberration = new LongitudinalAberrationViewModel(session);
         SingleRayTrace = new SingleRayTraceViewModel(session);
         SystemData = new SystemDataViewModel(session);
+        WatchAnalyses(FftMtf, FftMtfVsField, FftMtfVsFocus, FftPsf, SpotDiagram, Distortion, FieldCurvature,
+                      RelativeIllumination, Seidel, GeoMtfVsFreq, GeoMtfVsField, GeoMtfVsFocus, TransverseRayFan,
+                      OpdFan, WavefrontMap, Zernike, PupilAberrationFan, LateralColor, ChromaticFocalShift,
+                      LongitudinalAberration, SingleRayTrace, SystemData, Layout);
         _session.SystemChanged += _ =>
         {
             WindowTitle = _session.WindowTitle;
@@ -127,7 +245,9 @@ public partial class MainViewModel : ObservableObject
             if (_session.CannotCompute)
                 StatusText = _session.CannotComputeMessage;
             OnPropertyChanged(nameof(ShowVignettingOption));
+            RefreshFieldDirections();
         };
+        RefreshFieldDirections();
         _session.FileStateChanged += () => WindowTitle = _session.WindowTitle;
         WindowTitle = _session.WindowTitle;
 

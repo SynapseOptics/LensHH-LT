@@ -37,7 +37,7 @@ public partial class GeoMtfVsFreqViewModel : ObservableObject
 
     private void RefreshWavelengthOptions()
     {
-        var system = _session.System;
+        var system = _session.AnalysisSystem;
         int prev = SelectedWavelengthIndex;
         WavelengthOptions.Clear();
         WavelengthOptions.Add("All (Polychromatic)");
@@ -57,7 +57,7 @@ public partial class GeoMtfVsFreqViewModel : ObservableObject
         try
         {
             RefreshWavelengthOptions();
-            var system = _session.System;
+            var system = _session.AnalysisSystem;
             var glassMgr = _session.GlassCatalog;
             bool polychromatic = SelectedWavelengthIndex == 0;
             int waveIdx = SelectedWavelengthIndex - 1;
@@ -111,7 +111,7 @@ public partial class GeoMtfVsFreqViewModel : ObservableObject
     public async Task ExportText()
     {
         if (_lastResults == null) return;
-        var system = _session.System;
+        var system = _session.AnalysisSystem;
         string fieldUnit = system.FieldType == Core.Enums.FieldType.ObjectHeight ? "mm" : "deg";
         var path = await PickSavePath("Export Geometric MTF Data");
         if (path == null) return;
@@ -167,7 +167,7 @@ public partial class GeoMtfVsFieldViewModel : ObservableObject
 
     private void RefreshWavelengthOptions()
     {
-        var system = _session.System;
+        var system = _session.AnalysisSystem;
         int prev = SelectedWavelengthIndex;
         WavelengthOptions.Clear();
         WavelengthOptions.Add("All (Polychromatic)");
@@ -188,7 +188,7 @@ public partial class GeoMtfVsFieldViewModel : ObservableObject
         try
         {
             RefreshWavelengthOptions();
-            var system = _session.System;
+            var system = _session.AnalysisSystem;
             var glassMgr = _session.GlassCatalog;
             bool polychromatic = SelectedWavelengthIndex == 0;
             int waveIdx = SelectedWavelengthIndex - 1;
@@ -214,7 +214,7 @@ public partial class GeoMtfVsFieldViewModel : ObservableObject
     public async Task ExportText()
     {
         if (_lastResult == null) return;
-        var system = _session.System;
+        var system = _session.AnalysisSystem;
         string fieldUnit = system.FieldType == Core.Enums.FieldType.ObjectHeight ? "mm" : "deg";
         var path = await SvgHelper.PickSavePath("Export Geometric MTF vs Field");
         if (path == null) return;
@@ -258,7 +258,7 @@ public partial class GeoMtfVsFocusViewModel : ObservableObject
 
     private void RefreshOptions()
     {
-        var system = _session.System;
+        var system = _session.AnalysisSystem;
         int prevW = SelectedWavelengthIndex;
         WavelengthOptions.Clear();
         WavelengthOptions.Add("All (Polychromatic)");
@@ -291,7 +291,7 @@ public partial class GeoMtfVsFocusViewModel : ObservableObject
         try
         {
             RefreshOptions();
-            var system = _session.System;
+            var system = _session.AnalysisSystem;
             var glassMgr = _session.GlassCatalog;
             bool polychromatic = SelectedWavelengthIndex == 0;
             int waveIdx = SelectedWavelengthIndex - 1;
@@ -353,7 +353,7 @@ public partial class GeoMtfVsFocusViewModel : ObservableObject
         if (_lastResult == null && _lastResults == null) return;
         var path = await SvgHelper.PickSavePath("Export Geometric MTF vs Focus");
         if (path == null) return;
-        var system = _session.System;
+        var system = _session.AnalysisSystem;
         string fieldUnit = system.FieldType == Core.Enums.FieldType.ObjectHeight ? "mm" : "deg";
         bool polychromatic = SelectedWavelengthIndex == 0;
         int waveIdx = SelectedWavelengthIndex - 1;

@@ -4,7 +4,7 @@ Every lens that is built differs from its design: radii, thicknesses and glass a
 and the elements sit a little decentred and tilted in their mounts. Tolerancing finds which of
 those errors matter, and how good the lenses built to a set of tolerances will be.
 
-Open it from **Optimization ▸ Tolerancing…**. It works on copies of the lens; your design is never
+Open it from **Tolerancing ▸ Tolerancing…**. It works on copies of the lens; your design is never
 changed.
 
 ## The tolerance set
@@ -82,8 +82,15 @@ then **Save .tol…** to keep it.
 - **Criterion.** What each lens is judged by: the **RMS wavefront** error over the fields and
   wavelengths, by their weights, or the **MTF** at one field, frequency and orientation.
 - **Polychromatic.** Every wavelength by its weight, or the primary alone.
-- **Mirror fields to −y.** A decentre or tilt makes one side of the field worse than the other.
-  With this on, each off-axis field is judged at −y as well, sharing its weight.
+- **Field directions.** A decentre or tilt makes one side of the field worse than another, and an
+  error about y shows mostly along x. LensHH-LT's fields lie along y, so to judge a lens at −y, +x
+  and −x it is turned about its axis, image and all, by 180°, 90° and 270°: the lens turned
+  90° shows at its +y fields what it does at +x. **±x and ±y** (the default) judges every lens in
+  all four directions, **+y and −y** in two, **+y only** at the fields as the lens gives them. Each
+  off-axis field's weight is shared among the directions; the field on the axis, the same in
+  every direction, counts once. The focus and any other compensators are set for all of them
+  together. An MTF criterion, and the Monte Carlo MTF, take the worst direction at each frequency.
+  Judging in four directions takes about twice as long as in one.
 - **Refocus each lens.** Each lens is refocused, as it would be in use, for the sharpest image
   (the smallest RMS wavefront): by its back focus, or by the compensators the set names. **Focus
   travel** limits how far the back focus may move either way from where it focuses the nominal
@@ -139,9 +146,19 @@ folder, and every analysis works on it:
 - the focus and any other compensator are where the lens was adjusted to.
 
 The trial file is the lens that was judged: it is built this way to be traced as well as saved.
+It keeps the lens's own fields. To see it in another direction across the field, choose
+**Analysis ▸ Field Direction** (or **Fields at** on the 2D Layout tab): every analysis and the
+layout then show the lens turned about its axis to put its fields at +x, −y or −x.
+
+**File ▸ Export ▸ Zemax (.zmx), fields at ±x and ±y** writes a trial for ZEMAX with each field in
+all four directions, weighted as the run judged them; ZEMAX has x fields of its own. The Zernike
+departures are written as Zernike Fringe Sag surfaces and the glass offsets as Offset solves on
+the catalog glass, so the file carries every error the trial has. Pickups are written as the
+values they set.
 
 `trials.csv` lists every trial's errors, the compensators' moves and the criterion, and which file
-it was saved to.
+it was saved to. Its `focus_change_mm` is the focus thickness's change from the design, as the
+trial's lens file has it.
 
 ## Zernike departures, glass offsets and Coordinate Breaks
 
@@ -170,7 +187,7 @@ tolerance montecarlo lens.tol trials=500 mtf=60 step=5 save=mc savecount=20
 ```
 
 Options: `criterion=rms` or `criterion=mtf:field:frequency:t|s`, `mono`, `nofocus`, `travel=<mm>`,
-`fields=file`, `wave=<µm>`, `seed=<n>`, `stats=uniform|normal[:k]|endpoint[+disc]`.
+`fields=xy|y|file`, `wave=<µm>`, `seed=<n>`, `stats=uniform|normal[:k]|endpoint[+disc]`.
 
 Over MCP the tools are `ToleranceDefaults`, `ToleranceSensitivity` and `ToleranceMonteCarlo`;
 each takes the tolerance set as text or as the path of a .tol file.

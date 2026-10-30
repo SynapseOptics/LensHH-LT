@@ -48,6 +48,58 @@ namespace LensHH.API.Tests
             finally { File.Delete(path); }
         }
 
+        // In a .zmx the departure is a Zernike Fringe Sag surface and the offset an Offset solve on
+        // the glass, so a toleranced lens reads into ZEMAX whole and comes back unchanged.
+        [Fact]
+        public void ZmxRoundTripKeepsTheDepartureAndTheGlassOffset()
+        {
+            var sys = new OpticalSystem { Aperture = new Aperture(ApertureType.EPD, 10.0) };
+            sys.Surfaces.Add(new Surface { Index = 0, Thickness = double.PositiveInfinity });
+            var front = new Surface
+            {
+                Index = 1, Type = SurfaceType.EvenAsphere, Radius = 50, Thickness = 5,
+                Material = "N-BK7", SemiDiameter = 6.0,
+            };
+            front.AsphericCoefficients[1] = 1e-6;
+            Assert.Null(ZernikeDeparture.Set(front, 6.5, new[] { (5, 2e-4), (11, -1e-4) }));
+            front.IndexOffset = 3e-4;
+            front.AbbeOffset = -0.5;
+            sys.Surfaces.Add(front);
+            var back = new Surface { Index = 2, Radius = -80, Thickness = 45 };
+            Assert.Null(ZernikeDeparture.Set(back, 6.0, new[] { (2, 5e-5) }));
+            sys.Surfaces.Add(back);
+            sys.Surfaces.Add(new Surface { Index = 3 });
+            sys.Wavelengths.Add(new Wavelength(0.5876, 1.0, true));
+            sys.Fields.Add(new Field { Y = 0 });
+
+            var path = Path.GetTempFileName() + ".zmx";
+            try
+            {
+                ZmxWriter.Write(sys, path);
+                string text = File.ReadAllText(path);
+                Assert.Contains("TYPE FZERNSAG", text);
+                Assert.Contains("GLAS N-BK7 4 0", text);
+
+                var read = ZmxReader.Read(path);
+                var s = read.Surfaces[1];
+                Assert.Equal(SurfaceType.EvenAsphere, s.Type);
+                Assert.Equal(1e-6, s.AsphericCoefficients[1]);
+                Assert.Equal(6.5, ZernikeDeparture.Radius(s));
+                Assert.Equal(2e-4, ZernikeDeparture.Term(s, 5));
+                Assert.Equal(-1e-4, ZernikeDeparture.Term(s, 11));
+                Assert.Equal(0.0, ZernikeDeparture.Term(s, 4));
+                Assert.Equal("N-BK7", s.Material);
+                Assert.Equal(3e-4, s.IndexOffset);
+                Assert.Equal(-0.5, s.AbbeOffset);
+
+                var b = read.Surfaces[2];
+                Assert.Equal(SurfaceType.Standard, b.Type);
+                Assert.Equal(5e-5, ZernikeDeparture.Term(b, 2));
+                Assert.False(b.HasGlassOffset);
+            }
+            finally { File.Delete(path); }
+        }
+
         [Fact]
         public void OnlyStandardAndEvenAsphereSurfacesTakeOne()
         {

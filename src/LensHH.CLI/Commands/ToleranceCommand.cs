@@ -28,7 +28,8 @@ namespace LensHH.CLI.Commands
     criterion=rms | mtf:field:frequency:t|s   What the lens is judged by (RMS wavefront by default)
     mono              Primary wavelength only
     nofocus           No compensator at all;  travel=<mm> limits the back focus when the set names none
-    fields=y | file   Mirror each field to -y as well (default), or the lens's fields only
+    fields=xy | y | file   Judge each lens at +y, +x, -y and -x (default: the lens turned about its axis),
+                      at +y and -y, or at the lens's fields only
     wave=<um>         Test wavelength for fringes (0.6328)
     show=<n>          Sensitivity: show the n worst only
     trials=<n> seed=<n>                      Monte Carlo lenses and seed (200, 1)
@@ -114,7 +115,7 @@ namespace LensHH.CLI.Commands
                     "mono" => settings with { Polychromatic = false },
                     "nofocus" => settings with { Compensate = false },
                     "travel" => settings with { Travel = double.Parse(value, c) },
-                    "fields" => settings with { Fields = value.Equals("file", StringComparison.OrdinalIgnoreCase) ? FieldSymmetry.File : FieldSymmetry.Y },
+                    "fields" => settings with { Fields = ToleranceRun.ParseFields(value) },
                     "wave" => settings with { TestWavelengthUm = double.Parse(value, c) },
                     "trials" => settings with { Trials = int.Parse(value, c) },
                     "seed" => settings with { Seed = int.Parse(value, c) },

@@ -9,14 +9,20 @@ namespace LensHH.Core.IO
 {
     public static class ZmxWriter
     {
-        public static void Write(OpticalSystem system, string filePath)
+        /// <param name="allDirections">
+        /// Write each off-axis field at +y, +x, −y and −x, the field on the axis once, each off-axis
+        /// field's weight split among its four: the fields a lens that is not rotationally symmetric
+        /// is judged at. ZEMAX has x fields, which LensHH-LT shows by turning the lens instead.
+        /// </param>
+        public static void Write(OpticalSystem system, string filePath, bool allDirections = false)
         {
             var sb = new StringBuilder();
+            var fields = FieldsToWrite(system, allDirections);
 
             WriteHeader(sb, system);
             WriteAperture(sb, system);
-            WriteFieldType(sb, system);
-            WriteFields(sb, system);
+            WriteFieldType(sb, system, fields.Count);
+            WriteFields(sb, fields);
             WriteWavelengths(sb, system);
             WriteSurfaces(sb, system);
 
@@ -61,13 +67,13 @@ namespace LensHH.Core.IO
             }
         }
 
-        private static void WriteFieldType(StringBuilder sb, OpticalSystem system)
+        private static void WriteFieldType(StringBuilder sb, OpticalSystem system, int fieldCount)
         {
             int ftype = system.FieldType == FieldType.ObjectAngle ? 0 : 1;
             int afocal = system.IsAfocal ? 1 : 0;
             // FTYP field 2 (after the field-type) is the object-space telecentric flag.
             int telecentric = system.TelecentricObjectSpace ? 1 : 0;
-            sb.AppendLine($"FTYP {ftype} {telecentric} {system.Fields.Count} {system.Wavelengths.Count} 0 0 {afocal} 0 0");
+            sb.AppendLine($"FTYP {ftype} {telecentric} {fieldCount} {system.Wavelengths.Count} 0 0 {afocal} 0 0");
             // RAIM format:
             //   RAIM 0 <mode> 1 1 0 <robust> 0 0 0 1
             //
@@ -88,38 +94,72 @@ namespace LensHH.Core.IO
             sb.AppendLine($"RAIM 0 {zmxRayAimMode} 1 1 0 {robust} 0 0 0 1");
         }
 
-        private static void WriteFields(StringBuilder sb, OpticalSystem system)
+        /// <summary>A field as written: its point and weight, and its vignetting factors.</summary>
+        private readonly struct ZmxField
         {
-            sb.Append("XFLN");
-            for (int i = 0; i < system.Fields.Count; i++)
-                sb.Append(" 0");
-            sb.AppendLine();
+            public ZmxField(double x, double y, double weight, double vdx, double vdy, double vcx, double vcy, double tan)
+            {
+                X = x; Y = y; Weight = weight; Vdx = vdx; Vdy = vdy; Vcx = vcx; Vcy = vcy; Tan = tan;
+            }
 
-            sb.Append("YFLN");
-            foreach (var field in system.Fields)
-                sb.Append(" " + field.Y.ToString(CultureInfo.InvariantCulture));
-            sb.AppendLine();
+            public double X { get; }
+            public double Y { get; }
+            public double Weight { get; }
+            public double Vdx { get; }
+            public double Vdy { get; }
+            public double Vcx { get; }
+            public double Vcy { get; }
+            public double Tan { get; }
+        }
 
-            sb.Append("FWGN");
-            foreach (var field in system.Fields)
-                sb.Append(" " + field.Weight.ToString(CultureInfo.InvariantCulture));
-            sb.AppendLine();
+        private static System.Collections.Generic.List<ZmxField> FieldsToWrite(OpticalSystem system, bool allDirections)
+        {
+            var fields = new System.Collections.Generic.List<ZmxField>();
+            foreach (var f in system.Fields)
+                fields.Add(new ZmxField(0.0, f.Y, allDirections && Math.Abs(f.Y) >= 1e-12 ? f.Weight / 4.0 : f.Weight,
+                                        f.VDX, f.VDY, f.VCX, f.VCY, f.TAN));
+            if (!allDirections) return fields;
+
+            // +x, −y, −x: the +y field and its vignetting decentre turned by a quarter, a half and
+            // three quarters of a turn; a quarter turn swaps the compressions in x and y.
+            var turns = new (Func<double, double, (double, double)> Turn, bool Swap)[]
+            {
+                ((x, y) => (y, -x), true),
+                ((x, y) => (-x, -y), false),
+                ((x, y) => (-y, x), true),
+            };
+            foreach (var (turn, swap) in turns)
+                foreach (var f in system.Fields)
+                {
+                    if (Math.Abs(f.Y) < 1e-12) continue;
+                    var (x, y) = turn(0.0, f.Y);
+                    var (vdx, vdy) = turn(f.VDX, f.VDY);
+                    fields.Add(new ZmxField(x, y, f.Weight / 4.0, vdx, vdy, swap ? f.VCY : f.VCX, swap ? f.VCX : f.VCY, f.TAN));
+                }
+            return fields;
+        }
+
+        private static void WriteFields(StringBuilder sb, System.Collections.Generic.List<ZmxField> fields)
+        {
+            WriteFieldFactor(sb, fields, "XFLN", f => f.X);
+            WriteFieldFactor(sb, fields, "YFLN", f => f.Y);
+            WriteFieldFactor(sb, fields, "FWGN", f => f.Weight);
 
             // Vignetting factors. Derived per-field values from the auto-vignetting solver (all zero
             // when there is no vignetting). VANN (tangential angle) is always 0 in LT. Callers that
             // need current values should solve semi-diameters before exporting.
-            WriteFieldFactor(sb, system, "VDXN", f => f.VDX);
-            WriteFieldFactor(sb, system, "VDYN", f => f.VDY);
-            WriteFieldFactor(sb, system, "VCXN", f => f.VCX);
-            WriteFieldFactor(sb, system, "VCYN", f => f.VCY);
-            WriteFieldFactor(sb, system, "VANN", f => f.TAN);
+            WriteFieldFactor(sb, fields, "VDXN", f => f.Vdx);
+            WriteFieldFactor(sb, fields, "VDYN", f => f.Vdy);
+            WriteFieldFactor(sb, fields, "VCXN", f => f.Vcx);
+            WriteFieldFactor(sb, fields, "VCYN", f => f.Vcy);
+            WriteFieldFactor(sb, fields, "VANN", f => f.Tan);
         }
 
-        private static void WriteFieldFactor(StringBuilder sb, OpticalSystem system, string key,
-            System.Func<LensHH.Core.Models.Field, double> sel)
+        private static void WriteFieldFactor(StringBuilder sb, System.Collections.Generic.List<ZmxField> fields, string key,
+            Func<ZmxField, double> sel)
         {
             sb.Append(key);
-            foreach (var field in system.Fields)
+            foreach (var field in fields)
                 sb.Append(" " + sel(field).ToString(CultureInfo.InvariantCulture));
             sb.AppendLine();
         }
@@ -147,8 +187,17 @@ namespace LensHH.Core.IO
                 if (surface.IsStop)
                     sb.AppendLine("  STOP");
 
+                // A Zernike departure on a Standard or Even Asphere surface is ZEMAX's Zernike
+                // Fringe Sag surface: the even asphere's terms in PARM 1-8, the departure in its
+                // extra data.
+                bool zernike = (surface.Type == SurfaceType.Standard || surface.Type == SurfaceType.EvenAsphere)
+                               && ZernikeDeparture.IsPresent(surface);
                 switch (surface.Type)
                 {
+                    case SurfaceType.Standard when zernike:
+                    case SurfaceType.EvenAsphere when zernike:
+                        sb.AppendLine("  TYPE FZERNSAG");
+                        break;
                     case SurfaceType.Standard:
                         sb.AppendLine("  TYPE STANDARD");
                         break;
@@ -181,12 +230,19 @@ namespace LensHH.Core.IO
                 if (surface.ModelIndexEnabled)
                 {
                     // ZEMAX model glass: ___BLANK <flag> <solve> <Nd> <Vd> <dPgF> ...
-                    // The index is defined by the model parameters, not a catalog name.
+                    // The index is defined by the model parameters, not a catalog name. An offset
+                    // on a model glass is its Nd and Vd moved.
                     sb.AppendLine("  GLAS ___BLANK 1 0 " +
-                        surface.ModelNd.ToString("G17", CultureInfo.InvariantCulture) + " " +
-                        surface.ModelVd.ToString("G17", CultureInfo.InvariantCulture) + " " +
+                        (surface.ModelNd + surface.IndexOffset).ToString("G17", CultureInfo.InvariantCulture) + " " +
+                        (surface.ModelVd + surface.AbbeOffset).ToString("G17", CultureInfo.InvariantCulture) + " " +
                         surface.ModelDPgF.ToString("G17", CultureInfo.InvariantCulture) + " 0 0 0 0 0");
                 }
+                else if (!string.IsNullOrEmpty(surface.Material) && surface.HasGlassOffset)
+                    // ZEMAX's Offset solve on the catalog glass: <name> 4 0 <Nd> <Vd> <dPgF> 0 0 0 <ΔNd> <ΔVd>.
+                    // The catalog's own Nd, Vd and dPgF are filled in by ZEMAX when it reads the glass.
+                    sb.AppendLine($"  GLAS {surface.Material} 4 0 0 0 0 0 0 0 " +
+                        surface.IndexOffset.ToString("G17", CultureInfo.InvariantCulture) + " " +
+                        surface.AbbeOffset.ToString("G17", CultureInfo.InvariantCulture));
                 else if (!string.IsNullOrEmpty(surface.Material))
                     sb.AppendLine($"  GLAS {surface.Material} 0 0 0 0 0");
 
@@ -224,6 +280,16 @@ namespace LensHH.Core.IO
                             sb.AppendLine($"  PARM {i + 1} {surface.AsphericCoefficients[i].ToString("E16", CultureInfo.InvariantCulture)}");
                         }
                     }
+                }
+                if (zernike)
+                {
+                    // Extra data 1 = the last term used, 2 = the normalization radius, 3.. = Z1, Z2, ...
+                    int last = ZernikeDeparture.MaxTerms;
+                    while (last > 1 && ZernikeDeparture.Term(surface, last) == 0.0) last--;
+                    sb.AppendLine($"  XDAT 1 {last} 0 0 1 0 0 \"\"");
+                    sb.AppendLine($"  XDAT 2 {ZernikeDeparture.Radius(surface).ToString("G17", CultureInfo.InvariantCulture)} 0 0 1 0 0 \"\"");
+                    for (int j = 1; j <= last; j++)
+                        sb.AppendLine($"  XDAT {j + 2} {ZernikeDeparture.Term(surface, j).ToString("G17", CultureInfo.InvariantCulture)} 0 0 1 0 0 \"\"");
                 }
                 else if (surface.Type == SurfaceType.Paraxial)
                 {

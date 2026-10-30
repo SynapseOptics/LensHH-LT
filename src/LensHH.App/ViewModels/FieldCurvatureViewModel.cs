@@ -56,7 +56,7 @@ public partial class FieldCurvatureViewModel : ObservableObject
         IsBusy = true;
         try
         {
-            var system = _session.System;
+            var system = _session.AnalysisSystem;
             var glassMgr = _session.GlassCatalog;
 
             double maxFieldY = 0;
@@ -102,7 +102,7 @@ public partial class FieldCurvatureViewModel : ObservableObject
     public async Task CopyTableToClipboard()
     {
         if (_lastMwResult == null) return;
-        var system = _session.System;
+        var system = _session.AnalysisSystem;
         string fieldUnit = system.FieldType == Core.Enums.FieldType.ObjectHeight ? "mm" : "deg";
 
         int wlDigits = LensHH.Rendering.LabelFormat.WavelengthDigits(_lastMwResult.Wavelengths);
@@ -127,7 +127,7 @@ public partial class FieldCurvatureViewModel : ObservableObject
     {
         if (_lastMwResult == null) return;
 
-        var system = _session.System;
+        var system = _session.AnalysisSystem;
         string fieldUnit = system.FieldType == Core.Enums.FieldType.ObjectHeight ? "mm" : "deg";
 
         var topLevel = Avalonia.Application.Current?.ApplicationLifetime is

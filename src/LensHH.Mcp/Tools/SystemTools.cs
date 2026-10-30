@@ -101,10 +101,12 @@ namespace LensHH.Mcp.Tools
             return FormatImportResult(filePath);
         }
 
-        [McpServerTool, Description("Export the current optical system to a Zemax .zmx file.")]
-        public string ExportZemax(string filePath)
+        [McpServerTool, Description("Export the current optical system to a Zemax .zmx file. allDirections=true writes each field " +
+            "at +y, +x, -y and -x (the axis once, off-axis weights split among the four), for a lens that is not rotationally " +
+            "symmetric such as a Monte Carlo trial.")]
+        public string ExportZemax(string filePath, bool allDirections = false)
         {
-            _session.ExportZemax(filePath);
+            _session.ExportZemax(filePath, allDirections);
             return $"Exported Zemax file: {filePath}";
         }
 

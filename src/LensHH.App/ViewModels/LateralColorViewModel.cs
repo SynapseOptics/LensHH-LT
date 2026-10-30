@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using Avalonia.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -48,7 +49,7 @@ public partial class LateralColorViewModel : ObservableObject
         try
         {
             if (!_session.HasSystem) { IsDisabled = true; return; }
-            var system = _session.System;
+            var system = _session.AnalysisSystem;
 
             double maxFieldY = 0;
             foreach (var f in system.Fields)
@@ -76,7 +77,7 @@ public partial class LateralColorViewModel : ObservableObject
         IsBusy = true;
         try
         {
-            var system = _session.System;
+            var system = _session.AnalysisSystem;
             var glassMgr = _session.GlassCatalog;
 
             double maxFieldY = 0;
@@ -104,6 +105,12 @@ public partial class LateralColorViewModel : ObservableObject
             var result = await Task.Run(() =>
                 LateralColorCalculator.Compute(system, glassMgr, numFieldPoints: 50, useVignettingFactors: UseVignettingFactors));
 
+            // At −y and −x the lens is turned a half or three quarters round, and the shifts come
+            // out along the turned lens's y, opposite to the lens's own. Turned back - fields
+            // negative, shifts along the lens's own y or x - the curve joins the +y or +x one at 0°.
+            bool negativeSide = _session.FieldDirection.Turn >= 180.0;
+            if (negativeSide) result = Mirrored(result);
+
             _lastResult = result;
 
             // Mirror the renderer's unit branching so title and Y axis agree.
@@ -114,7 +121,7 @@ public partial class LateralColorViewModel : ObservableObject
                 system.Wavelengths[system.PrimaryWavelengthIndex].Value, system.Wavelengths);
             string svg = LateralColorRenderer.Render(result, title, maxFieldY,
                 system.Wavelengths.Count, waveLabels, fieldUnit: fieldUnit,
-                referenceWavelengthLabel: refLabel);
+                referenceWavelengthLabel: refLabel, negativeField: negativeSide);
             RenderSvgToBitmap(svg);
         }
         catch
@@ -128,12 +135,26 @@ public partial class LateralColorViewModel : ObservableObject
         }
     }
 
+    /// <summary>The fields on the negative side of the axis, their shifts along the lens's own axis: each sign turned.</summary>
+    private static LateralColorResult Mirrored(LateralColorResult result) => new()
+    {
+        IsAfocal = result.IsAfocal,
+        MaxLateralColor = result.MaxLateralColor,
+        Points = result.Points.Select(p => new LateralColorPoint
+        {
+            FieldY = p.FieldY == 0.0 ? 0.0 : -p.FieldY,
+            Wavelength = p.Wavelength,
+            WavelengthIndex = p.WavelengthIndex,
+            LateralShift = -p.LateralShift,
+        }).ToList(),
+    };
+
     /// <summary>Copy the lateral color table to the clipboard as tab-delimited text.</summary>
     [RelayCommand]
     public async Task CopyTableToClipboard()
     {
         if (_lastResult == null) return;
-        var system = _session.System;
+        var system = _session.AnalysisSystem;
         string fieldUnit = system.FieldType == Core.Enums.FieldType.ObjectHeight ? "mm" : "deg";
         var wavelengths = new double[system.Wavelengths.Count];
         for (int w = 0; w < system.Wavelengths.Count; w++)
@@ -152,7 +173,7 @@ public partial class LateralColorViewModel : ObservableObject
     {
         if (_lastResult == null) return;
 
-        var system = _session.System;
+        var system = _session.AnalysisSystem;
         string fieldUnit = system.FieldType == Core.Enums.FieldType.ObjectHeight ? "mm" : "deg";
         var wavelengths = new double[system.Wavelengths.Count];
         for (int w = 0; w < system.Wavelengths.Count; w++)

@@ -970,6 +970,11 @@ namespace LensHH.Core.IO
             if (surfParts.Length > 1 && int.TryParse(surfParts[1], out int idx))
                 surface.Index = idx;
 
+            // A Zernike Fringe Sag surface: an even asphere (PARM 1-8) with a Zernike departure,
+            // its extra data 1 = the last term, 2 = the normalization radius, 3.. = Z1, Z2, ...
+            bool fringeSag = false;
+            var extra = new Dictionary<int, double>();
+
             foreach (var rawLine in block)
             {
                 var line = rawLine.TrimStart();
@@ -980,6 +985,12 @@ namespace LensHH.Core.IO
                 {
                     case "TYPE":
                         surface.Type = ParseSurfaceType(parts);
+                        fringeSag = parts.Length > 1 && parts[1].Equals("FZERNSAG", StringComparison.OrdinalIgnoreCase);
+                        break;
+
+                    case "XDAT":
+                        if (parts.Length > 2 && int.TryParse(parts[1], out int xIndex) && TryParseDouble(parts[2], out double xValue))
+                            extra[xIndex] = xValue;
                         break;
 
                     case "CURV":
@@ -1063,6 +1074,13 @@ namespace LensHH.Core.IO
                                     "{0:D3}.{1:D4}", ndCode, vdCode);
                             }
                             surface.Material = mat;
+                            // Solve type 4 is ZEMAX's Offset solve: ΔNd and ΔVd in parts[10], parts[11].
+                            if (parts.Length > 11 && parts[2] == "4"
+                                && TryParseDouble(parts[10], out double dNd) && TryParseDouble(parts[11], out double dVd))
+                            {
+                                surface.IndexOffset = dNd;
+                                surface.AbbeOffset = dVd;
+                            }
                         }
                         break;
 
@@ -1097,6 +1115,9 @@ namespace LensHH.Core.IO
                         break;
 
                     case "PARM":
+                        // On a Zernike Fringe Sag surface PARM 9 and 10 decentre the departure; LT's has none.
+                        if (fringeSag && parts.Length > 1 && int.TryParse(parts[1], out int fringeParm) && fringeParm > 8)
+                            break;
                         ParseAsphericParam(surface, parts);
                         break;
 
@@ -1144,6 +1165,18 @@ namespace LensHH.Core.IO
                             surface.FloatingApertureRadius = flapMax;
                         break;
                 }
+            }
+
+            if (fringeSag && extra.TryGetValue(2, out double normRadius) && normRadius > 0)
+            {
+                int last = extra.TryGetValue(1, out double maxTerm) ? (int)Math.Round(maxTerm) : ZernikeDeparture.MaxTerms;
+                last = Math.Min(last, ZernikeDeparture.MaxTerms);
+                var terms = Enumerable.Range(1, Math.Max(last, 0))
+                    .Select(j => (j, extra.TryGetValue(j + 2, out double c) ? c : 0.0))
+                    .Where(t => t.Item2 != 0.0)
+                    .ToList();
+                if (terms.Count > 0)
+                    ZernikeDeparture.Set(surface, normRadius, terms);
             }
 
             return surface;

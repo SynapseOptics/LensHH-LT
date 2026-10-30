@@ -62,7 +62,7 @@ public partial class RelativeIlluminationViewModel : ObservableObject
         IsBusy = true;
         try
         {
-            var system = _session.System;
+            var system = _session.AnalysisSystem;
             var glassMgr = _session.GlassCatalog;
 
             double maxFieldY = 0;
@@ -107,7 +107,7 @@ public partial class RelativeIlluminationViewModel : ObservableObject
     {
         if (_lastResult == null) return;
 
-        var system = _session.System;
+        var system = _session.AnalysisSystem;
         string fieldUnit = system.FieldType == Core.Enums.FieldType.ObjectHeight ? "mm" : "deg";
 
         var topLevel = Avalonia.Application.Current?.ApplicationLifetime is

@@ -147,7 +147,7 @@ public class ToleranceTests
             // glass and focus all in the file.
             var first = mc.Trials[0];
             var reread = LhltReader.Read(first.File!).System;
-            Assert.Equal(first.Criterion, rms.Evaluate(Built.Of(reread, glass)), 9);
+            Assert.Equal(first.Criterion, rms.Evaluate(Built.Of(reread, glass, lens.Views)), 9);
 
             // The same seed draws the same lenses.
             var again = MonteCarlo.Run(lens, items, rms, FocusCompensator.BackFocus(lens), options with { SaveDirectory = null });

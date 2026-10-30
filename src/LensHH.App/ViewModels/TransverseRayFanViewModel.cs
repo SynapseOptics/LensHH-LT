@@ -39,7 +39,7 @@ public partial class TransverseRayFanViewModel : ObservableObject
         IsBusy = true;
         try
         {
-            var system = _session.System;
+            var system = _session.AnalysisSystem;
             var glassMgr = _session.GlassCatalog;
             int numFields = system.Fields.Count;
             int numPoints = NumPoints;
@@ -186,7 +186,7 @@ public partial class TransverseRayFanViewModel : ObservableObject
     {
         if (_lastResults == null) return;
 
-        var system = _session.System;
+        var system = _session.AnalysisSystem;
         string fieldUnit = system.FieldType == Core.Enums.FieldType.ObjectHeight ? "mm" : "deg";
         var wavelengths = new double[system.Wavelengths.Count];
         for (int w = 0; w < system.Wavelengths.Count; w++)

@@ -98,7 +98,7 @@ public partial class FftMtfVsFieldViewModel : ObservableObject
 
     private void RefreshWavelengthOptions()
     {
-        var system = _session.System;
+        var system = _session.AnalysisSystem;
         int prevIndex = SelectedWavelengthIndex;
         WavelengthOptions.Clear();
         WavelengthOptions.Add("All (Polychromatic)");
@@ -122,7 +122,7 @@ public partial class FftMtfVsFieldViewModel : ObservableObject
 
         try
         {
-            var system = _session.System;
+            var system = _session.AnalysisSystem;
             var glassMgr = _session.GlassCatalog;
             bool polychromatic = SelectedWavelengthIndex == 0;
             int waveIdx = SelectedWavelengthIndex - 1;
@@ -163,7 +163,7 @@ public partial class FftMtfVsFieldViewModel : ObservableObject
     {
         if (_lastResult == null) return;
 
-        var system = _session.System;
+        var system = _session.AnalysisSystem;
         string fieldUnit = system.FieldType == Core.Enums.FieldType.ObjectHeight ? "mm" : "deg";
 
         var topLevel = Avalonia.Application.Current?.ApplicationLifetime is

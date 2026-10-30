@@ -106,7 +106,7 @@ public partial class FftMtfVsFocusViewModel : ObservableObject
 
     private void RefreshOptions()
     {
-        var system = _session.System;
+        var system = _session.AnalysisSystem;
         int prevW = SelectedWavelengthIndex;
         WavelengthOptions.Clear();
         WavelengthOptions.Add("All (Polychromatic)");
@@ -132,7 +132,7 @@ public partial class FftMtfVsFocusViewModel : ObservableObject
         try
         {
             RefreshOptions();
-            var system = _session.System;
+            var system = _session.AnalysisSystem;
             var glassMgr = _session.GlassCatalog;
             bool polychromatic = SelectedWavelengthIndex == 0;
             int waveIdx = SelectedWavelengthIndex - 1;
@@ -206,7 +206,7 @@ public partial class FftMtfVsFocusViewModel : ObservableObject
         if (_lastResult == null && _lastResults == null) return;
         var path = await SvgHelper.PickSavePath("Export FFT MTF vs Focus");
         if (path == null) return;
-        var system = _session.System;
+        var system = _session.AnalysisSystem;
         string fieldUnit = system.FieldType == Core.Enums.FieldType.ObjectHeight ? "mm" : "deg";
         bool polychromatic = SelectedWavelengthIndex == 0;
         int waveIdx = SelectedWavelengthIndex - 1;

@@ -57,7 +57,7 @@ public partial class DistortionViewModel : ObservableObject
         IsBusy = true;
         try
         {
-            var system = _session.System;
+            var system = _session.AnalysisSystem;
             var glassMgr = _session.GlassCatalog;
 
             // Check if all fields are on-axis
@@ -104,7 +104,7 @@ public partial class DistortionViewModel : ObservableObject
     public async Task CopyTableToClipboard()
     {
         if (_lastResult == null) return;
-        var system = _session.System;
+        var system = _session.AnalysisSystem;
         string fieldUnit = system.FieldType == Core.Enums.FieldType.ObjectHeight ? "mm" : "deg";
         string text = DistortionTextExport.Export(_lastResult, "Distortion", fieldUnit);
 
@@ -120,7 +120,7 @@ public partial class DistortionViewModel : ObservableObject
     {
         if (_lastResult == null) return;
 
-        var system = _session.System;
+        var system = _session.AnalysisSystem;
         string fieldUnit = system.FieldType == Core.Enums.FieldType.ObjectHeight ? "mm" : "deg";
 
         var topLevel = Avalonia.Application.Current?.ApplicationLifetime is

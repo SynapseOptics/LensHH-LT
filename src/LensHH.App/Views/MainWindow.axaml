@@ -56,6 +56,8 @@
         </MenuItem>
         <MenuItem Header="Export">
           <MenuItem Header="Zemax (.zmx)..." Click="ExportZmx_Click" />
+          <MenuItem Header="Zemax (.zmx), fields at ±x and ±y..." Click="ExportZmxXy_Click"
+                    ToolTip.Tip="Each field also at +x, −y and −x: for a lens that is not rotationally symmetric, such as a Monte Carlo trial" />
           <MenuItem Header="Code V (.seq)..." Click="ExportCodeV_Click" />
           <MenuItem Header="OSLO (.len)..." Click="ExportOslo_Click" />
           <MenuItem Header="Optalix (.otx)..." Click="ExportOptalix_Click" />
@@ -76,6 +78,17 @@
       </MenuItem>
       <MenuItem Header="_Analysis">
         <MenuItem Header="_Update All Analyses" Command="{Binding UpdateAllAnalysesCommand}" InputGesture="F5" />
+        <MenuItem Header="_Field Direction" IsVisible="{Binding ShowFieldDirections}"
+                  ToolTip.Tip="Show the fields at +y, or the lens turned about its axis to show them at +x, −y or −x: a lens that is not rotationally symmetric, such as a Monte Carlo trial, differs in each">
+          <MenuItem Header="+y (the lens's fields)" ToggleType="Radio" GroupName="FieldDirection" IsChecked="{Binding IsFieldPlusY, Mode=OneWay}"
+                    Command="{Binding SetFieldDirectionCommand}" CommandParameter="0" />
+          <MenuItem Header="+x" ToggleType="Radio" GroupName="FieldDirection" IsChecked="{Binding IsFieldPlusX, Mode=OneWay}"
+                    Command="{Binding SetFieldDirectionCommand}" CommandParameter="1" />
+          <MenuItem Header="−y" ToggleType="Radio" GroupName="FieldDirection" IsChecked="{Binding IsFieldMinusY, Mode=OneWay}"
+                    Command="{Binding SetFieldDirectionCommand}" CommandParameter="2" />
+          <MenuItem Header="−x" ToggleType="Radio" GroupName="FieldDirection" IsChecked="{Binding IsFieldMinusX, Mode=OneWay}"
+                    Command="{Binding SetFieldDirectionCommand}" CommandParameter="3" />
+        </MenuItem>
         <Separator />
         <MenuItem Header="S_ystem Data" Click="SystemData_Click" />
         <MenuItem Header="Si_ngle Ray Trace" Click="SingleRayTrace_Click" />
@@ -109,7 +122,7 @@
         <MenuItem Header="_Wavefront Map" Click="WavefrontMap_Click" />
         <MenuItem Header="_Zernike Coefficients" Click="Zernike_Click" />
       </MenuItem>
-      <MenuItem Header="_Optimization">
+      <MenuItem Header="_Optimization" IsEnabled="{Binding IsCentred}">
         <MenuItem Header="_Merit Function" Click="MeritFunctionTab_Click" />
         <MenuItem Header="_Variable Editor" Click="VariableEditor_Click" />
         <Separator />
@@ -132,7 +145,11 @@
         <MenuItem Header="S_plit Element" Click="SplitElement_Click" />
         <MenuItem Header="Synthesis by _SPC" Click="SynthesisBySpc_Click" />
         <MenuItem Header="Search _Best Asphere Surface..." Click="AsphereSearch_Click" />
-        <Separator />
+      </MenuItem>
+      <!-- Tolerancing has a menu of its own. Like Optimization it is for the design as drawn, a
+           centred lens: a lens decentred or tilted by a Coordinate Break - a Monte Carlo trial -
+           is analysed, not optimized or toleranced again. -->
+      <MenuItem Header="_Tolerancing" IsEnabled="{Binding IsCentred}">
         <MenuItem Header="_Tolerancing..." Click="Tolerancing_Click" />
       </MenuItem>
       <!-- Optional host-contributed menu. Empty (and hidden) in the standard build;
@@ -166,6 +183,26 @@
         <TextBlock x:Name="ConfigLabel" Text="1 of 1" VerticalAlignment="Center"
                    MinWidth="64" TextAlignment="Center" />
         <Button x:Name="NextConfigButton" Content="Next ▶" Padding="8,2" Click="NextConfig_Click" />
+      </StackPanel>
+    </Border>
+
+    <!-- Field direction: every analysis and the layout follow it, as every one follows the
+         configuration above. LensHH-LT's fields lie along y; +x, −y and −x are the lens turned
+         about its axis (GuiSession.FieldDirection). -->
+    <Border DockPanel.Dock="Top" Background="#F4F4F4" Padding="8,3"
+            BorderBrush="#D8D8D8" BorderThickness="0,0,0,1" IsVisible="{Binding ShowFieldDirections}">
+      <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center"
+                  IsEnabled="{Binding CanChooseFieldDirection}"
+                  ToolTip.Tip="Show the fields at +y, or the lens turned about its axis to show them at +x, −y or −x: a lens that is not rotationally symmetric, such as a Monte Carlo trial, differs in each. Every analysis and the 2D layout follow.">
+        <TextBlock Text="Fields at" VerticalAlignment="Center" FontWeight="SemiBold" Margin="0,0,4,0" />
+        <RadioButton GroupName="FieldDirectionBar" Content="+y" IsChecked="{Binding IsFieldPlusY, Mode=OneWay}"
+                     Command="{Binding SetFieldDirectionCommand}" CommandParameter="0" />
+        <RadioButton GroupName="FieldDirectionBar" Content="+x" IsChecked="{Binding IsFieldPlusX, Mode=OneWay}"
+                     Command="{Binding SetFieldDirectionCommand}" CommandParameter="1" />
+        <RadioButton GroupName="FieldDirectionBar" Content="−y" IsChecked="{Binding IsFieldMinusY, Mode=OneWay}"
+                     Command="{Binding SetFieldDirectionCommand}" CommandParameter="2" />
+        <RadioButton GroupName="FieldDirectionBar" Content="−x" IsChecked="{Binding IsFieldMinusX, Mode=OneWay}"
+                     Command="{Binding SetFieldDirectionCommand}" CommandParameter="3" />
       </StackPanel>
     </Border>
 

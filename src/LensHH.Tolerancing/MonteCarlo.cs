@@ -57,6 +57,13 @@ public sealed record MonteCarloResult(string Criterion, IReadOnlyList<ToleranceI
     /// <summary>The compensator the lenses were refocused by; null for none.</summary>
     public FocusCompensator? Compensator { get; init; }
 
+    /// <summary>
+    /// How far the focus thickness moved from the design to refocus the nominal lens, mm. A trial's
+    /// <see cref="TrialResult.Compensator"/> is its move from there; this plus that is its move from
+    /// the design, the change its saved lens shows.
+    /// </summary>
+    public double NominalFocus { get; init; }
+
     /// <summary>The nominal lens's MTF, refocused, at each kept field and frequency.</summary>
     public IReadOnlyList<double[]> NominalMtfT { get; init; } = Array.Empty<double[]>();
     public IReadOnlyList<double[]> NominalMtfS { get; init; } = Array.Empty<double[]>();
@@ -141,9 +148,9 @@ public static class MonteCarlo
         var nominal = Sensitivity.Evaluate(lens, Array.Empty<(Tolerance, double)>(), criterion, compensator, out var nominalLens);
         double reference = double.IsFinite(nominal.Change) ? nominal.Change : 0.0;
         var nominalBuilt = nominalLens.Build();
-        // Each field's pupil, measured once on the nominal lens: a trial's errors barely move it.
-        var pupils = freqs.Count == 0 ? Array.Empty<LensHH.Core.Analysis.FftMtfCalculator.PupilGeometry>()
-            : fields.Select(f => LensHH.Core.Analysis.FftMtfCalculator.MeasurePupil(nominalBuilt.System, nominalBuilt.Glass, f)).ToArray();
+        // Each field's pupil in each direction, measured once on the nominal lens: a trial's errors barely move it.
+        var pupils = freqs.Count == 0 ? Array.Empty<IReadOnlyList<LensHH.Core.Analysis.FftMtfCalculator.PupilGeometry>>()
+            : fields.Select(f => Mtf.Pupils(nominalBuilt, f)).ToArray();
         var (nominalT, nominalS) = MtfOf(nominalBuilt, fields, freqs, options.MtfGridSize, pupils);
 
         string? dir = options.SaveDirectory;
@@ -170,7 +177,7 @@ public static class MonteCarlo
                 var (t, s) = MtfOf(built, fields, freqs, options.MtfGridSize, pupils);
                 trialResult = trialResult with { MtfT = t, MtfS = s };
                 if (dir != null && k < options.SaveTrials)
-                    trialResult = trialResult with { File = Save(trial.Readable(), dir, k + 1, items, x, r, compensator) };
+                    trialResult = trialResult with { File = Save(built.System, dir, k + 1, items, x, r, compensator, lens.Views) };
             }
             trials[k] = trialResult;
             progress?.Report(Interlocked.Increment(ref done));
@@ -182,24 +189,28 @@ public static class MonteCarlo
             NominalMtfS = nominalS,
             CriterionInfo = criterion,
             Compensator = compensator,
+            NominalFocus = compensator != null && double.IsFinite(nominal.Change) ? nominal.Change : 0.0,
         };
         if (dir != null) File.WriteAllText(Path.Combine(dir, "trials.csv"), Csv(result, criterion));
         return result;
     }
 
+    /// <summary>Each field's MTF in the worst direction the lens is judged in (<see cref="Mtf.Worst"/>).</summary>
     private static (double[][] T, double[][] S) MtfOf(Built lens, IReadOnlyList<int> fields, IReadOnlyList<double> freqs, int grid,
-                                                      IReadOnlyList<LensHH.Core.Analysis.FftMtfCalculator.PupilGeometry> pupils)
+                                                      IReadOnlyList<IReadOnlyList<LensHH.Core.Analysis.FftMtfCalculator.PupilGeometry>> pupils)
     {
         if (freqs.Count == 0) return (Array.Empty<double[]>(), Array.Empty<double[]>());
         var t = new double[fields.Count][];
         var s = new double[fields.Count][];
-        for (int f = 0; f < fields.Count; f++) (t[f], s[f]) = Mtf.Curve(lens, fields[f], freqs, grid, pupils[f]);
+        for (int f = 0; f < fields.Count; f++) (t[f], s[f]) = Mtf.Worst(lens, fields[f], freqs, grid, pupils[f]);
         return (t, s);
     }
 
     private static string Save(LensHH.Core.Models.OpticalSystem system, string dir, int trial, IReadOnlyList<ToleranceItem> items,
-                               IReadOnlyList<double> x, Compensated r, FocusCompensator? compensator)
+                               IReadOnlyList<double> x, Compensated r, FocusCompensator? compensator,
+                               IReadOnlyList<FieldView> views)
     {
+        system = system.DeepClone();
         system.Title = $"Monte Carlo trial {trial}" + (string.IsNullOrEmpty(system.Title) ? "" : $" of {system.Title}");
         var notes = new StringBuilder();
         notes.AppendLine($"Monte Carlo trial {trial}. Errors:");
@@ -212,7 +223,7 @@ public static class MonteCarlo
             for (int k = 0; k < compensator.Adjustments.Count; k++)
                 notes.AppendLine($"  {ToleranceSpec.Format(compensator.Adjustments[k] with { Travel = null })} = {(r.Adjustments?[k] ?? 0.0).ToString("G6", c)}");
         }
-        notes.AppendLine($"Criterion {r.Criterion.ToString("G6", c)}.");
+        notes.AppendLine($"Criterion {r.Criterion.ToString("G6", c)}, over the fields at {string.Join(", ", views.Select(v => v.Name))}.");
         system.Notes = notes.ToString();
         string path = Path.Combine(dir, $"MC_{trial:D4}.lhlt");
         LhltWriter.Write(system, path);
@@ -224,7 +235,8 @@ public static class MonteCarlo
     {
         var c = CultureInfo.InvariantCulture;
         var sb = new StringBuilder();
-        sb.Append("trial,criterion,compensator,at_limit");
+        // The focus as the saved lens has it: its change from the design thickness.
+        sb.Append("trial,criterion,focus_change_mm,at_limit");
         var adjustments = result.Compensator?.Adjustments ?? Array.Empty<Adjustment>();
         foreach (var a in adjustments) sb.Append(',').Append(ToleranceSpec.Format(a with { Travel = null }));
         foreach (var item in result.Items) sb.Append(',').Append(item.Tolerance.Code).Append(' ').Append(ToleranceSpec.Surfaces(item.Tolerance));
@@ -233,7 +245,7 @@ public static class MonteCarlo
         {
             sb.Append(t.Index.ToString(c)).Append(',')
               .Append(criterion.Quoted(t.Criterion).ToString("G8", c)).Append(',')
-              .Append(t.Compensator.ToString("G8", c)).Append(',')
+              .Append((t.Compensator + result.NominalFocus).ToString("G8", c)).Append(',')
               .Append(t.AtLimit ? "1" : "0");
             for (int k = 0; k < adjustments.Count; k++)
                 sb.Append(',').Append(k < t.Adjustments.Count ? t.Adjustments[k].ToString("G8", c) : "");

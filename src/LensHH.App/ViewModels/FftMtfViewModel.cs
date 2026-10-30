@@ -44,7 +44,7 @@ public partial class FftMtfViewModel : ObservableObject
     /// </summary>
     private void RefreshWavelengthOptions()
     {
-        var system = _session.System;
+        var system = _session.AnalysisSystem;
         int prevIndex = SelectedWavelengthIndex;
         WavelengthOptions.Clear();
         WavelengthOptions.Add("All (Polychromatic)");
@@ -67,7 +67,7 @@ public partial class FftMtfViewModel : ObservableObject
 
         try
         {
-            var system = _session.System;
+            var system = _session.AnalysisSystem;
             var glassMgr = _session.GlassCatalog;
             int numFields = system.Fields.Count;
             // With only 1 wavelength, use monochromatic path (polychromatic is identical but has more overhead)
@@ -159,7 +159,7 @@ public partial class FftMtfViewModel : ObservableObject
     {
         if (_lastFieldResults == null || _lastFieldLabels == null) return;
 
-        var system = _session.System;
+        var system = _session.AnalysisSystem;
         string fieldUnit = system.FieldType == Core.Enums.FieldType.ObjectHeight ? "mm" : "deg";
 
         var topLevel = Avalonia.Application.Current?.ApplicationLifetime is

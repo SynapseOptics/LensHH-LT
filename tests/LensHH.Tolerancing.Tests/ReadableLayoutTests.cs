@@ -77,7 +77,7 @@ public class ReadableLayoutTests
             LhltWriter.Write(readable, path);
             var reread = LhltReader.Read(path).System;
             PickupSolver.Solve(reread);
-            Assert.Equal(traced, Rms.Evaluate(Built.Of(reread, lens.Glass)), 9);
+            Assert.Equal(traced, Rms.Evaluate(Built.Of(reread, lens.Glass, lens.Views)), 9);
         }
         finally
         {

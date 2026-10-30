@@ -1,5 +1,6 @@
 using System;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -28,8 +29,8 @@ public partial class ToleranceDialogViewModel : ObservableObject
     public ToleranceDialogViewModel(GuiSession session)
     {
         _session = session;
-        _tolerancesText = "# Tolerances, one per line: CODE surfaces ±t, or CODE surfaces min max\n"
-                        + "# Choose a shop grade and press Generate for a starting set.\n";
+        // The back focus refocuses each lens until the user names other compensators.
+        if (session.HasSystem) Compensators.Add(new CompensatorRowViewModel { Code = "COMP", Surfaces = BackFocusSurface.ToString(CultureInfo.InvariantCulture) });
         // Trials go beside the lens file, or to Documents for a lens not yet saved.
         string? file = session.FilePath;
         _saveDirectory = file != null
@@ -42,8 +43,94 @@ public partial class ToleranceDialogViewModel : ObservableObject
     public static string[] Orientations { get; } = { "Tangential", "Sagittal" };
     public static string[] DistributionNames { get; } = { "Uniform", "Normal (±2σ)", "End points" };
 
-    [ObservableProperty] private string _tolerancesText;
+    /// <summary>The tolerance table, one row per tolerance.</summary>
+    public ObservableCollection<ToleranceRowViewModel> Tolerances { get; } = new();
+    [ObservableProperty] [NotifyCanExecuteChangedFor(nameof(InsertToleranceCommand), nameof(DeleteToleranceCommand))]
+    private ToleranceRowViewModel? _selectedTolerance;
+
+    /// <summary>The compensators: what is adjusted after each lens is built. The back focus to begin with.</summary>
+    public ObservableCollection<CompensatorRowViewModel> Compensators { get; } = new();
+    [ObservableProperty] [NotifyCanExecuteChangedFor(nameof(DeleteCompensatorCommand))]
+    private CompensatorRowViewModel? _selectedCompensator;
+
     [ObservableProperty] private int _gradeIndex = 1;
+
+    private int BackFocusSurface => _session.System.Surfaces.Count - 2;
+
+    /// <summary>The table and the compensators as a tolerance set, in the .tol format.</summary>
+    public string TolerancesText =>
+        string.Concat(Tolerances.Select(r => r.ToLine() + "\n")) + string.Concat(Compensators.Select(r => r.ToLine() + "\n"));
+
+    [RelayCommand]
+    private void AddTolerance()
+    {
+        // A new row starts as a copy of the one selected, the usual way to add the next surface's.
+        var row = SelectedTolerance is { } s
+            ? new ToleranceRowViewModel { Code = s.Code, Surfaces = s.Surfaces, Min = s.Min, Max = s.Max, SpreadIndex = s.SpreadIndex, Pivot = s.Pivot }
+            : new ToleranceRowViewModel();
+        Tolerances.Add(row);
+        SelectedTolerance = row;
+    }
+
+    private bool HasSelectedTolerance() => SelectedTolerance != null;
+
+    [RelayCommand(CanExecute = nameof(HasSelectedTolerance))]
+    private void InsertTolerance()
+    {
+        int at = SelectedTolerance is { } s ? Tolerances.IndexOf(s) : 0;
+        var row = new ToleranceRowViewModel();
+        Tolerances.Insert(Math.Max(0, at), row);
+        SelectedTolerance = row;
+    }
+
+    [RelayCommand(CanExecute = nameof(HasSelectedTolerance))]
+    private void DeleteTolerance()
+    {
+        if (SelectedTolerance is not { } s) return;
+        int at = Tolerances.IndexOf(s);
+        Tolerances.Remove(s);
+        SelectedTolerance = Tolerances.Count == 0 ? null : Tolerances[Math.Min(at, Tolerances.Count - 1)];
+    }
+
+    [RelayCommand]
+    private void AddCompensator()
+    {
+        var row = new CompensatorRowViewModel { Code = "COMP", Surfaces = BackFocusSurface.ToString(CultureInfo.InvariantCulture) };
+        Compensators.Add(row);
+        SelectedCompensator = row;
+    }
+
+    private bool HasSelectedCompensator() => SelectedCompensator != null;
+
+    [RelayCommand(CanExecute = nameof(HasSelectedCompensator))]
+    private void DeleteCompensator()
+    {
+        if (SelectedCompensator is { } s) Compensators.Remove(s);
+    }
+
+    /// <summary>Fills both tables from a tolerance set; false, with the reason in the status, when it does not read.</summary>
+    private bool Fill(string text)
+    {
+        try
+        {
+            var items = ToleranceSpec.ParseSet(text);
+            var compensators = ToleranceSpec.ParseCompensators(text);
+            Tolerances.Clear();
+            foreach (var item in items) Tolerances.Add(ToleranceRowViewModel.From(item));
+            if (compensators.Count > 0)
+            {
+                Compensators.Clear();
+                foreach (var a in compensators) Compensators.Add(CompensatorRowViewModel.From(a));
+            }
+            SelectedTolerance = Tolerances.FirstOrDefault();
+            return true;
+        }
+        catch (FormatException e)
+        {
+            Status = e.Message;
+            return false;
+        }
+    }
 
     [ObservableProperty] [NotifyPropertyChangedFor(nameof(IsMtfCriterion))] private int _criterionIndex;
     public bool IsMtfCriterion => CriterionIndex == 1;
@@ -52,9 +139,10 @@ public partial class ToleranceDialogViewModel : ObservableObject
     [ObservableProperty] private int _orientationIndex;
 
     [ObservableProperty] private bool _polychromatic = true;
-    [ObservableProperty] private bool _mirrorFields = true;
+    /// <summary>The directions each lens is judged in, as <see cref="FieldSymmetry"/> orders them, most first.</summary>
+    public string[] FieldDirections { get; } = { "+y only", "+y and −y", "±x and ±y" };
+    [ObservableProperty] private int _fieldDirectionsIndex = (int)FieldSymmetry.XY;
     [ObservableProperty] private bool _compensate = true;
-    [ObservableProperty] private string _travelText = "";
 
     [ObservableProperty] private int _trials = 200;
     [ObservableProperty] private int _seed = 1;
@@ -81,9 +169,6 @@ public partial class ToleranceDialogViewModel : ObservableObject
     public ObservableCollection<string> TrialFiles { get; } = new();
     [ObservableProperty] private string? _selectedTrial;
 
-    /// <summary>A trial lens to open in the main window once this one closes.</summary>
-    public string? OpenPath { get; private set; }
-    public event EventHandler? CloseRequested;
 
     public int FieldCount => _session.HasSystem ? _session.System.Fields.Count : 0;
 
@@ -93,8 +178,8 @@ public partial class ToleranceDialogViewModel : ObservableObject
         try
         {
             var grade = (ShopGrade)GradeIndex;
-            TolerancesText = ToleranceRun.Defaults(_session.System, _session.GlassCatalog, grade, Settings());
-            Status = $"{Grades[GradeIndex]} tolerances generated.";
+            if (Fill(ToleranceRun.Defaults(_session.System, _session.GlassCatalog, grade, Settings())))
+                Status = $"{Grades[GradeIndex]} tolerances generated: {Tolerances.Count} rows.";
         }
         catch (Exception e) when (e is ArgumentException or InvalidOperationException or NotSupportedException)
         {
@@ -102,12 +187,16 @@ public partial class ToleranceDialogViewModel : ObservableObject
         }
     }
 
-    public void LoadTolerances(string path) => TolerancesText = File.ReadAllText(path);
+    public void LoadTolerances(string path)
+    {
+        if (Fill(File.ReadAllText(path))) Status = $"Read {Tolerances.Count} tolerances and {Compensators.Count} compensators from {Path.GetFileName(path)}.";
+    }
+
     public void SaveTolerances(string path) => File.WriteAllText(path, TolerancesText);
 
     private ToleranceSettings Settings()
     {
-        double? travel = double.TryParse(TravelText, NumberStyles.Float, CultureInfo.CurrentCulture, out double t) && t > 0 ? t : null;
+
         string stats = DistributionIndex switch { 1 => "normal", 2 => "endpoint", _ => "uniform" } + (PairsAsOne ? "+disc" : "");
         string criterion = IsMtfCriterion
             ? string.Create(CultureInfo.InvariantCulture, $"mtf:{MtfField}:{MtfFrequency}:{(OrientationIndex == 0 ? "t" : "s")}")
@@ -117,8 +206,8 @@ public partial class ToleranceDialogViewModel : ObservableObject
             Criterion = criterion,
             Polychromatic = Polychromatic,
             Compensate = Compensate,
-            Travel = travel,
-            Fields = MirrorFields ? FieldSymmetry.Y : FieldSymmetry.File,
+
+            Fields = (FieldSymmetry)Math.Clamp(FieldDirectionsIndex, 0, FieldDirections.Length - 1),
             Trials = Math.Max(1, Trials),
             Seed = Seed,
             Statistics = stats,
@@ -136,6 +225,7 @@ public partial class ToleranceDialogViewModel : ObservableObject
     {
         var settings = Settings();
         string text = TolerancesText;
+        if (Tolerances.Count == 0) { Status = "The table is empty: add tolerances, or press Generate for a starting set."; return; }
         int total;
         try { total = 2 * ToleranceRun.Parse(text, settings).Count; }
         catch (FormatException e) { Status = e.Message; return; }
@@ -152,6 +242,7 @@ public partial class ToleranceDialogViewModel : ObservableObject
     {
         var settings = Settings();
         string text = TolerancesText;
+        if (Tolerances.Count == 0) { Status = "The table is empty: add tolerances, or press Generate for a starting set."; return; }
         try { ToleranceRun.Parse(text, settings); }
         catch (FormatException e) { Status = e.Message; return; }
         var system = _session.System.DeepClone();
@@ -219,12 +310,29 @@ public partial class ToleranceDialogViewModel : ObservableObject
         MtfImage = Render(MonteCarloPlot.Svg(_monteCarlo, value));
     }
 
+    /// <summary>
+    /// Opens the selected trial lens in a LensHH-LT window of its own - a second copy of the program -
+    /// so the design open here, and this window, are left as they are.
+    /// </summary>
     [RelayCommand]
     private void OpenTrial()
     {
         if (SelectedTrial == null) return;
-        OpenPath = SelectedTrial;
-        CloseRequested?.Invoke(this, EventArgs.Empty);
+        if (!File.Exists(SelectedTrial)) { Status = $"{SelectedTrial} is no longer there."; return; }
+        // In an AppImage the program's own path is inside the mounted image; the image itself is what starts it.
+        string? program = Environment.GetEnvironmentVariable("APPIMAGE") is { Length: > 0 } image ? image : Environment.ProcessPath;
+        if (program == null) { Status = "Could not find the program to open the lens with."; return; }
+        try
+        {
+            var start = new ProcessStartInfo(program) { UseShellExecute = false };
+            start.ArgumentList.Add(SelectedTrial);
+            Process.Start(start);
+            Status = $"Opening {Path.GetFileName(SelectedTrial)} in a new window.";
+        }
+        catch (Exception e) when (e is System.ComponentModel.Win32Exception or InvalidOperationException or IOException)
+        {
+            Status = $"Could not open {Path.GetFileName(SelectedTrial)}: {e.Message}";
+        }
     }
 
     private static Bitmap? Render(string svg)

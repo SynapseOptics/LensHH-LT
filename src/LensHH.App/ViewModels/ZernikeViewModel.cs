@@ -66,7 +66,7 @@ public partial class ZernikeViewModel : ObservableObject
 
     public void RefreshOptions()
     {
-        var system = _session.System;
+        var system = _session.AnalysisSystem;
         int field = SelectedFieldIndex, wave = SelectedWaveIndex;
         FieldOptions.Clear();
         WaveOptions.Clear();
@@ -97,7 +97,7 @@ public partial class ZernikeViewModel : ObservableObject
         StatusText = "";
         try
         {
-            var system = _session.System;
+            var system = _session.AnalysisSystem;
             var glassMgr = _session.GlassCatalog;
             // Every time, as the other analysis tabs do: the first Compute runs as the tab opens,
             // after its combo boxes exist, so this is what fills them.

@@ -365,6 +365,9 @@ public partial class MainWindow : Window
     private async void ExportZmx_Click(object? sender, RoutedEventArgs e)
         => await ExportFile("Export Zemax", "zmx", "Zemax Files", "zmx");
 
+    private async void ExportZmxXy_Click(object? sender, RoutedEventArgs e)
+        => await ExportFile("Export Zemax, fields at ±x and ±y", "zmx", "Zemax Files", "zmx-xy");
+
     private async void ExportCodeV_Click(object? sender, RoutedEventArgs e)
         => await ExportFile("Export Code V", "seq", "Code V Files", "codev");
 
@@ -1081,13 +1084,10 @@ public partial class MainWindow : Window
     private async void Tolerancing_Click(object? sender, RoutedEventArgs e)
     {
         // Tolerancing runs on copies of the lens; the design itself never changes. A saved trial
-        // lens the user asks to see is opened once the window closes.
+        // lens opens in a window of its own, never in place of the design.
         var vm = new ToleranceDialogViewModel(VM.Session);
         var dialog = new ToleranceDialog { DataContext = vm };
         await dialog.ShowDialog(this);
-
-        if (vm.OpenPath != null)
-            VM.OpenFile(vm.OpenPath, "lhlt");
     }
 
     private async void RandomStart_Click(object? sender, RoutedEventArgs e)

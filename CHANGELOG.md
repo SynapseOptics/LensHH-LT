@@ -6,7 +6,7 @@ All notable changes to LensHH-LT and the LensHH-LT-Engine.
 
 ### New
 
-- **Tolerancing** (Optimization ▸ Tolerancing…, CLI `tolerance`, MCP `ToleranceDefaults`,
+- **Tolerancing** (Tolerancing ▸ Tolerancing…, CLI `tolerance`, MCP `ToleranceDefaults`,
   `ToleranceSensitivity`, `ToleranceMonteCarlo`). Tolerance sets in a plain text format, with a
   starting set at a shop grade; sensitivity, worst first; Monte Carlo of lenses drawn within the
   tolerances, each refocused, judged by RMS wavefront or MTF, with the MTF that half and 90 % of
@@ -15,7 +15,14 @@ All notable changes to LensHH-LT and the LensHH-LT-Engine.
   pickups hold through every error and adjustment. Monte Carlo lenses can be saved as lens files
   that open and analyse like any other - every surface with its own thickness, each moved element
   between a pair of Coordinate Breaks whose second picks up the first - with a table of every
-  trial.
+  trial. Each lens is judged at +y, +x, −y and −x by default, the lens turned about its axis to
+  put its fields in each direction, and refocused for all four together.
+- **Field direction** (Analysis ▸ Field Direction, and on the 2D Layout tab): the analyses and the
+  layout show a lens turned about its axis, to see its fields at +x, −y or −x - for a lens that
+  is not rotationally symmetric, such as a Monte Carlo trial.
+- **Zemax export with fields at ±x and ±y** (File ▸ Export, CLI `file export zemax-xy`, MCP
+  `ExportZemax allDirections`). The Zemax export and import now carry Zernike departures (as
+  Zernike Fringe Sag surfaces) and glass offsets (as Offset solves).
 - **Coordinate Break** surfaces: decentre and tilt the frame for the surfaces after them. A lens
   decentred or tilted by one is for analysis; the optimizers refuse it.
 - **Zernike departure** on Standard and Even Asphere surfaces: Fringe Z1 to Z35 over a
@@ -26,6 +33,18 @@ All notable changes to LensHH-LT and the LensHH-LT-Engine.
 
 ### Fixed
 
+- The 2D layout drew an element laid out between Coordinate Breaks as boxes: each surface was
+  joined to the row after it. An element is now drawn between its own two surfaces, and the planes
+  and breaks a move is laid out with are not drawn as apertures.
+- A lens turned about its axis by a Coordinate Break's tilt about z: the 2D layout drew its rays
+  by their height along the turned frame, and ray aiming measured the stop there, so relative
+  illumination read 0 at every field for a quarter turn. Rays, the pupil aberration fan and the
+  aimed pupil are now taken in the frame the fields are given in.
+- Longitudinal aberration of a decentred or tilted lens took each ray's focus where it crossed the
+  axis; with the axial image off the axis, rays near the centre of the pupil read far out of
+  focus. Each ray's focus is now where it crosses the axial chief ray.
+- Lateral color now includes the axis, where a decentred or tilted lens already separates the
+  colors. Relative illumination computes its field points in parallel.
 - The optical path through a tilted Coordinate Break left out the ray's slide back to the tilted
   vertex plane, so wavefront, OPD, PSF and MTF read a tilt across the pupil as aberration.
 - The working F/# behind the FFT and geometric MTF, the PSF and System Data was taken from the

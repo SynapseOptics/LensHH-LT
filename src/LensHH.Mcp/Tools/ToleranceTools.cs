@@ -26,19 +26,20 @@ namespace LensHH.Mcp.Tools
 
         private const string Options =
             " criterion: 'rms' (RMS wavefront, waves) or 'mtf:field:frequency:t|s'. compensate: refocus each lens, by the back " +
-            "focus or the compensators the set names; travel limits the back focus (mm). polychromatic=false uses the primary wavelength. mirrorFields mirrors each field to -y.";
+            "focus or the compensators the set names; travel limits the back focus (mm). polychromatic=false uses the primary wavelength. fields: the directions across the field each lens is judged in, " +
+            "'xy' (+y, +x, -y, -x; default: the lens turned about its axis), 'y' (+y, -y) or 'file' (+y, the lens's fields as given).";
 
         private static string Read(string tolerances) =>
             !tolerances.Contains('\n') && File.Exists(tolerances) ? File.ReadAllText(tolerances) : tolerances;
 
         private static ToleranceSettings Settings(string criterion, bool compensate, double? travel, bool polychromatic,
-                                                  bool mirrorFields) => new()
+                                                  string fields) => new()
         {
             Criterion = string.IsNullOrWhiteSpace(criterion) ? "rms" : criterion,
             Compensate = compensate,
             Travel = travel,
             Polychromatic = polychromatic,
-            Fields = mirrorFields ? FieldSymmetry.Y : FieldSymmetry.File,
+            Fields = ToleranceRun.ParseFields(string.IsNullOrWhiteSpace(fields) ? "xy" : fields),
         };
 
         [McpServerTool, Description("A starting tolerance set for the current lens at a shop grade: 'lowcost', 'commercial' (default), " +
@@ -61,11 +62,11 @@ namespace LensHH.Mcp.Tools
         [McpServerTool, Description("Sensitivity of the current lens to each tolerance at both ends of its range, worst first, " +
             "with the root-sum-square estimate of the lens as built. " + Format + Options + " show limits the rows (0 = all).")]
         public string ToleranceSensitivity(string tolerances, string criterion = "rms", bool compensate = true, double? travel = null,
-                                           bool polychromatic = true, bool mirrorFields = true, int show = 0)
+                                           bool polychromatic = true, string fields = "xy", int show = 0)
         {
             try
             {
-                var settings = Settings(criterion, compensate, travel, polychromatic, mirrorFields);
+                var settings = Settings(criterion, compensate, travel, polychromatic, fields);
                 var table = ToleranceRun.Sensitivity(_session.System, _session.GlassCatalog, Read(tolerances), settings);
                 return ToleranceRun.Report(table, show);
             }
@@ -85,12 +86,12 @@ namespace LensHH.Mcp.Tools
             Format + Options)]
         public string ToleranceMonteCarlo(string tolerances, int trials = 200, int seed = 1, string statistics = "uniform",
                                           string criterion = "rms", bool compensate = true, double? travel = null,
-                                          bool polychromatic = true, bool mirrorFields = true,
+                                          bool polychromatic = true, string fields = "xy",
                                           double mtfMaxFrequency = 0, double mtfStep = 5, string? saveDirectory = null, int saveTrials = 20)
         {
             try
             {
-                var settings = Settings(criterion, compensate, travel, polychromatic, mirrorFields) with
+                var settings = Settings(criterion, compensate, travel, polychromatic, fields) with
                 {
                     Trials = trials,
                     Seed = seed,

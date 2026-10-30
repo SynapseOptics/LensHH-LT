@@ -12,23 +12,14 @@ namespace LensHH.App.Views
         public ToleranceDialog()
         {
             InitializeComponent();
-            DataContextChanged += OnDataContextChanged;
             // Closing the window cancels a running analysis, so its workers do not outlive it.
             Closing += (_, _) => VM?.CancelRun();
         }
 
         private ToleranceDialogViewModel? VM => DataContext as ToleranceDialogViewModel;
 
-        private void OnDataContextChanged(object? sender, EventArgs e)
-        {
-            if (VM != null)
-            {
-                VM.CloseRequested -= OnCloseRequested;
-                VM.CloseRequested += OnCloseRequested;
-            }
-        }
-
-        private void OnCloseRequested(object? sender, EventArgs e) => Close();
+        // A double-click on a trial lens opens it, as the button does.
+        private void Trial_DoubleTapped(object? sender, Avalonia.Input.TappedEventArgs e) => VM?.OpenTrialCommand.Execute(null);
 
         private static readonly IReadOnlyList<FilePickerFileType> TolTypes = new[]
         {

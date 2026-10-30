@@ -31,6 +31,79 @@ public class GuiSession
 
     public OpticalSystem System => _system;
     public GlassCatalogManager GlassCatalog => _glassCatalog;
+
+    private LensHH.Tolerancing.FieldView _fieldDirection = LensHH.Tolerancing.FieldView.PlusY;
+    private OpticalSystem? _turned;
+    private OpticalSystem? _turnedFrom;
+    private int _turnedAt = -1, _changes;
+
+    /// <summary>
+    /// The direction across the field the analyses and the layout show: +y, the lens's own fields,
+    /// or the lens turned about its axis to show them at +x, −y or −x. LensHH-LT's fields lie along
+    /// y; a lens that is not rotationally symmetric - a Monte Carlo trial - differs in each.
+    /// </summary>
+    public LensHH.Tolerancing.FieldView FieldDirection
+    {
+        get => _fieldDirection;
+        set
+        {
+            if (value == _fieldDirection) return;
+            _fieldDirection = value;
+            _turned = null;
+            FieldDirectionChanged?.Invoke();
+        }
+    }
+
+    /// <summary>
+    /// Whether the lens is the same in every direction across the field: no Coordinate Break that
+    /// decentres or tilts, and no Zernike departure but the rotationally symmetric terms (Z1, Z4,
+    /// Z9, Z16, Z25). Then +y shows everything and the field directions are not offered.
+    /// </summary>
+    public bool IsRotationallySymmetric
+    {
+        get
+        {
+            if (_system == null) return true;
+            if (_system.FirstTiltedOrDecentredBreak() != 0) return false;
+            foreach (var s in _system.Surfaces)
+            {
+                if (!LensHH.Core.Models.ZernikeDeparture.IsPresent(s)) continue;
+                for (int j = 1; j <= LensHH.Core.Models.ZernikeDeparture.MaxTerms; j++)
+                {
+                    int root = (int)Math.Round(Math.Sqrt(j));
+                    if (root * root != j && LensHH.Core.Models.ZernikeDeparture.Term(s, j) != 0.0) return false;
+                }
+            }
+            return true;
+        }
+    }
+
+    /// <summary>Raised when <see cref="FieldDirection"/> changes: the analyses recompute.</summary>
+    public event Action? FieldDirectionChanged;
+
+    /// <summary>
+    /// The lens the field analyses and the layout compute on: <see cref="System"/> itself at +y,
+    /// otherwise a copy turned to <see cref="FieldDirection"/> (<see cref="LensHH.Tolerancing.FieldTurn"/>),
+    /// made again after every change to the lens. Never edit it.
+    /// </summary>
+    public OpticalSystem AnalysisSystem
+    {
+        get
+        {
+            if (_system == null || _fieldDirection.Turn == 0.0) return _system!;
+            if (_turned == null || !ReferenceEquals(_turnedFrom, _system) || _turnedAt != _changes)
+            {
+                _turned = LensHH.Tolerancing.FieldTurn.Apply(_system, _fieldDirection.Turn).System;
+                // The beams at the turned fields pass where the lens's own did not: its automatic
+                // clear apertures are sized again for them.
+                try { LensHH.Core.Analysis.SemiDiameterSolver.Solve(_turned, _glassCatalog, accurateApertures: true); }
+                catch { /* the lens's own apertures stand */ }
+                _turnedFrom = _system;
+                _turnedAt = _changes;
+            }
+            return _turned;
+        }
+    }
     public string? FilePath => _filePath;
     public bool HasSystem => _system != null;
 
@@ -392,6 +465,10 @@ public class GuiSession
             case "zmx":
                 ZmxWriter.Write(_system, path);
                 break;
+            case "zmx-xy":
+                // Each field at +y, +x, −y and −x, as a lens that is not rotationally symmetric is judged.
+                ZmxWriter.Write(_system, path, allDirections: true);
+                break;
             case "codev":
                 CodeVWriter.Write(_system, path, _glassCatalog);
                 break;
@@ -448,6 +525,7 @@ public class GuiSession
 
     public void NotifySystemChanged(string sender, bool markDirty = true)
     {
+        _changes++;   // the turned lens is made again
         // Load the glass map catalog (GMAP) here, on the UI thread, so no optimizer's parallel
         // merit expansion loads it while other threads read the glass manager.
         if (!string.IsNullOrWhiteSpace(_system.GlassMapCatalog))

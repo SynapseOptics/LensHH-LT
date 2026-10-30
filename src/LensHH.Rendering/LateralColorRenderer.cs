@@ -16,11 +16,19 @@ namespace LensHH.Rendering
         /// One curve per wavelength, X = field (degrees), Y = lateral shift
         /// — µm for focal systems, arcmin for afocal (engine emits arcmin).
         /// </summary>
+        /// <param name="negativeField">
+        /// The field axis runs from −<paramref name="maxField"/> to 0, for fields on the negative side
+        /// of the axis (their points' FieldY negative): the half of the curve that joins the positive
+        /// side's at 0.
+        /// </param>
         public static string Render(LateralColorResult result, string title,
             double maxField, int numWavelengths,
             string[]? wavelengthLabels = null, RenderingOptions? options = null,
-            string fieldUnit = "deg", string? referenceWavelengthLabel = null)
+            string fieldUnit = "deg", string? referenceWavelengthLabel = null,
+            bool negativeField = false)
         {
+            // Where the axis starts: 0, or −maxField for the negative side.
+            double fieldStart = negativeField ? -maxField : 0.0;
             var opt = options ?? new RenderingOptions();
             int w = 600, h = 400;
             int margin = 55;
@@ -58,10 +66,11 @@ namespace LensHH.Rendering
 
             // X grid (field)
             double fieldStep = FieldAxisHelper.NiceStep(maxField);
-            for (double fd = 0; fd <= maxField * 1.001; fd += fieldStep)
+            for (double step = 0; step <= maxField * 1.001; step += fieldStep)
             {
-                int x = margin + (int)(fd / maxField * pw);
-                if (fd > 0)
+                double fd = negativeField && step > 0 ? -step : step;   // no "−0"
+                int x = margin + (int)((fd - fieldStart) / maxField * pw);
+                if (Math.Abs(fd - fieldStart) > 1e-12)
                     sb.AppendLine(F($"<line x1=\"{x}\" y1=\"{margin}\" x2=\"{x}\" y2=\"{h - margin}\" stroke=\"#eee\" stroke-width=\"0.5\"/>"));
                 sb.AppendLine(F($"<text x=\"{x}\" y=\"{h - margin + 15}\" text-anchor=\"middle\" font-size=\"8\" fill=\"#666\">{FieldAxisHelper.FormatTick(fd, fieldUnit)}</text>"));
             }
@@ -87,7 +96,7 @@ namespace LensHH.Rendering
                 sb.Append(F($"<polyline fill=\"none\" stroke=\"{color}\" stroke-width=\"1.5\" points=\""));
                 foreach (var pt in pts)
                 {
-                    int px = margin + (int)(pt.FieldY / maxField * pw);
+                    int px = margin + (int)((pt.FieldY - fieldStart) / maxField * pw);
                     double shiftDisp = pt.LateralShift * dispScale;
                     int py = h / 2 - (int)(shiftDisp / maxShift * (ph / 2.0));
                     py = Math.Max(margin, Math.Min(h - margin, py));

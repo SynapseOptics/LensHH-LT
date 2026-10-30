@@ -39,7 +39,7 @@ public partial class FftPsfViewModel : ObservableObject
 
     private void RefreshWavelengthOptions()
     {
-        var system = _session.System;
+        var system = _session.AnalysisSystem;
         int prevIndex = SelectedWavelengthIndex;
         WavelengthOptions.Clear();
         for (int w = 0; w < system.Wavelengths.Count; w++)
@@ -60,7 +60,7 @@ public partial class FftPsfViewModel : ObservableObject
 
         try
         {
-            var system = _session.System;
+            var system = _session.AnalysisSystem;
             var glassMgr = _session.GlassCatalog;
             int numFields = system.Fields.Count;
             int waveIdx = Math.Max(0, SelectedWavelengthIndex);
@@ -156,7 +156,7 @@ public partial class FftPsfViewModel : ObservableObject
     {
         if (_lastResults == null) return;
 
-        var system = _session.System;
+        var system = _session.AnalysisSystem;
         string fieldUnit = system.FieldType == Core.Enums.FieldType.ObjectHeight ? "mm" : "deg";
 
         var topLevel = Avalonia.Application.Current?.ApplicationLifetime is

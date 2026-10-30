@@ -21,8 +21,8 @@ public sealed record ToleranceSettings
     /// <summary>The focus's travel either way from where it focuses the nominal lens; null for none.</summary>
     public double? Travel { get; init; }
 
-    /// <summary>The lens's fields, or each with its mirror image at −y as well.</summary>
-    public FieldSymmetry Fields { get; init; } = FieldSymmetry.Y;
+    /// <summary>The directions across the field each lens is judged in: +y, −y, +x and −x by default.</summary>
+    public FieldSymmetry Fields { get; init; } = FieldSymmetry.XY;
 
     /// <summary>Wavelength the fringes of TFRN, TIRR and TRSI are counted at, µm.</summary>
     public double TestWavelengthUm { get; init; } = PowerFringes.HeNe;
@@ -122,6 +122,15 @@ public static class ToleranceRun
             }
         }
     }
+
+    /// <summary>"xy" (+y, +x, −y, −x), "y" (+y and −y) or "file" (the fields as given, +y).</summary>
+    public static FieldSymmetry ParseFields(string text) => text.Trim().ToLowerInvariant() switch
+    {
+        "xy" or "x" => FieldSymmetry.XY,
+        "y" => FieldSymmetry.Y,
+        "file" or "+y" => FieldSymmetry.File,
+        _ => throw new ArgumentException($"{text}: the fields are judged in 'xy' (+y, +x, −y, −x), 'y' (+y, −y) or 'file' (+y)"),
+    };
 
     public static StatisticsModel ParseStatistics(string text)
     {

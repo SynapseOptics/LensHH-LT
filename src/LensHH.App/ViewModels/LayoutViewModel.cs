@@ -121,7 +121,7 @@ public partial class LayoutViewModel : ObservableObject
             // (engine treats -1 as "use primary"); n ≥ 1 maps to wavelength n-1.
             int wIdx = SelectedWavelengthOption <= 0 ? -1 : SelectedWavelengthOption - 1;
             var layout = SystemLayout.ComputeLayout(
-                _session.System, _session.GlassCatalog,
+                _session.AnalysisSystem, _session.GlassCatalog,
                 numRays: NumRays,
                 startFromSurface1: fromSurf1,
                 wavelengthIndex: wIdx, useVignettingFactors: UseVignettingFactors);

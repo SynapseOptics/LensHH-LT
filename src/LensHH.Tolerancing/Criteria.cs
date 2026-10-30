@@ -33,7 +33,8 @@ public interface IFocusedCriterion : ICriterion
 /// <summary>
 /// The RMS wavefront error, in waves, over the fields and (polychromatic) wavelengths, weighted by
 /// their weights: √(Σ w·rms² / Σ w). Each field and wavelength's RMS is the wavefront map's, about
-/// the chief ray's reference sphere at the primary wavelength.
+/// the chief ray's reference sphere at the primary wavelength. The sum runs over every direction
+/// the lens is judged in (<see cref="Built.Views"/>), with the weights shared among them.
 /// </summary>
 public sealed class RmsWavefrontCriterion : ICriterion
 {
@@ -49,24 +50,21 @@ public sealed class RmsWavefrontCriterion : ICriterion
 
     public double Evaluate(Built lens)
     {
-        var system = lens.System;
-        var waves = Polychromatic
-            ? Enumerable.Range(0, system.Wavelengths.Count)
-            : new[] { system.PrimaryWavelengthIndex };
         double sum = 0.0, weights = 0.0;
         try
         {
-            for (int f = 0; f < system.Fields.Count; f++)
-                foreach (int w in waves)
+            foreach (var view in lens.Views)
+            {
+                var system = view.System;
+                foreach (var (f, w, weight) in Samples(system))
                 {
-                    double weight = system.Fields[f].Weight * system.Wavelengths[w].Weight;
-                    if (weight <= 0.0) continue;
-                    var map = WavefrontMapCalculator.Compute(system, lens.Glass, f, w, GridSize);
+                    var map = WavefrontMapCalculator.Compute(system, view.Glass, f, w, GridSize);
                     double rms = map.RmsWavefront;
                     if (!double.IsFinite(rms) || rms <= 0.0 && !AnyValid(map)) return double.PositiveInfinity;
                     sum += weight * rms * rms;
                     weights += weight;
                 }
+            }
         }
         catch (Exception e) when (e is InvalidOperationException or ArithmeticException or ArgumentException)
         {
@@ -83,20 +81,14 @@ public sealed class RmsWavefrontCriterion : ICriterion
     /// </summary>
     public double[]? Vector(Built lens)
     {
-        var system = lens.System;
-        var waves = Polychromatic
-            ? Enumerable.Range(0, system.Wavelengths.Count)
-            : new[] { system.PrimaryWavelengthIndex };
         var parts = new List<(double Weight, WavefrontResult Map)>();
         double weights = 0.0;
         try
         {
-            for (int f = 0; f < system.Fields.Count; f++)
-                foreach (int w in waves)
+            foreach (var view in lens.Views)
+                foreach (var (f, w, weight) in Samples(view.System))
                 {
-                    double weight = system.Fields[f].Weight * system.Wavelengths[w].Weight;
-                    if (weight <= 0.0) continue;
-                    var map = WavefrontMapCalculator.Compute(system, lens.Glass, f, w, GridSize);
+                    var map = WavefrontMapCalculator.Compute(view.System, view.Glass, f, w, GridSize);
                     if (!AnyValid(map)) return null;
                     parts.Add((weight, map));
                     weights += weight;
@@ -120,6 +112,20 @@ public sealed class RmsWavefrontCriterion : ICriterion
         return vector.ToArray();
     }
 
+    /// <summary>Each field and wavelength the criterion counts, with its weight: every one weighted above zero.</summary>
+    private IEnumerable<(int Field, int Wave, double Weight)> Samples(LensHH.Core.Models.OpticalSystem system)
+    {
+        var waves = Polychromatic
+            ? Enumerable.Range(0, system.Wavelengths.Count)
+            : new[] { system.PrimaryWavelengthIndex };
+        for (int f = 0; f < system.Fields.Count; f++)
+            foreach (int w in waves)
+            {
+                double weight = system.Fields[f].Weight * system.Wavelengths[w].Weight;
+                if (weight > 0.0) yield return (f, w, weight);
+            }
+    }
+
     private static IEnumerable<(double Value, bool Valid)> Samples(WavefrontResult map)
     {
         for (int i = 0; i < map.Opd.GetLength(0); i++)
@@ -138,7 +144,8 @@ public enum MtfOrientation { Sagittal, Tangential }
 
 /// <summary>
 /// The polychromatic diffraction (FFT) MTF at one field, frequency and orientation, held above a
-/// floor. W = √(1 − MTF), so that smaller is better as for every criterion and W² is the MTF's loss.
+/// floor, in the worst direction the lens is judged in (<see cref="Mtf.Worst"/>).
+/// W = √(1 − MTF), so that smaller is better as for every criterion and W² is the MTF's loss.
 /// The lens is refocused by <see cref="Focus"/>, the sharpest image, as it would be focused in use.
 /// </summary>
 public sealed record MtfCriterion : IFocusedCriterion
@@ -241,10 +248,40 @@ public static class Mtf
         return (t, s);
     }
 
-    /// <summary>The MTF at one frequency and orientation.</summary>
+    /// <summary>
+    /// The MTF in the worst of the directions the lens is judged in (<see cref="Built.Views"/>), each
+    /// frequency and orientation its own lowest: the MTF the lens can be counted on for at this field
+    /// whichever way across the field it lies. The field on the axis is the same in every direction,
+    /// its tangential and sagittal already the two across the image, and is taken from the first.
+    /// <paramref name="pupils"/>, one per view, as <see cref="Curve"/> takes one.
+    /// </summary>
+    public static (double[] T, double[] S) Worst(Built lens, int field, IReadOnlyList<double> frequencies, int gridSize = 64,
+                                                 IReadOnlyList<FftMtfCalculator.PupilGeometry>? pupils = null)
+    {
+        var views = lens.Views;
+        double[]? t = null, s = null;
+        for (int v = 0; v < views.Count; v++)
+        {
+            if (v > 0 && Math.Abs(views[v].System.Fields[field].Y) < 1e-12) continue;
+            var (tv, sv) = Curve(views[v], field, frequencies, gridSize, pupils?[v]);
+            if (t == null || s == null) { (t, s) = (tv, sv); continue; }
+            for (int k = 0; k < t.Length; k++)
+            {
+                t[k] = Math.Min(t[k], tv[k]);
+                s[k] = Math.Min(s[k], sv[k]);
+            }
+        }
+        return (t!, s!);
+    }
+
+    /// <summary>Each view's pupil at <paramref name="field"/>, measured once on the nominal lens for <see cref="Worst"/>.</summary>
+    public static IReadOnlyList<FftMtfCalculator.PupilGeometry> Pupils(Built lens, int field) =>
+        lens.Views.Select(v => FftMtfCalculator.MeasurePupil(v.System, v.Glass, field)).ToArray();
+
+    /// <summary>The MTF at one frequency and orientation, in the worst direction.</summary>
     public static double At(Built lens, int field, double frequency, MtfOrientation orientation, int gridSize = 64)
     {
-        var (t, s) = Curve(lens, field, new[] { 0.0, frequency }, gridSize);
+        var (t, s) = Worst(lens, field, new[] { 0.0, frequency }, gridSize);
         return orientation == MtfOrientation.Tangential ? t[1] : s[1];
     }
 }
