@@ -30,6 +30,8 @@ namespace LensHH.Core.IO
         /// (written as its index at each wavelength). Not needed otherwise.</param>
         public static void Write(OpticalSystem system, string filePath, GlassCatalogManager? glassMgr = null)
         {
+            if (LensSymmetry.CentredFormatRefusal(system, "Optalix") is string refusal)
+                throw new InvalidOperationException(refusal);
             var inv = CultureInfo.InvariantCulture;
             bool infiniteObject = system.Surfaces.Count == 0
                 || double.IsInfinity(system.Surfaces[0].Thickness)

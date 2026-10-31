@@ -29,6 +29,9 @@ namespace LensHH.Core.IO
         /// perfect lens at a finite conjugate. Not needed otherwise.</param>
         public static void Write(OpticalSystem system, string filePath, GlassCatalogManager? glassMgr = null)
         {
+            if (LensSymmetry.CentredFormatRefusal(system, "OSLO") is string refusal)
+                throw new InvalidOperationException(refusal);
+
             // OSLO's standard asphere starts at r⁴ (AD); a surface with an r² term cannot be written
             // faithfully, so it is refused rather than dropped, as the Code V and Optalix writers do.
             // (The term was silently left out, and OSLO opened another lens.)

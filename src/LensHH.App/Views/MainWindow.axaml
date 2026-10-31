@@ -55,12 +55,17 @@
           <MenuItem Header="Optiland (.json)..." Click="ImportOptiland_Click" />
         </MenuItem>
         <MenuItem Header="Export">
-          <MenuItem Header="Zemax (.zmx)..." Click="ExportZmx_Click" />
-          <MenuItem Header="Zemax (.zmx), fields at ±x and ±y..." Click="ExportZmxXy_Click"
-                    ToolTip.Tip="Each field also at +x, −y and −x: for a lens that is not rotationally symmetric, such as a Monte Carlo trial" />
-          <MenuItem Header="Code V (.seq)..." Click="ExportCodeV_Click" />
-          <MenuItem Header="OSLO (.len)..." Click="ExportOslo_Click" />
-          <MenuItem Header="Optalix (.otx)..." Click="ExportOptalix_Click" />
+          <MenuItem Header="Zemax (.zmx)..." Click="ExportZmx_Click"
+                    ToolTip.Tip="A lens that is not rotationally symmetric, such as a Monte Carlo trial, has each field written at +y, +x, −y and −x" />
+          <MenuItem Header="Code V (.seq)..." Click="ExportCodeV_Click" IsEnabled="{Binding IsPlainCentred}"
+                    ToolTip.Tip="For a centred lens: not one with coordinate breaks, Zernike departures or glass offsets"
+                    ToolTip.ShowOnDisabled="True" />
+          <MenuItem Header="OSLO (.len)..." Click="ExportOslo_Click" IsEnabled="{Binding IsPlainCentred}"
+                    ToolTip.Tip="For a centred lens: not one with coordinate breaks, Zernike departures or glass offsets"
+                    ToolTip.ShowOnDisabled="True" />
+          <MenuItem Header="Optalix (.otx)..." Click="ExportOptalix_Click" IsEnabled="{Binding IsPlainCentred}"
+                    ToolTip.Tip="For a centred lens: not one with coordinate breaks, Zernike departures or glass offsets"
+                    ToolTip.ShowOnDisabled="True" />
           <MenuItem Header="Optiland (.json)..." Click="ExportOptiland_Click" />
         </MenuItem>
         <Separator />

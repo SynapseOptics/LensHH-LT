@@ -112,11 +112,18 @@ public partial class MainViewModel : ObservableObject
     /// </summary>
     public bool IsCentred => !_session.HasSystem || _session.System.FirstTiltedOrDecentredBreak() == 0;
 
+    /// <summary>
+    /// The lens has no Coordinate Break, Zernike departure or glass offset, so the Code V, OSLO
+    /// and Optalix exports, which hold none of them, are offered.
+    /// </summary>
+    public bool IsPlainCentred => _session.IsPlainCentred;
+
     /// <summary>A lens the same in every direction goes back to +y, quietly: its analyses are recomputed for the change anyway.</summary>
     private void RefreshFieldDirections()
     {
         OnPropertyChanged(nameof(ShowFieldDirections));
         OnPropertyChanged(nameof(IsCentred));
+        OnPropertyChanged(nameof(IsPlainCentred));
         if (!ShowFieldDirections && FieldDirectionIndex != 0)
         {
             _quietDirection = true;

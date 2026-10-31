@@ -34,6 +34,8 @@ namespace LensHH.Core.IO
         /// </summary>
         public static void Write(OpticalSystem system, string filePath, GlassCatalogManager? glassMgr = null)
         {
+            if (LensSymmetry.CentredFormatRefusal(system, "Code V") is string refusal)
+                throw new InvalidOperationException(refusal);
             var inv = CultureInfo.InvariantCulture;
             var qualifier = new CodeVGlassQualifier(glassMgr, system.GlassCatalogs);
             bool infiniteObject = system.Surfaces.Count == 0

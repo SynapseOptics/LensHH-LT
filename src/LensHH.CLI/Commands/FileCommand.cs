@@ -23,8 +23,8 @@ namespace LensHH.CLI.Commands
   [green]file import oslo <path>[/]   Import an OSLO .len file
   [green]file import optalix <path>[/] Import an Optalix .otx file
   [green]file import optiland <path>[/] Import an Optiland .json file
-  [green]file export zemax <path>[/]  Export as Zemax .zmx file
-  [green]file export zemax-xy <path>[/]  Export as Zemax .zmx with each field at +y, +x, -y and -x
+  [green]file export zemax <path>[/]  Export as Zemax .zmx file (each field at +y, +x, -y and -x
+                                   for a lens that is not rotationally symmetric)
   [green]file export codev <path>[/]  Export as Code V .seq file
   [green]file export oslo <path>[/]   Export as OSLO .len file
   [green]file export optalix <path>[/] Export as Optalix .otx file
@@ -292,12 +292,25 @@ namespace LensHH.CLI.Commands
             if (args.Length < 3)
             {
                 AnsiConsole.MarkupLine("[red]Usage: file export <format> <path>[/]");
-                AnsiConsole.MarkupLine("  Formats: zemax, zemax-xy (each field at +y, +x, -y and -x), codev, oslo, optalix, optiland");
+                AnsiConsole.MarkupLine("  Formats: zemax, codev, oslo, optalix, optiland");
                 return;
             }
 
             string format = args[1].ToLowerInvariant();
             var path = string.Join(" ", args, 2, args.Length - 2);
+
+            string? centred = format switch
+            {
+                "codev" or "seq" => "Code V",
+                "oslo" or "len" => "OSLO",
+                "optalix" or "otx" => "Optalix",
+                _ => null,
+            };
+            if (centred != null && LensSymmetry.CentredFormatRefusal(system, centred) is string refusal)
+            {
+                AnsiConsole.MarkupLine($"[red]{Markup.Escape(refusal)}[/]");
+                return;
+            }
 
             OptilandExport? optiland = null;
             switch (format)
@@ -305,11 +318,6 @@ namespace LensHH.CLI.Commands
                 case "zemax":
                 case "zmx":
                     ZmxWriter.Write(system, path);
-                    break;
-                case "zemax-xy":
-                case "zmx-xy":
-                    // Each field at +y, +x, −y and −x, as a lens that is not rotationally symmetric is judged.
-                    ZmxWriter.Write(system, path, allDirections: true);
                     break;
                 case "codev":
                 case "seq":
@@ -328,7 +336,7 @@ namespace LensHH.CLI.Commands
                     optiland = OptilandWriter.Write(system, path, session.EnsureGlassCatalog());
                     break;
                 default:
-                    AnsiConsole.MarkupLine($"[red]Unknown format: {Markup.Escape(format)}. Use zemax, zemax-xy, codev, oslo, optalix, or optiland.[/]");
+                    AnsiConsole.MarkupLine($"[red]Unknown format: {Markup.Escape(format)}. Use zemax, codev, oslo, optalix, or optiland.[/]");
                     return;
             }
 

@@ -261,7 +261,7 @@ namespace LensHH.API
         // ─── Export (external formats) ─────────────────────────────────
 
         /// <summary>Export to Zemax .zmx file.</summary>
-        public void ExportZemax(string filePath, bool allDirections = false) { EnsureSystem(); ZmxWriter.Write(_system!, filePath, allDirections); }
+        public void ExportZemax(string filePath) { EnsureSystem(); ZmxWriter.Write(_system!, filePath); }
 
         /// <summary>Export to Code V .seq file.</summary>
         public void ExportCodeV(string filePath) { EnsureSystem(); CodeVWriter.Write(_system!, filePath, GlassCatalog); }

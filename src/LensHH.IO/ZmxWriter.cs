@@ -9,15 +9,16 @@ namespace LensHH.Core.IO
 {
     public static class ZmxWriter
     {
-        /// <param name="allDirections">
-        /// Write each off-axis field at +y, +x, −y and −x, the field on the axis once, each off-axis
-        /// field's weight split among its four: the fields a lens that is not rotationally symmetric
-        /// is judged at. ZEMAX has x fields, which LensHH-LT shows by turning the lens instead.
-        /// </param>
-        public static void Write(OpticalSystem system, string filePath, bool allDirections = false)
+        /// <summary>
+        /// Writes the lens. A lens that is not rotationally symmetric (<see cref="LensSymmetry"/>)
+        /// has each off-axis field written at +y, +x, −y and −x, the field on the axis once, each
+        /// off-axis field's weight split among its four: the fields such a lens is judged at. ZEMAX
+        /// has x fields, which LensHH-LT shows by turning the lens instead.
+        /// </summary>
+        public static void Write(OpticalSystem system, string filePath)
         {
             var sb = new StringBuilder();
-            var fields = FieldsToWrite(system, allDirections);
+            var fields = FieldsToWrite(system, !LensSymmetry.IsRotationallySymmetric(system));
 
             WriteHeader(sb, system);
             WriteAperture(sb, system);

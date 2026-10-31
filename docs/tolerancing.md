@@ -150,11 +150,13 @@ It keeps the lens's own fields. To see it in another direction across the field,
 **Analysis ▸ Field Direction** (or **Fields at** on the 2D Layout tab): every analysis and the
 layout then show the lens turned about its axis to put its fields at +x, −y or −x.
 
-**File ▸ Export ▸ Zemax (.zmx), fields at ±x and ±y** writes a trial for ZEMAX with each field in
-all four directions, weighted as the run judged them; ZEMAX has x fields of its own. The Zernike
-departures are written as Zernike Fringe Sag surfaces and the glass offsets as Offset solves on
-the catalog glass, so the file carries every error the trial has. Pickups are written as the
-values they set.
+**File ▸ Export ▸ Zemax (.zmx)** writes a trial for ZEMAX with each field in all four directions,
+weighted as the run judged them; ZEMAX has x fields of its own. (A lens the same in every
+direction is written with its fields as they are.) The Zernike departures are written as Zernike
+Fringe Sag surfaces and the glass offsets as Offset solves on the catalog glass, so the file
+carries every error the trial has. Pickups are written as the values they set. The Code V, OSLO
+and Optalix exports are for centred lenses: their files hold no coordinate breaks, Zernike
+departures or glass offsets, so they are off for a trial.
 
 `trials.csv` lists every trial's errors, the compensators' moves and the criterion, and which file
 it was saved to. Its `focus_change_mm` is the focus thickness's change from the design, as the

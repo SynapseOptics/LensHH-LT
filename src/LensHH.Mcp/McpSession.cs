@@ -290,10 +290,10 @@ namespace LensHH.Mcp
             ClearLastRender();
         }
 
-        public void ExportZemax(string filePath, bool allDirections = false)
+        public void ExportZemax(string filePath)
         {
             if (_system == null) throw new InvalidOperationException("No optical system loaded.");
-            ZmxWriter.Write(_system, filePath, allDirections);
+            ZmxWriter.Write(_system, filePath);
         }
 
         public void ExportCodeV(string filePath)

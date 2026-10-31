@@ -56,7 +56,7 @@ namespace LensHH.API
         void ImportOptalix(string filePath);
         void ImportOptiland(string filePath);
 
-        void ExportZemax(string filePath, bool allDirections = false);
+        void ExportZemax(string filePath);
         void ExportCodeV(string filePath);
         void ExportOslo(string filePath);
         void ExportOptalix(string filePath);

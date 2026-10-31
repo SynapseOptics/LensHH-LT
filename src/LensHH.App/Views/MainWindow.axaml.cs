@@ -380,9 +380,6 @@ public partial class MainWindow : Window
     private async void ExportZmx_Click(object? sender, RoutedEventArgs e)
         => await ExportFile("Export Zemax", "zmx", "Zemax Files", "zmx");
 
-    private async void ExportZmxXy_Click(object? sender, RoutedEventArgs e)
-        => await ExportFile("Export Zemax, fields at ±x and ±y", "zmx", "Zemax Files", "zmx-xy");
-
     private async void ExportCodeV_Click(object? sender, RoutedEventArgs e)
         => await ExportFile("Export Code V", "seq", "Code V Files", "codev");
 

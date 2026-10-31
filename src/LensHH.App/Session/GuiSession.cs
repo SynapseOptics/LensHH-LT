@@ -59,24 +59,13 @@ public class GuiSession
     /// decentres or tilts, and no Zernike departure but the rotationally symmetric terms (Z1, Z4,
     /// Z9, Z16, Z25). Then +y shows everything and the field directions are not offered.
     /// </summary>
-    public bool IsRotationallySymmetric
-    {
-        get
-        {
-            if (_system == null) return true;
-            if (_system.FirstTiltedOrDecentredBreak() != 0) return false;
-            foreach (var s in _system.Surfaces)
-            {
-                if (!LensHH.Core.Models.ZernikeDeparture.IsPresent(s)) continue;
-                for (int j = 1; j <= LensHH.Core.Models.ZernikeDeparture.MaxTerms; j++)
-                {
-                    int root = (int)Math.Round(Math.Sqrt(j));
-                    if (root * root != j && LensHH.Core.Models.ZernikeDeparture.Term(s, j) != 0.0) return false;
-                }
-            }
-            return true;
-        }
-    }
+    public bool IsRotationallySymmetric => LensSymmetry.IsRotationallySymmetric(_system);
+
+    /// <summary>
+    /// Whether the lens is a plain centred lens, with no Coordinate Break, Zernike departure or
+    /// glass offset: the Code V, OSLO and Optalix exports, which can't hold those, are offered only then.
+    /// </summary>
+    public bool IsPlainCentred => LensSymmetry.IsPlainCentred(_system);
 
     /// <summary>True when the lens has Coordinate Breaks: its rows can't be added, removed or
     /// changed in type (<see cref="LensHH.Tolerancing.LensStructure"/>).</summary>
@@ -468,10 +457,6 @@ public class GuiSession
                 break;
             case "zmx":
                 ZmxWriter.Write(_system, path);
-                break;
-            case "zmx-xy":
-                // Each field at +y, +x, −y and −x, as a lens that is not rotationally symmetric is judged.
-                ZmxWriter.Write(_system, path, allDirections: true);
                 break;
             case "codev":
                 CodeVWriter.Write(_system, path, _glassCatalog);

@@ -101,32 +101,40 @@ namespace LensHH.Mcp.Tools
             return FormatImportResult(filePath);
         }
 
-        [McpServerTool, Description("Export the current optical system to a Zemax .zmx file. allDirections=true writes each field " +
-            "at +y, +x, -y and -x (the axis once, off-axis weights split among the four), for a lens that is not rotationally " +
-            "symmetric such as a Monte Carlo trial.")]
-        public string ExportZemax(string filePath, bool allDirections = false)
+        [McpServerTool, Description("Export the current optical system to a Zemax .zmx file. A lens that is not rotationally " +
+            "symmetric, such as a Monte Carlo trial, has each field written at +y, +x, -y and -x (the axis once, off-axis " +
+            "weights split among the four).")]
+        public string ExportZemax(string filePath)
         {
-            _session.ExportZemax(filePath, allDirections);
+            _session.ExportZemax(filePath);
             return $"Exported Zemax file: {filePath}";
         }
 
-        [McpServerTool, Description("Export the current optical system to a Code V .seq file.")]
+        // Code V, OSLO and Optalix files hold centred lenses only: a lens with coordinate breaks,
+        // Zernike departures or glass offsets is refused, with why, rather than written as another lens.
+        private const string CentredOnly = " Only a centred lens, with no coordinate breaks, Zernike departures " +
+            "or glass offsets, can be written this way.";
+
+        [McpServerTool, Description("Export the current optical system to a Code V .seq file." + CentredOnly)]
         public string ExportCodeV(string filePath)
         {
+            if (LensSymmetry.CentredFormatRefusal(_session.System, "Code V") is string refusal) return refusal;
             _session.ExportCodeV(filePath);
             return $"Exported Code V file: {filePath}";
         }
 
-        [McpServerTool, Description("Export the current optical system to an OSLO .len file.")]
+        [McpServerTool, Description("Export the current optical system to an OSLO .len file." + CentredOnly)]
         public string ExportOslo(string filePath)
         {
+            if (LensSymmetry.CentredFormatRefusal(_session.System, "OSLO") is string refusal) return refusal;
             _session.ExportOslo(filePath);
             return $"Exported OSLO file: {filePath}";
         }
 
-        [McpServerTool, Description("Export the current optical system to an Optalix .otx file.")]
+        [McpServerTool, Description("Export the current optical system to an Optalix .otx file." + CentredOnly)]
         public string ExportOptalix(string filePath)
         {
+            if (LensSymmetry.CentredFormatRefusal(_session.System, "Optalix") is string refusal) return refusal;
             _session.ExportOptalix(filePath);
             return $"Exported Optalix file: {filePath}";
         }
