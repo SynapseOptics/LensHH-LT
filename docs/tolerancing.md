@@ -162,7 +162,9 @@ trial's lens file has it.
 
 ## Zernike departures, glass offsets and Coordinate Breaks
 
-The three are surface settings in their own right, not only for tolerancing:
+Zernike departures and glass offsets are surface settings in their own right, not only for
+tolerancing; Coordinate Breaks come with tolerancing trials and with tilted lenses read from
+other programs:
 
 - **Zernike departure.** A Fringe Zernike sag, Z1 to Z35 over a normalization radius, added to a
   Standard or Even Asphere surface, for a measured or toleranced irregularity. Each term can be
@@ -175,6 +177,14 @@ A lens with a Zernike departure or a glass offset is traced on the CPU. A lens w
 Break that decentres or tilts is for analysis only: the optimizers refuse it, since the merit
 function assumes a centred lens. Optimize the centred design, then tolerance it. Paraxial values
 (focal length, pupils, Seidel sums) are those of the lens without its tilts and decentres.
+
+A lens with Coordinate Breaks has its structure locked. Its values - radii, thicknesses, glasses,
+apertures, the breaks' decentres and tilts - can be edited, but surfaces can't be inserted,
+deleted or changed in type, in the Lens Editor (Insert Surface, Delete Surface, Insert Lens and
+the Surface Type boxes are off), the CLI or MCP. A trial's elements are laid out between a break
+and the break back that picks it up, with a row back to the element's first vertex, and a row
+added or removed there would break those links. Coordinate Break is not offered as a surface type
+for a lens of one's own.
 
 ## From the CLI and MCP
 

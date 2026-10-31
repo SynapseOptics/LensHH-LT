@@ -23,8 +23,11 @@ All notable changes to LensHH-LT and the LensHH-LT-Engine.
 - **Zemax export with fields at ±x and ±y** (File ▸ Export, CLI `file export zemax-xy`, MCP
   `ExportZemax allDirections`). The Zemax export and import now carry Zernike departures (as
   Zernike Fringe Sag surfaces) and glass offsets (as Offset solves).
-- **Coordinate Break** surfaces: decentre and tilt the frame for the surfaces after them. A lens
-  decentred or tilted by one is for analysis; the optimizers refuse it.
+- **Coordinate Break** surfaces: decentre and tilt the frame for the surfaces after them. They
+  come with Monte Carlo trials and imported tilted lenses, and are not added by hand. A lens with
+  them is for analysis; the optimizers refuse it, and its structure is locked: values can be
+  edited, but surfaces can't be inserted, deleted or changed in type (Lens Editor, CLI and MCP).
+  Its rows are tinted in the Lens Editor so the lens surfaces stand out.
 - **Zernike departure** on Standard and Even Asphere surfaces: Fringe Z1 to Z35 over a
   normalization radius, for irregularity (Surface Properties ▸ Zernike, CLI `surface zernike`,
   MCP `SetZernike`). Terms can be optimization variables.

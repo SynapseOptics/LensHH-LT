@@ -149,6 +149,8 @@ namespace LensHH.Mcp
             {
                 if (session.System == null || session.System.Surfaces.Count < 3)
                     throw new InvalidOperationException("startFromCurrentSystem=true requires a system already loaded in the session.");
+                if (LensHH.Tolerancing.LensStructure.Refusal(session.System) is string locked)
+                    throw new InvalidOperationException(locked);
                 if (session.MeritFunction == null || session.MeritFunction.Operands.Count == 0)
                     throw new InvalidOperationException("startFromCurrentSystem=true requires a merit function on the loaded system.");
             }

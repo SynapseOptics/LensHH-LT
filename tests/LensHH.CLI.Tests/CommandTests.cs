@@ -1,6 +1,8 @@
 using System;
 using System.IO;
 using LensHH.CLI.Commands;
+using LensHH.Core.Enums;
+using LensHH.Core.Models;
 using Xunit;
 
 // Serialize all CLI tests — Spectre.Console is static and not thread-safe
@@ -123,6 +125,43 @@ namespace LensHH.CLI.Tests
             TestHelper.CaptureOutput(cmd, session, new[] { "add" });
 
             Assert.Equal(before + 1, session.CurrentSystem.Surfaces.Count);
+        }
+
+        /// <summary>A lens with a coordinate break (as a tolerancing trial has) keeps its rows:
+        /// no surface added or removed, no type changed; its values still edit.</summary>
+        [Fact]
+        public void Surface_WithCoordinateBreak_StructureIsLocked()
+        {
+            var cmd = new SurfaceCommand();
+            var session = TestHelper.CreateSessionWithSystem();
+            var sys = session.CurrentSystem!;
+            sys.Surfaces.Insert(1, new Surface { Type = SurfaceType.CoordinateBreak });
+            for (int i = 0; i < sys.Surfaces.Count; i++) sys.Surfaces[i].Index = i;
+            int before = sys.Surfaces.Count;
+
+            string added = TestHelper.CaptureOutput(cmd, session, new[] { "add" });
+            TestHelper.CaptureOutput(cmd, session, new[] { "remove", "2" });
+            TestHelper.CaptureOutput(cmd, session, new[] { "edit", "2", "type=even-asphere" });
+            TestHelper.CaptureOutput(cmd, session, new[] { "set-asphere", "3", "0", "1e-5" });
+            TestHelper.CaptureOutput(cmd, session, new[] { "edit", "2", "thickness=6" });
+
+            Assert.Contains("structure is locked", added);
+            Assert.Equal(before, sys.Surfaces.Count);
+            Assert.Equal(SurfaceType.Standard, sys.Surfaces[2].Type);
+            Assert.Equal(SurfaceType.Standard, sys.Surfaces[3].Type);
+            Assert.Equal(6.0, sys.Surfaces[2].Thickness);
+        }
+
+        [Fact]
+        public void Surface_CoordinateBreakType_IsNotMadeByHand()
+        {
+            var cmd = new SurfaceCommand();
+            var session = TestHelper.CreateSessionWithSystem();
+
+            string output = TestHelper.CaptureOutput(cmd, session, new[] { "edit", "2", "type=coordinate-break" });
+
+            Assert.Contains("can't be added by hand", output);
+            Assert.Equal(SurfaceType.Standard, session.CurrentSystem!.Surfaces[2].Type);
         }
 
         [Fact]

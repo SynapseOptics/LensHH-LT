@@ -75,6 +75,21 @@ public partial class MainWindow : Window
     private void PrevConfig_Click(object? sender, RoutedEventArgs e) => AppExtensions.ConfigNavigator?.Prev();
     private void NextConfig_Click(object? sender, RoutedEventArgs e) => AppExtensions.ConfigNavigator?.Next();
 
+    private static readonly Avalonia.Media.IBrush CoordinateBreakTint =
+        new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#EEEAF8"));
+
+    /// <summary>Tint coordinate-break rows pale lavender so the lens rows stand out in decentred
+    /// and trial lenses. Bound, not set once, so the tint follows a change of surface type and
+    /// a recycled row.</summary>
+    private void LensGrid_LoadingRow(object? sender, DataGridRowEventArgs e)
+    {
+        e.Row.Bind(DataGridRow.BackgroundProperty, new Avalonia.Data.Binding(nameof(SurfaceRowViewModel.IsCoordinateBreak))
+        {
+            Converter = new Avalonia.Data.Converters.FuncValueConverter<bool, Avalonia.Media.IBrush?>(
+                cb => cb ? CoordinateBreakTint : null)
+        });
+    }
+
     /// <summary>Block editing of MCE-owned lens cells outright — cancelling the edit before it begins
     /// is clearer than a read-only TextBox the user can still type into. Owned cells stay italic/greyed
     /// (and show their active-config " V"/" P" solve marker). Standard build: nothing owned, no-op.</summary>
@@ -870,6 +885,11 @@ public partial class MainWindow : Window
             await ShowMessage("Insert Lens", "No host system loaded. Open or create a system first.");
             return;
         }
+        if (LensHH.Tolerancing.LensStructure.Refusal(sys) is string locked)
+        {
+            await ShowMessage("Insert Lens", locked);
+            return;
+        }
 
         var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
@@ -897,6 +917,12 @@ public partial class MainWindow : Window
             if (vertices.Count == 0)
             {
                 await ShowMessage("Insert Lens", "Source file has no optical vertices between stop and IMG.");
+                return;
+            }
+            if (LensHH.Tolerancing.LensStructure.HasBreaks(vertices))
+            {
+                await ShowMessage("Insert Lens", $"{System.IO.Path.GetFileName(path)} has coordinate breaks. " +
+                    LensHH.Tolerancing.LensStructure.NoBreaksByHand);
                 return;
             }
             if (reversed) vertices = LensHH.Core.IO.LensInsertHelpers.ReverseVertexGroup(vertices);

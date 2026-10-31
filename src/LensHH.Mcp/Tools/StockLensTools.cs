@@ -392,6 +392,7 @@ namespace LensHH.Mcp.Tools
             var sys = _session.System;
             if (sys == null || sys.Surfaces.Count < 2)
                 return "No host system loaded. Create or load a system before inserting a stock lens.";
+            if (LensHH.Tolerancing.LensStructure.Refusal(sys) is string locked) return locked;
             if (afterSurface < 0 || afterSurface >= sys.Surfaces.Count)
                 return $"afterSurface {afterSurface} out of range (0 to {sys.Surfaces.Count - 1}).";
 
@@ -461,6 +462,7 @@ namespace LensHH.Mcp.Tools
             var sys = _session.System;
             if (sys == null || sys.Surfaces.Count < 3)
                 return "ReplaceElement error: no host system loaded (need at least OBJ + STOP + IMG).";
+            if (LensHH.Tolerancing.LensStructure.Refusal(sys) is string locked) return locked;
             if (string.IsNullOrWhiteSpace(replacementParts))
                 return "ReplaceElement error: replacementParts is required (e.g. 'L-PCX040' or 'L-PCX333,L-PCX412:rev').";
             if (elementIndex < 1)
@@ -619,6 +621,7 @@ namespace LensHH.Mcp.Tools
         {
             var sys = _session.System;
             if (sys == null) return "No system loaded.";
+            if (LensHH.Tolerancing.LensStructure.Refusal(sys) is string locked) return locked;
             if (count < 2) return "ReverseLens needs count >= 2 (a single surface has nothing to reverse).";
             if (startSurface < 0 || startSurface + count > sys.Surfaces.Count)
                 return $"Range [{startSurface}-{startSurface + count - 1}] out of system bounds (0 to {sys.Surfaces.Count - 1}).";

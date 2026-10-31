@@ -19,6 +19,7 @@ namespace LensHH.Mcp.Tools
         public string AddSurface(double radius, double thickness, string material = "", double conic = 0, int insertIndex = -1)
         {
             var sys = _session.System;
+            if (LensHH.Tolerancing.LensStructure.Refusal(sys) is string locked) return locked;
             var surf = new Surface
             {
                 Radius = radius,
@@ -124,6 +125,8 @@ namespace LensHH.Mcp.Tools
             // ── Input validation ────────────────────────────────────────────────
             // Catch every "agent forgot to specify X" failure mode at the boundary
             // so the engine sees a fully-formed pair of surfaces every time.
+            if (LensHH.Tolerancing.LensStructure.Refusal(_session.System) is string locked)
+                return (-1, -1, locked);
             if (string.IsNullOrWhiteSpace(material))
                 return (-1, -1, "AddSinglet/BuildSkeleton error: material is required (use a glass name like 'N-BK7'; empty/whitespace not allowed for the glass surface).");
             if (semiDiameter <= 0)
@@ -223,6 +226,7 @@ namespace LensHH.Mcp.Tools
             var sys = _session.System;
             if (sys == null || sys.Surfaces.Count < 3)
                 return "BuildSkeleton error: host system must already have OBJ + STOP + IMG (use load_system on a template first).";
+            if (LensHH.Tolerancing.LensStructure.Refusal(sys) is string locked) return locked;
 
             // Refuse to run on a system that already has glass elements — we
             // don't want to silently double-insert if the agent calls this on
@@ -412,6 +416,7 @@ namespace LensHH.Mcp.Tools
             var sys = _session.System;
             if (surfaceIndex < 0 || surfaceIndex >= sys.Surfaces.Count)
                 return $"Surface index {surfaceIndex} out of range (0-{sys.Surfaces.Count - 1}).";
+            if (LensHH.Tolerancing.LensStructure.Refusal(sys) is string locked) return locked;
 
             sys.Surfaces.RemoveAt(surfaceIndex);
 
@@ -426,7 +431,7 @@ namespace LensHH.Mcp.Tools
             return $"Surface {surfaceIndex} removed. System now has {sys.Surfaces.Count} surfaces.";
         }
 
-        [McpServerTool, Description("Edit a surface property. property can be: radius, thickness, material, conic, semi_diameter, semi_diameter_mode (auto/fixed), inner_radius, obscuration, stop (true/false), type (standard/paraxial/even_asphere/coordinate_break), focal_length (mm, for a paraxial ideal-lens surface), and for a coordinate break decenter_x, decenter_y (lens units), tilt_x, tilt_y, tilt_z (degrees) and order (0 = decenter then tilt, 1 = tilt then decenter), and index_offset / abbe_offset (changes of Nd and Vd of the glass after the surface, as melt data or a tolerance). value is the new value as a string.")]
+        [McpServerTool, Description("Edit a surface property. property can be: radius, thickness, material, conic, semi_diameter, semi_diameter_mode (auto/fixed), inner_radius, obscuration, stop (true/false), type (standard/paraxial/even_asphere), focal_length (mm, for a paraxial ideal-lens surface), and for a coordinate break (they come with tolerancing trials and imported lenses; a lens with them has its structure locked: no type changes, no surfaces added or removed) decenter_x, decenter_y (lens units), tilt_x, tilt_y, tilt_z (degrees) and order (0 = decenter then tilt, 1 = tilt then decenter), and index_offset / abbe_offset (changes of Nd and Vd of the glass after the surface, as melt data or a tolerance). value is the new value as a string.")]
         public string EditSurface(int surfaceIndex, string property, string value)
         {
             var sys = _session.System;
@@ -434,7 +439,16 @@ namespace LensHH.Mcp.Tools
                 return $"Surface index {surfaceIndex} out of range.";
 
             var s = sys.Surfaces[surfaceIndex];
-            switch (property.ToLowerInvariant())
+            // The type is the lens's structure: none changes on a lens with coordinate breaks, and
+            // no break is made by hand (focal_length makes the surface Paraxial).
+            string prop = property.ToLowerInvariant();
+            if (prop == "type" || prop == "focal_length")
+            {
+                if (value.Replace("_", "").Equals("coordinatebreak", StringComparison.OrdinalIgnoreCase))
+                    return LensHH.Tolerancing.LensStructure.NoBreaksByHand;
+                if (LensHH.Tolerancing.LensStructure.Refusal(sys) is string locked) return locked;
+            }
+            switch (prop)
             {
                 case "radius":
                     if (double.TryParse(value, out double r)) s.Radius = r;
@@ -486,11 +500,8 @@ namespace LensHH.Mcp.Tools
                     else if (value.Equals("even_asphere", StringComparison.OrdinalIgnoreCase) ||
                              value.Equals("evenasphere", StringComparison.OrdinalIgnoreCase))
                         s.Type = SurfaceType.EvenAsphere;
-                    else if (value.Equals("coordinate_break", StringComparison.OrdinalIgnoreCase) ||
-                             value.Equals("coordinatebreak", StringComparison.OrdinalIgnoreCase))
-                        s.Type = SurfaceType.CoordinateBreak;
                     else
-                        return "Use 'standard', 'paraxial', 'even_asphere', or 'coordinate_break'.";
+                        return "Use 'standard', 'paraxial' or 'even_asphere'.";
                     break;
                 case "decenter_x":
                 case "decenter_y":
@@ -498,7 +509,7 @@ namespace LensHH.Mcp.Tools
                 case "tilt_y":
                 case "tilt_z":
                     if (s.Type != SurfaceType.CoordinateBreak)
-                        return $"Surface {surfaceIndex} is not a coordinate break; set type=coordinate_break first.";
+                        return $"Surface {surfaceIndex} is not a coordinate break.";
                     if (double.TryParse(value, out double cbv))
                         s.SetParameter(CoordinateBreakSlot(property.ToLowerInvariant()), cbv);
                     else return $"Invalid {property} value.";
@@ -513,7 +524,7 @@ namespace LensHH.Mcp.Tools
                     break;
                 case "order":
                     if (s.Type != SurfaceType.CoordinateBreak)
-                        return $"Surface {surfaceIndex} is not a coordinate break; set type=coordinate_break first.";
+                        return $"Surface {surfaceIndex} is not a coordinate break.";
                     if (value == "0" || value == "1") s.SetSetting(1, int.Parse(value));
                     else return "Use 0 (decenter then tilt) or 1 (tilt then decenter).";
                     break;
@@ -551,6 +562,8 @@ namespace LensHH.Mcp.Tools
                 return $"Surface index {surfaceIndex} out of range.";
 
             var s = sys.Surfaces[surfaceIndex];
+            if (s.Type != SurfaceType.EvenAsphere
+                && LensHH.Tolerancing.LensStructure.Refusal(sys) is string locked) return locked;
             s.Type = SurfaceType.EvenAsphere;
 
             var parts = coefficients.Split(',');

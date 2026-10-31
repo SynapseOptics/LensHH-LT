@@ -34,8 +34,16 @@ public partial class SurfaceRowViewModel : ObservableObject
         (_surface.Index == _session.System.Surfaces.Count - 1 ? "IMG" : _surface.Index.ToString());
 
     // Type as string-based combo (Avalonia ComboBox works better with string/index).
-    public static string[] TypeOptions { get; } =
+    private static readonly string[] AllTypes =
         { "Standard", "Even Asphere", "Paraxial", "ABCD", "Coordinate Break" };
+    private static readonly string[] TypesByHand = AllTypes[..4];
+
+    /// <summary>The types offered: Coordinate Break only shows on a lens that has breaks, whose
+    /// types are locked (<see cref="LensHH.Tolerancing.LensStructure"/>); none is added by hand.</summary>
+    public string[] TypeOptions => _session.IsStructureLocked ? AllTypes : TypesByHand;
+
+    /// <summary>The type can be changed: not on a lens with Coordinate Breaks.</summary>
+    public bool CanChangeType => !_session.IsStructureLocked;
 
     public string TypeDisplay => _surface.Type switch
     {
@@ -66,7 +74,7 @@ public partial class SurfaceRowViewModel : ObservableObject
                 4 => SurfaceType.CoordinateBreak,
                 _ => SurfaceType.Standard
             };
-            if (_surface.Type != newType)
+            if (_surface.Type != newType && !_session.IsStructureLocked && newType != SurfaceType.CoordinateBreak)
             {
                 // The generic parameter slots mean different things in each family — a Zernike
                 // departure on Standard/Even Asphere, decenters and tilts on a Coordinate Break,
@@ -513,6 +521,17 @@ public partial class SurfaceEditorViewModel : ObservableObject
 
     [ObservableProperty] private SurfaceRowViewModel? _selectedSurface;
 
+    /// <summary>The lens has Coordinate Breaks: surfaces can't be inserted, deleted or changed in
+    /// type (<see cref="LensHH.Tolerancing.LensStructure"/>). Set on every rebuild of the rows.</summary>
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(InsertSurfaceCommand))]
+    [NotifyCanExecuteChangedFor(nameof(DeleteSurfaceCommand))]
+    private bool _isStructureLocked;
+
+    public string StructureLockedMessage => LensHH.Tolerancing.LensStructure.LockedMessage;
+
+    private bool CanEditStructure() => !IsStructureLocked;
+
     public ObservableCollection<SurfaceRowViewModel> Surfaces { get; } = new();
 
     public SurfaceEditorViewModel(GuiSession session)
@@ -546,6 +565,7 @@ public partial class SurfaceEditorViewModel : ObservableObject
         try
         {
             Surfaces.Clear();
+            IsStructureLocked = _session.IsStructureLocked;
             if (_session.System == null) return;
             foreach (var s in _session.System.Surfaces)
                 Surfaces.Add(new SurfaceRowViewModel(s, _session));
@@ -553,9 +573,10 @@ public partial class SurfaceEditorViewModel : ObservableObject
         finally { _isRefreshing = false; }
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanEditStructure))]
     public void InsertSurface()
     {
+        if (_session.IsStructureLocked) return;
         int idx = SelectedSurface != null ? SelectedSurface.Index + 1 : _session.System.Surfaces.Count - 1;
         if (idx < 1) idx = 1;
         if (idx >= _session.System.Surfaces.Count) idx = _session.System.Surfaces.Count - 1;
@@ -591,10 +612,10 @@ public partial class SurfaceEditorViewModel : ObservableObject
         _session.NotifySystemChanged("structure");
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanEditStructure))]
     public void DeleteSurface()
     {
-        if (SelectedSurface == null) return;
+        if (SelectedSurface == null || _session.IsStructureLocked) return;
         int idx = SelectedSurface.Index;
         // Don't delete object (0) or image (last) surfaces
         if (idx <= 0 || idx >= _session.System.Surfaces.Count - 1) return;

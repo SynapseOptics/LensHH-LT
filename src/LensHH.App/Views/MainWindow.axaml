@@ -229,8 +229,10 @@
             <Button Content="Delete Surface" Command="{Binding SurfaceEditor.DeleteSurfaceCommand}" />
             <Border Width="1" Background="#CCC" Margin="4,2" />
             <Button Content="Insert Lens..." Click="InsertLensFromFile_Click"
+                    IsEnabled="{Binding !SurfaceEditor.IsStructureLocked}"
                     ToolTip.Tip="Splice the optical vertices from a .lhlt file in after the selected surface. Host stop is preserved; the source file's OBJ, aperture stop, and IMG are stripped. Merit-function operands shift automatically." />
             <Button Content="Insert Lens (Reversed)..." Click="InsertLensFromFileReversed_Click"
+                    IsEnabled="{Binding !SurfaceEditor.IsStructureLocked}"
                     ToolTip.Tip="Same as Insert Lens... but the inserted element(s) are flipped 180° (radii negated, surface order reversed)." />
             <Border Width="1" Background="#CCC" Margin="4,2" />
             <Button Content="Set/Clear Thickness Variables" Click="SetClearThickness_Click" />
@@ -246,6 +248,13 @@
                     ToolTip.Tip="Copy lens table to clipboard as tab-delimited text. Aspheric coefficients appended to Even Asphere rows." />
           </StackPanel>
 
+          <!-- A lens with coordinate breaks (a tolerancing trial, an imported tilted lens): why
+               the structure buttons and the type boxes are off. -->
+          <Border DockPanel.Dock="Top" IsVisible="{Binding SurfaceEditor.IsStructureLocked}"
+                  Background="#EEEAF8" CornerRadius="3" Margin="4,0,4,2" Padding="8,4">
+            <TextBlock Text="{Binding SurfaceEditor.StructureLockedMessage}" FontSize="12" />
+          </Border>
+
           <!-- Surface Editor DataGrid -->
           <DataGrid ItemsSource="{Binding SurfaceEditor.Surfaces}"
                     SelectedItem="{Binding SurfaceEditor.SelectedSurface}"
@@ -255,6 +264,7 @@
                     GridLinesVisibility="All"
                     IsReadOnly="False"
                     BeginningEdit="LensGrid_BeginningEdit"
+                    LoadingRow="LensGrid_LoadingRow"
                     Margin="4"
                     FontSize="13">
             <!-- Scoped to this DataGrid only: center every column header. Other
@@ -282,6 +292,7 @@
                   <DataTemplate>
                     <ComboBox ItemsSource="{Binding TypeOptions}"
                               SelectedIndex="{Binding TypeIndex}"
+                              IsEnabled="{Binding CanChangeType}"
                               HorizontalAlignment="Stretch"
                               VerticalAlignment="Center"
                               Margin="2,0" />

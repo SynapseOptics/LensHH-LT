@@ -19,10 +19,13 @@ namespace LensHH.CLI.Commands
   [green]surface remove <index>[/]              Remove surface at index
   [green]surface edit <index> <param>=<value>[/] Edit surface parameters
     Parameters: radius, thickness, material, semi-diameter, semi-diameter-mode=auto|fixed, conic, stop,
-               inner-radius, obscuration, type=standard|paraxial|even-asphere|coordinate-break,
+               inner-radius, obscuration, type=standard|paraxial|even-asphere,
                focal-length (mm, ideal lens)
     Coordinate break: decenter-x, decenter-y (lens units), tilt-x, tilt-y, tilt-z (degrees),
                order=0 (decenter then tilt) | 1 (tilt then decenter)
+    A lens with coordinate breaks (a tolerancing trial, an imported tilted lens) has its
+    structure locked: its values can be edited, but surfaces can't be added, removed or
+    changed in type. Coordinate breaks can't be added by hand.
     Glass offset: index-offset (change of Nd), abbe-offset (change of Vd) of the glass after the surface
   [green]surface set-asphere <index> <a1> <a2> ...[/] Set aspheric coefficients
   [green]surface zernike <index> [[clear]] [[radius=<r>]] [[z<n>=<sag>]] ...[/]
@@ -125,9 +128,18 @@ namespace LensHH.CLI.Commands
             AnsiConsole.Write(table);
         }
 
+        /// <summary>True, after saying why, when <paramref name="sys"/>'s rows can't change.</summary>
+        private static bool Locked(OpticalSystem sys)
+        {
+            if (LensHH.Tolerancing.LensStructure.Refusal(sys) is not string why) return false;
+            AnsiConsole.MarkupLine($"[red]{Markup.Escape(why)}[/]");
+            return true;
+        }
+
         private void AddSurface(Session session, string[] args)
         {
             var sys = session.EnsureSystem();
+            if (Locked(sys)) return;
 
             int afterIndex = sys.Surfaces.Count - 2; // before image by default
             if (args.Length > 1 && int.TryParse(args[1], out int idx))
@@ -174,6 +186,7 @@ namespace LensHH.CLI.Commands
                 AnsiConsole.MarkupLine("[red]Usage: surface remove <index>[/]");
                 return;
             }
+            if (Locked(sys)) return;
 
             if (idx <= 0 || idx >= sys.Surfaces.Count - 1)
             {
@@ -213,6 +226,19 @@ namespace LensHH.CLI.Commands
             {
                 var kv = args[i].Split(new[] { '=' }, 2);
                 if (kv.Length != 2) continue;
+
+                // The type is the lens's structure: none changes on a lens with coordinate breaks,
+                // and no break is made by hand (focal-length makes the surface Paraxial).
+                string key = kv[0].ToLowerInvariant();
+                if (key == "type" || key == "focal-length")
+                {
+                    if (kv[1].Replace('_', '-').Equals("coordinate-break", StringComparison.OrdinalIgnoreCase))
+                    {
+                        AnsiConsole.MarkupLine($"[red]{Markup.Escape(LensHH.Tolerancing.LensStructure.NoBreaksByHand)}[/]");
+                        return;
+                    }
+                    if (Locked(sys)) return;
+                }
 
                 switch (kv[0].ToLowerInvariant())
                 {
@@ -272,9 +298,6 @@ namespace LensHH.CLI.Commands
                         else if (kv[1].Equals("even-asphere", StringComparison.OrdinalIgnoreCase) ||
                                  kv[1].Equals("even_asphere", StringComparison.OrdinalIgnoreCase))
                             surface.Type = SurfaceType.EvenAsphere;
-                        else if (kv[1].Equals("coordinate-break", StringComparison.OrdinalIgnoreCase) ||
-                                 kv[1].Equals("coordinate_break", StringComparison.OrdinalIgnoreCase))
-                            surface.Type = SurfaceType.CoordinateBreak;
                         break;
                     case "decenter-x":
                     case "decenter-y":
@@ -283,7 +306,7 @@ namespace LensHH.CLI.Commands
                     case "tilt-z":
                         if (surface.Type != SurfaceType.CoordinateBreak)
                         {
-                            AnsiConsole.MarkupLine($"[red]Surface {idx} is not a coordinate break; set type=coordinate-break first.[/]");
+                            AnsiConsole.MarkupLine($"[red]Surface {idx} is not a coordinate break.[/]");
                             return;
                         }
                         if (double.TryParse(kv[1], NumberStyles.Float, CultureInfo.InvariantCulture, out double cbv))
@@ -307,7 +330,7 @@ namespace LensHH.CLI.Commands
                     case "order":
                         if (surface.Type != SurfaceType.CoordinateBreak)
                         {
-                            AnsiConsole.MarkupLine($"[red]Surface {idx} is not a coordinate break; set type=coordinate-break first.[/]");
+                            AnsiConsole.MarkupLine($"[red]Surface {idx} is not a coordinate break.[/]");
                             return;
                         }
                         if (kv[1] == "0" || kv[1] == "1") surface.SetSetting(1, int.Parse(kv[1]));
@@ -375,6 +398,7 @@ namespace LensHH.CLI.Commands
             }
 
             var surface = sys.Surfaces[idx];
+            if (surface.Type != SurfaceType.EvenAsphere && Locked(sys)) return;
             surface.Type = SurfaceType.EvenAsphere;
 
             for (int i = 2; i < args.Length && (i - 2) < surface.AsphericCoefficients.Length; i++)

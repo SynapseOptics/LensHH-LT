@@ -160,6 +160,9 @@ namespace LensHH.Mcp
             // ProcessorCount/4 to leave breathing room.
             if (parallelism < 1)
                 parallelism = Math.Max(1, Environment.ProcessorCount / 4);
+            // Lenses are spliced into the host: not into one whose structure is locked.
+            if (LensHH.Tolerancing.LensStructure.Refusal(LhltReader.Read(hostPath).System) is string locked)
+                throw new InvalidOperationException(locked);
 
             var job = new RunningJob(kind: "batch_design_search")
             {

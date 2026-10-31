@@ -78,6 +78,10 @@ public class GuiSession
         }
     }
 
+    /// <summary>True when the lens has Coordinate Breaks: its rows can't be added, removed or
+    /// changed in type (<see cref="LensHH.Tolerancing.LensStructure"/>).</summary>
+    public bool IsStructureLocked => LensHH.Tolerancing.LensStructure.IsLocked(_system);
+
     /// <summary>Raised when <see cref="FieldDirection"/> changes: the analyses recompute.</summary>
     public event Action? FieldDirectionChanged;
 
