@@ -83,11 +83,18 @@ namespace LensHH.Core.IO
 
                 if (fieldsProp.TryGetProperty("fields", out var fieldArray) && fieldArray.ValueKind == JsonValueKind.Array)
                 {
+                    // LensHH-LT's fields lie along y, and it shows the others by turning the lens
+                    // (Analysis ▸ Field Direction), so a field off the y axis is left out.
+                    int offAxisX = 0;
                     foreach (var f in fieldArray.EnumerateArray())
                     {
+                        if (GetDouble(f, "x", 0) != 0) { offAxisX++; continue; }
                         double y = GetDouble(f, "y", 0);
                         system.Fields.Add(new Field(y, 1.0));
                     }
+                    if (offAxisX > 0)
+                        noteList.Add($"{offAxisX} field(s) off the y axis left out: LensHH-LT shows the lens in other "
+                                   + "directions with Analysis ▸ Field Direction.");
                 }
             }
             if (system.Fields.Count == 0)
@@ -187,6 +194,16 @@ namespace LensHH.Core.IO
                                     surface.Type = SurfaceType.EvenAsphere;
                             }
                             // "Plane" → default Standard with infinite radius (already set)
+                            else if (!geomType.Equals("Plane", StringComparison.OrdinalIgnoreCase))
+                                noteList.Add($"Surface {i}: an Optiland {geomType} surface, read as its base sphere and conic only.");
+
+                            // Surfaces are read in line along z. A decentred or tilted one (as an
+                            // exported tolerancing trial has) is read centred, and said so.
+                            if (i > 0 && geom.TryGetProperty("cs", out var place) && place.ValueKind == JsonValueKind.Object
+                                && (GetDouble(place, "x", 0) != 0 || GetDouble(place, "y", 0) != 0
+                                    || GetDouble(place, "rx", 0) != 0 || GetDouble(place, "ry", 0) != 0
+                                    || GetDouble(place, "rz", 0) != 0))
+                                noteList.Add($"Surface {i}: decentred or tilted in the file, read centred on the axis.");
                         }
 
                         // Thickness: prefer explicit "thickness" field, fall back to Z deltas

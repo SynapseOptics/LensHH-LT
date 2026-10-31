@@ -68,6 +68,9 @@ namespace LensHH.Core.IO
         /// <summary>The catalog model glasses are written to.</summary>
         public const string ModelCatalog = CatalogPrefix + "model";
 
+        /// <summary>The catalog glasses with an offset (melt data, tolerancing trials) are written to.</summary>
+        public const string OffsetCatalog = CatalogPrefix + "offset";
+
         private const string ModelPrefix = "MODEL_";
 
         /// <summary>

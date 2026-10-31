@@ -26,6 +26,11 @@ All notable changes to LensHH-LT and the LensHH-LT-Engine.
   offsets (as Offset solves). The Code V, OSLO and Optalix exports, whose files hold none of
   these, are offered only for a centred lens without Coordinate Breaks, Zernike departures or
   glass offsets (the CLI and MCP refuse one, and say why).
+- **Optiland export of the same lenses**: Optiland has no Coordinate Break, so each surface is
+  written where it stands, with its own decentre and tilt; a Zernike departure is written as the
+  XY polynomial surface it adds up to with the surface's asphere terms; a glass offset as a
+  tabulated glass, as LensHH-LT computes it; and each field at +y, +x, −y and −x for a lens that
+  is not rotationally symmetric. A lens with none of these is written as before.
 - **Coordinate Break** surfaces: decentre and tilt the frame for the surfaces after them. They
   come with Monte Carlo trials and imported tilted lenses, and are not added by hand. A lens with
   them is for analysis; the optimizers refuse it, and its structure is locked: values can be

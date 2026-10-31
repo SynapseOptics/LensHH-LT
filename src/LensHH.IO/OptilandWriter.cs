@@ -92,15 +92,22 @@ namespace LensHH.Core.IO
             sb.AppendLine($"{indent}{indent}\"object_space_telecentric\": false");
             sb.AppendLine($"{indent}}},");
 
-            // Fields
+            // Fields: as they are, or for a lens that is not rotationally symmetric each off-axis
+            // field also at +x, −y and −x (the axis once), the directions tolerancing judges it in.
+            // Optiland has x fields, which LensHH-LT shows by turning the lens instead.
             string fieldType = system.FieldType == FieldType.ObjectHeight ? "object_height" : "angle";
+            var fields = new List<(double X, double Y)>();
+            foreach (var f in system.Fields) fields.Add((0.0, f.Y));
+            if (!LensSymmetry.IsRotationallySymmetric(system))
+                foreach (var turn in new Func<double, (double, double)>[] { y => (y, 0.0), y => (0.0, -y), y => (-y, 0.0) })
+                    foreach (var f in system.Fields)
+                        if (Math.Abs(f.Y) >= 1e-12) fields.Add(turn(f.Y));
             sb.AppendLine($"{indent}\"fields\": {{");
             sb.AppendLine($"{indent}{indent}\"fields\": [");
-            for (int i = 0; i < system.Fields.Count; i++)
+            for (int i = 0; i < fields.Count; i++)
             {
-                var f = system.Fields[i];
-                string comma = i < system.Fields.Count - 1 ? "," : "";
-                sb.AppendLine($"{indent}{indent}{indent}{{\"field_type\": \"{fieldType}\", \"x\": 0.0, \"y\": {Fmt(f.Y)}, \"vx\": 0.0, \"vy\": 0.0}}{comma}");
+                string comma = i < fields.Count - 1 ? "," : "";
+                sb.AppendLine($"{indent}{indent}{indent}{{\"field_type\": \"{fieldType}\", \"x\": {Fmt(fields[i].X)}, \"y\": {Fmt(fields[i].Y)}, \"vx\": 0.0, \"vy\": 0.0}}{comma}");
             }
             sb.AppendLine($"{indent}{indent}],");
             sb.AppendLine($"{indent}{indent}\"telecentric\": false,");
@@ -130,31 +137,31 @@ namespace LensHH.Core.IO
             sb.AppendLine($"{indent}\"surface_group\": {{");
             sb.AppendLine($"{indent}{indent}\"surfaces\": [");
 
-            // Compute cumulative Z from thicknesses
-            double cumulativeZ = 0;
-            var zValues = new double[system.Surfaces.Count];
-            for (int i = 0; i < system.Surfaces.Count; i++)
-            {
-                zValues[i] = cumulativeZ;
-                double th = system.Surfaces[i].Thickness;
-                if (!double.IsInfinity(th) && !double.IsNaN(th))
-                    cumulativeZ += th;
-            }
+            // Every surface placed in space: Optiland has no Coordinate Break, so each surface
+            // carries its own position and rotation, and the breaks themselves are not written.
+            var frames = SurfaceFrames.Of(system);
 
             for (int i = 0; i < system.Surfaces.Count; i++)
             {
                 var s = system.Surfaces[i];
+                if (s.Type == SurfaceType.CoordinateBreak) continue;
                 bool isObject = (i == 0);
-                bool isImage = (i == system.Surfaces.Count - 1);
                 string comma = i < system.Surfaces.Count - 1 ? "," : "";
 
                 string surfType = isObject ? "ObjectSurface" : "Surface";
-                double z = isObject && double.IsInfinity(s.Thickness) ? double.NegativeInfinity : zValues[i];
+                var frame = frames[i];
+                double z = isObject && double.IsInfinity(s.Thickness) ? double.NegativeInfinity : frame.Z;
+                var (rx, ry, rz) = frame.Angles();
 
-                // Geometry
+                // Geometry. A surface with a Zernike departure is written as the XY polynomial its
+                // asphere terms and Zernike terms add up to, on the base conic: the same surface.
+                // (Optiland's own Zernike surface has no place for asphere terms, and refuses a
+                // point beyond its normalization radius, where LensHH-LT's terms simply continue.)
                 string geomType;
                 bool hasAsphere = s.Type == SurfaceType.EvenAsphere && HasNonZeroCoeffs(s);
-                if (double.IsInfinity(s.Radius))
+                if (ZernikeDeparture.IsPresent(s))
+                    geomType = "PolynomialGeometry";
+                else if (double.IsInfinity(s.Radius))
                     geomType = "Plane";
                 else if (hasAsphere)
                     geomType = "EvenAsphere";
@@ -168,19 +175,19 @@ namespace LensHH.Core.IO
                 sb.AppendLine($"{indent}{indent}{indent}{indent}\"geometry\": {{");
                 sb.AppendLine($"{indent}{indent}{indent}{indent}{indent}\"type\": \"{geomType}\",");
                 sb.AppendLine($"{indent}{indent}{indent}{indent}{indent}\"cs\": {{");
-                sb.AppendLine($"{indent}{indent}{indent}{indent}{indent}{indent}\"x\": 0.0, \"y\": 0.0, \"z\": {FmtInf(z)},");
-                sb.AppendLine($"{indent}{indent}{indent}{indent}{indent}{indent}\"rx\": 0.0, \"ry\": 0.0, \"rz\": 0.0,");
+                sb.AppendLine($"{indent}{indent}{indent}{indent}{indent}{indent}\"x\": {Fmt(frame.X)}, \"y\": {Fmt(frame.Y)}, \"z\": {FmtInf(z)},");
+                sb.AppendLine($"{indent}{indent}{indent}{indent}{indent}{indent}\"rx\": {Fmt(rx)}, \"ry\": {Fmt(ry)}, \"rz\": {Fmt(rz)},");
                 sb.AppendLine($"{indent}{indent}{indent}{indent}{indent}{indent}\"reference_cs\": null");
                 sb.AppendLine($"{indent}{indent}{indent}{indent}{indent}}},");
                 sb.Append($"{indent}{indent}{indent}{indent}{indent}\"radius\": {FmtInf(s.Radius)}");
 
-                if (geomType == "StandardGeometry" || geomType == "EvenAsphere")
+                if (geomType != "Plane")
                 {
                     sb.AppendLine(",");
                     sb.Append($"{indent}{indent}{indent}{indent}{indent}\"conic\": {Fmt(s.Conic)}");
                 }
 
-                if (geomType == "EvenAsphere" && hasAsphere)
+                if (geomType == "EvenAsphere")
                 {
                     sb.AppendLine(",");
                     sb.Append($"{indent}{indent}{indent}{indent}{indent}\"coefficients\": [");
@@ -188,6 +195,20 @@ namespace LensHH.Core.IO
                     {
                         if (j > 0) sb.Append(", ");
                         sb.Append(Fmt(s.AsphericCoefficients[j]));
+                    }
+                    sb.Append("]");
+                }
+                else if (geomType == "PolynomialGeometry")
+                {
+                    var c = SagPolynomial.Of(s);
+                    sb.AppendLine(",");
+                    sb.Append($"{indent}{indent}{indent}{indent}{indent}\"coefficients\": [");
+                    for (int a = 0; a < c.GetLength(0); a++)
+                    {
+                        sb.Append(a > 0 ? ", [" : "[");
+                        for (int b = 0; b < c.GetLength(1); b++)
+                            sb.Append(b > 0 ? ", " : "").Append(Fmt(c[a, b]));
+                        sb.Append(']');
                     }
                     sb.Append("]");
                 }
@@ -280,7 +301,20 @@ namespace LensHH.Core.IO
             for (int i = 0; i < system.Surfaces.Count; i++)
             {
                 var s = system.Surfaces[i];
+                // A Coordinate Break is not written, and changes no medium: the surface after it
+                // starts in the medium before it.
+                if (s.Type == SurfaceType.CoordinateBreak)
+                {
+                    materials[i] = i > 0 ? materials[i - 1] : null;
+                    continue;
+                }
                 if (s.IsMirror) continue;
+
+                if (s.HasGlassOffset)
+                {
+                    materials[i] = OffsetGlass(system, i, glassMgr, ymls);
+                    continue;
+                }
 
                 if (s.ModelIndexEnabled)
                 {
@@ -319,6 +353,53 @@ namespace LensHH.Core.IO
                 }
             }
             return materials;
+        }
+
+        /// <summary>
+        /// A glass with an offset (melt data, a tolerancing trial): no dispersion formula carries
+        /// it, so it is written as its index, as LensHH-LT computes it, tabulated every 2.5 nm with
+        /// the lens's own wavelengths among the points, where Optiland's interpolation then gives
+        /// it exactly. Named after the glass and its offset, so two lenses' offset glasses cannot
+        /// collide in an installed catalog; with no '+', as Optiland matches a name as a pattern.
+        /// </summary>
+        private static string OffsetGlass(OpticalSystem system, int i, GlassCatalogManager? glassMgr,
+            SortedDictionary<string, SortedDictionary<string, string>> ymls)
+        {
+            var s = system.Surfaces[i];
+            if (glassMgr == null)
+                throw new InvalidOperationException(
+                    $"Surface {i} has a glass offset, which needs the glass catalogs to be written for Optiland.");
+            var inv = CultureInfo.InvariantCulture;
+            string baseName = s.ModelIndexEnabled ? OptilandGlass.ModelName(s.ModelNd, s.ModelVd, s.ModelDPgF) : s.Material;
+            string name = string.Format(inv, "{0}_dn{1:0.#########}_dv{2:0.######}",
+                baseName, s.IndexOffset, s.AbbeOffset);
+            if (!OptilandGlass.IsFileName(name)) name = string.Format(inv, "SURFACE{0}_OFFSET", i);
+
+            double lo = 0.3, hi = 2.5;
+            var glass = s.ModelIndexEnabled ? null : glassMgr.GetGlass(s.Material, system.GlassCatalogs.Count > 0 ? system.GlassCatalogs : null);
+            if (glass != null && glass.WavelengthMin > 0 && glass.WavelengthMax > glass.WavelengthMin)
+            {
+                lo = Math.Max(lo, glass.WavelengthMin);
+                hi = Math.Min(hi, glass.WavelengthMax);
+            }
+            var points = new SortedSet<double>();
+            for (double w = Math.Ceiling(lo / 0.0025) * 0.0025; w <= hi + 1e-12; w += 0.0025)
+                points.Add(Math.Round(w, 6));
+            points.Add(lo); points.Add(hi);
+            foreach (var w in system.Wavelengths) points.Add(w.Value);
+
+            var sb = new StringBuilder();
+            sb.Append("REFERENCES: \"").Append(string.Format(inv,
+                "{0} with an offset of {1:R} in nd and {2:R} in Vd, partial dispersions kept, as LensHH-LT computes it",
+                baseName, s.IndexOffset, s.AbbeOffset).Replace("\"", "'")).Append("\"\n");
+            sb.Append("DATA:\n  - type: tabulated n\n    data: |\n");
+            foreach (var w in points)
+            {
+                double n = glassMgr.BuildRefractiveIndexArray(system, w)[i];
+                sb.Append("        ").Append(w.ToString("R", inv)).Append(' ').Append(n.ToString("R", inv)).Append('\n');
+            }
+            Add(ymls, OptilandGlass.OffsetCatalog, name, sb.ToString());
+            return MaterialJson(name, OptilandGlass.OffsetCatalog);
         }
 
         private static void Add(SortedDictionary<string, SortedDictionary<string, string>> ymls,

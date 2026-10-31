@@ -154,9 +154,17 @@ layout then show the lens turned about its axis to put its fields at +x, −y or
 weighted as the run judged them; ZEMAX has x fields of its own. (A lens the same in every
 direction is written with its fields as they are.) The Zernike departures are written as Zernike
 Fringe Sag surfaces and the glass offsets as Offset solves on the catalog glass, so the file
-carries every error the trial has. Pickups are written as the values they set. The Code V, OSLO
-and Optalix exports are for centred lenses: their files hold no coordinate breaks, Zernike
-departures or glass offsets, so they are off for a trial.
+carries every error the trial has. Pickups are written as the values they set.
+
+**File ▸ Export ▸ Optiland (.json)** writes the same lens for Optiland, fields in four directions
+likewise. Optiland has no Coordinate Break: each surface is written where it stands in space, with
+its own decentre and tilt. A Zernike departure is written as the XY polynomial surface that it and
+the surface's asphere terms add up to, the same surface; a glass offset as a glass of its own,
+its index tabulated as LensHH-LT computes it, beside the lens file and installed for Optiland like
+the lens's other glasses.
+
+The Code V, OSLO and Optalix exports are for centred lenses: their files hold no coordinate
+breaks, Zernike departures or glass offsets, so they are off for a trial.
 
 `trials.csv` lists every trial's errors, the compensators' moves and the criterion, and which file
 it was saved to. Its `focus_change_mm` is the focus thickness's change from the design, as the
