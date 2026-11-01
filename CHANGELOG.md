@@ -16,7 +16,8 @@ All notable changes to LensHH-LT and the LensHH-LT-Engine.
   that open and analyse like any other - every surface with its own thickness, each moved element
   between a pair of Coordinate Breaks whose second picks up the first - with a table of every
   trial. Each lens is judged at +y, +x, −y and −x by default, the lens turned about its axis to
-  put its fields in each direction, and refocused for all four together.
+  put its fields in each direction, and refocused for all four together. The window's tabs are
+  Tolerances, Compensators and Settings, then the Report, Monte Carlo MTF and Trial lenses.
 - **Element drawings** from a tolerance set (Tolerancing ▸ Drawings…, CLI `tolerance drawings`, MCP `ToleranceDrawings`): a
   sheet per piece of glass for the optical shop, to ISO 10110 or US practice (ASME Y14.18,
   MIL-PRF-13830B), with the section, centre thickness and edge diameter, each surface's radius,

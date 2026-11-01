@@ -168,6 +168,8 @@ public partial class ToleranceDialogViewModel : ObservableObject
     [ObservableProperty] private double _progress;
     [ObservableProperty] private string _status = "";
     [ObservableProperty] private string _report = "";
+    // The window's tabs: Tolerances, Compensators, Settings, then the results.
+    private const int ReportTab = 3, MtfTab = 4;
     [ObservableProperty] private int _selectedTab;
 
     public ObservableCollection<string> MtfFields { get; } = new();
@@ -241,7 +243,7 @@ public partial class ToleranceDialogViewModel : ObservableObject
         await Run($"Sensitivity of {total / 2} tolerances", total, (progress, cancel) =>
         {
             var table = ToleranceRun.Sensitivity(system, _session.GlassCatalog, text, settings, progress, cancel);
-            return () => { Report = ToleranceRun.Report(table); SelectedTab = 0; };
+            return () => { Report = ToleranceRun.Report(table); SelectedTab = ReportTab; };
         });
     }
 
@@ -269,7 +271,7 @@ public partial class ToleranceDialogViewModel : ObservableObject
                 TrialFiles.Clear();
                 foreach (var t in result.Trials.Where(t => t.File != null))
                     TrialFiles.Add(t.File!);
-                SelectedTab = MtfFields.Count > 0 ? 1 : 0;
+                SelectedTab = MtfFields.Count > 0 ? MtfTab : ReportTab;
             };
         });
     }

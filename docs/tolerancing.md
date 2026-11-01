@@ -5,7 +5,10 @@ and the elements sit a little decentred and tilted in their mounts. Tolerancing 
 those errors matter, and how good the lenses built to a set of tolerances will be.
 
 Open it from **Tolerancing ▸ Tolerancing…**. It works on copies of the lens; your design is never
-changed.
+changed. Its tabs are **Tolerances**, **Compensators** and **Settings**, then the results:
+**Report**, **Monte Carlo MTF** and **Trial lenses**. The buttons above the tabs load, save or
+generate the set and run **Sensitivity** or **Monte Carlo**, from whichever tab is showing; a run
+shows its results when it ends.
 
 ## The tolerance set
 
@@ -55,7 +58,8 @@ CEDX | CEDY | CETX | CETY first-last [±travel]
 | `CETX`, `CETY` | Tilt of an element or group in its cell, about its first vertex | degrees |
 
 The travel limits how far it may move either way; with none it moves freely. With no compensator
-lines each lens is refocused by its back focus (**Refocus each lens**). With them, the `COMP` on the
+lines each lens is refocused by its back focus. In the window they are the **Compensators** tab,
+and **Adjust each lens** there turns adjustment on or off. With them, the `COMP` on the
 thickness before the image is the focus if there is one, or else the first `COMP`; the others are
 set together with it, by damped least squares on the RMS wavefront. For example
 
@@ -91,10 +95,6 @@ then **Save .tol…** to keep it.
   every direction, counts once. The focus and any other compensators are set for all of them
   together. An MTF criterion, and the Monte Carlo MTF, take the worst direction at each frequency.
   Judging in four directions takes about twice as long as in one.
-- **Refocus each lens.** Each lens is refocused, as it would be in use, for the sharpest image
-  (the smallest RMS wavefront): by its back focus, or by the compensators the set names. **Focus
-  travel** limits how far the back focus may move either way from where it focuses the nominal
-  lens; a lens that needs more is left at the end. Off, no lens is adjusted at all.
 - **Lenses, Seed, Errors spread.** The Monte Carlo's number of lenses, its random seed (the same
   seed draws the same lenses), and how errors spread over their ranges when a tolerance names no
   distribution: uniform, normal (±2σ at the ends of the range), or at the end points.

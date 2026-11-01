@@ -5,12 +5,36 @@
         x:DataType="vm:ToleranceDialogViewModel"
         Title="Tolerancing"
         Icon="avares://LensHH.App/Assets/icon_256.png"
-        Width="1560" Height="900"
+        Width="1100" Height="760"
         WindowStartupLocation="CenterOwner"
         CanResize="True"
-        MinWidth="1200" MinHeight="700">
+        MinWidth="860" MinHeight="560"
+        FontSize="12">
+
+  <!-- The theme sets the table cells' size itself, so the window's size doesn't reach them. -->
+  <Window.Styles>
+    <Style Selector="DataGridCell">
+      <Setter Property="FontSize" Value="12" />
+    </Style>
+  </Window.Styles>
 
   <DockPanel LastChildFill="True" Margin="10">
+
+    <!-- ── The set and the runs, above every tab ── -->
+    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0,0,0,8">
+      <ComboBox ItemsSource="{Binding Grades}" SelectedIndex="{Binding GradeIndex}" Width="130" />
+      <Button Content="Generate" Command="{Binding GenerateCommand}"
+              ToolTip.Tip="Replace the tolerances with a starting set at this shop grade" />
+      <Button Content="Load .tol…" Click="Load_Click" />
+      <Button Content="Save .tol…" Click="Save_Click"
+              ToolTip.Tip="The tolerances and compensators as a .tol file, which the CLI and MCP read too" />
+      <Border Width="1" Background="#CCCCCC" Margin="8,2" />
+      <Button Content="Sensitivity" Command="{Binding RunSensitivityCommand}"
+              ToolTip.Tip="Each tolerance at both ends of its range, worst first" />
+      <Button Content="Monte Carlo" Command="{Binding RunMonteCarloCommand}"
+              ToolTip.Tip="Random lenses drawn within the tolerances" />
+      <Button Content="Cancel" Command="{Binding CancelCommand}" />
+    </StackPanel>
 
     <!-- ── Status and progress ── -->
     <Grid DockPanel.Dock="Bottom" ColumnDefinitions="*,240" Margin="0,8,0,0">
@@ -19,36 +43,86 @@
                    IsVisible="{Binding IsRunning}" />
     </Grid>
 
-    <Grid ColumnDefinitions="640,12,*">
+    <TabControl SelectedIndex="{Binding SelectedTab}" Padding="0,6,0,0">
+      <TabControl.Styles>
+        <Style Selector="TabItem">
+          <Setter Property="FontSize" Value="13" />
+          <Setter Property="MinHeight" Value="28" />
+          <Setter Property="Padding" Value="10,2" />
+        </Style>
+      </TabControl.Styles>
 
-      <!-- ── Tolerances and compensators ── -->
-      <DockPanel Grid.Column="0" LastChildFill="True">
-        <StackPanel DockPanel.Dock="Top" Spacing="6" Margin="0,0,0,6">
-          <TextBlock Text="Tolerances" FontWeight="SemiBold" FontSize="14" />
-          <StackPanel Orientation="Horizontal" Spacing="8">
-            <ComboBox ItemsSource="{Binding Grades}" SelectedIndex="{Binding GradeIndex}" Width="140" />
-            <Button Content="Generate" Command="{Binding GenerateCommand}"
-                    ToolTip.Tip="Replace the table with a starting set at this shop grade" />
-            <Button Content="Load .tol…" Click="Load_Click" />
-            <Button Content="Save .tol…" Click="Save_Click"
-                    ToolTip.Tip="The tolerances and compensators as a .tol file, which the CLI and MCP read too" />
-          </StackPanel>
-          <TextBlock TextWrapping="Wrap" Foreground="#555555" FontSize="12"
+      <!-- ── Tolerances ── -->
+      <TabItem Header="Tolerances">
+        <DockPanel LastChildFill="True">
+          <TextBlock DockPanel.Dock="Top" TextWrapping="Wrap" Foreground="#555555" Margin="0,0,0,6"
                      Text="Surfaces are numbered as in the Lens Editor; an element or group is its first and last surface, 3-4. A range need not be centred: Min −0.02, Max 0.08 is a bias. Pivot moves an element tilt's pivot that far along the axis from its first vertex." />
-        </StackPanel>
+          <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="8" Margin="0,6,0,0">
+            <Button Content="Add" Command="{Binding AddToleranceCommand}" Width="70"
+                    ToolTip.Tip="Add a row at the end, a copy of the one selected" />
+            <Button Content="Insert" Command="{Binding InsertToleranceCommand}" Width="70"
+                    ToolTip.Tip="Insert a row above the one selected" />
+            <Button Content="Delete" Command="{Binding DeleteToleranceCommand}" Width="70" />
+            <TextBlock VerticalAlignment="Center" Foreground="#555555"
+                       Text="{Binding Tolerances.Count, StringFormat='{}{0} tolerances'}" />
+          </StackPanel>
+          <DataGrid ItemsSource="{Binding Tolerances}" SelectedItem="{Binding SelectedTolerance}"
+                    AutoGenerateColumns="False" CanUserSortColumns="False" GridLinesVisibility="Horizontal" FontSize="12">
+            <DataGrid.Columns>
+              <DataGridTemplateColumn Header="Type" Width="90">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate x:DataType="vm:ToleranceRowViewModel">
+                    <ComboBox ItemsSource="{x:Static vm:ToleranceRowViewModel.Codes}" SelectedItem="{Binding Code}"
+                              HorizontalAlignment="Stretch" FontSize="12" ToolTip.Tip="{Binding Description}" />
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+              <DataGridTextColumn Header="Surfaces" Binding="{Binding Surfaces}" Width="96" />
+              <DataGridTextColumn Header="Min" Binding="{Binding Min}" Width="96" />
+              <DataGridTextColumn Header="Max" Binding="{Binding Max}" Width="96" />
+              <DataGridTemplateColumn Header="Spread" Width="128">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate x:DataType="vm:ToleranceRowViewModel">
+                    <ComboBox ItemsSource="{x:Static vm:ToleranceRowViewModel.Spreads}" SelectedIndex="{Binding SpreadIndex}"
+                              HorizontalAlignment="Stretch" FontSize="12"
+                              ToolTip.Tip="How this tolerance's errors spread over its range; Run default uses the Errors spread setting" />
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+              <DataGridTemplateColumn Header="Pivot" Width="84">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate x:DataType="vm:ToleranceRowViewModel">
+                    <TextBlock Text="{Binding Pivot}" IsVisible="{Binding HasPivot}" Margin="6,0" VerticalAlignment="Center" />
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+                <DataGridTemplateColumn.CellEditingTemplate>
+                  <DataTemplate x:DataType="vm:ToleranceRowViewModel">
+                    <TextBox Text="{Binding Pivot}" IsEnabled="{Binding HasPivot}" />
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellEditingTemplate>
+              </DataGridTemplateColumn>
+              <DataGridTextColumn Header="What it is" Binding="{Binding Description}" IsReadOnly="True" Width="*" />
+            </DataGrid.Columns>
+          </DataGrid>
+        </DockPanel>
+      </TabItem>
 
-        <!-- Compensators, below the tolerances -->
-        <StackPanel DockPanel.Dock="Bottom" Spacing="6" Margin="0,10,0,0">
-          <StackPanel Orientation="Horizontal" Spacing="12">
-            <TextBlock Text="Compensators" FontWeight="SemiBold" FontSize="14" VerticalAlignment="Center" />
+      <!-- ── Compensators ── -->
+      <TabItem Header="Compensators">
+        <DockPanel LastChildFill="True">
+          <StackPanel DockPanel.Dock="Top" Spacing="6" Margin="0,0,0,6">
             <CheckBox Content="Adjust each lens" IsChecked="{Binding Compensate}"
                       ToolTip.Tip="Set the compensators on every lens built, for its best image, as it would be adjusted in assembly. Off, no lens is adjusted." />
+            <TextBlock TextWrapping="Wrap" Foreground="#555555"
+                       Text="Adjusted after each lens is built. The thickness before the image is the focus; others are set together with it. Travel limits a move either way; blank, it moves freely. With none, the back focus." />
           </StackPanel>
-          <TextBlock TextWrapping="Wrap" Foreground="#555555" FontSize="12"
-                     Text="Adjusted after each lens is built. The thickness before the image is the focus; others are set together with it. Travel limits a move either way; blank, it moves freely. With none, the back focus." />
+          <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="8" Margin="0,6,0,0">
+            <Button Content="Add" Command="{Binding AddCompensatorCommand}" Width="70" IsEnabled="{Binding Compensate}" />
+            <Button Content="Delete" Command="{Binding DeleteCompensatorCommand}" Width="70" />
+          </StackPanel>
           <DataGrid ItemsSource="{Binding Compensators}" SelectedItem="{Binding SelectedCompensator}"
                     AutoGenerateColumns="False" CanUserSortColumns="False" GridLinesVisibility="Horizontal"
-                    Height="130" IsEnabled="{Binding Compensate}" FontSize="12">
+                    IsEnabled="{Binding Compensate}" FontSize="12">
             <DataGrid.Columns>
               <DataGridTemplateColumn Header="Type" Width="90">
                 <DataGridTemplateColumn.CellTemplate>
@@ -58,188 +132,138 @@
                   </DataTemplate>
                 </DataGridTemplateColumn.CellTemplate>
               </DataGridTemplateColumn>
-              <DataGridTextColumn Header="Surfaces" Binding="{Binding Surfaces}" Width="80" />
+              <DataGridTextColumn Header="Surfaces" Binding="{Binding Surfaces}" Width="96" />
               <DataGridTextColumn Header="Travel ±" Binding="{Binding Travel}" Width="80" />
               <DataGridTextColumn Header="What it adjusts" Binding="{Binding Description}" IsReadOnly="True" Width="*" />
             </DataGrid.Columns>
           </DataGrid>
-          <StackPanel Orientation="Horizontal" Spacing="8">
-            <Button Content="Add" Command="{Binding AddCompensatorCommand}" Width="70" IsEnabled="{Binding Compensate}" />
-            <Button Content="Delete" Command="{Binding DeleteCompensatorCommand}" Width="70" />
-          </StackPanel>
-        </StackPanel>
+        </DockPanel>
+      </TabItem>
 
-        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="8" Margin="0,6,0,0">
-          <Button Content="Add" Command="{Binding AddToleranceCommand}" Width="70"
-                  ToolTip.Tip="Add a row at the end, a copy of the one selected" />
-          <Button Content="Insert" Command="{Binding InsertToleranceCommand}" Width="70"
-                  ToolTip.Tip="Insert a row above the one selected" />
-          <Button Content="Delete" Command="{Binding DeleteToleranceCommand}" Width="70" />
-          <TextBlock VerticalAlignment="Center" Foreground="#555555" FontSize="12"
-                     Text="{Binding Tolerances.Count, StringFormat='{}{0} tolerances'}" />
-        </StackPanel>
+      <!-- ── Settings ── -->
+      <TabItem Header="Settings">
+        <ScrollViewer>
+          <StackPanel Spacing="14" MaxWidth="760" HorizontalAlignment="Left">
+            <StackPanel.Styles>
+              <Style Selector="TextBlock.label">
+                <Setter Property="FontSize" Value="11" />
+                <Setter Property="Foreground" Value="#555555" />
+              </Style>
+              <Style Selector="TextBlock.heading">
+                <Setter Property="FontWeight" Value="SemiBold" />
+                <Setter Property="Margin" Value="0,0,0,4" />
+              </Style>
+            </StackPanel.Styles>
 
-        <DataGrid ItemsSource="{Binding Tolerances}" SelectedItem="{Binding SelectedTolerance}"
-                  AutoGenerateColumns="False" CanUserSortColumns="False" GridLinesVisibility="Horizontal"
-                  FontSize="12">
-          <DataGrid.Columns>
-            <DataGridTemplateColumn Header="Type" Width="90">
-              <DataGridTemplateColumn.CellTemplate>
-                <DataTemplate x:DataType="vm:ToleranceRowViewModel">
-                  <ComboBox ItemsSource="{x:Static vm:ToleranceRowViewModel.Codes}" SelectedItem="{Binding Code}"
-                            HorizontalAlignment="Stretch" FontSize="12" ToolTip.Tip="{Binding Description}" />
-                </DataTemplate>
-              </DataGridTemplateColumn.CellTemplate>
-            </DataGridTemplateColumn>
-            <DataGridTextColumn Header="Surfaces" Binding="{Binding Surfaces}" Width="72" />
-            <DataGridTextColumn Header="Min" Binding="{Binding Min}" Width="72" />
-            <DataGridTextColumn Header="Max" Binding="{Binding Max}" Width="72" />
-            <DataGridTemplateColumn Header="Spread" Width="128">
-              <DataGridTemplateColumn.CellTemplate>
-                <DataTemplate x:DataType="vm:ToleranceRowViewModel">
-                  <ComboBox ItemsSource="{x:Static vm:ToleranceRowViewModel.Spreads}" SelectedIndex="{Binding SpreadIndex}"
-                            HorizontalAlignment="Stretch" FontSize="12"
-                            ToolTip.Tip="How this tolerance's errors spread over its range; Run default uses the setting at the right" />
-                </DataTemplate>
-              </DataGridTemplateColumn.CellTemplate>
-            </DataGridTemplateColumn>
-            <DataGridTemplateColumn Header="Pivot" Width="64">
-              <DataGridTemplateColumn.CellTemplate>
-                <DataTemplate x:DataType="vm:ToleranceRowViewModel">
-                  <TextBlock Text="{Binding Pivot}" IsVisible="{Binding HasPivot}" Margin="6,0" VerticalAlignment="Center" />
-                </DataTemplate>
-              </DataGridTemplateColumn.CellTemplate>
-              <DataGridTemplateColumn.CellEditingTemplate>
-                <DataTemplate x:DataType="vm:ToleranceRowViewModel">
-                  <TextBox Text="{Binding Pivot}" IsEnabled="{Binding HasPivot}" />
-                </DataTemplate>
-              </DataGridTemplateColumn.CellEditingTemplate>
-            </DataGridTemplateColumn>
-            <DataGridTextColumn Header="What it is" Binding="{Binding Description}" IsReadOnly="True" Width="*" />
-          </DataGrid.Columns>
-        </DataGrid>
-      </DockPanel>
+            <StackPanel>
+              <TextBlock Classes="heading" Text="How each lens is judged" />
+              <WrapPanel Orientation="Horizontal">
+                <StackPanel Margin="0,0,16,6" Width="150">
+                  <TextBlock Classes="label" Text="Criterion" />
+                  <ComboBox ItemsSource="{Binding Criteria}" SelectedIndex="{Binding CriterionIndex}" HorizontalAlignment="Stretch"
+                            ToolTip.Tip="RMS wavefront error over the fields and wavelengths, or the MTF at one field, frequency and orientation" />
+                </StackPanel>
+                <StackPanel Margin="0,0,16,6" Width="110" IsVisible="{Binding IsMtfCriterion}">
+                  <TextBlock Classes="label" Text="Field" />
+                  <NumericUpDown Value="{Binding MtfField}" Minimum="1" Maximum="{Binding FieldCount}" FormatString="0" />
+                </StackPanel>
+                <StackPanel Margin="0,0,16,6" Width="110" IsVisible="{Binding IsMtfCriterion}">
+                  <TextBlock Classes="label" Text="Frequency (cy/mm)" />
+                  <NumericUpDown Value="{Binding MtfFrequency}" Minimum="0.1" Increment="5" FormatString="0.##" />
+                </StackPanel>
+                <StackPanel Margin="0,0,16,6" Width="120" IsVisible="{Binding IsMtfCriterion}">
+                  <TextBlock Classes="label" Text="Orientation" />
+                  <ComboBox ItemsSource="{Binding Orientations}" SelectedIndex="{Binding OrientationIndex}" HorizontalAlignment="Stretch" />
+                </StackPanel>
+                <StackPanel Margin="0,0,16,6" VerticalAlignment="Bottom">
+                  <CheckBox Content="Polychromatic" IsChecked="{Binding Polychromatic}" />
+                </StackPanel>
+                <StackPanel Margin="0,0,16,6" Width="130"
+                            ToolTip.Tip="Where across the field each lens is judged. The lens is turned about its axis to see its fields at −y, +x and −x: a decentre or tilt can make one side worse than another">
+                  <TextBlock Classes="label" Text="Field directions" />
+                  <ComboBox ItemsSource="{Binding FieldDirections}" SelectedIndex="{Binding FieldDirectionsIndex}" HorizontalAlignment="Stretch" />
+                </StackPanel>
+              </WrapPanel>
+            </StackPanel>
 
-      <!-- ── Settings, run, results ── -->
-      <DockPanel Grid.Column="2" LastChildFill="True">
-        <Border DockPanel.Dock="Top" BorderBrush="#DDDDDD" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,0,8">
-          <StackPanel Spacing="8">
-            <WrapPanel Orientation="Horizontal">
-              <StackPanel Margin="0,0,16,6" Width="150">
-                <TextBlock Text="Criterion" FontSize="11" />
-                <ComboBox ItemsSource="{Binding Criteria}" SelectedIndex="{Binding CriterionIndex}" HorizontalAlignment="Stretch"
-                          ToolTip.Tip="RMS wavefront error over the fields and wavelengths, or the MTF at one field, frequency and orientation" />
-              </StackPanel>
-              <StackPanel Margin="0,0,16,6" Width="80" IsVisible="{Binding IsMtfCriterion}">
-                <TextBlock Text="Field" FontSize="11" />
-                <NumericUpDown Value="{Binding MtfField}" Minimum="1" Maximum="{Binding FieldCount}" FormatString="0" />
-              </StackPanel>
-              <StackPanel Margin="0,0,16,6" Width="110" IsVisible="{Binding IsMtfCriterion}">
-                <TextBlock Text="Frequency (cy/mm)" FontSize="11" />
-                <NumericUpDown Value="{Binding MtfFrequency}" Minimum="0.1" Increment="5" FormatString="0.##" />
-              </StackPanel>
-              <StackPanel Margin="0,0,16,6" Width="120" IsVisible="{Binding IsMtfCriterion}">
-                <TextBlock Text="Orientation" FontSize="11" />
-                <ComboBox ItemsSource="{Binding Orientations}" SelectedIndex="{Binding OrientationIndex}" HorizontalAlignment="Stretch" />
-              </StackPanel>
-              <StackPanel Margin="0,0,16,6" VerticalAlignment="Bottom">
-                <CheckBox Content="Polychromatic" IsChecked="{Binding Polychromatic}" />
-              </StackPanel>
-              <StackPanel Margin="0,0,16,6" Width="130"
-                          ToolTip.Tip="Where across the field each lens is judged. The lens is turned about its axis to see its fields at −y, +x and −x: a decentre or tilt can make one side worse than another">
-                <TextBlock Text="Field directions" FontSize="11" />
-                <ComboBox ItemsSource="{Binding FieldDirections}" SelectedIndex="{Binding FieldDirectionsIndex}" HorizontalAlignment="Stretch" />
-              </StackPanel>
-            </WrapPanel>
+            <StackPanel>
+              <TextBlock Classes="heading" Text="Monte Carlo" />
+              <WrapPanel Orientation="Horizontal">
+                <StackPanel Margin="0,0,16,6" Width="140">
+                  <TextBlock Classes="label" Text="Lenses" />
+                  <NumericUpDown Value="{Binding Trials}" Minimum="1" Maximum="100000" Increment="100" FormatString="0" />
+                </StackPanel>
+                <StackPanel Margin="0,0,16,6" Width="120">
+                  <TextBlock Classes="label" Text="Seed" />
+                  <NumericUpDown Value="{Binding Seed}" Minimum="0" FormatString="0" />
+                </StackPanel>
+                <StackPanel Margin="0,0,16,6" Width="140">
+                  <TextBlock Classes="label" Text="Errors spread" />
+                  <ComboBox ItemsSource="{Binding DistributionNames}" SelectedIndex="{Binding DistributionIndex}" HorizontalAlignment="Stretch"
+                            ToolTip.Tip="For a tolerance that names no distribution of its own" />
+                </StackPanel>
+                <StackPanel Margin="0,0,16,6" VerticalAlignment="Bottom">
+                  <CheckBox Content="x and y as one error" IsChecked="{Binding PairsAsOne}"
+                            ToolTip.Tip="Draw each decentre or tilt's x and y together, uniform over a disc, rather than independently" />
+                </StackPanel>
+              </WrapPanel>
+              <WrapPanel Orientation="Horizontal">
+                <StackPanel Margin="0,0,16,6" Width="150">
+                  <TextBlock Classes="label" Text="MTF up to (cy/mm)" />
+                  <NumericUpDown Value="{Binding MtfMaxFrequency}" Minimum="0" Increment="10" FormatString="0.##"
+                                 ToolTip.Tip="Keep each lens's polychromatic MTF up to this frequency; 0 for none" />
+                </StackPanel>
+                <StackPanel Margin="0,0,16,6" Width="120">
+                  <TextBlock Classes="label" Text="Step" />
+                  <NumericUpDown Value="{Binding MtfStep}" Minimum="0.1" Increment="1" FormatString="0.##" />
+                </StackPanel>
+              </WrapPanel>
+            </StackPanel>
 
-            <WrapPanel Orientation="Horizontal">
-              <StackPanel Margin="0,0,16,6" Width="100">
-                <TextBlock Text="Lenses" FontSize="11" />
-                <NumericUpDown Value="{Binding Trials}" Minimum="1" Maximum="100000" Increment="100" FormatString="0" />
-              </StackPanel>
-              <StackPanel Margin="0,0,16,6" Width="80">
-                <TextBlock Text="Seed" FontSize="11" />
-                <NumericUpDown Value="{Binding Seed}" Minimum="0" FormatString="0" />
-              </StackPanel>
-              <StackPanel Margin="0,0,16,6" Width="140">
-                <TextBlock Text="Errors spread" FontSize="11" />
-                <ComboBox ItemsSource="{Binding DistributionNames}" SelectedIndex="{Binding DistributionIndex}" HorizontalAlignment="Stretch"
-                          ToolTip.Tip="For a tolerance that names no distribution of its own" />
-              </StackPanel>
-              <StackPanel Margin="0,0,16,6" VerticalAlignment="Bottom">
-                <CheckBox Content="x and y as one error" IsChecked="{Binding PairsAsOne}"
-                          ToolTip.Tip="Draw each decentre or tilt's x and y together, uniform over a disc, rather than independently" />
-              </StackPanel>
-            </WrapPanel>
-
-            <WrapPanel Orientation="Horizontal">
-              <StackPanel Margin="0,0,16,6" Width="130">
-                <TextBlock Text="MTF up to (cy/mm)" FontSize="11" />
-                <NumericUpDown Value="{Binding MtfMaxFrequency}" Minimum="0" Increment="10" FormatString="0.##"
-                               ToolTip.Tip="Keep each lens's polychromatic MTF up to this frequency; 0 for none" />
-              </StackPanel>
-              <StackPanel Margin="0,0,16,6" Width="90">
-                <TextBlock Text="Step" FontSize="11" />
-                <NumericUpDown Value="{Binding MtfStep}" Minimum="0.1" Increment="1" FormatString="0.##" />
-              </StackPanel>
-              <StackPanel Margin="0,0,8,6" VerticalAlignment="Bottom">
-                <CheckBox Content="Save" IsChecked="{Binding SaveTrials}" />
-              </StackPanel>
-              <StackPanel Margin="0,0,8,6" Width="70" IsEnabled="{Binding SaveTrials}">
-                <TextBlock Text="Lenses" FontSize="11" />
-                <NumericUpDown Value="{Binding SaveCount}" Minimum="0" FormatString="0" />
-              </StackPanel>
-              <StackPanel Margin="0,0,8,6" Width="330" IsEnabled="{Binding SaveTrials}">
-                <TextBlock Text="To folder (lens files, trials.csv, MTF plots)" FontSize="11" />
-                <TextBox Text="{Binding SaveDirectory}" />
-              </StackPanel>
-              <Button Content="…" Click="Browse_Click" VerticalAlignment="Bottom" Margin="0,0,0,6" IsEnabled="{Binding SaveTrials}" />
-            </WrapPanel>
-
-            <StackPanel Orientation="Horizontal" Spacing="8">
-              <Button Content="Sensitivity" Command="{Binding RunSensitivityCommand}"
-                      ToolTip.Tip="Each tolerance at both ends of its range, worst first" />
-              <Button Content="Monte Carlo" Command="{Binding RunMonteCarloCommand}"
-                      ToolTip.Tip="Random lenses drawn within the tolerances" />
-              <Button Content="Cancel" Command="{Binding CancelCommand}" />
+            <StackPanel>
+              <TextBlock Classes="heading" Text="Trial lenses" />
+              <WrapPanel Orientation="Horizontal">
+                <StackPanel Margin="0,0,8,6" VerticalAlignment="Bottom">
+                  <CheckBox Content="Save" IsChecked="{Binding SaveTrials}" />
+                </StackPanel>
+                <StackPanel Margin="0,0,16,6" Width="120" IsEnabled="{Binding SaveTrials}">
+                  <TextBlock Classes="label" Text="Lenses" />
+                  <NumericUpDown Value="{Binding SaveCount}" Minimum="0" FormatString="0" />
+                </StackPanel>
+                <StackPanel Margin="0,0,8,6" Width="400" IsEnabled="{Binding SaveTrials}">
+                  <TextBlock Classes="label" Text="To folder (lens files, trials.csv, MTF plots)" />
+                  <TextBox Text="{Binding SaveDirectory}" />
+                </StackPanel>
+                <Button Content="…" Click="Browse_Click" VerticalAlignment="Bottom" Margin="0,0,0,6" IsEnabled="{Binding SaveTrials}" />
+              </WrapPanel>
             </StackPanel>
           </StackPanel>
-        </Border>
+        </ScrollViewer>
+      </TabItem>
 
-        <TabControl SelectedIndex="{Binding SelectedTab}">
-          <TabControl.Styles>
-            <Style Selector="TabItem">
-              <Setter Property="FontSize" Value="14" />
-              <Setter Property="MinHeight" Value="32" />
-              <Setter Property="Padding" Value="10,4" />
-            </Style>
-          </TabControl.Styles>
-          <TabItem Header="Report">
-            <TextBox Text="{Binding Report}" IsReadOnly="True" AcceptsReturn="True" TextWrapping="NoWrap"
-                     FontFamily="Consolas, Menlo, monospace" FontSize="12" />
-          </TabItem>
-          <TabItem Header="Monte Carlo MTF">
-            <DockPanel LastChildFill="True">
-              <ComboBox DockPanel.Dock="Top" ItemsSource="{Binding MtfFields}" SelectedIndex="{Binding MtfFieldIndex}"
-                        Width="220" Margin="0,4,0,6" />
-              <Image Source="{Binding MtfImage}" Stretch="Uniform" />
-            </DockPanel>
-          </TabItem>
-          <TabItem Header="Trial lenses">
-            <DockPanel LastChildFill="True">
-              <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0,4,0,6">
-                <TextBlock VerticalAlignment="Center" TextWrapping="Wrap" Foreground="#555555" FontSize="12"
-                           Text="Each saved trial is a lens file: every surface with its own thickness, each moved element between a pair of Coordinate Breaks, irregularity as Zernike departures, glass errors as offsets, adjusted by its compensators." />
-              </StackPanel>
-              <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="8" Margin="0,6,0,0">
-                <Button Content="Open in LensHH" Command="{Binding OpenTrialCommand}"
-                        ToolTip.Tip="Open the selected trial lens in a LensHH-LT window of its own; your design stays open here (or double-click it)" />
-              </StackPanel>
-              <ListBox ItemsSource="{Binding TrialFiles}" SelectedItem="{Binding SelectedTrial}" DoubleTapped="Trial_DoubleTapped" FontSize="12" />
-            </DockPanel>
-          </TabItem>
-        </TabControl>
-      </DockPanel>
-    </Grid>
+      <!-- ── Results ── -->
+      <TabItem Header="Report">
+        <TextBox Text="{Binding Report}" IsReadOnly="True" AcceptsReturn="True" TextWrapping="NoWrap"
+                 FontFamily="Consolas, Menlo, monospace" FontSize="11" />
+      </TabItem>
+      <TabItem Header="Monte Carlo MTF">
+        <DockPanel LastChildFill="True">
+          <ComboBox DockPanel.Dock="Top" ItemsSource="{Binding MtfFields}" SelectedIndex="{Binding MtfFieldIndex}"
+                    Width="220" Margin="0,0,0,6" />
+          <Image Source="{Binding MtfImage}" Stretch="Uniform" />
+        </DockPanel>
+      </TabItem>
+      <TabItem Header="Trial lenses">
+        <DockPanel LastChildFill="True">
+          <TextBlock DockPanel.Dock="Top" TextWrapping="Wrap" Foreground="#555555" Margin="0,0,0,6"
+                     Text="Each saved trial is a lens file: every surface with its own thickness, each moved element between a pair of Coordinate Breaks, irregularity as Zernike departures, glass errors as offsets, adjusted by its compensators." />
+          <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="8" Margin="0,6,0,0">
+            <Button Content="Open in LensHH" Command="{Binding OpenTrialCommand}"
+                    ToolTip.Tip="Open the selected trial lens in a LensHH-LT window of its own; your design stays open here (or double-click it)" />
+          </StackPanel>
+          <ListBox ItemsSource="{Binding TrialFiles}" SelectedItem="{Binding SelectedTrial}" DoubleTapped="Trial_DoubleTapped" FontSize="12" />
+        </DockPanel>
+      </TabItem>
+    </TabControl>
   </DockPanel>
 </Window>
