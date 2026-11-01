@@ -22,6 +22,12 @@ public sealed record SensitivityTable(string Criterion, double Nominal, double N
                                       double NominalCompensator, FocusCompensator? Compensator,
                                       IReadOnlyList<SensitivityRow> Rows)
 {
+    /// <summary>The tolerances asked for. More than <see cref="Rows"/> holds when the run was stopped.</summary>
+    public int Requested { get; init; }
+
+    /// <summary>The run was stopped before every tolerance was finished; <see cref="Rows"/> are the finished ones.</summary>
+    public bool Stopped => Requested > Rows.Count;
+
     public double RssIncrease => Math.Sqrt(Rows.Sum(r => r.WorstIncrease * r.WorstIncrease));
 
     public double Estimated => NominalCompensated + RssIncrease;
@@ -41,23 +47,34 @@ public static class Sensitivity
         ToleranceCheck.Validate(lens, items);
 
         double nominal = criterion.Evaluate(lens.Perturb().Build());
-        var reference = Evaluate(lens, Array.Empty<(Tolerance, double)>(), criterion, compensator);
-        var ends = new Compensated[items.Count * 2];
+        var reference = Evaluate(lens, Array.Empty<(Tolerance, double)>(), criterion, compensator, out _, cancel);
+        cancel.ThrowIfCancellationRequested();
+        // A stop (cancel) ends the run within one evaluation of the criterion and keeps the
+        // tolerances whose two ends were both finished.
+        var ends = new Compensated?[items.Count * 2];
         int done = 0;
-        Parallel.For(0, items.Count * 2, new ParallelOptions { CancellationToken = cancel }, k =>
+        try
         {
-            var item = items[k / 2];
-            ends[k] = Evaluate(lens, new[] { (item.Tolerance, k % 2 == 0 ? item.Min : item.Max) }, criterion, compensator);
-            progress?.Report(Interlocked.Increment(ref done));
-        });
+            Parallel.For(0, items.Count * 2, new ParallelOptions { CancellationToken = cancel }, k =>
+            {
+                var item = items[k / 2];
+                try { ends[k] = Evaluate(lens, new[] { (item.Tolerance, k % 2 == 0 ? item.Min : item.Max) }, criterion, compensator, out _, cancel); }
+                catch (OperationCanceledException) when (cancel.IsCancellationRequested) { return; }
+                progress?.Report(Interlocked.Increment(ref done));
+            });
+        }
+        catch (OperationCanceledException) when (cancel.IsCancellationRequested) { }
 
-        var rows = items.Select((item, i) =>
+        var rows = items.Select((item, i) => (item, lo: ends[2 * i], hi: ends[2 * i + 1]))
+            .Where(e => e.lo.HasValue && e.hi.HasValue)
+            .Select(e => new SensitivityRow(e.item, e.lo!.Value.Criterion, e.lo.Value.Change - reference.Change,
+                                            e.hi!.Value.Criterion, e.hi.Value.Change - reference.Change, reference.Criterion))
+            .ToList();
+        if (rows.Count == 0 && cancel.IsCancellationRequested) throw new OperationCanceledException(cancel);
+        return new SensitivityTable(criterion.Name, nominal, reference.Criterion, reference.Change, compensator, rows)
         {
-            var (lo, hi) = (ends[2 * i], ends[2 * i + 1]);
-            return new SensitivityRow(item, lo.Criterion, lo.Change - reference.Change,
-                                      hi.Criterion, hi.Change - reference.Change, reference.Criterion);
-        }).ToList();
-        return new SensitivityTable(criterion.Name, nominal, reference.Criterion, reference.Change, compensator, rows);
+            Requested = items.Count,
+        };
     }
 
     /// <summary>
@@ -70,14 +87,15 @@ public static class Sensitivity
 
     /// <summary>As <see cref="Evaluate(NominalLens, IEnumerable{ValueTuple{Tolerance, double}}, ICriterion, FocusCompensator?)"/>, giving the trial lens as left.</summary>
     public static Compensated Evaluate(NominalLens lens, IEnumerable<(Tolerance Tolerance, double Amount)> applied,
-                                       ICriterion criterion, FocusCompensator? compensator, out TrialLens trial)
+                                       ICriterion criterion, FocusCompensator? compensator, out TrialLens trial,
+                                       CancellationToken cancel = default)
     {
         trial = lens.Perturb();
         try
         {
             foreach (var (tolerance, amount) in applied) tolerance.Apply(trial, amount);
             return compensator != null
-                ? compensator.Solve(trial, criterion)
+                ? compensator.Solve(trial, criterion, cancel)
                 : new Compensated(0.0, criterion.Evaluate(trial.Build()));
         }
         catch (Exception e) when (e is InvalidOperationException or ArithmeticException or ArgumentException)

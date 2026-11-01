@@ -17,7 +17,9 @@ All notable changes to LensHH-LT and the LensHH-LT-Engine.
   between a pair of Coordinate Breaks whose second picks up the first - with a table of every
   trial. Each lens is judged at +y, +x, −y and −x by default, the lens turned about its axis to
   put its fields in each direction, and refocused for all four together. The window's tabs are
-  Tolerances, Compensators and Settings, then the Report, Monte Carlo MTF and Trial lenses.
+  Tolerances, Compensators and Settings, then the Report, Monte Carlo MTF and Trial lenses. A
+  run counts its lenses and time as it goes, and **Stop** ends it early, keeping the lenses
+  finished by then.
 - **Element drawings** from a tolerance set (Tolerancing ▸ Drawings…, CLI `tolerance drawings`, MCP `ToleranceDrawings`): a
   sheet per piece of glass for the optical shop, to ISO 10110 or US practice (ASME Y14.18,
   MIL-PRF-13830B), with the section, centre thickness and edge diameter, each surface's radius,
@@ -56,6 +58,22 @@ All notable changes to LensHH-LT and the LensHH-LT-Engine.
 
 ### Fixed
 
+- Real ray aiming is about two and a half times faster: each ray's search for the stop reuses its slope
+  rather than measuring it again at every step, and stops refining once it is a thousand times
+  inside its tolerance. Results are unchanged (wavefronts agree to 1e-8 wave).
+- With the object at infinity, the ray that sets the stop size real aiming aims at was stopped by
+  clear apertures; a fixed aperture just inside the beam, as a tolerancing trial's stop can be,
+  dropped aiming to the paraxial stop size, or switched it off. Apertures are now ignored for that
+  ray, as they already were for a finite object.
+- Refocusing a tolerancing trial started from a paraxial focus some millimetres off: it measured
+  the back focus from the trial's last surface, which is not the lens's last once its elements are
+  laid out between Coordinate Breaks. It now starts from the lens's own, and brackets the best
+  focus before searching inside it; a focus that had moved past the first search range cost some
+  20 extra evaluations. With the faster aiming, refocusing a trial of a real-aimed lens takes
+  about a sixth of the time it did, to the same focus.
+- A Monte Carlo runs half as many lenses at once as there are logical processors, about one per
+  core: a core's second thread added no speed, and every lens in flight took longer to finish,
+  so the first results came minutes into a run.
 - The 2D layout drew an element laid out between Coordinate Breaks as boxes: each surface was
   joined to the row after it. An element is now drawn between its own two surfaces, and the planes
   and breaks a move is laid out with are not drawn as apertures.

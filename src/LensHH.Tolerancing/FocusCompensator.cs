@@ -36,18 +36,22 @@ public sealed record FocusCompensator(int Surface, double? Travel = null)
     /// Refocuses the lens - by the criterion itself, or for an MTF by its <see cref="IFocusedCriterion.Focus"/>,
     /// the sharpest image - and leaves it there, with the criterion where it ends up.
     /// </summary>
-    public Compensated Solve(TrialLens lens, ICriterion criterion)
+    public Compensated Solve(TrialLens lens, ICriterion criterion, CancellationToken cancel = default)
     {
-        if (criterion is not IFocusedCriterion focusedBy) return Refocus(lens, criterion);
-        var focused = Refocus(lens, focusedBy.Focus);
+        if (criterion is not IFocusedCriterion focusedBy) return Refocus(lens, criterion, cancel);
+        var focused = Refocus(lens, focusedBy.Focus, cancel);
+        cancel.ThrowIfCancellationRequested();
         return focused with { Criterion = criterion.Evaluate(lens.Build()) };
     }
 
-    private Compensated Refocus(TrialLens lens, ICriterion criterion) =>
-        Adjustments.Count == 0 ? RefocusAlone(lens, criterion) : CompensatorSolver.Solve(this, lens, criterion);
+    private Compensated Refocus(TrialLens lens, ICriterion criterion, CancellationToken cancel) =>
+        Adjustments.Count == 0 ? RefocusAlone(lens, criterion, cancel) : CompensatorSolver.Solve(this, lens, criterion, cancel);
 
-    /// <summary>The focus alone, by Brent's method on the criterion; on <paramref name="lens"/> itself, where it leaves the thickness.</summary>
-    internal Compensated RefocusAlone(TrialLens lens, ICriterion criterion)
+    /// <summary>
+    /// The focus alone, by Brent's method on the criterion; on <paramref name="lens"/> itself, where it
+    /// leaves the thickness. A cancel stops it before the next evaluation of the criterion.
+    /// </summary>
+    internal Compensated RefocusAlone(TrialLens lens, ICriterion criterion, CancellationToken cancel = default)
     {
         var surface = lens.System.Surfaces[Surface];
         double start = lens.Nominal.System.Surfaces[Surface].Thickness;
@@ -55,17 +59,21 @@ public sealed record FocusCompensator(int Surface, double? Travel = null)
 
         double Score(double change)
         {
+            cancel.ThrowIfCancellationRequested();
             surface.Thickness = baseline + change;
             return criterion.Evaluate(lens.Build());
         }
 
-        // Where the paraxial image went, when this thickness is the one in front of it.
+        // Where the paraxial image went, when this thickness is the one in front of it. From the
+        // lens's own surfaces, numbered as the nominal's: the built lens's back focus is measured
+        // from its last surface, which with the elements laid out between breaks is not the lens's
+        // last (the guess was some 3 mm off on a Heliar trial, and the search walked it back).
         double guess = 0.0;
         var nominal = lens.Nominal.Paraxial;
         if (Surface == lens.Nominal.BackFocusSurface)
         {
             surface.Thickness = baseline;
-            double moved = lens.Build().Paraxial.Bfl - nominal.Bfl;
+            double moved = Built.ParaxialOf(lens.System, lens.Nominal.Glass).Bfl - nominal.Bfl;
             if (double.IsFinite(moved)) guess = start + moved - baseline;
         }
 
@@ -77,6 +85,19 @@ public sealed record FocusCompensator(int Surface, double? Travel = null)
         double half = Math.Max(8.0 * depth, 0.5 * Math.Abs(guess));
         if (!double.IsFinite(half) || half <= 0.0) half = 1e-3 * Math.Max(1.0, Math.Abs(start));
 
+        // Bracket the minimum before searching it: downhill from the guess in steps that double,
+        // until the criterion rises again. Brent's search in a bracket that held no minimum crept to
+        // its edge a little at a time - on a tolerancing trial whose focus moved past it, some 20
+        // evaluations of the criterion before the bracket widened, two thirds of the lens's time.
+        if (Bracket(Score, guess, half) is var (lo, hi))
+        {
+            var (inside, insideScore) = Brent.Minimize(Score, lo, hi, tolerance: depth * 1e-3);
+            double margin = 1e-3 * (hi - lo);
+            bool edge = Math.Abs(inside - lo) < margin || Math.Abs(inside - hi) < margin;
+            if (!edge && double.IsFinite(insideScore)) return Finish(inside, insideScore);
+            guess = inside;
+        }
+
         double best = guess, score = double.PositiveInfinity;
         for (int widen = 0; widen < 6; widen++)
         {
@@ -86,17 +107,54 @@ public sealed record FocusCompensator(int Surface, double? Travel = null)
             guess = best;
             half *= 4.0;
         }
+        return Finish(best, score);
 
-        double change = baseline + best - start;
-        if (Travel is double travel && Math.Abs(change - Center) > travel)
+        Compensated Finish(double found, double value)
         {
-            // The criterion is unimodal in focus, so the best within the travel is its end.
-            double end = Center + Math.CopySign(travel, change - Center);
-            score = Score(start + end - baseline);
-            return new Compensated(end, score, AtLimit: true);
+            double change = baseline + found - start;
+            if (Travel is double travel && Math.Abs(change - Center) > travel)
+            {
+                // The criterion is unimodal in focus, so the best within the travel is its end.
+                double end = Center + Math.CopySign(travel, change - Center);
+                value = Score(start + end - baseline);
+                return new Compensated(end, value, AtLimit: true);
+            }
+            surface.Thickness = baseline + found;
+            return new Compensated(change, value);
         }
-        surface.Thickness = baseline + best;
-        return new Compensated(change, score);
+    }
+
+    /// <summary>
+    /// An interval (a, b) with a point inside that scores no worse than its ends - one that holds a
+    /// minimum - from centre ± half, walking downhill in steps that double. Null when the scores are
+    /// not finite or no such interval turns up in 12 steps (4096 times the first).
+    /// </summary>
+    internal static (double A, double B)? Bracket(Func<double, double> score, double centre, double half)
+    {
+        double a = centre - half, m = centre, b = centre + half;
+        double fa = score(a), fm = score(m), fb = score(b);
+        for (int step = 0; step < 12; step++)
+        {
+            if (!double.IsFinite(fm) && !double.IsFinite(fa) && !double.IsFinite(fb)) return null;
+            if (fm <= fa && fm <= fb && double.IsFinite(fm)) return (a, b);
+            if (fa < fb || !double.IsFinite(fb) && double.IsFinite(fa))
+            {
+                double width = m - a;
+                (b, fb) = (m, fm);
+                (m, fm) = (a, fa);
+                a = m - 2.0 * width;
+                fa = score(a);
+            }
+            else
+            {
+                double width = b - m;
+                (a, fa) = (m, fm);
+                (m, fm) = (b, fb);
+                b = m + 2.0 * width;
+                fb = score(b);
+            }
+        }
+        return null;
     }
 }
 

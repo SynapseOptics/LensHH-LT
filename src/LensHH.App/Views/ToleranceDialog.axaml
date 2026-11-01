@@ -22,18 +22,21 @@
 
     <!-- ── The set and the runs, above every tab ── -->
     <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0,0,0,8">
-      <ComboBox ItemsSource="{Binding Grades}" SelectedIndex="{Binding GradeIndex}" Width="130" />
-      <Button Content="Generate" Command="{Binding GenerateCommand}"
+      <!-- The set can't change under a run: these, and the first three tabs, wait for it. -->
+      <ComboBox ItemsSource="{Binding Grades}" SelectedIndex="{Binding GradeIndex}" Width="130"
+                IsEnabled="{Binding !IsRunning}" />
+      <Button Content="Generate" Command="{Binding GenerateCommand}" IsEnabled="{Binding !IsRunning}"
               ToolTip.Tip="Replace the tolerances with a starting set at this shop grade" />
-      <Button Content="Load .tol…" Click="Load_Click" />
-      <Button Content="Save .tol…" Click="Save_Click"
+      <Button Content="Load .tol…" Click="Load_Click" IsEnabled="{Binding !IsRunning}" />
+      <Button Content="Save .tol…" Click="Save_Click" IsEnabled="{Binding !IsRunning}"
               ToolTip.Tip="The tolerances and compensators as a .tol file, which the CLI and MCP read too" />
       <Border Width="1" Background="#CCCCCC" Margin="8,2" />
       <Button Content="Sensitivity" Command="{Binding RunSensitivityCommand}"
               ToolTip.Tip="Each tolerance at both ends of its range, worst first" />
       <Button Content="Monte Carlo" Command="{Binding RunMonteCarloCommand}"
               ToolTip.Tip="Random lenses drawn within the tolerances" />
-      <Button Content="Cancel" Command="{Binding CancelCommand}" />
+      <Button Content="Stop" Command="{Binding CancelCommand}"
+              ToolTip.Tip="End the run early; what is finished by then is kept and reported" />
     </StackPanel>
 
     <!-- ── Status and progress ── -->
@@ -54,7 +57,7 @@
 
       <!-- ── Tolerances ── -->
       <TabItem Header="Tolerances">
-        <DockPanel LastChildFill="True">
+        <DockPanel LastChildFill="True" IsEnabled="{Binding !IsRunning}">
           <TextBlock DockPanel.Dock="Top" TextWrapping="Wrap" Foreground="#555555" Margin="0,0,0,6"
                      Text="Surfaces are numbered as in the Lens Editor; an element or group is its first and last surface, 3-4. A range need not be centred: Min −0.02, Max 0.08 is a bias. Pivot moves an element tilt's pivot that far along the axis from its first vertex." />
           <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="8" Margin="0,6,0,0">
@@ -109,7 +112,7 @@
 
       <!-- ── Compensators ── -->
       <TabItem Header="Compensators">
-        <DockPanel LastChildFill="True">
+        <DockPanel LastChildFill="True" IsEnabled="{Binding !IsRunning}">
           <StackPanel DockPanel.Dock="Top" Spacing="6" Margin="0,0,0,6">
             <CheckBox Content="Adjust each lens" IsChecked="{Binding Compensate}"
                       ToolTip.Tip="Set the compensators on every lens built, for its best image, as it would be adjusted in assembly. Off, no lens is adjusted." />
@@ -142,7 +145,7 @@
 
       <!-- ── Settings ── -->
       <TabItem Header="Settings">
-        <ScrollViewer>
+        <ScrollViewer IsEnabled="{Binding !IsRunning}">
           <StackPanel Spacing="14" MaxWidth="760" HorizontalAlignment="Left">
             <StackPanel.Styles>
               <Style Selector="TextBlock.label">

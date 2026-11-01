@@ -7,8 +7,12 @@ those errors matter, and how good the lenses built to a set of tolerances will b
 Open it from **Tolerancing ▸ Tolerancing…**. It works on copies of the lens; your design is never
 changed. Its tabs are **Tolerances**, **Compensators** and **Settings**, then the results:
 **Report**, **Monte Carlo MTF** and **Trial lenses**. The buttons above the tabs load, save or
-generate the set and run **Sensitivity** or **Monte Carlo**, from whichever tab is showing; a run
-shows its results when it ends.
+generate the set and run **Sensitivity** or **Monte Carlo**, from whichever tab is showing. A run
+turns to the **Report** tab, and the line at the bottom counts the lenses done and the time so
+far; the set and the settings can't be changed until it ends. **Stop** ends a run early, within
+a second or so, and keeps what is finished: a Monte Carlo reports the lenses done by then, a
+smaller Monte Carlo of the same lenses, and a sensitivity run the tolerances whose two ends were
+both done.
 
 ## The tolerance set
 

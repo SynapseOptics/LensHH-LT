@@ -199,7 +199,9 @@ public static class ToleranceRun
     public static string Report(SensitivityTable table, int show = 0)
     {
         var sb = new StringBuilder();
-        sb.AppendLine($"Sensitivity: {table.Criterion}");
+        sb.AppendLine(table.Stopped
+            ? $"Sensitivity: {table.Criterion} (stopped after {table.Rows.Count} of {table.Requested} tolerances)"
+            : $"Sensitivity: {table.Criterion}");
         sb.AppendLine($"  Nominal {G(table.Nominal)}; refocused {G(table.NominalCompensated)}" +
                       (table.Compensator != null ? $" (focus {table.NominalCompensator:+0.0000;-0.0000} mm)" : ""));
         if (table.Compensator != null) sb.AppendLine($"  Compensators: {Compensators(table.Compensator)}");
@@ -217,7 +219,8 @@ public static class ToleranceRun
         }
         sb.AppendLine();
         sb.AppendLine($"  Root sum square of the worst increases: {G(table.RssIncrease)}");
-        sb.AppendLine($"  Estimated as built: {G(table.Estimated)}");
+        sb.AppendLine($"  Estimated as built: {G(table.Estimated)}" +
+                      (table.Stopped ? " (from the finished tolerances only: an underestimate)" : ""));
         return sb.ToString();
     }
 
@@ -228,7 +231,9 @@ public static class ToleranceRun
         Func<double, double> q = v => c == null ? v : c.Quoted(v);
         bool floor = c?.IsFloor ?? false;
         var sb = new StringBuilder();
-        sb.AppendLine($"Monte Carlo: {r.Trials.Count} lenses, {r.Criterion}");
+        sb.AppendLine(r.Stopped
+            ? $"Monte Carlo: {r.Trials.Count} lenses, {r.Criterion} (stopped after {r.Trials.Count} of {r.Requested})"
+            : $"Monte Carlo: {r.Trials.Count} lenses, {r.Criterion}");
         sb.AppendLine($"  Nominal {G(q(r.NominalCriterion))}; mean {G(q(r.Mean))}");
         foreach (double p in new[] { 0.5, 0.8, 0.9, 0.98 })
             sb.AppendLine($"  {p * 100,3:F0} % of lenses {(floor ? "at least" : "at most")} {G(q(r.Percentile(p)))}");

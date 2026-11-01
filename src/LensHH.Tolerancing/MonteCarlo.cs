@@ -29,7 +29,7 @@ public sealed record MonteCarloOptions
     /// <summary>How many trials to save, the first so many; the CSV lists them all.</summary>
     public int SaveTrials { get; init; } = 20;
 
-    /// <summary>Trials run at once; 0 for one per processor.</summary>
+    /// <summary>Trials run at once; 0 for <see cref="MonteCarlo.DefaultParallelism"/>.</summary>
     public int Parallelism { get; init; }
 }
 
@@ -53,6 +53,12 @@ public sealed record MonteCarloResult(string Criterion, IReadOnlyList<ToleranceI
 {
     /// <summary>The criterion the lenses were judged by, for quoting its values.</summary>
     public ICriterion? CriterionInfo { get; init; }
+
+    /// <summary>The lenses asked for. More than <see cref="Trials"/> holds when the run was stopped.</summary>
+    public int Requested { get; init; }
+
+    /// <summary>The run was stopped before every lens asked for was finished; <see cref="Trials"/> are the finished ones.</summary>
+    public bool Stopped => Requested > Trials.Count;
 
     /// <summary>The compensator the lenses were refocused by; null for none.</summary>
     public FocusCompensator? Compensator { get; init; }
@@ -130,6 +136,15 @@ public sealed record MonteCarloResult(string Criterion, IReadOnlyList<ToleranceI
 
 public static class MonteCarlo
 {
+    /// <summary>
+    /// Trials run at once unless asked otherwise: half the logical processors, about one per core.
+    /// Tracing gains little from a core's second thread - 16 threads on a 10-core processor ran
+    /// no more lenses a minute than 8 - and every lens in flight takes that much longer to finish,
+    /// so with no limit the thread pool, adding threads to a loop of long items, put the first
+    /// finished lens of 200 two minutes in.
+    /// </summary>
+    public static int DefaultParallelism => Math.Max(1, Environment.ProcessorCount / 2);
+
     public static MonteCarloResult Run(NominalLens lens, IReadOnlyList<ToleranceItem> items, ICriterion criterion,
                                        FocusCompensator? compensator, MonteCarloOptions options,
                                        IProgress<int>? progress = null, CancellationToken cancel = default)
@@ -150,22 +165,38 @@ public static class MonteCarlo
         var nominalBuilt = nominalLens.Build();
         // Each field's pupil in each direction, measured once on the nominal lens: a trial's errors barely move it.
         var pupils = freqs.Count == 0 ? Array.Empty<IReadOnlyList<LensHH.Core.Analysis.FftMtfCalculator.PupilGeometry>>()
-            : fields.Select(f => Mtf.Pupils(nominalBuilt, f)).ToArray();
+            : fields.AsParallel().AsOrdered().Select(f => Mtf.Pupils(nominalBuilt, f)).ToArray();
         var (nominalT, nominalS) = MtfOf(nominalBuilt, fields, freqs, options.MtfGridSize, pupils);
 
         string? dir = options.SaveDirectory;
         if (dir != null) Directory.CreateDirectory(dir);
 
-        var trials = new TrialResult[options.Trials];
+        // A stop (cancel) ends the run within one evaluation of the criterion and keeps the lenses
+        // finished by then: the result is those, a smaller Monte Carlo. Each lens's errors depend
+        // on its number alone, so they are the lenses a full run would have had.
+        var trials = new TrialResult?[options.Trials];
         int done = 0;
-        Parallel.For(0, options.Trials, new ParallelOptions
+        try
         {
-            CancellationToken = cancel,
-            MaxDegreeOfParallelism = options.Parallelism > 0 ? options.Parallelism : -1,
-        }, k =>
+            Parallel.For(0, options.Trials, new ParallelOptions
+            {
+                CancellationToken = cancel,
+                MaxDegreeOfParallelism = options.Parallelism > 0 ? options.Parallelism : DefaultParallelism,
+            }, k =>
+            {
+                try { trials[k] = Trial(k); }
+                catch (OperationCanceledException) when (cancel.IsCancellationRequested) { return; }
+                progress?.Report(Interlocked.Increment(ref done));
+            });
+        }
+        catch (OperationCanceledException) when (cancel.IsCancellationRequested) { }
+        var finished = trials.OfType<TrialResult>().ToList();
+        if (finished.Count == 0) throw new OperationCanceledException(cancel);
+
+        TrialResult Trial(int k)
         {
             var x = Draw(groups, items, options.Statistics, TrialRandom(options.Seed, k));
-            var r = Sensitivity.Evaluate(lens, items.Select((item, i) => (item.Tolerance, x[i])), criterion, compensator, out var trial);
+            var r = Sensitivity.Evaluate(lens, items.Select((item, i) => (item.Tolerance, x[i])), criterion, compensator, out var trial, cancel);
             var trialResult = new TrialResult(k + 1, x, r.Criterion,
                                               double.IsFinite(r.Criterion) ? r.Change - reference : double.NaN, r.AtLimit)
             {
@@ -173,18 +204,19 @@ public static class MonteCarlo
             };
             if (double.IsFinite(r.Criterion))
             {
+                cancel.ThrowIfCancellationRequested();
                 var built = trial.Build();
-                var (t, s) = MtfOf(built, fields, freqs, options.MtfGridSize, pupils);
+                var (t, s) = MtfOf(built, fields, freqs, options.MtfGridSize, pupils, cancel);
                 trialResult = trialResult with { MtfT = t, MtfS = s };
                 if (dir != null && k < options.SaveTrials)
                     trialResult = trialResult with { File = Save(built.System, dir, k + 1, items, x, r, compensator, lens.Views) };
             }
-            trials[k] = trialResult;
-            progress?.Report(Interlocked.Increment(ref done));
-        });
+            return trialResult;
+        }
 
-        var result = new MonteCarloResult(criterion.Name, items, trials, nominal.Criterion, freqs, fields)
+        var result = new MonteCarloResult(criterion.Name, items, finished, nominal.Criterion, freqs, fields)
         {
+            Requested = options.Trials,
             NominalMtfT = nominalT,
             NominalMtfS = nominalS,
             CriterionInfo = criterion,
@@ -197,12 +229,13 @@ public static class MonteCarlo
 
     /// <summary>Each field's MTF in the worst direction the lens is judged in (<see cref="Mtf.Worst"/>).</summary>
     private static (double[][] T, double[][] S) MtfOf(Built lens, IReadOnlyList<int> fields, IReadOnlyList<double> freqs, int grid,
-                                                      IReadOnlyList<IReadOnlyList<LensHH.Core.Analysis.FftMtfCalculator.PupilGeometry>> pupils)
+                                                      IReadOnlyList<IReadOnlyList<LensHH.Core.Analysis.FftMtfCalculator.PupilGeometry>> pupils,
+                                                      CancellationToken cancel = default)
     {
         if (freqs.Count == 0) return (Array.Empty<double[]>(), Array.Empty<double[]>());
         var t = new double[fields.Count][];
         var s = new double[fields.Count][];
-        for (int f = 0; f < fields.Count; f++) (t[f], s[f]) = Mtf.Worst(lens, fields[f], freqs, grid, pupils[f]);
+        for (int f = 0; f < fields.Count; f++) (t[f], s[f]) = Mtf.Worst(lens, fields[f], freqs, grid, pupils[f], cancel);
         return (t, s);
     }
 

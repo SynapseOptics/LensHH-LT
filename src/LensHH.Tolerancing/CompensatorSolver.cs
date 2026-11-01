@@ -27,7 +27,8 @@ internal static class CompensatorSolver
 {
     private const int MaxSteps = 10;
 
-    public static Compensated Solve(FocusCompensator compensator, TrialLens lens, ICriterion criterion)
+    public static Compensated Solve(FocusCompensator compensator, TrialLens lens, ICriterion criterion,
+                                    CancellationToken cancel = default)
     {
         var adjustments = compensator.Adjustments;
         int n = adjustments.Count + 1;
@@ -37,7 +38,7 @@ internal static class CompensatorSolver
 
         // The focus alone first.
         var alone = basis.Clone();
-        (compensator with { Travel = null }).RefocusAlone(alone, criterion);
+        (compensator with { Travel = null }).RefocusAlone(alone, criterion, cancel);
         var p = new double[n];
         p[0] = alone.System.Surfaces[compensator.Surface].Thickness - baseline;
 
@@ -65,12 +66,17 @@ internal static class CompensatorSolver
         }
         double Score(double[] q)
         {
+            cancel.ThrowIfCancellationRequested();
             double c = criterion.Evaluate(At(q).Build());
             return double.IsFinite(c) ? c : double.PositiveInfinity;
         }
 
         var rms = criterion as RmsWavefrontCriterion;
-        double[]? Residual(double[] q) => rms?.Vector(At(q).Build());
+        double[]? Residual(double[] q)
+        {
+            cancel.ThrowIfCancellationRequested();
+            return rms?.Vector(At(q).Build());
+        }
 
         var start0 = rms == null ? null : Residual(p);
         if (start0 != null) LevenbergMarquardt(p, start0, lo, hi, step, Residual);

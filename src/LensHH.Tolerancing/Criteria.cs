@@ -253,16 +253,19 @@ public static class Mtf
     /// frequency and orientation its own lowest: the MTF the lens can be counted on for at this field
     /// whichever way across the field it lies. The field on the axis is the same in every direction,
     /// its tangential and sagittal already the two across the image, and is taken from the first.
-    /// <paramref name="pupils"/>, one per view, as <see cref="Curve"/> takes one.
+    /// <paramref name="pupils"/>, one per view, as <see cref="Curve"/> takes one. A cancel stops it
+    /// before the next direction.
     /// </summary>
     public static (double[] T, double[] S) Worst(Built lens, int field, IReadOnlyList<double> frequencies, int gridSize = 64,
-                                                 IReadOnlyList<FftMtfCalculator.PupilGeometry>? pupils = null)
+                                                 IReadOnlyList<FftMtfCalculator.PupilGeometry>? pupils = null,
+                                                 CancellationToken cancel = default)
     {
         var views = lens.Views;
         double[]? t = null, s = null;
         for (int v = 0; v < views.Count; v++)
         {
             if (v > 0 && Math.Abs(views[v].System.Fields[field].Y) < 1e-12) continue;
+            cancel.ThrowIfCancellationRequested();
             var (tv, sv) = Curve(views[v], field, frequencies, gridSize, pupils?[v]);
             if (t == null || s == null) { (t, s) = (tv, sv); continue; }
             for (int k = 0; k < t.Length; k++)
@@ -276,7 +279,7 @@ public static class Mtf
 
     /// <summary>Each view's pupil at <paramref name="field"/>, measured once on the nominal lens for <see cref="Worst"/>.</summary>
     public static IReadOnlyList<FftMtfCalculator.PupilGeometry> Pupils(Built lens, int field) =>
-        lens.Views.Select(v => FftMtfCalculator.MeasurePupil(v.System, v.Glass, field)).ToArray();
+        lens.Views.AsParallel().AsOrdered().Select(v => FftMtfCalculator.MeasurePupil(v.System, v.Glass, field)).ToArray();
 
     /// <summary>The MTF at one frequency and orientation, in the worst direction.</summary>
     public static double At(Built lens, int field, double frequency, MtfOrientation orientation, int gridSize = 64)

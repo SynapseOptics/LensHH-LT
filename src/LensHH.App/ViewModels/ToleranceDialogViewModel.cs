@@ -7,6 +7,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Media.Imaging;
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using LensHH.App.Session;
@@ -244,7 +245,7 @@ public partial class ToleranceDialogViewModel : ObservableObject
         {
             var table = ToleranceRun.Sensitivity(system, _session.GlassCatalog, text, settings, progress, cancel);
             return () => { Report = ToleranceRun.Report(table); SelectedTab = ReportTab; };
-        });
+        }, "trial lenses");
     }
 
     [RelayCommand(CanExecute = nameof(CanRun))]
@@ -273,42 +274,64 @@ public partial class ToleranceDialogViewModel : ObservableObject
                     TrialFiles.Add(t.File!);
                 SelectedTab = MtfFields.Count > 0 ? MtfTab : ReportTab;
             };
-        });
+        }, "lenses");
     }
 
-    private async Task Run(string what, int total, Func<IProgress<int>, CancellationToken, Action> work)
+    /// <summary>
+    /// Runs <paramref name="work"/> away from the window, on the Report tab, with the count done and
+    /// the time so far in the status line each second. Stop ends it early; what was finished is
+    /// reported as a run would be.
+    /// </summary>
+    private async Task Run(string what, int total, Func<IProgress<int>, CancellationToken, Action> work, string unit)
     {
         IsRunning = true;
         Progress = 0;
-        Status = what + "…";
+        SelectedTab = ReportTab;
+        Report = $"{what}: running.\n\nStop ends it and reports the {unit} finished by then.";
         _cts = new CancellationTokenSource();
-        var progress = new Progress<int>(done => Progress = 100.0 * done / Math.Max(1, total));
+        int done = 0;
         var started = DateTime.Now;
+        void Show() => Status = $"{what}: {done} of {total} {unit}, {Elapsed(DateTime.Now - started)}" +
+                                (_cts?.IsCancellationRequested == true ? " - stopping…" : "");
+        var progress = new Progress<int>(d => { done = Math.Max(done, d); Progress = 100.0 * done / Math.Max(1, total); Show(); });
+        var timer = new DispatcherTimer(TimeSpan.FromSeconds(1), DispatcherPriority.Background, (_, _) => Show());
+        Show();
+        timer.Start();
         try
         {
-            var show = await Task.Run(() => work(progress, _cts.Token));
+            var stop = _cts.Token;
+            var show = await Task.Run(() => work(progress, stop));
             show();
-            Status = $"{what}: done in {(DateTime.Now - started).TotalSeconds:F0} s.";
+            Status = stop.IsCancellationRequested
+                ? $"{what}: stopped after {done} of {total} {unit}, {Elapsed(DateTime.Now - started)}; the report covers those."
+                : $"{what}: done in {Elapsed(DateTime.Now - started)}.";
         }
         catch (OperationCanceledException)
         {
-            Status = $"{what}: cancelled.";
+            Report = "";
+            Status = $"{what}: stopped before any was finished.";
         }
         catch (Exception e) when (e is ArgumentException or FormatException or InvalidOperationException
                                    or NotSupportedException or IOException or AggregateException)
         {
+            Report = "";
             Status = $"{what}: {(e is AggregateException a ? a.InnerException?.Message : e.Message)}";
         }
         finally
         {
+            timer.Stop();
             IsRunning = false;
             _cts.Dispose();
             _cts = null;
         }
     }
 
+    private static string Elapsed(TimeSpan t) =>
+        t.TotalMinutes >= 1 ? $"{(int)t.TotalMinutes} min {t.Seconds} s" : $"{t.Seconds} s";
+
     private bool CanCancel() => IsRunning;
 
+    /// <summary>Stop: ends the run within a second or so; the lenses finished are kept and reported.</summary>
     [RelayCommand(CanExecute = nameof(CanCancel))]
     private void Cancel() => _cts?.Cancel();
 
