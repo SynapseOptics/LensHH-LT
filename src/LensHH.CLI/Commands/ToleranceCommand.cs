@@ -3,6 +3,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using LensHH.Tolerancing;
+using LensHH.Tolerancing.Drawings;
 using Spectre.Console;
 
 namespace LensHH.CLI.Commands
@@ -35,7 +36,12 @@ namespace LensHH.CLI.Commands
     trials=<n> seed=<n>                      Monte Carlo lenses and seed (200, 1)
     stats=uniform | normal[[:k]] | endpoint[[+disc|+ring]]   How errors spread (uniform)
     mtf=<cy/mm> step=<cy/mm>                 Keep each lens's MTF up to this frequency
-    save=<folder> savecount=<n>              Save trial lenses (.lhlt), trials.csv and MTF plots";
+    save=<folder> savecount=<n>              Save trial lenses (.lhlt), trials.csv and MTF plots
+  [green]tolerance drawings <file.tol> out=<folder> [[settings=<drawing-settings.json>]] [[format=pdf|svg|dxf|all]] [[standard=iso|asme]] [[wave=<um>]][/]
+    A drawing of each element from the tolerance set: drawings.pdf with every sheet (format=pdf, the default),
+    and an .svg or .dxf per element; prints each drawing's warnings. The settings file holds the shop's
+    classes, coatings, title block and per-element overrides (docs/tolerancing.md).
+  [green]tolerance drawings settings <file.json>[/]   Write the default drawing settings, to edit";
 
         public void Execute(Session session, string[] args)
         {
@@ -59,6 +65,9 @@ namespace LensHH.CLI.Commands
                     case "monte-carlo":
                         Run(system, glass, args);
                         break;
+                    case "drawings":
+                        Drawings(system, glass, args);
+                        break;
                     default:
                         AnsiConsole.MarkupLine($"[red]Unknown subcommand: {Markup.Escape(args[0])}[/]");
                         AnsiConsole.MarkupLine(Help);
@@ -66,7 +75,8 @@ namespace LensHH.CLI.Commands
                 }
             }
             catch (Exception e) when (e is ArgumentException or FormatException or InvalidOperationException
-                                       or NotSupportedException or IOException)
+                                       or NotSupportedException or IOException or System.Text.Json.JsonException
+                                       or UnauthorizedAccessException)
             {
                 AnsiConsole.MarkupLine($"[red]{Markup.Escape(e.Message)}[/]");
             }
@@ -91,6 +101,45 @@ namespace LensHH.CLI.Commands
             if (file == null) { Console.Write(text); return; }
             File.WriteAllText(file, text);
             AnsiConsole.MarkupLine($"[green]Wrote {text.Split('\n').Count(l => l.Length > 0 && !l.StartsWith("#"))} tolerances to {Markup.Escape(file)}[/]");
+        }
+
+        private static void Drawings(Core.Models.OpticalSystem system, Core.Glass.GlassCatalogManager glass, string[] args)
+        {
+            if (args.Length == 3 && args[1].Equals("settings", StringComparison.OrdinalIgnoreCase))
+            {
+                File.WriteAllText(args[2], new DrawingSettings().ToJson());
+                AnsiConsole.MarkupLine($"[green]Wrote the default drawing settings to {Markup.Escape(args[2])}[/]");
+                return;
+            }
+            if (args.Length < 2 || !File.Exists(args[1]))
+            {
+                AnsiConsole.MarkupLine("[red]Usage: tolerance drawings <file.tol> out=<folder> [[settings=<file.json>]] [[format=pdf|svg|dxf|all]] " +
+                                       "[[standard=iso|asme]] — the tolerance file was not found.[/]");
+                return;
+            }
+            string? settingsFile = null, folder = null;
+            var formats = DrawingFormats.Pdf;
+            DrawingStandard? standard = null;
+            double wave = PowerFringes.HeNe;
+            foreach (var a in args.Skip(2))
+            {
+                var kv = a.Split('=', 2);
+                string value = kv.Length > 1 ? kv[1] : "";
+                switch (kv[0].ToLowerInvariant())
+                {
+                    case "settings": settingsFile = value; break;
+                    case "out": folder = value; break;
+                    case "format": formats = DrawingRun.ParseFormat(value); break;
+                    case "standard": standard = DrawingRun.ParseStandard(value); break;
+                    case "wave": wave = double.Parse(value, CultureInfo.InvariantCulture); break;
+                    default: throw new ArgumentException($"unknown option {a}");
+                }
+            }
+            if (string.IsNullOrWhiteSpace(folder)) throw new ArgumentException("tolerance drawings needs out=<folder>");
+            var settings = DrawingRun.ReadSettings(settingsFile);
+            if (standard is DrawingStandard st) settings = settings with { Standard = st };
+            var result = DrawingRun.Write(system, glass, File.ReadAllText(args[1]), settings, folder, formats, wave);
+            Console.Write(DrawingRun.Report(result));
         }
 
         private static void Run(Core.Models.OpticalSystem system, Core.Glass.GlassCatalogManager glass, string[] args)

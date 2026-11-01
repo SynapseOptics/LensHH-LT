@@ -13,7 +13,7 @@ namespace LensHH.App.Views
         {
             InitializeComponent();
             // Closing the window cancels a running analysis, so its workers do not outlive it.
-            Closing += (_, _) => VM?.CancelRun();
+            Closing += (_, _) => { VM?.CancelRun(); VM?.Remember(); };
         }
 
         private ToleranceDialogViewModel? VM => DataContext as ToleranceDialogViewModel;

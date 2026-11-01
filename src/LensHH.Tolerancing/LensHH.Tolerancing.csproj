@@ -19,6 +19,10 @@
     <ProjectReference Include="..\LensHH.IO\LensHH.IO.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="LensHH.Tolerancing.Tests" />
+  </ItemGroup>
+
   <!-- The native library the engine's paraxial values route through; .NET loads the one for this OS. -->
   <ItemGroup>
     <None Include="..\..\engine\win-x64\lenshh_native.dll"

@@ -36,6 +36,14 @@ public partial class ToleranceDialogViewModel : ObservableObject
         _saveDirectory = file != null
             ? Path.Combine(Path.GetDirectoryName(file) ?? "", Path.GetFileNameWithoutExtension(file) + " Monte Carlo")
             : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "LensHH Monte Carlo");
+        // The set as it was when the window last closed on this lens.
+        if (session.HasSystem && !string.IsNullOrWhiteSpace(session.ToleranceSet)) Fill(session.ToleranceSet);
+    }
+
+    /// <summary>Keeps the set in the session, for the next time the window opens and for the drawings.</summary>
+    public void Remember()
+    {
+        if (Tolerances.Count > 0) _session.ToleranceSet = TolerancesText;
     }
 
     public static string[] Grades { get; } = { "Low cost", "Commercial", "Precision", "Extra precise" };

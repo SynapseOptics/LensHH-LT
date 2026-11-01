@@ -196,6 +196,116 @@ and the break back that picks it up, with a row back to the element's first vert
 added or removed there would break those links. Coordinate Break is not offered as a surface type
 for a lens of one's own.
 
+## Drawings
+
+A tolerance set becomes a drawing of each element for the optical shop: one sheet per piece of
+glass, the pieces of a cemented group each on their own (a mirror is not drawn: the lens gives no
+substrate). Each sheet has
+
+- the section through the axis, to a standard scale, with the centre thickness and the edge
+  diameter dimensioned with their tolerances;
+- each surface's radius (convex or concave on the part), clear aperture, power and irregularity in
+  fringes at the test wavelength, the rotationally symmetric part of the irregularity, tilt (and
+  decentre on an asphere), surface quality, protective chamfer and coating;
+- the glass, with its n<sub>d</sub> and ν<sub>d</sub> and their tolerances;
+- an asphere's equation, coefficients and sag table: at each height the sag, and ±Δz and ±Δs, the
+  most the surface's power and irregularity tolerances move it and tilt it there;
+- the element's mount tolerances (its decentre and tilt, and its group's), or, for an element the
+  set's `CEDX`, `CEDY`, `CETX` or `CETY` aligns, that it is set at assembly;
+- a title block.
+
+Two practices are offered: **ISO 10110** (A4, the three-field table and the coded indications 0/
+to 5/) and **ASME** (ANSI A, a surface table and numbered notes per ASME Y14.18, surface quality as
+MIL-PRF-13830B scratch-dig, wedge as an edge thickness difference). Power of more fringes than a
+test plate is read to (10 by default) is stated as a tolerance on the radius instead, rounded down.
+The edge diameter is the largest clear aperture and a margin, rounded up to the half millimetre;
+cemented pieces are made to one diameter. Anything the set leaves out is filled from the settings'
+defaults, and each drawing lists what it filled and anything else to check - a thin edge, a bevel
+that would take the whole edge, a note that did not fit - as warnings.
+
+### The Drawings window
+
+Open it from **Tolerancing ▸ Drawings…**. It draws from the tolerance set the Tolerancing window
+last had for the lens (**Load .tol…** reads another, **Generate** makes a starting set at a shop
+grade). On the left are **Sheet and title block**, for what goes on every drawing, and each
+element's drawing; on the right, the selected sheet as it will print, with its warnings under it.
+
+For an element, each value on the drawing is listed with what the tolerances give it. Type in the
+box beside it to put another value on the drawing; clear the box, or ↺, to go back to the computed
+value. Changed values are highlighted, and the sheet follows at once.
+
+- **Save settings** keeps the sheet's fields and every change, beside the lens as
+  `name.drawing.json`; the window opens with them next time. (The CLI and MCP read the same file.)
+- **Save as my defaults** keeps the title block, classes, chamfers, coatings and notes, without
+  this lens's project or element changes, as the start for any lens with no settings of its own.
+- **Export PDF…** writes every sheet in one PDF; **Export SVG and DXF…** each sheet in both, named
+  by drawing number.
+
+Closing the window with changes not saved asks whether to save them.
+
+### Drawing settings
+
+What a drawing needs that a tolerance set does not hold comes from a settings file, JSON, every
+field optional (`tolerance drawings settings <file.json>` writes the defaults to edit):
+
+| Field | What it is |
+|---|---|
+| `standard` | `Iso10110` or `Asme` |
+| `maximumPowerFringes` | The most power stated in fringes; more is a radius tolerance (10) |
+| `edgeMargin`, `diameterTolerance` | Edge diameter over the clear aperture (1 mm), and its minus tolerance (0.05 mm) |
+| `chamferMin`, `chamferMax` | Protective chamfer face widths; by default from the diameter |
+| `imperfections`, `scratchDig` | Surface quality: ISO 10110-7 (`5/3x0.16`), MIL-PRF-13830B (`60-40`) |
+| `stressBirefringence`, `bubbles`, `inhomogeneity` | ISO 10110-2, -3 and -4 material classes |
+| `coating`, `coatings`, `coatingSpecs` | The coating of every surface, by surface number, and each name written out in full as a note |
+| `asphereSlopeMrad`, `asphereSlopeSamplingMm` | An asphere's slope deviation, as a note |
+| `notes` | Notes on every drawing |
+| `defaultFringes`, `defaultIrregularity`, `defaultThickness`, `defaultTiltArcmin`, `defaultIndex`, `defaultAbbePercent` | For a tolerance the set leaves out |
+| `project`, `company`, `drawnBy`, `numberPrefix`, `date` | Title block; drawings are numbered `OPT-01`, `OPT-02`, … |
+| `elements` | Per-element overrides, below |
+
+### Per-element overrides
+
+Every value on a drawing comes from the lens and its tolerances, and any of them can be given
+instead, per element, under `elements`, keyed by the element's first surface (`"3"`) or its
+drawing number (`"OPT-02"`). A field left out keeps the computed value:
+
+- `title`, `number`, `description` (a line in the title block), `notes`;
+- `glass`: the name the drawing gives the glass ("N-BK7 or equivalent"); its n<sub>d</sub> and
+  ν<sub>d</sub> stay the design's;
+- `ndTolerance`, `vdTolerancePercent`;
+- `thicknessMinus`, `thicknessPlus`: the centre thickness's deviations, signed (`-0.02`, `0.03`);
+- `diameter`, `diameterMinus`, `diameterPlus`: the edge diameter and its deviations, signed. A
+  cemented partner is made to the same diameter;
+- `front` and `back`, the element's two surfaces: `powerFringes`, `radiusTolerance`,
+  `irregularityFringes`, `symmetricIrregularityFringes`, `tiltArcmin`, `decentreMm`, `coating`
+  (`"none"` for none) and `clearAperture`.
+
+What follows from a value follows it: power given past `maximumPowerFringes` is stated as a radius
+tolerance as computed power is (give `radiusTolerance` to state your own), an asphere's sag table
+is taken from the power, irregularity and clear aperture as drawn, and the edge thickness from the
+diameter as drawn.
+
+```json
+{
+  "standard": "Iso10110",
+  "coating": "AR1",
+  "coatingSpecs": { "AR1": "Broadband AR 450-650 nm, Ravg ≤ 0.5 % per surface" },
+  "project": "Triplet",
+  "elements": {
+    "3": {
+      "title": "NEGATIVE", "glass": "F2 or equivalent", "diameter": 12,
+      "thicknessMinus": -0.02, "thicknessPlus": 0.03,
+      "front": { "powerFringes": 3, "irregularityFringes": 0.5 },
+      "back": { "radiusTolerance": 0.1, "coating": "none" }
+    }
+  }
+}
+```
+
+The files are written by hand, with no library: **PDF** (every sheet in `drawings.pdf`, in
+Helvetica, which every reader has), and per element **SVG** to look at and **DXF** (R12, on layers
+a CAD program can switch), each named by its drawing number.
+
 ## From the CLI and MCP
 
 The CLI's `tolerance` command takes the same .tol file:
@@ -209,5 +319,18 @@ tolerance montecarlo lens.tol trials=500 mtf=60 step=5 save=mc savecount=20
 Options: `criterion=rms` or `criterion=mtf:field:frequency:t|s`, `mono`, `nofocus`, `travel=<mm>`,
 `fields=xy|y|file`, `wave=<µm>`, `seed=<n>`, `stats=uniform|normal[:k]|endpoint[+disc]`.
 
-Over MCP the tools are `ToleranceDefaults`, `ToleranceSensitivity` and `ToleranceMonteCarlo`;
-each takes the tolerance set as text or as the path of a .tol file.
+Drawings:
+
+```
+tolerance drawings settings shop.json
+tolerance drawings lens.tol out=drawings settings=shop.json format=all standard=asme
+```
+
+`format=pdf` (the default) writes `drawings.pdf`; `svg` and `dxf` a file per element; `all` all
+three, or several as `format=pdf,dxf`. `standard=iso|asme` overrides the settings file's;
+`wave=<µm>` is the test wavelength. Each drawing is listed with its warnings.
+
+Over MCP the tools are `ToleranceDefaults`, `ToleranceSensitivity`, `ToleranceMonteCarlo` and
+`ToleranceDrawings` (the tolerance set, `outputDirectory`, and optionally `settingsPath`, `format`,
+`standard` and `testWavelength`); each takes the tolerance set as text or as the path of a .tol
+file. The CLI's drawings and `ToleranceDrawings` both come from the library's `DrawingRun.Write`.

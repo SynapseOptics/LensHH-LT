@@ -1113,6 +1113,14 @@ public partial class MainWindow : Window
         await dialog.ShowDialog(this);
     }
 
+    private async void Drawings_Click(object? sender, RoutedEventArgs e)
+    {
+        // Made from the tolerance set the Tolerancing window last had; nothing in the lens changes.
+        var vm = new DrawingsViewModel(VM.Session);
+        var window = new DrawingsWindow { DataContext = vm };
+        await window.ShowDialog(this);
+    }
+
     private async void RandomStart_Click(object? sender, RoutedEventArgs e)
     {
         // Works on internal clones; only "Apply this design" inside the dialog changes the system.

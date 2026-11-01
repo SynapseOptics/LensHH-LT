@@ -218,8 +218,15 @@ public class GuiSession
         NewSystem();
     }
 
+    /// <summary>
+    /// The lens's tolerance set (.tol text) as the Tolerancing window last had it, or null: the
+    /// window starts from it, and the drawings are made from it. A new or opened lens clears it.
+    /// </summary>
+    public string? ToleranceSet { get; set; }
+
     public void NewSystem()
     {
+        ToleranceSet = null;
         // Starter system: equiconvex N-BK7 lens, f ≈ 50 mm, EPD = 12.5 mm
         // (f/4), stop at the front surface, single d-line wavelength, single
         // on-axis field. Image distance is solved at the end by tracing a
@@ -312,6 +319,7 @@ public class GuiSession
     public void OpenFile(string path, string format = "lhlt")
     {
         // Reset import-state carried across opens.
+        ToleranceSet = null;
         LastImportSubstitutions = Array.Empty<LensHH.App.GlassCatalog.GlassNumericResolver.Substitution>();
         LastImportNotConverted = Array.Empty<string>();
         LastImportNotes = Array.Empty<string>();

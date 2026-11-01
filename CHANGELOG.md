@@ -17,6 +17,17 @@ All notable changes to LensHH-LT and the LensHH-LT-Engine.
   between a pair of Coordinate Breaks whose second picks up the first - with a table of every
   trial. Each lens is judged at +y, +x, −y and −x by default, the lens turned about its axis to
   put its fields in each direction, and refocused for all four together.
+- **Element drawings** from a tolerance set (Tolerancing ▸ Drawings…, CLI `tolerance drawings`, MCP `ToleranceDrawings`): a
+  sheet per piece of glass for the optical shop, to ISO 10110 or US practice (ASME Y14.18,
+  MIL-PRF-13830B), with the section, centre thickness and edge diameter, each surface's radius,
+  clear aperture, power and irregularity in fringes (a radius tolerance past what a test plate
+  reads), tilt and coating, the glass with its n_d and ν_d tolerances, an asphere's sag table, the
+  mount tolerances and a title block; written as one PDF, and an SVG and a DXF per element, with no
+  outside library. A settings file holds the shop's classes, coatings and title block, and per
+  element any value on the drawing in place of the computed one. The Drawings window lists each
+  value beside what the tolerances give it, with the sheet as it will print; its settings are kept
+  beside the lens, and the shop's part as defaults for every lens. The Tolerancing window keeps its
+  set for the lens between openings, and the drawings start from it.
 - **Field direction** (Analysis ▸ Field Direction, and on the 2D Layout tab): the analyses and the
   layout show a lens turned about its axis, to see its fields at +x, −y or −x - for a lens that
   is not rotationally symmetric, such as a Monte Carlo trial.

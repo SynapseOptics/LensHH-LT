@@ -2,6 +2,7 @@ using System;
 using System.ComponentModel;
 using System.IO;
 using LensHH.Tolerancing;
+using LensHH.Tolerancing.Drawings;
 using ModelContextProtocol.Server;
 
 namespace LensHH.Mcp.Tools
@@ -71,6 +72,36 @@ namespace LensHH.Mcp.Tools
                 return ToleranceRun.Report(table, show);
             }
             catch (Exception e) when (e is ArgumentException or FormatException or InvalidOperationException or NotSupportedException or IOException)
+            {
+                return $"Error: {e.Message}";
+            }
+        }
+
+        [McpServerTool, Description("Element drawings of the current lens for an optical shop, from its tolerance set: one sheet per " +
+            "piece of glass (cemented pieces each on their own) with its section, centre thickness and edge diameter with their " +
+            "tolerances, the radii, clear apertures, power and irregularity in fringes (or a radius tolerance past the settings' " +
+            "maximumPowerFringes), tilt, glass with its nd and vd tolerances, coatings, an asphere's sag table, mount tolerances, and " +
+            "a title block. The set's CEDX/CEDY/CETX/CETY compensators are drawn as alignment at assembly. standard: 'iso' (ISO 10110, " +
+            "A4) or 'asme' (ASME Y14.18 notes, MIL-PRF-13830B scratch-dig, ANSI A); empty keeps the settings' own. format: 'pdf' " +
+            "(drawings.pdf with every sheet; default), 'svg', 'dxf' (one per element, named by drawing number), 'all', or several as " +
+            "'pdf,dxf'. settingsPath: a drawing settings JSON file - the shop's classes, coatings, title block, and per-element " +
+            "overrides under 'elements', keyed by first surface ('3') or drawing number ('OPT-02'), of any value on the drawing " +
+            "(title, number, description, notes, glass, ndTolerance, vdTolerancePercent, thicknessMinus/Plus, diameter, " +
+            "diameterMinus/Plus, and front/back: powerFringes, radiusTolerance, irregularityFringes, symmetricIrregularityFringes, " +
+            "tiltArcmin, decentreMm, coating, clearAperture). Returns each drawing with its warnings and the files written. " + Format)]
+        public string ToleranceDrawings(string tolerances, string outputDirectory, string? settingsPath = null, string format = "pdf",
+                                        string standard = "", double testWavelength = PowerFringes.HeNe)
+        {
+            try
+            {
+                var settings = DrawingRun.ReadSettings(settingsPath);
+                if (!string.IsNullOrWhiteSpace(standard)) settings = settings with { Standard = DrawingRun.ParseStandard(standard) };
+                var result = DrawingRun.Write(_session.System, _session.GlassCatalog, Read(tolerances), settings, outputDirectory,
+                                              DrawingRun.ParseFormat(format), testWavelength);
+                return DrawingRun.Report(result);
+            }
+            catch (Exception e) when (e is ArgumentException or FormatException or InvalidOperationException or NotSupportedException
+                                       or IOException or UnauthorizedAccessException or System.Text.Json.JsonException)
             {
                 return $"Error: {e.Message}";
             }

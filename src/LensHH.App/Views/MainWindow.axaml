@@ -156,6 +156,8 @@
            is analysed, not optimized or toleranced again. -->
       <MenuItem Header="_Tolerancing" IsEnabled="{Binding IsCentred}">
         <MenuItem Header="_Tolerancing..." Click="Tolerancing_Click" />
+        <MenuItem Header="_Drawings..." Click="Drawings_Click"
+                  ToolTip.Tip="Element drawings for the shop, from the tolerance set; every value on them can be changed" />
       </MenuItem>
       <!-- Optional host-contributed menu. Empty (and hidden) in the standard build;
            a host may populate AppExtensions.MenuItems before the window loads. -->

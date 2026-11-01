@@ -1,0 +1,208 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:LensHH.App.ViewModels"
+        x:Class="LensHH.App.Views.DrawingsWindow"
+        x:DataType="vm:DrawingsViewModel"
+        Title="Element Drawings"
+        Icon="avares://LensHH.App/Assets/icon_256.png"
+        Width="1560" Height="920"
+        WindowStartupLocation="CenterOwner"
+        CanResize="True"
+        MinWidth="1200" MinHeight="700">
+
+  <Window.Styles>
+    <Style Selector="TextBox.override">
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="MinHeight" Value="26" />
+      <Setter Property="Padding" Value="6,3" />
+      <Setter Property="Margin" Value="0,1" />
+    </Style>
+    <Style Selector="TextBox.override.set">
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Background" Value="#FFF6DC" />
+    </Style>
+    <Style Selector="TextBox.override.bad">
+      <Setter Property="BorderBrush" Value="#C62828" />
+    </Style>
+    <Style Selector="TextBlock.computed">
+      <Setter Property="Foreground" Value="#555555" />
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="TextBlock.label">
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="TextBlock.heading">
+      <Setter Property="FontSize" Value="14" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Margin" Value="0,10,0,4" />
+    </Style>
+  </Window.Styles>
+
+  <!-- One row of a drawing's values: what the tolerances give, and the value to use instead. -->
+  <Window.DataTemplates>
+    <DataTemplate DataType="vm:DrawingFieldRow">
+      <Grid ColumnDefinitions="230,110,*,28" Margin="0,1">
+        <TextBlock Grid.Column="0" Classes="label" Text="{Binding Label}" TextWrapping="Wrap" />
+        <TextBlock Grid.Column="1" Classes="computed" Text="{Binding Computed}" TextTrimming="CharacterEllipsis"
+                   ToolTip.Tip="{Binding Computed}" />
+        <TextBox Grid.Column="2" Classes="override" Classes.set="{Binding IsOverridden}" Classes.bad="{Binding HasError}"
+                 Text="{Binding Text}" Watermark="as computed" />
+        <Button Grid.Column="3" Content="↺" Padding="0" Width="24" Height="24" FontSize="12"
+                Command="{Binding ResetCommand}" IsVisible="{Binding IsOverridden}"
+                ToolTip.Tip="Back to the value from the tolerances" />
+      </Grid>
+    </DataTemplate>
+  </Window.DataTemplates>
+
+  <DockPanel LastChildFill="True" Margin="10">
+
+    <!-- ── Tolerances, settings files and export ── -->
+    <StackPanel DockPanel.Dock="Top" Spacing="6" Margin="0,0,0,8">
+      <StackPanel Orientation="Horizontal" Spacing="8">
+        <TextBlock Text="Tolerances:" FontWeight="SemiBold" VerticalAlignment="Center" />
+        <TextBlock Text="{Binding ToleranceSource}" VerticalAlignment="Center" MinWidth="220" />
+        <Button Content="Load .tol…" Click="LoadTol_Click" />
+        <ComboBox ItemsSource="{Binding Grades}" SelectedIndex="{Binding GradeIndex}" Width="140" />
+        <Button Content="Generate" Command="{Binding GenerateCommand}"
+                ToolTip.Tip="Draw from a starting set at this shop grade" />
+        <Border Width="24" />
+        <Button Content="Open settings…" Click="OpenSettings_Click" />
+        <Button Content="Save settings" Click="SaveSettings_Click"
+                ToolTip.Tip="This lens's drawing settings and every change you made, beside the lens as name.drawing.json; they come back when the drawings are opened again" />
+        <Button Content="Save as my defaults" Command="{Binding SaveDefaultsCommand}"
+                ToolTip.Tip="The title block, classes, chamfers, coatings and notes, as the start for every lens without settings of its own" />
+        <Border Width="24" />
+        <Button Content="Export PDF…" Click="ExportPdf_Click" />
+        <Button Content="Export SVG and DXF…" Click="ExportFiles_Click" />
+      </StackPanel>
+      <TextBlock TextWrapping="Wrap" Foreground="#555555" FontSize="12"
+                 Text="Each value comes from the tolerance set. Type in the right-hand box to put another value on the drawing; clear it, or ↺, to go back. Values you changed are highlighted." />
+    </StackPanel>
+
+    <TextBlock DockPanel.Dock="Bottom" Text="{Binding Status}" TextWrapping="Wrap" Margin="0,8,0,0" />
+
+    <Grid ColumnDefinitions="230,8,520,8,*">
+
+      <!-- ── Sheets ── -->
+      <ListBox Grid.Column="0" ItemsSource="{Binding Items}" SelectedIndex="{Binding SelectedIndex}" FontSize="13" />
+
+      <GridSplitter Grid.Column="1" ResizeDirection="Columns" Background="Transparent" />
+
+      <!-- ── The selected sheet's values ── -->
+      <ScrollViewer Grid.Column="2" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Margin="0,0,12,0">
+
+          <!-- Every drawing -->
+          <StackPanel IsVisible="{Binding IsSheetSelected}" Spacing="2">
+            <TextBlock Classes="heading" Text="Title block" Margin="0,0,0,4" />
+            <Grid ColumnDefinitions="230,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto">
+              <TextBlock Grid.Row="0" Classes="label" Text="Standard" />
+              <ComboBox Grid.Row="0" Grid.Column="1" ItemsSource="{Binding Standards}" SelectedIndex="{Binding StandardIndex}" HorizontalAlignment="Stretch" />
+              <TextBlock Grid.Row="1" Classes="label" Text="Project" />
+              <TextBox Grid.Row="1" Grid.Column="1" Classes="override" Text="{Binding Project}" Watermark="the lens's title" />
+              <TextBlock Grid.Row="2" Classes="label" Text="Company" />
+              <TextBox Grid.Row="2" Grid.Column="1" Classes="override" Text="{Binding Company}" />
+              <TextBlock Grid.Row="3" Classes="label" Text="Drawn by" />
+              <TextBox Grid.Row="3" Grid.Column="1" Classes="override" Text="{Binding DrawnBy}" />
+              <TextBlock Grid.Row="4" Classes="label" Text="Drawing number prefix" />
+              <TextBox Grid.Row="4" Grid.Column="1" Classes="override" Text="{Binding NumberPrefix}" />
+              <TextBlock Grid.Row="5" Classes="label" Text="Date" />
+              <TextBox Grid.Row="5" Grid.Column="1" Classes="override" Text="{Binding Date}" Watermark="today" />
+            </Grid>
+
+            <TextBlock Classes="heading" Text="Material and surface classes" />
+            <Grid ColumnDefinitions="230,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto">
+              <TextBlock Grid.Row="0" Classes="label" Text="Surface imperfections (ISO 10110-7)" />
+              <TextBox Grid.Row="0" Grid.Column="1" Classes="override" Text="{Binding Imperfections}" />
+              <TextBlock Grid.Row="1" Classes="label" Text="Scratch-dig (US)" />
+              <TextBox Grid.Row="1" Grid.Column="1" Classes="override" Text="{Binding ScratchDig}" />
+              <TextBlock Grid.Row="2" Classes="label" Text="Stress birefringence (ISO 10110-2)" />
+              <TextBox Grid.Row="2" Grid.Column="1" Classes="override" Text="{Binding StressBirefringence}" />
+              <TextBlock Grid.Row="3" Classes="label" Text="Bubbles and inclusions (ISO 10110-3)" />
+              <TextBox Grid.Row="3" Grid.Column="1" Classes="override" Text="{Binding Bubbles}" />
+              <TextBlock Grid.Row="4" Classes="label" Text="Inhomogeneity and striae (ISO 10110-4)" />
+              <TextBox Grid.Row="4" Grid.Column="1" Classes="override" Text="{Binding Inhomogeneity}" />
+            </Grid>
+
+            <TextBlock Classes="heading" Text="Edges" />
+            <Grid ColumnDefinitions="230,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto">
+              <TextBlock Grid.Row="0" Classes="label" Text="Edge margin on the diameter (mm)" />
+              <TextBox Grid.Row="0" Grid.Column="1" Classes="override" Text="{Binding EdgeMargin}" />
+              <TextBlock Grid.Row="1" Classes="label" Text="Diameter tolerance, minus (mm)" />
+              <TextBox Grid.Row="1" Grid.Column="1" Classes="override" Text="{Binding DiameterTolerance}" />
+              <TextBlock Grid.Row="2" Classes="label" Text="Chamfer, least face width (mm)" />
+              <TextBox Grid.Row="2" Grid.Column="1" Classes="override" Text="{Binding ChamferMin}" Watermark="from the diameter" />
+              <TextBlock Grid.Row="3" Classes="label" Text="Chamfer, largest face width (mm)" />
+              <TextBox Grid.Row="3" Grid.Column="1" Classes="override" Text="{Binding ChamferMax}" Watermark="twice the least" />
+              <TextBlock Grid.Row="4" Classes="label" Text="Most power stated in fringes" />
+              <TextBox Grid.Row="4" Grid.Column="1" Classes="override" Text="{Binding MaximumPowerFringes}" />
+            </Grid>
+
+            <TextBlock Classes="heading" Text="Coatings" />
+            <Grid ColumnDefinitions="230,*" RowDefinitions="Auto,Auto">
+              <TextBlock Grid.Row="0" Classes="label" Text="Coating on every air surface" />
+              <TextBox Grid.Row="0" Grid.Column="1" Classes="override" Text="{Binding Coating}" Watermark="none" />
+              <TextBlock Grid.Row="1" Classes="label" Text="Specifications, one per line: NAME = specification" TextWrapping="Wrap" />
+              <TextBox Grid.Row="1" Grid.Column="1" Classes="override" Text="{Binding CoatingSpecs}" AcceptsReturn="True" Height="70" TextWrapping="Wrap" />
+            </Grid>
+
+            <TextBlock Classes="heading" Text="Notes on every drawing" />
+            <TextBox Classes="override" Text="{Binding GeneralNotes}" AcceptsReturn="True" Height="110" TextWrapping="Wrap"
+                     Watermark="One note per line" />
+
+            <TextBlock Classes="heading" Text="For a value the tolerance set leaves out" />
+            <Grid ColumnDefinitions="230,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto">
+              <TextBlock Grid.Row="0" Classes="label" Text="Power (fringes)" />
+              <TextBox Grid.Row="0" Grid.Column="1" Classes="override" Text="{Binding DefaultFringes}" />
+              <TextBlock Grid.Row="1" Classes="label" Text="Irregularity (fringes)" />
+              <TextBox Grid.Row="1" Grid.Column="1" Classes="override" Text="{Binding DefaultIrregularity}" />
+              <TextBlock Grid.Row="2" Classes="label" Text="Centre thickness ± (mm)" />
+              <TextBox Grid.Row="2" Grid.Column="1" Classes="override" Text="{Binding DefaultThickness}" />
+              <TextBlock Grid.Row="3" Classes="label" Text="Tilt (arcmin)" />
+              <TextBox Grid.Row="3" Grid.Column="1" Classes="override" Text="{Binding DefaultTiltArcmin}" />
+              <TextBlock Grid.Row="4" Classes="label" Text="Index ±" />
+              <TextBox Grid.Row="4" Grid.Column="1" Classes="override" Text="{Binding DefaultIndex}" />
+              <TextBlock Grid.Row="5" Classes="label" Text="Abbe number ± %" />
+              <TextBox Grid.Row="5" Grid.Column="1" Classes="override" Text="{Binding DefaultAbbePercent}" />
+            </Grid>
+          </StackPanel>
+
+          <!-- One element -->
+          <StackPanel IsVisible="{Binding IsElementSelected}" Spacing="0">
+            <Grid ColumnDefinitions="230,110,*,28" Margin="0,0,0,4">
+              <TextBlock Grid.Column="1" Classes="computed" Text="From tolerances" FontWeight="SemiBold" />
+              <TextBlock Grid.Column="2" Classes="computed" Text="On the drawing" FontWeight="SemiBold" />
+            </Grid>
+            <TextBlock Classes="heading" Text="Element" Margin="0,0,0,4" />
+            <ItemsControl ItemsSource="{Binding ElementRows}" />
+            <TextBlock Classes="heading" Text="{Binding FrontHeading}" />
+            <ItemsControl ItemsSource="{Binding FrontRows}" />
+            <TextBlock Classes="heading" Text="{Binding BackHeading}" />
+            <ItemsControl ItemsSource="{Binding BackRows}" />
+            <TextBlock Classes="heading" Text="Notes on this drawing" />
+            <TextBox Classes="override" Text="{Binding ElementNotes}" AcceptsReturn="True" Height="90" TextWrapping="Wrap"
+                     Watermark="One note per line, after the notes on every drawing" />
+          </StackPanel>
+        </StackPanel>
+      </ScrollViewer>
+
+      <GridSplitter Grid.Column="3" ResizeDirection="Columns" Background="Transparent" />
+
+      <!-- ── The sheet as it will print ── -->
+      <DockPanel Grid.Column="4" LastChildFill="True">
+        <ItemsControl DockPanel.Dock="Bottom" ItemsSource="{Binding Warnings}" Margin="0,6,0,0">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="x:String">
+              <TextBlock Text="{Binding StringFormat='⚠ {0}'}" Foreground="#8A4B00" FontSize="12" TextWrapping="Wrap" />
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <Border BorderBrush="#CCCCCC" BorderThickness="1" Background="White">
+          <Image Source="{Binding Preview}" Stretch="Uniform" />
+        </Border>
+      </DockPanel>
+    </Grid>
+  </DockPanel>
+</Window>

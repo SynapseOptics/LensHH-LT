@@ -128,6 +128,20 @@ public sealed record SymmetricIrregularity(int Surface, double TestWavelengthUm 
         double pv = amount * TestWavelengthUm * 1e-3 / 2.0;         // peak to valley, sag
         Irregularity.Add(lens, Surface, (9, pv / 1.5), (1, -pv / 1.5));
     }
+
+    /// <summary>The sag it adds at height <paramref name="h"/> of an aperture of radius <paramref name="radius"/>, per unit of peak to valley.</summary>
+    public static double Shape(double h, double radius)
+    {
+        double r2 = h * h / (radius * radius);
+        return (6.0 * r2 * r2 - 6.0 * r2) / 1.5;
+    }
+
+    /// <summary><see cref="Shape"/>'s slope along the radius at height <paramref name="h"/>, per unit of peak to valley.</summary>
+    public static double Slope(double h, double radius)
+    {
+        double rho = h / radius;
+        return (24.0 * rho * rho * rho - 12.0 * rho) / (1.5 * radius);
+    }
 }
 
 internal static class Irregularity
