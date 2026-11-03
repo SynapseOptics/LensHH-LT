@@ -80,6 +80,10 @@ All notable changes to LensHH-LT and the LensHH-LT-Engine.
 - The 2D layout of a saved Monte Carlo or sensitivity trial drew stray ray segments over the lens:
   a ray was drawn to the planes that go back along a moved element and to its breaks, which it
   meets on its line extended, behind or beyond the glass. Those are no longer points on a drawn ray.
+- The 2D layout, from surface 1, drew a short lead-in to each ray even where the object is in glass,
+  as on the face of a Dyson relay's block - the lead-in stopped in the glass and the object was not
+  drawn - or nearer than the lead-in, which then ran past it. Such a lens is now drawn from its
+  object; any other lens is drawn as before.
 - A lens turned about its axis by a Coordinate Break's tilt about z: the 2D layout drew its rays
   by their height along the turned frame, and ray aiming measured the stop there, so relative
   illumination read 0 at every field for a quarter turn. Rays, the pupil aberration fan and the
