@@ -77,6 +77,9 @@ All notable changes to LensHH-LT and the LensHH-LT-Engine.
 - The 2D layout drew an element laid out between Coordinate Breaks as boxes: each surface was
   joined to the row after it. An element is now drawn between its own two surfaces, and the planes
   and breaks a move is laid out with are not drawn as apertures.
+- The 2D layout of a saved Monte Carlo or sensitivity trial drew stray ray segments over the lens:
+  a ray was drawn to the planes that go back along a moved element and to its breaks, which it
+  meets on its line extended, behind or beyond the glass. Those are no longer points on a drawn ray.
 - A lens turned about its axis by a Coordinate Break's tilt about z: the 2D layout drew its rays
   by their height along the turned frame, and ray aiming measured the stop there, so relative
   illumination read 0 at every field for a quarter turn. Rays, the pupil aberration fan and the
