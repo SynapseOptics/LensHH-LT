@@ -8,8 +8,8 @@ Open it from **Tolerancing ▸ Tolerancing…**. It works on copies of the lens;
 changed. Its tabs are **Tolerances**, **Compensators** and **Settings**, then the results:
 **Report**, **Monte Carlo MTF** and **Trial lenses**. The buttons above the tabs load, save or
 generate the set and run **Sensitivity** or **Monte Carlo**, from whichever tab is showing. A run
-turns to the **Report** tab, and the line at the bottom counts the lenses done and the time so
-far; the set and the settings can't be changed until it ends. **Stop** ends a run early, within
+ends on the **Report** tab (a Monte Carlo that keeps MTF on the **Monte Carlo MTF** tab), and the
+line at the bottom counts the lenses done and the time so far; the set and the settings can't be changed until it ends. **Stop** ends a run early, within
 a second or so, and keeps what is finished: a Monte Carlo reports the lenses done by then, a
 smaller Monte Carlo of the same lenses, and a sensitivity run the tolerances whose two ends were
 both done.
@@ -309,6 +309,109 @@ diameter as drawn.
 The files are written by hand, with no library: **PDF** (every sheet in `drawings.pdf`, in
 Helvetica, which every reader has), and per element **SVG** to look at and **DXF** (R12, on layers
 a CAD program can switch), each named by its drawing number.
+
+## Example: a Cooke triplet
+
+This example tolerances the Cooke triplet from the samples, `CookeTriplet.lhlt`, twice: first
+with the focus as the only adjustment, then with the middle element also centred in its cell at
+assembly.
+
+### A tolerance set
+
+Open the lens and choose **Tolerancing ▸ Tolerancing…**. Leave the grade at **Commercial** and
+press **Generate**: 47 tolerances, power, irregularity and wedge on each of the six surfaces, the
+thicknesses, the glasses' index and Abbe number, and the decentre and tilt of each element.
+
+![Generated Commercial tolerances](images/CookeTripletTolerancing/TolerancesGenerated.png)
+
+**Generate** also sets the compensator: the thickness of surface 6, the space before the image, is
+the focus.
+
+![The focus as the only compensator](images/CookeTripletTolerancing/CompensatorsFocus.png)
+
+The **Settings** tab is left as it opens: each lens judged by its polychromatic RMS wavefront in
+all four field directions, 200 lenses, their MTF kept up to 60 cycles/mm, and the first 20 saved as
+lens files in a folder beside the lens.
+
+![Settings](images/CookeTripletTolerancing/Settings.png)
+
+### Focus only
+
+Press **Sensitivity**. It takes a few seconds.
+
+![Sensitivity, focus only](images/CookeTripletTolerancing/SensitivityFocus.png)
+
+The design's RMS wavefront is 0.468 waves, 0.467 refocused. The worst tolerance by far is the
+decentre of the middle element, `TEDX 3-4` and `TEDY 3-4`: 0.1 mm takes the lens to 0.890 waves.
+The decentre of the last element, 0.760, and the two thicknesses around the middle element,
+`TTHI 3` and `TTHI 4`, come next. The root sum square of the worst increases is 0.763, and the lens
+as built is estimated at 1.23 waves.
+
+Press **Monte Carlo**. The 200 lenses take about three minutes, and the window shows the
+**Monte Carlo MTF** when they are done. The **Report** tab has the numbers:
+
+![Monte Carlo report, focus only](images/CookeTripletTolerancing/MonteCarloReportFocus.png)
+
+Half the lenses are within 1.01 waves, 90 % within 1.40: on the axis, at 25 cycles/mm, an MTF of
+0.40 (tangential) for half of them where the design has 0.72. The focus needed −1.27 to +1.71 mm of
+travel.
+
+| Field 1 (on axis) | Field 3 (20°) |
+|---|---|
+| ![Monte Carlo MTF, field 1, focus only](images/CookeTripletTolerancing/MonteCarloMtfFocusField1.png) | ![Monte Carlo MTF, field 3, focus only](images/CookeTripletTolerancing/MonteCarloMtfFocusField3.png) |
+
+### Focus and the middle element centred
+
+The sensitivity points to the middle element. If it is centred in its cell at assembly, its
+decentre is taken out. On the **Compensators** tab press **Add** twice, set the new rows to `CEDX`
+and `CEDY`, surfaces `3-4`, travel 0.2 mm, twice the decentre tolerance:
+
+![Focus and the middle element's decentre in x and y](images/CookeTripletTolerancing/CompensatorsFocusXY.png)
+
+To keep the first run's trials, give this run another folder on the **Settings** tab (here
+`CookeTriplet Monte Carlo xy`). Then **Sensitivity** again:
+
+![Sensitivity, focus and middle element](images/CookeTripletTolerancing/SensitivityFocusXY.png)
+
+`TEDX 3-4` and `TEDY 3-4` are gone from the top of the list: the adjustment takes them out
+entirely. The last element's decentre, 0.760 before, is now 0.495, since moving the middle element
+also makes up for it. The thicknesses `TTHI 4` and `TTHI 3` lead now. The root sum square falls
+from 0.763 to 0.217, and the estimate from 1.23 to 0.68 waves.
+
+And **Monte Carlo**, which takes longer now, about five minutes, with three compensators to set
+for each lens:
+
+![Monte Carlo report, focus and middle element](images/CookeTripletTolerancing/MonteCarloReportFocusXY.png)
+
+| | Focus only | Focus and middle element |
+|---|---|---|
+| Mean | 1.022 | 0.674 |
+| 50 % of lenses at most | 1.006 | 0.662 |
+| 90 % of lenses at most | 1.396 | 0.823 |
+| 98 % of lenses at most | 1.575 | 0.933 |
+
+The middle element moved −0.16 to +0.19 mm in x and −0.19 to +0.16 mm in y, inside its ±0.2 mm.
+On the axis, at 25 cycles/mm, half the lenses now reach 0.62 tangential, and 90 % reach 0.35 where
+they reached 0.21. At the edge of the field the MTF barely changes: what limits it there is not
+the middle element's decentre, but the errors next on the list.
+
+| Field 1 (on axis) | Field 3 (20°) |
+|---|---|
+| ![Monte Carlo MTF, field 1, focus and middle element](images/CookeTripletTolerancing/MonteCarloMtfFocusXYField1.png) | ![Monte Carlo MTF, field 3, focus and middle element](images/CookeTripletTolerancing/MonteCarloMtfFocusXYField3.png) |
+
+### A trial lens
+
+The **Trial lenses** tab lists the saved lenses. Select one and press **Open in LensHH**:
+
+![Trial lenses](images/CookeTripletTolerancing/TrialLenses.png)
+
+It opens in a window of its own, as the lens that was judged. In the Lens Editor each element sits
+between a Coordinate Break and the break back, and each wedged surface between a pair of its own;
+the focus and the middle element's decentre are where the adjustment left them.
+
+![A trial in the Lens Editor](images/CookeTripletTolerancing/TrialLensEditor.png)
+
+![A trial's layout](images/CookeTripletTolerancing/TrialLayout.png)
 
 ## From the CLI and MCP
 
