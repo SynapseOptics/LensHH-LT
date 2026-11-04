@@ -23,8 +23,10 @@ namespace LensHH.Rendering.TextExport
             int wlDigits = LabelFormat.WavelengthDigits(result.WavelengthsUm);
             string wlFmt = "F" + wlDigits;
 
-            sb.AppendLine(string.Format(CultureInfo.InvariantCulture,
-                "Max Pupil Radius (mm)\t{0:F8}", result.PupilRadiusMax));
+            sb.AppendLine(result.PupilIsRelative
+                ? "Pupil at infinity: relative pupil"
+                : string.Format(CultureInfo.InvariantCulture,
+                    "Max Pupil Radius (mm)\t{0:F8}", result.PupilRadiusMax));
             sb.AppendLine();
 
             // Group by wavelength index, sort by ascending pupil radius.
@@ -37,7 +39,7 @@ namespace LensHH.Rendering.TextExport
                 perWl[i].Sort((a, b) => a.PupilRadius.CompareTo(b.PupilRadius));
 
             // Header: Pupil Radius then one column per wavelength.
-            sb.Append("Pupil Radius (mm)");
+            sb.Append(result.PupilAxisLabel);
             for (int i = 0; i < numWl; i++)
                 sb.Append('\t').Append(string.Format(CultureInfo.InvariantCulture,
                     "Shift @ {0} um (mm)", result.WavelengthsUm[i].ToString(wlFmt, CultureInfo.InvariantCulture)));

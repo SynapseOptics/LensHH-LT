@@ -99,7 +99,7 @@ namespace LensHH.Rendering
 
             // Axis titles
             sb.AppendLine(F($"<text x=\"{w / 2}\" y=\"{h - 5}\" text-anchor=\"middle\" font-size=\"9\" fill=\"#333\">Focus Shift (mm)</text>"));
-            sb.AppendLine(F($"<text x=\"12\" y=\"{h / 2}\" text-anchor=\"middle\" font-size=\"9\" fill=\"#333\" transform=\"rotate(-90 12 {h / 2})\">Pupil Radius (mm)</text>"));
+            sb.AppendLine(F($"<text x=\"12\" y=\"{h / 2}\" text-anchor=\"middle\" font-size=\"9\" fill=\"#333\" transform=\"rotate(-90 12 {h / 2})\">{result.PupilAxisLabel}</text>"));
 
             // One curve per wavelength.
             for (int wIdx = 0; wIdx < numWl; wIdx++)

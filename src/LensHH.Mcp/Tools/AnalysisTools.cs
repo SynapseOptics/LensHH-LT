@@ -183,7 +183,9 @@ namespace LensHH.Mcp.Tools
             if (result.IsAfocal) return "Not applicable for afocal systems.";
 
             var sb = new StringBuilder();
-            sb.AppendLine($"Longitudinal Aberration (pupil radius max: {result.PupilRadiusMax:F4} mm)");
+            sb.AppendLine(result.PupilIsRelative
+                ? "Longitudinal Aberration (pupil at infinity: relative pupil)"
+                : $"Longitudinal Aberration (pupil radius max: {result.PupilRadiusMax:F4} mm)");
 
             int numWl = result.WavelengthsUm.Length;
             var perWl = new System.Collections.Generic.List<System.Collections.Generic.List<Core.Analysis.LongitudinalAberrationPoint>>(numWl);
@@ -194,7 +196,7 @@ namespace LensHH.Mcp.Tools
             for (int i = 0; i < numWl; i++)
                 perWl[i].Sort((a, b) => a.PupilRadius.CompareTo(b.PupilRadius));
 
-            sb.Append($"{"PupilR (mm)",12}");
+            sb.Append($"{(result.PupilIsRelative ? "Rel. pupil" : "PupilR (mm)"),12}");
             for (int i = 0; i < numWl; i++)
                 sb.Append($"  {"Shift " + result.WavelengthsUm[i].ToString("F4") + "um",16}");
             sb.AppendLine();

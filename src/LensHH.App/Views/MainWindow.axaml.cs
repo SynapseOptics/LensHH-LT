@@ -2048,7 +2048,7 @@ public partial class MainWindow : Window
         for (int i = 0; i < numWl; i++)
             perWl[i].Sort((a, b) => a.PupilRadius.CompareTo(b.PupilRadius));
 
-        var columns = new System.Collections.Generic.List<string> { "Pupil Radius (mm)" };
+        var columns = new System.Collections.Generic.List<string> { result.PupilAxisLabel };
         for (int i = 0; i < numWl; i++)
             columns.Add($"Shift @ {result.WavelengthsUm[i].ToString(wlFmt, System.Globalization.CultureInfo.InvariantCulture)} µm (mm)");
 

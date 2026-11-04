@@ -90,6 +90,9 @@ All notable changes to LensHH-LT and the LensHH-LT-Engine.
   object-space NA aperture and the entrance pupil at infinity, the odd aperture terms came out
   negated. A Dyson relay's faces now show their distortion and lateral colour, cancelling between
   the two passes; other lenses' Seidel values are unchanged.
+- Longitudinal aberration of a lens with its entrance pupil at infinity, such as a Dyson relay
+  with an object-space NA: the pupil axis ran in mm up to about 1.7e8. Such a lens is now plotted,
+  tabled and exported against the relative pupil, 0 to 1; other lenses keep their axis in mm.
 - A lens turned about its axis by a Coordinate Break's tilt about z: the 2D layout drew its rays
   by their height along the turned frame, and ray aiming measured the stop there, so relative
   illumination read 0 at every field for a quarter turn. Rays, the pupil aberration fan and the

@@ -545,7 +545,9 @@ namespace LensHH.CLI.Commands
                 AnsiConsole.MarkupLine("[yellow]Not applicable for afocal systems.[/]");
                 return;
             }
-            AnsiConsole.MarkupLine($"Pupil radius (max): {result.PupilRadiusMax:F4} mm    Wavelengths: {result.WavelengthsUm.Length}");
+            AnsiConsole.MarkupLine(result.PupilIsRelative
+                ? $"Pupil at infinity: relative pupil    Wavelengths: {result.WavelengthsUm.Length}"
+                : $"Pupil radius (max): {result.PupilRadiusMax:F4} mm    Wavelengths: {result.WavelengthsUm.Length}");
 
             // Group by wavelength index, sort by pupil radius.
             int numWl = result.WavelengthsUm.Length;
@@ -560,7 +562,7 @@ namespace LensHH.CLI.Commands
             int wlDigits = LensHH.Rendering.LabelFormat.WavelengthDigits(result.WavelengthsUm);
             string wlFmt = "F" + wlDigits;
             var table = new Table();
-            table.AddColumn("Pupil Radius (mm)");
+            table.AddColumn(result.PupilAxisLabel);
             for (int i = 0; i < numWl; i++)
                 table.AddColumn($"Shift {result.WavelengthsUm[i].ToString(wlFmt, System.Globalization.CultureInfo.InvariantCulture)} um (mm)");
 
