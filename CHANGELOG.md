@@ -84,6 +84,12 @@ All notable changes to LensHH-LT and the LensHH-LT-Engine.
   as on the face of a Dyson relay's block - the lead-in stopped in the glass and the object was not
   drawn - or nearer than the lead-in, which then ran past it. Such a lens is now drawn from its
   object; any other lens is drawn as before.
+- Seidel distortion (S5) and lateral colour (CT) on a surface the marginal ray meets along its
+  normal - every surface of a Dyson relay, or a flat face in collimated light - read 0, or a
+  value of the wrong sign; they are now computed in a form that holds there too. With an
+  object-space NA aperture and the entrance pupil at infinity, the odd aperture terms came out
+  negated. A Dyson relay's faces now show their distortion and lateral colour, cancelling between
+  the two passes; other lenses' Seidel values are unchanged.
 - A lens turned about its axis by a Coordinate Break's tilt about z: the 2D layout drew its rays
   by their height along the turned frame, and ray aiming measured the stop there, so relative
   illumination read 0 at every field for a quarter turn. Rays, the pupil aberration fan and the
