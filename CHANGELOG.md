@@ -2,7 +2,7 @@
 
 All notable changes to LensHH-LT and the LensHH-LT-Engine.
 
-## Unreleased
+## 1.0.164 — 2026-11-13
 
 ### New
 
